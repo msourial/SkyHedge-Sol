@@ -24,4 +24,4 @@ npm run build
 
 Set `NOAA_TOKEN` for NOAA Climate Data Online historical observations. If the provider cannot return required data, the service returns `DATA_UNAVAILABLE`; it never creates fallback weather observations.
 
-The Devnet program ID is `GSSmUiGYFT72aMh96dSaxYNQgAJL7Kqi18cZ6zaPuJSL`. Its local deployment keypair is intentionally excluded from version control.
+The Devnet program ID is `HY3EyQW3qvZfqWPHn5nwUfY5FwHTFxTzVgjntG8ERCEK`. Its local deployment keypair is intentionally excluded from version control.

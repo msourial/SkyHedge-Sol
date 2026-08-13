@@ -7,7 +7,7 @@ import { MARKET_LIMITS, RainfallQuoteEngine, type TriggerOperator } from "./serv
 
 const provider = new NoaaRainfallProvider();
 const quotes = new RainfallQuoteEngine(provider);
-const programId = "GSSmUiGYFT72aMh96dSaxYNQgAJL7Kqi18cZ6zaPuJSL";
+const programId = "HY3EyQW3qvZfqWPHn5nwUfY5FwHTFxTzVgjntG8ERCEK";
 const citySchema = z.enum(["new-york", "miami", "chicago"]);
 const quoteSchema = z.object({ city: citySchema, observationStart: z.string().date(), observationEnd: z.string().date(), thresholdMm: z.number().positive(), operator: z.enum(["gt", "gte", "lt", "lte"]), protectedAmount: z.string().regex(/^\d+$/) });
 

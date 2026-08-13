@@ -3,7 +3,7 @@ seeds = true
 skip-lint = false
 
 [programs.localnet]
-skyhedge_protection = "GSSmUiGYFT72aMh96dSaxYNQgAJL7Kqi18cZ6zaPuJSL"
+skyhedge_protection = "HY3EyQW3qvZfqWPHn5nwUfY5FwHTFxTzVgjntG8ERCEK"
 
 [provider]
 cluster = "Devnet"

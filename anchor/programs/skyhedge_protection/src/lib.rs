@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked};
 
-declare_id!("GSSmUiGYFT72aMh96dSaxYNQgAJL7Kqi18cZ6zaPuJSL");
+declare_id!("HY3EyQW3qvZfqWPHn5nwUfY5FwHTFxTzVgjntG8ERCEK");
 
 pub const BPS_DENOMINATOR: u128 = 10_000;
 pub const PROTOCOL_FEE_BPS: u16 = 100;
