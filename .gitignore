@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+artifacts/
+cache/
+build/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE and editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Server files
+server/public
+
+# Vite
+vite.config.ts.*
+*.tar.gz
+
+# Local development
+.local/
+anchor/keys/
+anchor/target/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.bak
+*.tmp
+*~
