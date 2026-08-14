@@ -4,6 +4,7 @@ import type { Express, Response } from "express";
 import { z } from "zod";
 import { DataUnavailableError, NOAA_STATIONS, NoaaRainfallProvider, canonicalSourceHash, cumulativeMillimeters, type SkyHedgeCity } from "./services/noaa";
 import { MARKET_LIMITS, RainfallQuoteEngine, type TriggerOperator } from "./services/quote-engine";
+import { resolveNetworkIdentity } from "./services/solana-network";
 
 const provider = new NoaaRainfallProvider();
 const quotes = new RainfallQuoteEngine(provider);
@@ -12,7 +13,10 @@ const citySchema = z.enum(["new-york", "miami", "chicago"]);
 const quoteSchema = z.object({ city: citySchema, observationStart: z.string().date(), observationEnd: z.string().date(), thresholdMm: z.number().positive(), operator: z.enum(["gt", "gte", "lt", "lte"]), protectedAmount: z.string().regex(/^\d+$/) });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  app.get("/api/health", (_req, res) => res.json({ name: "SkyHedge", network: "devnet", programId, settlementSource: "NOAA", generatedData: false }));
+  app.get("/api/health", async (_req, res) => {
+    const identity = await resolveNetworkIdentity(programId);
+    res.json({ name: "SkyHedge", ...identity, settlementSource: "NOAA", generatedData: false });
+  });
 
   app.get("/api/markets", (_req, res) => res.json(Object.entries(NOAA_STATIONS).map(([id, station]) => ({ id, ...station, metric: "cumulative_rainfall_mm", collateral: "SKYT", decimals: 6, status: "INDEXER_PENDING", maxLiquidity: MARKET_LIMITS.maxLiquidity.toString(), maxExposure: MARKET_LIMITS.maxExposure.toString(), perWalletMax: MARKET_LIMITS.perWallet.toString(), programId }))));
 
@@ -50,7 +54,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/transactions/unsigned", (req, res) => {
     const intent = z.object({ action: z.enum(["fund_pool", "withdraw_liquidity", "open_position", "claim_payout", "claim_premium_refund", "redeem_closed_liquidity"]), market: z.string().min(32), wallet: z.string().min(32), amount: z.string().regex(/^\d+$/).optional(), approved: z.literal(true) }).safeParse(req.body);
     if (!intent.success) return res.status(400).json({ error: "A valid market, wallet, and explicit approval are required." });
-    return res.status(501).json({ error: "PROGRAM_IDL_REQUIRED", message: "The API will serialize this wallet-signed transaction after the deployed Anchor IDL is registered. No simulated transaction is returned.", intent: intent.data, programId, network: "devnet" });
+    return res.status(501).json({ error: "PROGRAM_IDL_REQUIRED", message: "The API will serialize this wallet-signed transaction only after a deployed program and its generated Anchor IDL are registered. No simulated transaction is returned.", intent: intent.data, programId, network: "devnet" });
   });
 
   return createServer(app);

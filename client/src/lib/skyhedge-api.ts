@@ -6,6 +6,9 @@ export type Health = {
   programId: string;
   settlementSource: "NOAA";
   generatedData: false;
+  programDeployment: "DEPLOYED" | "UNDEPLOYED" | "RPC_UNAVAILABLE";
+  idlRegistered: false;
+  transactionsAvailable: false;
 };
 
 export type Market = {
