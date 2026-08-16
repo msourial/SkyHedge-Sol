@@ -1,12 +1,26 @@
 import { createHash } from "node:crypto";
 
-export type SkyHedgeCity = "new-york" | "miami" | "chicago";
+export interface Station { city: string; state: string; stationId: string; latitude: number; longitude: number; }
 
-export const NOAA_STATIONS: Record<SkyHedgeCity, { city: string; stationId: string; latitude: number; longitude: number }> = {
-  "new-york": { city: "New York", stationId: "GHCND:USW00094728", latitude: 40.7789, longitude: -73.9692 },
-  miami: { city: "Miami", stationId: "GHCND:USW00012839", latitude: 25.7933, longitude: -80.2906 },
-  chicago: { city: "Chicago", stationId: "GHCND:USW00094846", latitude: 41.995, longitude: -87.9336 },
+export const NOAA_STATIONS: Record<string, Station> = {
+  "new-york": { city: "New York", state: "NY", stationId: "GHCND:USW00094728", latitude: 40.7789, longitude: -73.9692 },
+  miami: { city: "Miami", state: "FL", stationId: "GHCND:USW00012839", latitude: 25.7933, longitude: -80.2906 },
+  chicago: { city: "Chicago", state: "IL", stationId: "GHCND:USW00094846", latitude: 41.995, longitude: -87.9336 },
+  dallas: { city: "Dallas", state: "TX", stationId: "GHCND:USW00013960", latitude: 32.847, longitude: -96.851 },
+  houston: { city: "Houston", state: "TX", stationId: "GHCND:USW00012960", latitude: 29.99, longitude: -95.337 },
+  seattle: { city: "Seattle", state: "WA", stationId: "GHCND:USW00024233", latitude: 47.45, longitude: -122.309 },
+  "san-francisco": { city: "San Francisco", state: "CA", stationId: "GHCND:USW00023234", latitude: 37.621, longitude: -122.379 },
+  "los-angeles": { city: "Los Angeles", state: "CA", stationId: "GHCND:USW00023174", latitude: 33.942, longitude: -118.408 },
+  phoenix: { city: "Phoenix", state: "AZ", stationId: "GHCND:USW00023183", latitude: 33.435, longitude: -112.058 },
+  boston: { city: "Boston", state: "MA", stationId: "GHCND:USW00014739", latitude: 42.361, longitude: -71.011 },
+  atlanta: { city: "Atlanta", state: "GA", stationId: "GHCND:USW00013874", latitude: 33.64, longitude: -84.427 },
+  minneapolis: { city: "Minneapolis", state: "MN", stationId: "GHCND:USW00014922", latitude: 44.884, longitude: -93.222 },
+  "las-vegas": { city: "Las Vegas", state: "NV", stationId: "GHCND:USW00023169", latitude: 36.085, longitude: -115.151 },
+  "new-orleans": { city: "New Orleans", state: "LA", stationId: "GHCND:USW00012916", latitude: 29.993, longitude: -90.258 },
+  portland: { city: "Portland", state: "OR", stationId: "GHCND:USW00024229", latitude: 45.589, longitude: -122.595 },
 };
+
+export type SkyHedgeCity = keyof typeof NOAA_STATIONS;
 
 export class DataUnavailableError extends Error {
   readonly code = "DATA_UNAVAILABLE";

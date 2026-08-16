@@ -7,8 +7,8 @@ import { MARKET_LIMITS, RainfallQuoteEngine, type TriggerOperator } from "./serv
 
 const provider = new NoaaRainfallProvider();
 const quotes = new RainfallQuoteEngine(provider);
-const programId = "HY3EyQW3qvZfqWPHn5nwUfY5FwHTFxTzVgjntG8ERCEK";
-const citySchema = z.enum(["new-york", "miami", "chicago"]);
+const programId = "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr";
+const citySchema = z.enum(Object.keys(NOAA_STATIONS) as [SkyHedgeCity, ...SkyHedgeCity[]]);
 const quoteSchema = z.object({ city: citySchema, observationStart: z.string().date(), observationEnd: z.string().date(), thresholdMm: z.number().positive(), operator: z.enum(["gt", "gte", "lt", "lte"]), protectedAmount: z.string().regex(/^\d+$/) });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -24,6 +24,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const records = await provider.dailyRainfall(NOAA_STATIONS[city.data].stationId, range.data.start, range.data.end);
       const cumulativeMm = cumulativeMillimeters(records);
       return res.json({ source: "NOAA", city: city.data, stationId: NOAA_STATIONS[city.data].stationId, start: range.data.start, end: range.data.end, records, cumulativeMm, sourceHash: canonicalSourceHash({ city: city.data, records }) });
+    } catch (error) { return dataUnavailable(res, error); }
+  });
+
+  app.get("/api/weather/:city/forecast", async (req, res) => {
+    const city = citySchema.safeParse(req.params.city);
+    const range = z.object({ start: z.string().date(), end: z.string().date() }).safeParse(req.query);
+    if (!city.success || !range.success) return res.status(400).json({ error: "city, start, and end are required" });
+    try {
+      const records = await provider.forecastRainfall(city.data, range.data.start, range.data.end);
+      const cumulativeMm = cumulativeMillimeters(records);
+      return res.json({ source: "NOAA-forecast", city: city.data, stationId: NOAA_STATIONS[city.data].stationId, start: range.data.start, end: range.data.end, records, cumulativeMm });
     } catch (error) { return dataUnavailable(res, error); }
   });
 
