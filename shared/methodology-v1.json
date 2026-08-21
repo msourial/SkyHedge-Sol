@@ -1,0 +1,31 @@
+{
+  "version": "methodology-v1",
+  "updatedAt": "2026-08-15T00:00:00Z",
+  "consensus": {
+    "finalSource": "NOAA",
+    "verificationSource": "WeatherXM",
+    "agreementToleranceMm": 5,
+    "agreementTolerancePct": 0.15,
+    "rule": "agree if |NOAA - WXM| <= max(5mm, 15% of NOAA); persistent disagreement -> DATA_UNAVAILABLE. Never synthesize a value.",
+    "disagreementAction": "DATA_UNAVAILABLE"
+  },
+  "observation": {
+    "metric": "cumulative_rainfall_mm",
+    "units": "mm",
+    "window": "local-midnight-to-midnight over the market observation window"
+  },
+  "cities": {
+    "new-york": {
+      "noaaStation": "GHCND:USW00094728",
+      "wxmDiscovery": { "radiusKm": 25, "minQod": 0.8, "maxStations": 10, "aggregation": "median" }
+    },
+    "miami": {
+      "noaaStation": "GHCND:USW00012839",
+      "wxmDiscovery": { "radiusKm": 25, "minQod": 0.8, "maxStations": 10, "aggregation": "median" }
+    },
+    "chicago": {
+      "noaaStation": "GHCND:USW00094846",
+      "wxmDiscovery": { "radiusKm": 25, "minQod": 0.8, "maxStations": 10, "aggregation": "median" }
+    }
+  }
+}

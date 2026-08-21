@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "types": ["node", "mocha"]
+  },
+  "include": ["server/**/*.ts", "shared/**/*.ts"]
+}

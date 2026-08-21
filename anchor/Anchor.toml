@@ -3,11 +3,14 @@ seeds = true
 skip-lint = false
 
 [programs.localnet]
-skyhedge_protection = "HY3EyQW3qvZfqWPHn5nwUfY5FwHTFxTzVgjntG8ERCEK"
+skyhedge_protection = "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr"
+
+[programs.devnet]
+skyhedge_protection = "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr"
 
 [provider]
-cluster = "Devnet"
+cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "pnpm ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test = "npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

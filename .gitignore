@@ -12,6 +12,12 @@ build/
 .env.*
 !.env.example
 
+# Solana keypairs and build artifacts
+anchor/keys/
+anchor/target/
+.anchor/
+*.keypair.json
+
 # IDE and editor files
 .DS_Store
 .idea/
@@ -46,3 +52,11 @@ coverage/
 *.bak
 *.tmp
 *~
+watch-deploy.log
+
+# Runtime / tooling artifacts
+.localnet-ledger/
+test-ledger/
+graphify-out/
+.opencode/
+.planning/

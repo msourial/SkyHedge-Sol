@@ -8,3 +8,18 @@ export const settlementObservations = pgTable("settlement_observations", { marke
 export const chainEvents = pgTable("chain_events", { signature: text("signature").primaryKey(), slot: bigint("slot", { mode: "bigint" }).notNull(), eventType: text("event_type").notNull(), payload: jsonb("payload").notNull(), finalizedAt: timestamp("finalized_at", { withTimezone: true }).notNull() });
 export const quoteAudits = pgTable("quote_audits", { quoteHash: text("quote_hash").primaryKey(), marketAddress: text("market_address"), input: jsonb("input").notNull(), output: jsonb("output").notNull(), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow() });
 export const advisorySessions = pgTable("advisory_sessions", { id: text("id").primaryKey(), wallet: text("wallet"), input: jsonb("input").notNull(), recommendation: jsonb("recommendation").notNull(), approvedAt: timestamp("approved_at", { withTimezone: true }) });
+export const settlementEvidence = pgTable("settlement_evidence", {
+  sourceHash: text("source_hash").primaryKey(),
+  marketAddress: text("market_address"),
+  city: text("city").notNull(),
+  windowStart: text("window_start").notNull(),
+  windowEnd: text("window_end").notNull(),
+  methodologyVersion: text("methodology_version").notNull(),
+  verdict: text("verdict").notNull(),
+  noaaMm: text("noaa_mm").notNull(),
+  wxmMm: text("wxm_mm"),
+  deltaMm: text("delta_mm"),
+  toleranceMm: text("tolerance_mm"),
+  evidence: jsonb("evidence").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

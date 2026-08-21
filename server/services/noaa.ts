@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
+import { CITY_INDEX } from "../../shared/cities";
 
-export interface Station { city: string; state: string; stationId: string; latitude: number; longitude: number; }
+export interface Station { city: string; state: string; stationId: string; latitude: number; longitude: number; dataset?: "GHCND" | "GSOD"; }
 
-export const NOAA_STATIONS: Record<string, Station> = {
+const US_STATIONS: Record<string, Station> = {
   "new-york": { city: "New York", state: "NY", stationId: "GHCND:USW00094728", latitude: 40.7789, longitude: -73.9692 },
   miami: { city: "Miami", state: "FL", stationId: "GHCND:USW00012839", latitude: 25.7933, longitude: -80.2906 },
   chicago: { city: "Chicago", state: "IL", stationId: "GHCND:USW00094846", latitude: 41.995, longitude: -87.9336 },
@@ -19,6 +20,16 @@ export const NOAA_STATIONS: Record<string, Station> = {
   "new-orleans": { city: "New Orleans", state: "LA", stationId: "GHCND:USW00012916", latitude: 29.993, longitude: -90.258 },
   portland: { city: "Portland", state: "OR", stationId: "GHCND:USW00024229", latitude: 45.589, longitude: -122.595 },
 };
+
+const GLOBAL_STATIONS: Record<string, Station> = Object.fromEntries(
+  CITY_INDEX.filter((c) => c.noaaDataset === "GSOD").map((c) => [
+    c.slug,
+    { city: c.name, state: c.countryCode, stationId: c.noaaStationId, latitude: c.latitude, longitude: c.longitude, dataset: "GSOD" as const },
+  ]),
+);
+
+/** Curated index cities + legacy US coverage. Global entries resolve via GSOD (current data); US via GHCN-daily. */
+export const NOAA_STATIONS: Record<string, Station> = { ...US_STATIONS, ...GLOBAL_STATIONS };
 
 export type SkyHedgeCity = keyof typeof NOAA_STATIONS;
 
@@ -41,7 +52,8 @@ export class NoaaRainfallProvider implements RainfallProvider {
 
   async dailyRainfall(stationId: string, start: string, end: string): Promise<DailyRainfall[]> {
     if (!this.token) throw new DataUnavailableError("NOAA_TOKEN is required for final NOAA station observations");
-    const query = new URLSearchParams({ datasetid: "GHCND", datatypeid: "PRCP", stationid: stationId, startdate: start, enddate: end, units: "metric", limit: "1000" });
+    const dataset = stationId.startsWith("GSOD:") ? "GSOD" : "GHCND";
+    const query = new URLSearchParams({ datasetid: dataset, datatypeid: "PRCP", stationid: stationId, startdate: start, enddate: end, units: "metric", limit: "1000" });
     let response: Response;
     try { response = await fetch(`https://www.ncei.noaa.gov/cdo-web/api/v2/data?${query}`, { headers: { token: this.token } }); }
     catch { throw new DataUnavailableError("NOAA final-observation request failed"); }

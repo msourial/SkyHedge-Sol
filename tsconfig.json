@@ -1,6 +1,35 @@
 {
-  "include": ["client/src/App.tsx", "client/src/main.tsx", "client/src/pages/skyhedge.tsx", "client/src/components/ui/**/*", "client/src/lib/queryClient.ts", "client/src/lib/utils.ts", "shared/schema.ts", "server/index.ts", "server/routes.ts", "server/vite.ts", "server/services/noaa.ts", "server/services/quote-engine.ts", "server/services/solana-indexer.ts"],
-  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
+  "include": [
+    "client/src/App.tsx",
+    "client/src/main.tsx",
+    "client/src/pages/*.tsx",
+    "client/src/components/ui/**/*",
+    "client/src/components/*.tsx",
+    "client/src/lib/*.ts",
+    "shared/schema.ts",
+    "server/index.ts",
+    "server/routes.ts",
+    "server/vite.ts",
+    "server/db.ts",
+    "server/services/noaa.ts",
+    "server/services/city-index.ts",
+    "server/services/quote-engine.ts",
+    "server/services/weatherxm.ts",
+    "server/services/consensus.ts",
+    "server/services/methodology.ts",
+    "server/services/solana-indexer.ts",
+    "server/services/unsigned-tx.ts",
+    "server/services/settlement.ts",
+    "server/services/settlement-constants.ts",
+    "scripts/demo-localnet.ts",
+    "scripts/create-chains.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "dist",
+    "**/*.test.ts"
+  ],
   "compilerOptions": {
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
@@ -8,17 +37,28 @@
     "target": "ES2022",
     "module": "ESNext",
     "strict": true,
-    "lib": ["esnext", "dom", "dom.iterable"],
+    "lib": [
+      "esnext",
+      "dom",
+      "dom.iterable"
+    ],
     "jsx": "preserve",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "moduleResolution": "bundler",
     "baseUrl": ".",
-    "types": ["node", "vite/client"],
+    "types": [
+      "node",
+      "vite/client"
+    ],
     "paths": {
-      "@/*": ["./client/src/*"],
-      "@shared/*": ["./shared/*"]
+      "@/*": [
+        "./client/src/*"
+      ],
+      "@shared/*": [
+        "./shared/*"
+      ]
     }
   }
 }

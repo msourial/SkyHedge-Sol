@@ -7,8 +7,9 @@
 ---
 
 **Project:** SkyHedge
-**Generated:** 2026-08-12 23:16:13
+**Generated:** 2026-08-18 17:08:36
 **Category:** Financial Dashboard
+**Design Dials:** Variance 7/10 (Balanced / Modern) | Density 8/10 (Dense / Dashboard)
 
 ---
 
@@ -29,31 +30,33 @@
 | Destructive | `#EF4444` | `--color-destructive` |
 | Ring | `#0F172A` | `--color-ring` |
 
-**Color Notes:** Dark bg + green positive indicators
+**Color Notes:** Terminal dark + success green
 
 ### Typography
 
-- **Heading Font:** Fira Code
-- **Body Font:** Fira Sans
-- **Mood:** dashboard, data, analytics, code, technical, precise
-- **Google Fonts:** [Fira Code + Fira Sans](https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap)
+- **Heading Font:** Inter
+- **Body Font:** Inter
+- **Mood:** dark, cinematic, technical, precision, clean, premium, developer, professional, high-end utility
+- **Google Fonts:** [Inter + Inter](https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap)
 
 **CSS Import:**
 ```css
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 ```
 
 ### Spacing Variables
 
+*Density: 8/10 — Dense / Dashboard*
+
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--space-xs` | `4px` / `0.25rem` | Tight gaps |
-| `--space-sm` | `8px` / `0.5rem` | Icon gaps, inline spacing |
-| `--space-md` | `16px` / `1rem` | Standard padding |
-| `--space-lg` | `24px` / `1.5rem` | Section padding |
-| `--space-xl` | `32px` / `2rem` | Large gaps |
-| `--space-2xl` | `48px` / `3rem` | Section margins |
-| `--space-3xl` | `64px` / `4rem` | Hero padding |
+| `--space-xs` | `2px` / `0.125rem` | Tight gaps |
+| `--space-sm` | `4px` / `0.25rem` | Icon gaps, inline spacing |
+| `--space-md` | `8px` / `0.5rem` | Standard padding |
+| `--space-lg` | `12px` / `0.75rem` | Section padding |
+| `--space-xl` | `16px` / `1rem` | Large gaps |
+| `--space-2xl` | `24px` / `1.5rem` | Section margins |
+| `--space-3xl` | `32px` / `2rem` | Hero padding |
 
 ### Shadow Depths
 
@@ -158,21 +161,20 @@
 
 ## Style Guidelines
 
-**Style:** Dark Mode (OLED)
+**Style:** Modern Dark (Cinema Mobile)
 
-**Keywords:** Dark theme, low light, high contrast, deep black, midnight blue, eye-friendly, OLED, night mode, power efficient
+**Keywords:** dark mode, cinematic, ambient light, glassmorphism, deep black, indigo, glow, blur, atmospheric, reanimated, haptic, premium, layered, frosted glass, linear gradient
 
-**Best For:** Night-mode apps, coding platforms, entertainment, eye-strain prevention, OLED devices, low-light
+**Best For:** Developer tools, pro productivity apps, fintech/trading dashboards, media/streaming platforms, AI tool interfaces, high-end gaming companion apps
 
-**Key Effects:** Minimal glow (text-shadow: 0 0 10px), dark-to-light transitions, low white emission, high readability, visible focus
+**Key Effects:** Expo.out Bezier(0.16,1,0.3,1) easing; spring modals (damping:20 stiffness:90); haptic-linked press (Impact Light/Medium); animated ambient light blobs (Reanimated translateX/Y slow oscillation); BlurView glassmorphism headers/nav (intensity 20); scale press 0.97 → 1.0; avoid pure #000000 (OLED smear)
 
 ### Page Pattern
 
-**Pattern Name:** Trust & Authority + Conversion
+**Pattern Name:** Data-Dense Dashboard
 
-- **Conversion Strategy:** Security badges. Case studies. Transparent pricing. Low-friction form.
-- **CTA Placement:** Contact Sales / Get Quote (primary) + Nav
-- **Section Order:** 1. Hero (mission/credibility), 2. Proof (logos, certs, stats), 3. Solution overview, 4. Clear CTA path
+- **CTA Placement:** Above fold
+- **Section Order:** Hero > Features > CTA
 
 ---
 
