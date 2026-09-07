@@ -11,7 +11,7 @@ export function OddsGauge({ anchorMm, strikeMm, normalMm, probBps }: { anchorMm:
     <div className="flex items-center gap-4">
       <div className="relative h-24 w-2.5 shrink-0 rounded-full bg-[var(--surface-2)]">
         {strikeMm !== null && (
-          <span className="absolute left-1/2 h-px w-6 -translate-x-1/2 bg-[var(--success)]" style={{ bottom: pos(strikeMm) }} />
+          <span className="absolute left-1/2 h-px w-6 -translate-x-1/2 bg-[var(--warning)]" style={{ bottom: pos(strikeMm) }} />
         )}
         <span className="absolute left-1/2 h-px w-6 -translate-x-1/2 border-t border-dashed border-[var(--identity)]" style={{ bottom: pos(normalMm) }} />
         {anchorMm !== null && (
@@ -20,18 +20,30 @@ export function OddsGauge({ anchorMm, strikeMm, normalMm, probBps }: { anchorMm:
       </div>
       <div>
         <div className="sky-mono text-5xl font-semibold leading-none tracking-tight text-[var(--identity)]">
-          {anchorMm !== null ? `${anchorMm.toLocaleString("en-US", { maximumFractionDigits: 1 })}` : "—"}
-          <span className="text-lg text-[var(--muted-foreground)]"> mm</span>
+          {anchorMm !== null ? (
+            <>
+              {anchorMm.toLocaleString("en-US", { maximumFractionDigits: 1 })}
+              <span className="text-lg text-[var(--muted-foreground)]"> mm</span>
+            </>
+          ) : (
+            <span className="text-[var(--faint)]">—</span>
+          )}
         </div>
-        <div className="mt-2 flex items-center gap-2 sky-eyebrow">
-          <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[var(--warning)]" /> live total</span>
-          <span className="flex items-center gap-1"><span className="h-px w-3 border-t border-dashed border-[var(--identity)]" /> normal</span>
-          {strikeMm !== null && <span className="flex items-center gap-1"><span className="h-px w-3 bg-[var(--success)]" /> strike</span>}
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 sky-eyebrow">
+          {anchorMm !== null ? (
+            <span className="flex items-center gap-1 whitespace-nowrap"><span className="h-1.5 w-1.5 rounded-full bg-[var(--warning)]" /> live total</span>
+          ) : (
+            <span className="flex items-center gap-1 whitespace-nowrap text-[var(--muted-foreground)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--surface-2)] ring-1 ring-[var(--border)]" /> awaiting first observation
+            </span>
+          )}
+          <span className="flex items-center gap-1 whitespace-nowrap"><span className="h-px w-3 border-t border-dashed border-[var(--identity)]" /> normal</span>
+          {strikeMm !== null && <span className="flex items-center gap-1 whitespace-nowrap"><span className="h-px w-3 bg-[var(--warning)]" /> strike</span>}
         </div>
       </div>
-      <div className="ml-auto text-right">
-        <div className="sky-eyebrow">model Δ</div>
-        <div className="sky-mono text-2xl font-semibold text-[var(--foreground)]">{probBps !== null ? `${(probBps / 100).toFixed(1)}%` : "—"}</div>
+      <div className="ml-auto shrink-0 text-right">
+        <div className="sky-eyebrow whitespace-nowrap">Model Δ</div>
+        <div className="sky-mono mt-1 text-2xl font-semibold text-[var(--foreground)]">{probBps !== null ? `${(probBps / 100).toFixed(1)}%` : "—"}</div>
       </div>
     </div>
   );

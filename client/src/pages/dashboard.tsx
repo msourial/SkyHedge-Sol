@@ -1,24 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Bot, Coins, LayoutDashboard, Search, WalletCards } from "lucide-react";
+import { Coins, LayoutDashboard, Search, WalletCards } from "lucide-react";
 import type { ChainGrid, CityIndexState, CitySearchResult } from "@/lib/types";
 import { api } from "@/lib/api";
 import { Card, Skeleton } from "@/components/sky";
 import { WeatherCard, MarketStatusCard } from "@/components/dashboard/weather-card";
 import { TrendChart } from "@/components/dashboard/trend-chart";
 import { OptionsChain } from "@/components/dashboard/options-chain";
-import { PersonaPanel } from "@/components/dashboard/persona-panel";
 import { PortfolioTab } from "@/components/dashboard/portfolio-tab";
 import { CommunityTab } from "@/components/dashboard/community-tab";
-import { AiTab } from "@/components/dashboard/ai-tab";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   { id: "trading", label: "Trading", icon: LayoutDashboard },
   { id: "portfolio", label: "Portfolio", icon: WalletCards },
   { id: "community", label: "Community", icon: Coins },
-  { id: "ai-assistant", label: "AI Assistant", icon: Bot },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -61,6 +58,23 @@ export default function DashboardPage() {
 
   const city = cityQuery.data;
   const chain = chainQuery.data;
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const results = (search.data?.results ?? []).slice(0, 6);
+
+  const pickCity = (slug: string) => {
+    navigate(`/?tab=trading&city=${slug}`);
+    setQuery("");
+    setActiveIdx(-1);
+    setFocused(false);
+  };
+
+  const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!results.length) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx((i) => (i + 1) % results.length); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIdx((i) => (i <= 0 ? results.length - 1 : i - 1)); }
+    else if (e.key === "Enter" && activeIdx >= 0) { e.preventDefault(); pickCity(results[activeIdx].slug); }
+    else if (e.key === "Escape") { setFocused(false); setActiveIdx(-1); }
+  };
   const atmCell = useMemo(() => {
     const strikes = chain?.strikes ?? [];
     if (!strikes.length || !city) return null;
@@ -92,39 +106,50 @@ export default function DashboardPage() {
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--faint)]" />
             <input
               aria-label="Search cities"
+              role="combobox"
+              aria-expanded={focused && results.length > 0}
+              aria-controls="city-search-listbox"
+              aria-activedescendant={activeIdx >= 0 ? `city-option-${activeIdx}` : undefined}
+              aria-autocomplete="list"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => { setQuery(e.target.value); setActiveIdx(-1); }}
               onFocus={() => setFocused(true)}
-              onBlur={() => setTimeout(() => setFocused(false), 150)}
+              onBlur={() => setTimeout(() => { setFocused(false); setActiveIdx(-1); }, 150)}
+              onKeyDown={onSearchKeyDown}
               placeholder="Search cities…"
               className="sky-input py-2.5 pl-10 text-sm"
             />
-            {focused && query.trim().length > 0 && (search.data?.results ?? []).length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-30 mt-1.5 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-2)] shadow-2xl">
-                {search.data!.results.slice(0, 6).map((r) => (
-                  <button
-                    key={r.slug}
-                    onMouseDown={(e) => { e.preventDefault(); navigate(`/?tab=trading&city=${r.slug}`); setQuery(""); setFocused(false); }}
-                    className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-[var(--identity-dim)]"
-                  >
-                    <span>{r.name}</span>
-                    <span className="sky-mono text-[10px] text-[var(--faint)]">{r.country}</span>
-                  </button>
+            {focused && query.trim().length > 0 && results.length > 0 && (
+              <ul id="city-search-listbox" role="listbox" aria-label="Cities" className="absolute left-0 right-0 top-full z-30 mt-1.5 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-2)] shadow-2xl">
+                {results.map((r, i) => (
+                  <li key={r.slug} id={`city-option-${i}`} role="option" aria-selected={i === activeIdx}>
+                    <button
+                      onMouseDown={(e) => { e.preventDefault(); pickCity(r.slug); }}
+                      onMouseEnter={() => setActiveIdx(i)}
+                      className={cn(
+                        "flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left text-sm transition-colors",
+                        i === activeIdx ? "bg-[var(--identity-dim)] text-[var(--identity)]" : "hover:bg-[var(--identity-dim)]",
+                      )}
+                    >
+                      <span>{r.name}</span>
+                      <span className="sky-mono text-[10px] text-[var(--faint)]">{r.country}</span>
+                    </button>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
           </div>
         </div>
       </section>
 
       <div className="sticky top-16 z-20 -mx-4 mb-6 border-b border-[var(--border)] bg-[var(--background)]/90 px-4 backdrop-blur-md sm:-mx-6 sm:px-6">
-        <div className="flex min-w-0 gap-1 overflow-x-auto py-2">
+        <div className="sky-scroll-x flex min-w-0 gap-1 py-2">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
               className={cn(
-                "flex shrink-0 items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors",
+                "flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg px-3.5 text-sm font-medium transition-colors",
                 tab === id ? "bg-[var(--identity-dim)] text-[var(--identity)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-1)] hover:text-[var(--foreground)]",
               )}
             >
@@ -136,34 +161,28 @@ export default function DashboardPage() {
       </div>
 
       {tab === "trading" && (
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="min-w-0 space-y-6 lg:col-span-2">
-            {cityQuery.isLoading ? (
-              <div className="space-y-4"><Skeleton className="h-48" /><Skeleton className="h-72" /><Skeleton className="h-96" /></div>
-            ) : !city ? (
-              <Card className="py-12 text-center text-sm text-[var(--muted-foreground)]">No index for “{citySlug}” — search a city above.</Card>
-            ) : (
-              <>
-                <div className="grid gap-6 md:grid-cols-2">
-                  <WeatherCard city={city} probBps={atmCell?.quoteProbabilityBps ?? null} strikeMm={atmCell?.strikeMm ?? null} />
-                  <MarketStatusCard city={city} chain={chain} />
-                </div>
-                <Card>
-                  <TrendChart history={city.weeklyHistoryMm ?? []} normalMm={city.windowNormalMm} strikeMm={atmCell?.strikeMm ?? null} side={atmCell?.side ?? null} />
-                </Card>
-                <OptionsChain city={city} chain={chain} />
-              </>
-            )}
-          </div>
-          <div className="min-w-0">
-            <PersonaPanel onExample={(text) => { navigate("/?tab=ai-assistant"); sessionStorage.setItem("skyhedge-ai-prefill", text); }} />
-          </div>
+        <div className="space-y-6">
+          {cityQuery.isLoading ? (
+            <div className="space-y-4"><Skeleton className="h-48" /><Skeleton className="h-72" /><Skeleton className="h-96" /></div>
+          ) : !city ? (
+            <Card className="py-12 text-center text-sm text-[var(--muted-foreground)]">No index for “{citySlug}” — search a city above.</Card>
+          ) : (
+            <>
+              <div className="grid gap-6 md:grid-cols-2">
+                <WeatherCard city={city} probBps={atmCell?.quoteProbabilityBps ?? null} strikeMm={atmCell?.strikeMm ?? null} />
+                <MarketStatusCard city={city} chain={chain} />
+              </div>
+              <Card>
+                <TrendChart history={city.weeklyHistoryMm ?? []} normalMm={city.windowNormalMm} strikeMm={atmCell?.strikeMm ?? null} side={atmCell?.side ?? null} />
+              </Card>
+              <OptionsChain city={city} chain={chain} />
+            </>
+          )}
         </div>
       )}
 
       {tab === "portfolio" && <PortfolioTab />}
       {tab === "community" && <CommunityTab />}
-      {tab === "ai-assistant" && <AiTab key={tab} initialMessage={sessionStorage.getItem("skyhedge-ai-prefill") ?? undefined} />}
     </div>
   );
 }

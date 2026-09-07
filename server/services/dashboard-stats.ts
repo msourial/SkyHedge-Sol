@@ -3,10 +3,10 @@ import { eq } from "drizzle-orm";
 import { markets as marketsTable, protectionPositions as protectionPositionsTable, liquidityPositions as liquidityPositionsTable } from "../../shared/schema";
 import { CITY_INDEX, cityHash } from "../../shared/cities";
 import { hexToBigInt, operatorSide } from "./chain-view";
-import { allCityIndexStates, type CityIndexState } from "./weather-index";
+import { type CityIndexState } from "./weather-index";
 
-const SKYT = 1e6;
-const RAW_TO_SKYT = (raw: bigint | number) => Number(raw) / SKYT;
+const USDC = 1e6;
+const RAW_TO_USDC = (raw: bigint | number) => Number(raw) / USDC;
 const clampPct = (v: number) => Math.max(0, Math.min(100, Math.round(v * 10) / 10));
 
 export interface MarketFacts {
@@ -137,9 +137,9 @@ export async function portfolioStats(wallet: string): Promise<PortfolioStats> {
 
 export function poolApy(premiumRateBps: number, totalSharesRaw: bigint, maxLiquidityRaw: bigint, daysToExpiry: number): number {
   if (maxLiquidityRaw <= 0n) return 0;
-  const weeklyPremium = RAW_TO_SKYT(totalSharesRaw) * (premiumRateBps / 10000);
+  const weeklyPremium = RAW_TO_USDC(totalSharesRaw) * (premiumRateBps / 10000);
   const annualized = weeklyPremium * (365 / Math.max(1, daysToExpiry));
-  return clampPct((annualized / RAW_TO_SKYT(maxLiquidityRaw)) * 100);
+  return clampPct((annualized / RAW_TO_USDC(maxLiquidityRaw)) * 100);
 }
 
 export interface StakingPool {
@@ -172,7 +172,7 @@ export async function stakingPools(): Promise<StakingPool[]> {
       tvl: f.maxLiquidity.toString(),
       apyPct: poolApy(f.premiumRateBps, f.totalShares, f.maxLiquidity, f.daysToExpiry),
       lockDays: f.daysToExpiry,
-      minStake: String(100 * SKYT),
+      minStake: String(100 * USDC),
       status: f.open ? "open" : "closed",
     });
   }
@@ -245,29 +245,4 @@ export function insightFactors(states: Array<Pick<CityIndexState, "slug" | "name
       source: observed !== null ? "noaa-observed" : "climatology-prior",
     };
   });
-}
-
-export async function aiInsights(): Promise<{ generatedAt: string; factors: InsightFactor[]; top: InsightFactor[] }> {
-  const states = await allCityIndexStates();
-  const factors = insightFactors(states);
-  const top = [...factors].sort((a, b) => Math.abs(b.deviationPct) - Math.abs(a.deviationPct)).slice(0, 3);
-  return { generatedAt: new Date().toISOString(), factors, top };
-}
-
-export function aiAccuracy() {
-  return {
-    model: "rain-gamma-v1",
-    strategy: "Rule-based structured planner with LLM fallback",
-    winRate: 0.942,
-    riskReward: 2.8,
-    sampleSize: 1284,
-    lastUpdated: new Date().toISOString().slice(0, 10),
-    displayOnly: true,
-    metrics: [
-      { label: "Strike hit rate", value: "94.2%" },
-      { label: "Avg risk/reward", value: "2.8 : 1" },
-      { label: "Plans structured", value: "1,284" },
-      { label: "Data source", value: "NOAA + WeatherXM" },
-    ],
-  };
 }

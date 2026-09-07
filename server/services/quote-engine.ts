@@ -1,6 +1,6 @@
 import { canonicalSourceHash, cumulativeMillimeters, type DailyRainfall, type RainfallProvider, type SkyHedgeCity } from "./noaa";
 
-export const SKYT_DECIMALS = 6;
+export const USDC_DECIMALS = 6;
 export const MARKET_LIMITS = { maxLiquidity: BigInt(10_000_000_000), maxExposure: BigInt(8_000_000_000), perWallet: BigInt(500_000_000) } as const;
 
 export type TriggerOperator = "gt" | "gte" | "lt" | "lte";

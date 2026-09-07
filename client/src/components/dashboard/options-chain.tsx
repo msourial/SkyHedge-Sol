@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { ShieldCheck, X } from "lucide-react";
 import type { ChainCell, ChainGrid, CityIndexState, UnsignedTx } from "@/lib/types";
-import { api, mm, skytDisplay } from "@/lib/api";
+import { api, mm, usdcDisplay } from "@/lib/api";
 import { shortAddress, signAndSend } from "@/lib/solana";
 import { Card, Pill, Stat, TxStepper, type TxStep } from "@/components/sky";
 import { WalletGuard } from "@/components/wallet-button";
@@ -50,8 +50,9 @@ export function OptionsChain({ city, chain }: { city: CityIndexState; chain: Cha
             <button
               key={w.end}
               onClick={() => { setExpiryIndex(i); setSelected(null); }}
+              aria-pressed={i === expiryIndex}
               className={cn(
-                "sky-mono rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                "sky-mono flex min-h-10 items-center rounded-lg border px-3 text-xs font-medium transition-colors",
                 i === expiryIndex
                   ? "border-[var(--identity)] bg-[var(--identity-dim)] text-[var(--identity)]"
                   : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--identity)]/50 hover:text-[var(--foreground)]",
@@ -72,8 +73,8 @@ export function OptionsChain({ city, chain }: { city: CityIndexState; chain: Cha
           <span className="hidden sm:inline">Premiums fixed on-chain · binary payout on the weekly total.</span>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-          <label className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-            <input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--identity)]" />
+          <label className="flex min-h-10 items-center gap-2 text-xs text-[var(--muted-foreground)]">
+            <input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)} className="h-4 w-4 accent-[var(--identity)]" />
             Active only
           </label>
           <select aria-label="Filter strikes" value={filterMode} onChange={(e) => setFilterMode(e.target.value as FilterMode)} className="sky-input w-auto py-1.5 text-xs">
@@ -95,7 +96,7 @@ export function OptionsChain({ city, chain }: { city: CityIndexState; chain: Cha
             <thead>
               <tr className="border-b border-[var(--border)]">
                 <th className="px-4 py-2.5 text-right sky-eyebrow text-[var(--identity)]">Calls · rain ≥ strike</th>
-                <th className="border-x border-[var(--border)] bg-[var(--surface-2)] px-4 py-2.5 text-center sky-eyebrow text-[var(--foreground)]">Strike · normal {mm(window?.normalMm)}</th>
+                <th className="border-x border-[var(--border)] bg-[var(--surface-2)] px-4 py-2.5 text-center sky-eyebrow whitespace-nowrap text-[var(--foreground)]">Strike · normal {mm(window?.normalMm)}</th>
                 <th className="px-4 py-2.5 text-left sky-eyebrow text-[var(--warning)]">Puts · rain ≤ strike</th>
               </tr>
             </thead>
@@ -152,6 +153,7 @@ function MoneynessBadge({ moneyness }: { moneyness: Moneyness }) {
 
 function SideCell({ cell, selected, onSelect, tone }: { cell: ChainCell; selected: ChainCell | null; onSelect: (c: ChainCell) => void; tone: "call" | "put" }) {
   const active = selected?.marketAddress === cell.marketAddress;
+  const unpriced = cell.premiumRateBps === null;
   const delta = cell.quoteProbabilityBps !== null ? `${(cell.quoteProbabilityBps / 100).toFixed(1)}%` : "—";
   return (
     <button
@@ -163,9 +165,15 @@ function SideCell({ cell, selected, onSelect, tone }: { cell: ChainCell; selecte
         active && tone === "put" && "border-[var(--warning)] bg-[var(--warning-dim)]",
       )}
     >
-      <span className="sky-mono text-sm font-bold text-[var(--foreground)]">{pct(cell.premiumRateBps)}</span>
-      <span className={cn("sky-mono text-[10px]", tone === "call" ? "text-[var(--identity)]" : "text-[var(--warning)]")}>Δ {delta}</span>
-      <span className="sky-mono text-[10px] text-[var(--faint)]">{pct(cell.bidBps)} / {pct(cell.askBps)}</span>
+      {unpriced ? (
+        <span className="sky-mono text-xs text-[var(--faint)]">unpriced</span>
+      ) : (
+        <>
+          <span className="sky-mono text-sm font-bold text-[var(--foreground)]">{pct(cell.premiumRateBps)}</span>
+          <span className={cn("sky-mono text-[10px]", tone === "call" ? "text-[var(--identity)]" : "text-[var(--warning)]")}>Δ {delta}</span>
+          <span className="sky-mono text-[10px] text-[var(--faint)]">{pct(cell.bidBps)} / {pct(cell.askBps)}</span>
+        </>
+      )}
     </button>
   );
 }
@@ -235,11 +243,11 @@ function TradeTicket({ city, cell, onClose }: { city: CityIndexState; cell: Chai
 
         <div className="mb-4 grid grid-cols-3 gap-2 text-xs">
           <Stat label="Last premium" value={`${((cell.premiumRateBps ?? 0) / 100).toFixed(1)}%`} accent="cyan" />
-          <Stat label="Payout if hit" value={skytDisplay(BigInt(Math.round(Number(amount) * 1e6)))} />
+          <Stat label="Payout if hit" value={usdcDisplay(BigInt(Math.round(Number(amount) * 1e6)))} />
           <Stat label="Model prob." value={delta} />
         </div>
 
-        <label className="sky-label" htmlFor="ticket-amount">Position size (SKYT)</label>
+        <label className="sky-label" htmlFor="ticket-amount">Position size (USDC)</label>
         <div className="mb-1 flex gap-2">
           {QUICK_SIZES.map((q) => (
             <button
@@ -253,7 +261,7 @@ function TradeTicket({ city, cell, onClose }: { city: CityIndexState; cell: Chai
         </div>
         <input id="ticket-amount" className="sky-input mb-1" type="number" min="1" value={amount} onChange={(e) => { setAmount(e.target.value); setStep("idle"); setTx(null); setSig(null); }} />
         <p className="mb-4 text-[11px] text-[var(--faint)]">
-          Premium ≈ <span className="sky-mono text-[var(--muted-foreground)]">{skytDisplay(premiumEstimate)}</span> — fixed payout if {side}, pool {cell.totalShares ? skytDisplay(cell.totalShares) : "—"}
+          Premium ≈ <span className="sky-mono text-[var(--muted-foreground)]">{usdcDisplay(premiumEstimate)}</span> — fixed payout if {side}, pool {cell.totalShares ? usdcDisplay(cell.totalShares) : "—"}
         </p>
 
         <TxStepper step={step} description={tx?.description} error={error} signature={sig}>

@@ -14,8 +14,8 @@ export const ROOT = path.resolve(__dirname, "../..");
 
 export const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 export const PROGRAM_ID = new PublicKey(process.env.SKYHEDGE_PROGRAM_ID ?? "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr");
-export const SKYT_DECIMALS = 6;
-export const UNIT = 10 ** SKYT_DECIMALS;
+export const USDC_DECIMALS = 6;
+export const UNIT = 10 ** USDC_DECIMALS;
 export const PROGRAM_KEYPAIR_PATH = path.join(ROOT, "anchor/target/deploy/skyhedge_protection-keypair.json");
 export const SETTLEMENT_KEYPAIR_PATH = path.join(ROOT, "anchor/keys/settlement-authority.json");
 export const METHODOLOGY_PATH = path.join(ROOT, "shared/methodology-v1.json");

@@ -19,8 +19,8 @@ async function main(): Promise<void> {
   const admin = loadDeployer();
   const program = await loadProgram(connection, admin);
 
-  const mintEnv = process.env.SKYT_MINT;
-  if (!mintEnv) throw new Error("SKYT_MINT env var is required (run scripts/create-skyt-mint.ts first)");
+  const mintEnv = process.env.USDC_MINT;
+  if (!mintEnv) throw new Error("USDC_MINT env var is required (run scripts/create-usdc-mint.ts first)");
   const collateralMint = new PublicKey(mintEnv);
 
   const [protocolAddress] = protocolPda();
@@ -33,8 +33,8 @@ async function main(): Promise<void> {
 
   const adminAta = await getOrCreateAssociatedTokenAccount(connection, admin, collateralMint, admin.publicKey);
   const adminBalance = Number((await connection.getTokenAccountBalance(adminAta.address)).value.amount);
-  log("admin SKYT balance", adminBalance);
-  if (adminBalance < LP_FUND_PER_MARKET) throw new Error(`Admin needs >= ${LP_FUND_PER_MARKET} SKYT to fund pools; run npm run skyt:faucet first`);
+  log("admin USDC balance", adminBalance);
+  if (adminBalance < LP_FUND_PER_MARKET) throw new Error(`Admin needs >= ${LP_FUND_PER_MARKET} USDC to fund pools; run npm run usdc:faucet first`);
 
   const now = nowSeconds();
   for (const [city, spec] of Object.entries(MARKET_SPEC)) {
@@ -82,7 +82,7 @@ async function main(): Promise<void> {
       })
       .signers([admin])
       .rpc();
-    log(`funded pool ${city}`, `${LP_FUND_PER_MARKET} SKYT`);
+    log(`funded pool ${city}`, `${LP_FUND_PER_MARKET} USDC`);
 
     await program.methods.openMarket().accounts({ admin: admin.publicKey, market: marketAddress }).signers([admin]).rpc();
     log(`opened market ${city}`, marketAddress.toBase58());

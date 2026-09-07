@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { BarChart3 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BarChart3, CloudOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PERIODS = [
@@ -12,6 +12,19 @@ export function TrendChart({ history, normalMm, strikeMm, side }: { history: Arr
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [period, setPeriod] = useState<(typeof PERIODS)[number]["weeks"]>(12);
+
+  const data = useMemo(() => history.slice(-period).filter((w): w is { week: string; mm: number } => w.mm !== null), [history, period]);
+  const isEmpty = data.length === 0;
+
+  const summary = useMemo(() => {
+    if (!data.length) return null;
+    const latest = data[data.length - 1];
+    const values = data.map((d) => d.mm);
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    const maxWeek = data.reduce((a, b) => (b.mm > a.mm ? b : a), data[0]);
+    const vsNormal = normalMm > 0 ? Math.round((avg / normalMm) * 100) : null;
+    return { latest, avg, maxWeek, vsNormal };
+  }, [data, normalMm]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -30,15 +43,8 @@ export function TrendChart({ history, normalMm, strikeMm, side }: { history: Arr
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
 
-    const data = history.slice(-period).filter((w): w is { week: string; mm: number } => w.mm !== null);
     const labels = history.slice(-period).map((w) => w.week.slice(5));
-    if (!data.length) {
-      ctx.fillStyle = "#64748B";
-      ctx.font = "12px Inter";
-      ctx.textAlign = "center";
-      ctx.fillText("Live observations pending — NOAA history unavailable", width / 2, height / 2);
-      return;
-    }
+    if (isEmpty) return;
 
     const padding = { top: 24, right: 16, bottom: 28, left: 44 };
     const chartW = width - padding.left - padding.right;
@@ -83,7 +89,7 @@ export function TrendChart({ history, normalMm, strikeMm, side }: { history: Arr
 
     if (strikeMm !== null) {
       const sy = y(strikeMm);
-      ctx.strokeStyle = side === "call" ? "#22C55E" : "#F59E0B";
+      ctx.strokeStyle = "#F59E0B";
       ctx.lineWidth = 1.5;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
@@ -91,7 +97,7 @@ export function TrendChart({ history, normalMm, strikeMm, side }: { history: Arr
       ctx.lineTo(padding.left + chartW, sy);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = side === "call" ? "#22C55E" : "#F59E0B";
+      ctx.fillStyle = "#F59E0B";
       ctx.font = "10px Inter";
       ctx.textAlign = "left";
       ctx.fillText(`${side === "call" ? "strike ≥" : "strike ≤"} ${strikeMm}mm`, padding.left + 8, sy + 14);
@@ -128,22 +134,23 @@ export function TrendChart({ history, normalMm, strikeMm, side }: { history: Arr
       if (i % labelEvery !== 0 && i !== labels.length - 1) return;
       ctx.fillText(label, x(i), height - 8);
     });
-  }, [history, normalMm, strikeMm, side, period]);
+  }, [history, normalMm, strikeMm, side, period, isEmpty]);
 
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between gap-3">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 sky-eyebrow">
           <BarChart3 className="h-3.5 w-3.5 text-[var(--identity)]" />
           Weekly rainfall trend · settled weeks
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1.5">
           {PERIODS.map((p) => (
             <button
               key={p.weeks}
+              aria-pressed={period === p.weeks}
               onClick={() => setPeriod(p.weeks)}
               className={cn(
-                "sky-mono rounded-md border px-2.5 py-1 text-[10px] font-medium transition-colors",
+                "sky-mono flex min-h-10 items-center rounded-md border px-3 text-xs font-medium transition-colors",
                 period === p.weeks ? "border-[var(--identity)] bg-[var(--identity-dim)] text-[var(--identity)]" : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--identity)]/50",
               )}
             >
@@ -152,14 +159,44 @@ export function TrendChart({ history, normalMm, strikeMm, side }: { history: Arr
           ))}
         </div>
       </div>
-      <div ref={containerRef} className="w-full overflow-hidden">
-        <canvas ref={canvasRef} className="block" />
+      <div ref={containerRef} className="relative w-full overflow-hidden">
+        <canvas ref={canvasRef} className="block" aria-hidden />
+        {isEmpty && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
+            <CloudOff className="h-5 w-5 text-[var(--faint)]" />
+            <p className="max-w-xs text-sm leading-relaxed text-[var(--muted-foreground)]">
+              Live observations pending — settled weeks appear here once NOAA history lands for this index.
+            </p>
+          </div>
+        )}
       </div>
-      <div className="mt-3 flex items-center gap-5 text-[10px] text-[var(--faint)]">
+      {summary && (
+        <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Chart summary">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)]/60 px-3 py-2">
+            <dt className="sky-eyebrow">Latest week</dt>
+            <dd className="sky-mono mt-0.5 text-sm font-medium">{summary.latest.mm} mm <span className="text-[10px] text-[var(--faint)]">{summary.latest.week.slice(5)}</span></dd>
+          </div>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)]/60 px-3 py-2">
+            <dt className="sky-eyebrow">Avg · {PERIODS.find((p) => p.weeks === period)?.label}</dt>
+            <dd className="sky-mono mt-0.5 text-sm font-medium">{summary.avg.toFixed(1)} mm</dd>
+          </div>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)]/60 px-3 py-2">
+            <dt className="sky-eyebrow">Wettest week</dt>
+            <dd className="sky-mono mt-0.5 text-sm font-medium">{summary.maxWeek.mm} mm <span className="text-[10px] text-[var(--faint)]">{summary.maxWeek.week.slice(5)}</span></dd>
+          </div>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)]/60 px-3 py-2">
+            <dt className="sky-eyebrow">Avg vs normal</dt>
+            <dd className={cn("sky-mono mt-0.5 text-sm font-medium", summary.vsNormal !== null && summary.vsNormal < 80 && "text-[var(--warning)]")}>
+              {summary.vsNormal !== null ? `${summary.vsNormal}%` : "—"}
+            </dd>
+          </div>
+        </dl>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[10px] text-[var(--faint)]">
         <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 bg-[var(--identity)]" /> weekly total</span>
         <span className="flex items-center gap-1.5"><span className="h-0 w-4 border-t border-dashed border-[var(--identity)]" /> normal</span>
         {strikeMm !== null && (
-          <span className="flex items-center gap-1.5"><span className="h-0 w-4 border-t border-dashed" style={{ borderColor: side === "call" ? "#22C55E" : "#F59E0B" }} /> strike</span>
+          <span className="flex items-center gap-1.5"><span className="h-0 w-4 border-t border-dashed border-[var(--warning)]" /> strike</span>
         )}
       </div>
     </div>

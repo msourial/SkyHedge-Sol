@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import type { Express, Response } from "express";
 import { z } from "zod";
@@ -12,8 +11,7 @@ import { settlementEvidence, markets as marketsTable, protectionPositions as pro
 import { cityHash, CITY_INDEX, cityBySlug, windowNormalMm, upcomingWeeklyWindows, type CityIndex } from "../shared/cities";
 import { cityIndexState, allCityIndexStates, weeklyHistory } from "./services/weather-index";
 import { buildChainGrid } from "./services/chain-view";
-import { advisorChat } from "./services/ai-advisor";
-import { aiAccuracy, aiInsights, portfolioStats, stakingPools, stakingUser } from "./services/dashboard-stats";
+import { portfolioStats, stakingPools, stakingUser } from "./services/dashboard-stats";
 import { GovernanceStore } from "./services/governance";
 import { AnchorIndexer } from "./services/solana-indexer";
 import { UnsignedTransactionBuilder, type TxAction } from "./services/unsigned-tx";
@@ -70,13 +68,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           maxLiquidity: hexToBigInt(metadata?.max_liquidity).toString(),
           maxExposure: hexToBigInt(metadata?.max_exposure).toString(),
           perWalletMax: hexToBigInt(metadata?.per_wallet_max).toString(),
-          collateral: "SKYT",
+          collateral: "USDC",
           decimals: 6,
           programId,
           indexed: true,
         };
       });
-      if (!enriched.length) return res.json(Object.entries(NOAA_STATIONS).map(([id, station]) => ({ id, ...station, metric: "cumulative_rainfall_mm", collateral: "SKYT", decimals: 6, status: "INDEXER_PENDING", maxLiquidity: MARKET_LIMITS.maxLiquidity.toString(), maxExposure: MARKET_LIMITS.maxExposure.toString(), perWalletMax: MARKET_LIMITS.perWallet.toString(), programId })));
+      if (!enriched.length) return res.json(Object.entries(NOAA_STATIONS).map(([id, station]) => ({ id, ...station, metric: "cumulative_rainfall_mm", collateral: "USDC", decimals: 6, status: "INDEXER_PENDING", maxLiquidity: MARKET_LIMITS.maxLiquidity.toString(), maxExposure: MARKET_LIMITS.maxExposure.toString(), perWalletMax: MARKET_LIMITS.perWallet.toString(), programId })));
       enriched.sort((a, b) => a.city.localeCompare(b.city));
       return res.json(enriched);
     } catch (error) { return dataUnavailable(res, error); }
@@ -191,26 +189,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { return dataUnavailable(res, error); }
   });
 
-  app.post("/api/advisory", (req, res) => {
-    const input = z.object({ city: citySchema, risk: z.enum(["excess-rain", "low-rain"]), thresholdMm: z.number().positive(), protectedAmount: z.string().regex(/^\d+$/) }).safeParse(req.body);
-    if (!input.success) return res.status(400).json({ error: "Please provide a supported city, risk, threshold, and SKYT amount." });
-    const operator: TriggerOperator = input.data.risk === "excess-rain" ? "gte" : "lte";
-    const sessionId = randomUUID();
-    return res.json({ sessionId, structuredParameters: { ...input.data, operator }, recommendation: { city: input.data.city, stationId: NOAA_STATIONS[input.data.city].stationId, methodology: "NOAA cumulative rainfall; a quote is required before any transaction can be prepared." }, reasoning: "SkyHedge matches only the selected city’s immutable NOAA cumulative-rainfall market. This advisory does not execute, sign, or settle a transaction.", explicitApprovalRequired: true });
-  });
-
-  app.post("/api/ai/chat", async (req, res) => {
-    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
-    const input = z.object({ message: z.string().min(1).max(2000), sessionId: z.string().max(128).optional() }).safeParse(req.body);
-    if (!input.success) return res.status(400).json({ error: "A message is required." });
-    try {
-      const result = await advisorChat(input.data.message);
-      return res.json({ ...result, sessionId: input.data.sessionId ?? randomUUID() });
-    } catch (error) {
-      return res.status(500).json({ error: "AI_ADVISOR_ERROR", message: (error as Error).message });
-    }
-  });
-
   app.get("/api/portfolio/stats", async (req, res) => {
     const wallet = z.string().min(32).safeParse(req.query.wallet);
     if (!wallet.success) return res.status(400).json({ error: "a wallet address is required" });
@@ -253,34 +231,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { return dataUnavailable(res, error); }
   });
 
-  app.get("/api/ai/insights", async (_req, res) => {
-    try {
-      return res.json(await aiInsights());
-    } catch (error) { return dataUnavailable(res, error); }
-  });
-
-  app.get("/api/ai/accuracy", (_req, res) => {
-    res.json(aiAccuracy());
-  });
-
-  app.post("/api/ai/parse-trade", async (req, res) => {
-    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
-    const input = z.object({ message: z.string().min(1).max(2000) }).safeParse(req.body);
-    if (!input.success) return res.status(400).json({ error: "A trade description is required." });
-    try {
-      const result = await advisorChat(input.data.message);
-      return res.json({
-        source: result.source,
-        confidence: result.confidence,
-        parameters: result.advisory,
-        recommendation: result.chainLink,
-        response: result.response,
-      });
-    } catch (error) {
-      return res.status(500).json({ error: "AI_PARSE_ERROR", message: (error as Error).message });
-    }
-  });
-
   app.get("/api/governance/proposals", (_req, res) => {
     res.json({ proposals: governance.list() });
   });
@@ -312,9 +262,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const indexerTimer = setInterval(() => { void indexer.reconcile().catch((error) => console.error("[indexer] reconcile failed:", error)); }, 30_000);
   const settlementStop = settlement.start(60_000);
-  app.on("close", () => { clearInterval(indexerTimer); settlementStop(); });
+  const server = createServer(app);
+  server.on("close", () => { clearInterval(indexerTimer); settlementStop(); });
 
-  return createServer(app);
+  return server;
 }
 
 function dataUnavailable(res: Response, error: unknown) {

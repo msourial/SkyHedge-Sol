@@ -32,7 +32,7 @@ export async function signAndSend(base64: string, wallet: WalletContextState): P
   return signature;
 }
 
-export function skyt(base: string | number | bigint): string {
+export function usdc(base: string | number | bigint): string {
   const value = typeof base === "bigint" ? base : BigInt(String(base));
   return (Number(value) / 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 });
 }

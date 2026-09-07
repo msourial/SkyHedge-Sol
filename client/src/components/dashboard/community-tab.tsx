@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Coins, Info, Vote } from "lucide-react";
 import type { GovernanceProposal, StakingPool } from "@/lib/types";
-import { api, skytDisplay } from "@/lib/api";
+import { api, usdcDisplay } from "@/lib/api";
 import { Card, EmptyState, Pill, Skeleton } from "@/components/sky";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +16,7 @@ export function CommunityTab() {
       <section>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="sky-display flex items-center gap-2 text-lg font-semibold"><Coins className="h-4 w-4 text-[var(--identity)]" /> Mutual aid pools</h2>
-          <Link to="/staking" className="sky-btn-ghost px-3 py-1.5 text-xs">Staking page →</Link>
+          <Link to="/staking" className="sky-btn-ghost flex min-h-10 items-center px-4 text-xs">Staking page →</Link>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {pools.isLoading && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32" />)}
@@ -29,7 +29,7 @@ export function CommunityTab() {
               <div className="mt-3 space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[var(--faint)]">TVL</span>
-                  <span className="sky-mono font-medium">{skytDisplay(pool.tvl)}</span>
+                  <span className="sky-mono font-medium">{usdcDisplay(pool.tvl)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[var(--faint)]">APY</span>
@@ -75,7 +75,7 @@ function GovernanceSection({ proposals, isLoading }: { proposals: GovernanceProp
     <section>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="sky-display flex items-center gap-2 text-lg font-semibold"><Vote className="h-4 w-4 text-[var(--identity)]" /> Governance</h2>
-        <button className="sky-btn-ghost px-3 py-1.5 text-xs" onClick={() => setOpenForm((v) => !v)}>{openForm ? "Close" : "Propose"}</button>
+        <button className="sky-btn-ghost flex min-h-10 items-center px-4 text-xs" onClick={() => setOpenForm((v) => !v)}>{openForm ? "Close" : "Propose"}</button>
       </div>
 
       {openForm && (
@@ -111,8 +111,8 @@ function GovernanceSection({ proposals, isLoading }: { proposals: GovernanceProp
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="sky-btn-success px-3 py-1.5 text-xs" disabled={p.status !== "active" || vote.isPending} onClick={() => vote.mutate({ proposalId: p.id, support: true })}>Yes</button>
-                  <button className="sky-btn-ghost px-3 py-1.5 text-xs" disabled={p.status !== "active" || vote.isPending} onClick={() => vote.mutate({ proposalId: p.id, support: false })}>No</button>
+                  <button className="sky-btn-success flex min-h-10 items-center px-4 text-xs" disabled={p.status !== "active" || vote.isPending} onClick={() => vote.mutate({ proposalId: p.id, support: true })}>Yes</button>
+                  <button className="sky-btn-ghost flex min-h-10 items-center px-4 text-xs" disabled={p.status !== "active" || vote.isPending} onClick={() => vote.mutate({ proposalId: p.id, support: false })}>No</button>
                 </div>
               </div>
               <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-[var(--surface-2)]">

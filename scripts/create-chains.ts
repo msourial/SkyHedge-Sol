@@ -14,8 +14,8 @@ async function main(): Promise<void> {
   const admin = loadDeployer();
   const program = await loadProgram(connection, admin);
 
-  const mintEnv = process.env.SKYT_MINT;
-  if (!mintEnv) throw new Error("SKYT_MINT env var is required (run scripts/create-skyt-mint.ts first)");
+  const mintEnv = process.env.USDC_MINT;
+  if (!mintEnv) throw new Error("USDC_MINT env var is required (run scripts/create-usdc-mint.ts first)");
   const collateralMint = new PublicKey(mintEnv);
 
   const accountOf = program.account as unknown as Record<string, { fetch: (address: PublicKey) => Promise<{ nextMarketId: { toNumber(): number } }> }>;
@@ -31,7 +31,7 @@ async function main(): Promise<void> {
 
   const adminAta = await getOrCreateAssociatedTokenAccount(connection, admin, collateralMint, admin.publicKey);
   const adminBalance = Number((await connection.getTokenAccountBalance(adminAta.address)).value.amount);
-  log("admin SKYT balance", adminBalance);
+  log("admin USDC balance", adminBalance);
 
   const now = nowSeconds();
   const created: string[] = [];
@@ -96,7 +96,7 @@ async function main(): Promise<void> {
 
   log("done", { created: created.length, skipped, totalPoolSkit: (created.length * LP_FUND_PER_MARKET) / UNIT });
   if (adminBalance < created.length * LP_FUND_PER_MARKET) {
-    log("warning", `admin needs >= ${(created.length * LP_FUND_PER_MARKET) / UNIT} SKYT; run: npm run skyt:faucet -- ${admin.publicKey.toBase58()} 70000`);
+    log("warning", `admin needs >= ${(created.length * LP_FUND_PER_MARKET) / UNIT} USDC; run: npm run usdc:faucet -- ${admin.publicKey.toBase58()} 70000`);
   }
 }
 

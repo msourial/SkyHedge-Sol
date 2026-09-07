@@ -9,7 +9,6 @@ import { DemoWalletAdapter } from "./lib/demo-wallet";
 import Layout from "@/components/layout";
 import DashboardPage from "@/pages/dashboard";
 import StakingPage from "@/pages/staking";
-import FlowAiPage from "@/pages/flow-ai";
 
 const WALLETS = [
   new PhantomWalletAdapter(),
@@ -43,9 +42,8 @@ function App() {
               <Route element={<Layout />}>
                 <Route index element={<DashboardPage />} />
                 <Route path="/staking" element={<StakingPage />} />
-                <Route path="/flow-ai" element={<FlowAiPage />} />
                 <Route path="/city/:slug" element={<CityRedirect />} />
-                <Route path="/advisor" element={<Navigate to="/?tab=ai-assistant" replace />} />
+                <Route path="/advisor" element={<Navigate to="/" replace />} />
                 <Route path="/settlements" element={<Navigate to="/?tab=community" replace />} />
                 <Route path="/portfolio" element={<Navigate to="/?tab=portfolio" replace />} />
                 <Route path="/explore" element={<Navigate to="/" replace />} />

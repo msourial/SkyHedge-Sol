@@ -7,8 +7,8 @@ Devnet Solana software for **fixed-payout cumulative-rainfall protection markets
 ## V1 boundaries
 
 - Markets: New York, Miami, and Chicago cumulative rainfall.
-- Collateral: six-decimal `SKYT` Devnet SPL test token.
-- Capacity per market: 10,000 SKYT liquidity, 8,000 SKYT exposure, 500 SKYT per wallet.
+- Collateral: six-decimal `USDC` Devnet SPL test token.
+- Capacity per market: 10,000 USDC liquidity, 8,000 USDC exposure, 500 USDC per wallet.
 - Pricing: ten analogous NOAA windows plus a 30%-weighted NOAA forecast signal; expected payout, 15% risk loading, and a 1% protocol fee.
 - Settlement: NOAA final + WeatherXM verification within `max(5mm, 15% of NOAA)`; source hash committed on chain. If final NOAA data is unavailable after a 7-day grace window, the market enters `DATA_UNAVAILABLE` and buyers can reclaim premiums.
 - AI advisory is advisory-only: it returns structured parameters and requires explicit user approval before an unsigned transaction can be prepared.
@@ -61,6 +61,7 @@ Required env:
 | `SKYHEDGE_PROGRAM_ID` | Default `7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr` |
 | `SETTLEMENT_AUTHORITY_KEYPAIR` | Path to the settlement authority keypair (`anchor/keys/settlement-authority.json`) |
 | `ANTHROPIC_API_KEY` | Optional — AI advisory enrichment |
+| `USDC_MINT` | Mint address for the six-decimal USDC test token |
 
 If any weather provider is unreachable or a key is missing, the API returns `DATA_UNAVAILABLE` (HTTP 503). It never creates fallback weather observations.
 
@@ -78,11 +79,11 @@ npm run test:server
 ```sh
 npm run solana:build       # RUSTUP_TOOLCHAIN=nightly-2024-08-01 anchor build
 npm run solana:test-local  # 9/9 integration tests (skip build)
-npm run skyt:demo          # ONE COMMAND: boots validator, deploys, mints SKYT,
+npm run usdc:demo          # ONE COMMAND: boots validator, deploys, mints USDC,
                            # initializes protocol, seeds+funds+opens 3 city markets,
-                           # opens a 500 SKYT protection, runs the indexer, prints
+                           # opens a 500 USDC protection, runs the indexer, prints
                            # the DB portfolio. Idempotent — safe to re-run.
-npm run skyt:status        # inspect on-chain protocol/markets
+npm run usdc:status        # inspect on-chain protocol/markets
 ```
 
 The demo leaves its localnet rows in Neon (markets/protections are not network-scoped). To keep the DB devnet-only before a real deploy: `TRUNCATE chain_events, markets, liquidity_positions, protection_positions, settlement_observations, indexed_slots;`
@@ -90,10 +91,10 @@ The demo leaves its localnet rows in Neon (markets/protections are not network-s
 ## Devnet deploy
 
 ```sh
-npm run skyt:airdrop -- <wallet> 2 12 4   # retry loop until balance >= 4 SOL
-npm run skyt:deploy                     # build + transfer + deploy program
-npm run skyt:init                        # initialize protocol (admin wallet)
-npm run skyt:seed                        # create city markets
+npm run usdc:airdrop -- <wallet> 2 12 4   # retry loop until balance >= 4 SOL
+npm run usdc:deploy                     # build + transfer + deploy program
+npm run usdc:init                        # initialize protocol (admin wallet)
+npm run usdc:seed                        # create city markets
 ```
 
 The program ID is `7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr`; its deployment keypair (`anchor/target/deploy/skyhedge_protection-keypair.json`) and the settlement authority keypair are gitignored. The settlement authority pubkey is committed as an admin config choice; keep the keypair itself secret.
@@ -115,7 +116,7 @@ The program ID is `7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr`; its deployment
 | `POST /api/indexer/reconcile` | Trigger an indexer sweep |
 | `POST /api/settlement/run` | Trigger a settlement scan |
 
-Unsigned actions: `fund_pool`, `withdraw_liquidity`, `open_position`, `claim_payout`, `claim_premium_refund`, `redeem_closed_liquidity`. All amounts are in SKYT base units (6 decimals).
+Unsigned actions: `fund_pool`, `withdraw_liquidity`, `open_position`, `claim_payout`, `claim_premium_refund`, `redeem_closed_liquidity`. All amounts are in USDC base units (6 decimals).
 
 ## Consensus rule (locked)
 

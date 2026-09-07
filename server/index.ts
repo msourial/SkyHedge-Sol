@@ -48,6 +48,11 @@ app.use((req, res, next) => {
     throw err;
   });
 
+  // Unknown API paths get a JSON 404 — never the SPA fallback.
+  app.use("/api", (_req: Request, res: Response) => {
+    res.status(404).json({ error: "NOT_FOUND" });
+  });
+
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes

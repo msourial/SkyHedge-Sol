@@ -179,50 +179,6 @@ export type StakingUserState = {
   }>;
 };
 
-export type InsightFactor = {
-  city: string;
-  cityName: string;
-  factor: "wet" | "dry" | "neutral";
-  deviationPct: number;
-  observedMm: number | null;
-  normalMm: number;
-  source: "noaa-observed" | "climatology-prior";
-};
-
-export type AiInsights = {
-  generatedAt: string;
-  factors: InsightFactor[];
-  top: InsightFactor[];
-};
-
-export type AiAccuracy = {
-  model: string;
-  strategy: string;
-  winRate: number;
-  riskReward: number;
-  sampleSize: number;
-  lastUpdated: string;
-  displayOnly: boolean;
-  metrics: Array<{ label: string; value: string }>;
-};
-
-export type AdvisorPlan = {
-  city: string;
-  risk: "excess-rain" | "low-rain";
-  thresholdMm: number;
-  protectedAmount: string;
-  reasoning: string;
-  confidence: number;
-};
-
-export type ParseTradeResult = {
-  source: "llm" | "rule";
-  confidence: number;
-  parameters: AdvisorPlan;
-  recommendation: { slug: string; strikeMm: number; side: "call" | "put" } | null;
-  response: string;
-};
-
 export type GovernanceProposal = {
   id: string;
   poolId: string;

@@ -8,8 +8,8 @@ import { ROOT } from "./lib/chain";
 
 /**
  * Watches the devnet faucet and, the moment the wallet has >= TARGET_SOL,
- * runs the full devnet pipeline: deploy program → SKYT mint → init protocol →
- * faucet SKYT → seed markets → status. Logs every attempt to watch-deploy.log.
+ * runs the full devnet pipeline: deploy program → USDC mint → init protocol →
+ * faucet USDC → seed markets → status. Logs every attempt to watch-deploy.log.
  *
  * The official devnet faucet is rate-limited per day per IP; this loop retries
  * periodically so the deploy completes unattended when the limit resets.
@@ -60,27 +60,27 @@ async function purgeDb(): Promise<void> {
 
 async function deployPipeline(mint?: string): Promise<void> {
   log("== BALANCE OK — starting devnet pipeline ==");
-  sh("npm run skyt:deploy");
+  sh("npm run usdc:deploy");
   await purgeDb();
 
   if (!mint) {
-    log("$ npm run skyt:mint");
-    const output = execSync("npm run skyt:mint", { encoding: "utf8" });
-    mint = output.match(/SKYT mint created\s+(\w+)/)?.[1];
-    if (!mint) throw new Error(`could not parse SKYT mint from output:\n${output}`);
+    log("$ npm run usdc:mint");
+    const output = execSync("npm run usdc:mint", { encoding: "utf8" });
+    mint = output.match(/USDC mint created\s+(\w+)/)?.[1];
+    if (!mint) throw new Error(`could not parse USDC mint from output:\n${output}`);
   }
-  log("SKYT_MINT", mint);
+  log("USDC_MINT", mint);
 
-  sh(`npm run skyt:faucet -- ${WALLET} 20000`, { SKYT_MINT: mint });
-  sh("npm run skyt:init", { SKYT_MINT: mint });
-  sh("npm run skyt:seed", { SKYT_MINT: mint });
-  sh("npm run skyt:status");
+  sh(`npm run usdc:faucet -- ${WALLET} 20000`, { USDC_MINT: mint });
+  sh("npm run usdc:init", { USDC_MINT: mint });
+  sh("npm run usdc:seed", { USDC_MINT: mint });
+  sh("npm run usdc:status");
   log("== PIPELINE COMPLETE ==");
 }
 
 async function main(): Promise<void> {
   log(`watcher started; wallet ${WALLET}; target ${TARGET_SOL} SOL; poll ${POLL_SECONDS}s`);
-  const existingMint = process.env.SKYT_MINT;
+  const existingMint = process.env.USDC_MINT;
 
   for (let attempt = 1; ; attempt++) {
     const bal = balance();

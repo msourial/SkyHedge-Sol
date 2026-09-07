@@ -4,20 +4,25 @@ import { Link } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Loader2, ShieldAlert, ShieldCheck, WalletCards } from "lucide-react";
 import type { PortfolioStats, UnsignedTx } from "@/lib/types";
-import { api, skytDisplay } from "@/lib/api";
+import { api, usdcDisplay } from "@/lib/api";
 import { signAndSend } from "@/lib/solana";
 import { Card, EmptyState, Stat, TxStepper, type TxStep } from "@/components/sky";
 import { WalletGuard } from "@/components/wallet-button";
 import { cn } from "@/lib/utils";
 
+const INITIAL_LIST = 6;
+
 export function PortfolioTab() {
   const wallet = useWallet();
   const { publicKey, connected } = wallet;
   const [action, setAction] = useState<string | null>(null);
+  const [readyKey, setReadyKey] = useState<string | null>(null);
   const [step, setStep] = useState<TxStep>("idle");
   const [error, setError] = useState<string | null>(null);
   const [sig, setSig] = useState<string | null>(null);
   const [ready, setReady] = useState<UnsignedTx | null>(null);
+  const [showAllProtections, setShowAllProtections] = useState(false);
+  const [showAllLiquidity, setShowAllLiquidity] = useState(false);
 
   const stats = useQuery({
     queryKey: ["portfolio-stats", publicKey?.toBase58()],
@@ -28,13 +33,13 @@ export function PortfolioTab() {
 
   const build = async (txAction: string, market: string, address: string) => {
     if (!publicKey) return;
-    setAction(txAction); setError(null); setSig(null); setReady(null); setStep("building");
+    setAction(txAction); setError(null); setSig(null); setReady(null); setReadyKey(null); setStep("building");
     try {
       const u = await api<UnsignedTx>("/api/transactions/unsigned", {
         method: "POST",
         body: JSON.stringify({ action: txAction, market, wallet: publicKey.toBase58(), positionAddress: address, approved: true }),
       });
-      setReady(u); setStep("ready");
+      setReady(u); setReadyKey(`${txAction}:${address}`); setStep("ready");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Build failed"); setStep("error");
     }
@@ -45,7 +50,7 @@ export function PortfolioTab() {
     setError(null); setStep("sending");
     try {
       const s = await signAndSend(ready.base64, wallet);
-      setSig(s); setAction(null); setReady(null); setStep("confirmed");
+      setSig(s); setAction(null); setReady(null); setReadyKey(null); setStep("confirmed");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Send failed"); setStep("error");
     }
@@ -62,8 +67,11 @@ export function PortfolioTab() {
   }
 
   const busy = step === "building" || step === "sending";
-  const showingReady = step === "ready" && !!ready;
   const data = stats.data;
+  const protections = data?.protections ?? [];
+  const liquidity = data?.liquidity ?? [];
+  const visibleProtections = showAllProtections ? protections : protections.slice(0, INITIAL_LIST);
+  const visibleLiquidity = showAllLiquidity ? liquidity : liquidity.slice(0, INITIAL_LIST);
 
   return (
     <div className="space-y-5">
@@ -74,9 +82,9 @@ export function PortfolioTab() {
       )}
       {data && (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Stat label="Portfolio value" value={skytDisplay(data.totalValue)} accent="cyan" />
-          <Stat label="Unrealized P&L" value={`${Number(data.totalPnl) >= 0 ? "+" : ""}${skytDisplay(data.totalPnl)}`} accent={Number(data.totalPnl) >= 0 ? "green" : "red"} />
-          <Stat label="Today (θ decay)" value={`${Number(data.dayChange) >= 0 ? "+" : ""}${skytDisplay(data.dayChange)}`} accent={Number(data.dayChange) >= 0 ? "green" : "amber"} />
+          <Stat label="Portfolio value" value={usdcDisplay(data.totalValue)} accent="cyan" />
+          <Stat label="Unrealized P&L" value={`${Number(data.totalPnl) >= 0 ? "+" : ""}${usdcDisplay(data.totalPnl)}`} accent={Number(data.totalPnl) >= 0 ? "green" : "red"} />
+          <Stat label="Today (θ decay)" value={`${Number(data.dayChange) >= 0 ? "+" : ""}${usdcDisplay(data.dayChange)}`} accent={Number(data.dayChange) >= 0 ? "green" : "amber"} />
           <Stat label="Open positions" value={data.openPositions} />
         </div>
       )}
@@ -95,7 +103,7 @@ export function PortfolioTab() {
                 cta={<Link to="/?tab=trading" className="sky-btn-primary mt-3 px-4 py-2 text-sm">Open trading</Link>}
               />
             )}
-            {data?.protections.map((p) => (
+            {visibleProtections.map((p) => (
               <Card key={p.address}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -111,26 +119,36 @@ export function PortfolioTab() {
                   <ShieldCheck className="h-5 w-5 shrink-0 text-[var(--identity)]" />
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                  <Stat label="Protected" value={skytDisplay(p.protectedAmount)} />
-                  <Stat label="Premium paid" value={skytDisplay(p.premiumPaid)} />
-                  <Stat label="Mark" value={skytDisplay(p.fairValue)} accent="cyan" />
-                  <Stat label="P&L" value={`${Number(p.pnl) >= 0 ? "+" : ""}${skytDisplay(p.pnl)}`} accent={Number(p.pnl) >= 0 ? "green" : "red"} />
+                  <Stat label="Protected" value={usdcDisplay(p.protectedAmount)} />
+                  <Stat label="Premium paid" value={usdcDisplay(p.premiumPaid)} />
+                  <Stat label="Mark" value={usdcDisplay(p.fairValue)} accent="cyan" />
+                  <Stat label="P&L" value={`${Number(p.pnl) >= 0 ? "+" : ""}${usdcDisplay(p.pnl)}`} accent={Number(p.pnl) >= 0 ? "green" : "red"} />
                 </div>
                 <div className="mt-3 flex gap-2">
-                  <button className="sky-btn-ghost flex-1 px-3 py-2 text-xs" onClick={() => void build("claim_payout", p.market, p.address)} disabled={busy}>
+                  <button className="sky-btn-ghost min-h-10 flex-1 px-3 text-xs" onClick={() => void build("claim_payout", p.market, p.address)} disabled={busy}>
                     {action === "claim_payout" && step === "building" ? <Spinner /> : "Claim payout"}
                   </button>
-                  <button className="sky-btn-ghost flex-1 px-3 py-2 text-xs" onClick={() => void build("claim_premium_refund", p.market, p.address)} disabled={busy}>
+                  <button className="sky-btn-ghost min-h-10 flex-1 px-3 text-xs" onClick={() => void build("claim_premium_refund", p.market, p.address)} disabled={busy}>
                     {action === "claim_premium_refund" && step === "building" ? <Spinner /> : "Refund premium"}
                   </button>
                 </div>
-                {showingReady && ready && (
+                {step === "ready" && ready && readyKey === `claim_payout:${p.address}` && (
+                  <button className="sky-btn-success mt-2 w-full py-2 text-sm" onClick={() => void send()} disabled={busy}>
+                    {busy ? <Spinner /> : "Sign & send with wallet"}
+                  </button>
+                )}
+                {step === "ready" && ready && readyKey === `claim_premium_refund:${p.address}` && (
                   <button className="sky-btn-success mt-2 w-full py-2 text-sm" onClick={() => void send()} disabled={busy}>
                     {busy ? <Spinner /> : "Sign & send with wallet"}
                   </button>
                 )}
               </Card>
             ))}
+            {protections.length > INITIAL_LIST && (
+              <button className="sky-btn-ghost min-h-10 w-full text-xs" onClick={() => setShowAllProtections((v) => !v)}>
+                {showAllProtections ? "Show fewer contracts" : `Show all ${protections.length} contracts`}
+              </button>
+            )}
           </div>
         </section>
 
@@ -138,31 +156,36 @@ export function PortfolioTab() {
           <h2 className="sky-section-label mb-3 flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-[var(--warning)]" /> Liquidity</h2>
           <div className="space-y-3">
             {(data?.liquidity ?? []).length === 0 && <p className="text-sm text-[var(--muted-foreground)]">No liquidity positions — supply a pool on the Staking page.</p>}
-            {data?.liquidity.map((l) => (
+            {visibleLiquidity.map((l) => (
               <Card key={l.address}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="sky-mono break-all text-sm font-semibold">{l.market}</div>
+                    <div className="sky-mono text-sm font-semibold" title={l.market}>{l.market.slice(0, 4)}…{l.market.slice(-4)} liquidity</div>
                     <div className="mt-0.5 text-xs text-[var(--faint)]">{l.address.slice(0, 4)}…{l.address.slice(-4)}</div>
                   </div>
                   <ShieldAlert className="h-5 w-5 shrink-0 text-[var(--warning)]" />
                 </div>
-                <div className="mt-3"><Stat label="Shares" value={skytDisplay(l.shares)} /></div>
+                <div className="mt-3"><Stat label="Shares" value={usdcDisplay(l.shares)} /></div>
                 <div className="mt-3 flex gap-2">
-                  <button className="sky-btn-ghost flex-1 px-3 py-2 text-xs" onClick={() => void build("withdraw_liquidity", l.market, l.address)} disabled={busy}>
+                  <button className="sky-btn-ghost min-h-10 flex-1 px-3 text-xs" onClick={() => void build("withdraw_liquidity", l.market, l.address)} disabled={busy}>
                     {action === "withdraw_liquidity" && step === "building" ? <Spinner /> : "Withdraw"}
                   </button>
-                  <button className="sky-btn-ghost flex-1 px-3 py-2 text-xs" onClick={() => void build("redeem_closed_liquidity", l.market, l.address)} disabled={busy}>
+                  <button className="sky-btn-ghost min-h-10 flex-1 px-3 text-xs" onClick={() => void build("redeem_closed_liquidity", l.market, l.address)} disabled={busy}>
                     {action === "redeem_closed_liquidity" && step === "building" ? <Spinner /> : "Redeem closed"}
                   </button>
                 </div>
-                {showingReady && ready && (
+                {step === "ready" && ready && (readyKey === `withdraw_liquidity:${l.address}` || readyKey === `redeem_closed_liquidity:${l.address}`) && (
                   <button className="sky-btn-success mt-2 w-full py-2 text-sm" onClick={() => void send()} disabled={busy}>
                     {busy ? <Spinner /> : "Sign & send with wallet"}
                   </button>
                 )}
               </Card>
             ))}
+            {liquidity.length > INITIAL_LIST && (
+              <button className="sky-btn-ghost min-h-10 w-full text-xs" onClick={() => setShowAllLiquidity((v) => !v)}>
+                {showAllLiquidity ? "Show fewer positions" : `Show all ${liquidity.length} positions`}
+              </button>
+            )}
           </div>
           <p className={cn("mt-4 text-xs text-[var(--faint)]")}>Indexed from finalized on-chain events; nothing is simulated.</p>
         </section>

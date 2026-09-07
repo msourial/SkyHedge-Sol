@@ -30,8 +30,8 @@ async function main(): Promise<void> {
     return;
   }
 
-  const mintEnv = process.env.SKYT_MINT;
-  if (!mintEnv) throw new Error("SKYT_MINT env var is required (run scripts/create-skyt-mint.ts first)");
+  const mintEnv = process.env.USDC_MINT;
+  if (!mintEnv) throw new Error("USDC_MINT env var is required (run scripts/create-usdc-mint.ts first)");
   const collateralMint = new PublicKey(mintEnv);
 
   const balance = await connection.getBalance(admin.publicKey);

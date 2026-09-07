@@ -1,12 +1,12 @@
+import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { CloudRain, LayoutDashboard, Sparkles, Coins } from "lucide-react";
+import { Check, CloudRain, Copy, LayoutDashboard, Coins } from "lucide-react";
 import { WalletButton } from "@/components/wallet-button";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/staking", label: "Staking", icon: Coins },
-  { to: "/flow-ai", label: "Flow AI", icon: Sparkles },
 ];
 
 function NetworkPill() {
@@ -19,9 +19,41 @@ function NetworkPill() {
   );
 }
 
+const PROGRAM_ID = import.meta.env.VITE_SKYHEDGE_PROGRAM_ID ?? "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr";
+
+function ProgramIdFooter() {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(PROGRAM_ID);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* clipboard unavailable — no-op */
+    }
+  };
+  return (
+    <p className="sky-mono flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[11px] text-[var(--faint)]">
+      <span>SKYHEDGE</span>
+      <span aria-hidden>·</span>
+      <button
+        type="button"
+        onClick={() => void copy()}
+        title="Copy program ID"
+        className="group inline-flex min-h-6 items-center gap-1 rounded border border-transparent px-1 transition-colors hover:border-[var(--border)] hover:text-[var(--muted-foreground)]"
+      >
+        PROGRAM {PROGRAM_ID.slice(0, 4)}…{PROGRAM_ID.slice(-4)}
+        {copied ? <Check className="h-3 w-3 text-[var(--success)]" /> : <Copy className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />}
+      </button>
+      <span aria-hidden>·</span>
+      <span>NOAA FINAL / WXM VERIFIES · TX SIGNED BY YOUR WALLET</span>
+    </p>
+  );
+}
+
 export default function Layout() {
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <div className="flex min-h-screen flex-col bg-[var(--background)] text-[var(--foreground)]">
       <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--background)]/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           <NavLink to="/" className="group flex shrink-0 items-center gap-2.5">
@@ -57,14 +89,12 @@ export default function Layout() {
           </div>
         </div>
       </header>
-      <main className="sky-atmosphere mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <main className="sky-atmosphere mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
         <Outlet />
       </main>
       <footer className="border-t border-[var(--border)] py-5">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <p className="sky-mono truncate text-center text-[11px] text-[var(--faint)]">
-            SKYHEDGE · PROGRAM {import.meta.env.VITE_SKYHEDGE_PROGRAM_ID ?? "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr"} · NOAA FINAL / WXM VERIFIES · TX SIGNED BY YOUR WALLET
-          </p>
+          <ProgramIdFooter />
         </div>
       </footer>
     </div>

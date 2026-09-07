@@ -213,6 +213,14 @@
   .sky-mono { font-family: var(--font-mono); }
   .sky-display { font-family: var(--font-display); }
 
+  /* Horizontal scroller with no visible scrollbar (tab rails on mobile) */
+  .sky-scroll-x {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .sky-scroll-x::-webkit-scrollbar { display: none; }
+
   /* Eyebrow: the ONE micro-label style — replaces ad-hoc text-[10px] uppercase */
   .sky-eyebrow {
     font-family: var(--font-body);
