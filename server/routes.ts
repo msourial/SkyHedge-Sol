@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
 import type { Express, Response } from "express";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { DataUnavailableError, NOAA_STATIONS, NoaaRainfallProvider, canonicalSourceHash, cumulativeMillimeters, type SkyHedgeCity } from "./services/noaa";
 import { searchCities } from "./services/city-index";
 import { MARKET_LIMITS, RainfallQuoteEngine, type TriggerOperator } from "./services/quote-engine";
@@ -32,7 +32,42 @@ const quoteSchema = z.object({ city: citySchema, observationStart: z.string().da
 export async function registerRoutes(app: Express): Promise<Server> {
   const limiter = new RateLimiter(60, 30); // 30 requests per 60s per key
 
-  app.get("/api/health", (_req, res) => res.json({ name: "SkyHedge", network: process.env.SOLANA_NETWORK ?? "devnet", programId, settlementSource: "NOAA+WeatherXM", generatedData: false }));
+  app.get("/api/health", async (_req, res) => {
+    const started = Date.now();
+    let database = "ok";
+    let databaseLatencyMs: number | null = null;
+    try {
+      const before = Date.now();
+      await db.execute(sql`select 1`);
+      databaseLatencyMs = Date.now() - before;
+    } catch {
+      database = "degraded";
+    }
+    const healthy = database === "ok";
+    res.status(healthy ? 200 : 503).json({
+      name: "SkyHedge",
+      status: healthy ? "ok" : "degraded",
+      version: process.env.npm_package_version ?? "1.0.0",
+      uptimeSeconds: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+      network: process.env.SOLANA_NETWORK ?? "devnet",
+      programId,
+      settlementSource: "NOAA+WeatherXM",
+      generatedData: false,
+      checks: {
+        database: { status: database, latencyMs: databaseLatencyMs, required: true },
+        weather: {
+          status: process.env.NOAA_TOKEN && process.env.WXM_API_KEY ? "configured" : "degraded",
+          noaa: process.env.NOAA_TOKEN ? "configured" : "missing",
+          wxm: process.env.WXM_API_KEY ? "configured" : "missing",
+        },
+        settlement: {
+          status: process.env.SETTLEMENT_AUTHORITY_KEYPAIR ? "configured" : "missing",
+        },
+      },
+      responseMs: Date.now() - started,
+    });
+  });
 
   app.get("/api/cities/search", (req, res) => {
     const q = z.string().min(1).max(64).safeParse(req.query.q);
@@ -80,14 +115,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { return dataUnavailable(res, error); }
   });
 
-  app.post("/api/indexer/reconcile", async (_req, res) => {
+  app.post("/api/indexer/reconcile", async (req, res) => {
+    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
     try {
       const result = await indexer.reconcile();
       return res.json({ ok: true, toSlot: result.toSlot.toString(), events: result.events, accounts: result.accounts });
     } catch (error) { return res.status(500).json({ error: "INDEXER_ERROR", message: (error as Error).message }); }
   });
 
-  app.post("/api/settlement/run", async (_req, res) => {
+  app.post("/api/settlement/run", async (req, res) => {
+    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
     try {
       const result = await settlement.runOnce();
       return res.json({ ok: true, ...result });
@@ -236,12 +273,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/governance/proposals", (req, res) => {
+    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
     const input = z.object({ poolId: z.string().min(1).max(64), title: z.string().min(3).max(200), description: z.string().min(3).max(2000) }).safeParse(req.body);
     if (!input.success) return res.status(400).json({ error: "poolId, title, and description are required" });
     res.status(201).json({ proposal: governance.create(input.data.poolId, input.data.title, input.data.description) });
   });
 
   app.post("/api/governance/vote", (req, res) => {
+    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
     const input = z.object({ proposalId: z.string().min(1).max(64), support: z.boolean() }).safeParse(req.body);
     if (!input.success) return res.status(400).json({ error: "proposalId and support are required" });
     const updated = governance.vote(input.data);
@@ -250,6 +289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/transactions/unsigned", async (req, res) => {
+    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
     const intent = z.object({ action: z.enum(["fund_pool", "withdraw_liquidity", "open_position", "claim_payout", "claim_premium_refund", "redeem_closed_liquidity"]), market: z.string().min(32), wallet: z.string().min(32), amount: z.string().regex(/^\d+$/).optional(), approved: z.literal(true) }).safeParse(req.body);
     if (!intent.success) return res.status(400).json({ error: "A valid market, wallet, and explicit approval are required." });
     try {

@@ -1,0 +1,16 @@
+.git
+.gitignore
+.github
+node_modules
+dist
+.localnet-ledger
+anchor/target
+anchor/keys
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+attached_assets
+playwright*
+tests

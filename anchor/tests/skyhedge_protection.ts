@@ -212,7 +212,7 @@ describe("skyhedge_protection localnet lifecycle (real token CPIs)", () => {
     }
   });
 
-  it("settles TRIGGERED from the settlement authority observation", async () => {
+  it("gates settlement to the settlement authority", async () => {
     await program.methods
       .submitWeatherObservation({
         cumulativeRainfallMmX100: new BN(6_000), // 60.00 mm >= 50.00 mm threshold
@@ -225,7 +225,18 @@ describe("skyhedge_protection localnet lifecycle (real token CPIs)", () => {
     const observation = await program.account.settlementObservation.fetch(observationPda);
     expect(observation.cumulativeRainfallMmX100.toNumber()).to.eq(6_000);
 
-    await program.methods.settleMarket().accounts({ market: marketPda }).rpc();
+    try {
+      await program.methods.settleMarket().accounts({ market: marketPda }).rpc();
+      expect.fail("expected ConstraintHasOne");
+    } catch (error) {
+      expect(errorText(error)).to.match(/ConstraintHasOne|has one relation|2006/);
+    }
+
+    await program.methods
+      .settleMarket()
+      .accounts({ settlementAuthority: settlementAuthority.publicKey, market: marketPda })
+      .signers([settlementAuthority])
+      .rpc();
     const market = await program.account.market.fetch(marketPda);
     expect(market.status).to.deep.eq({ settled: {} });
     expect(market.result).to.deep.eq({ triggered: {} });

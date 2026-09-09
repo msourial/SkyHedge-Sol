@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run test:server
+      - run: npm run build
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/skyhedge_check
+          VITE_SOLANA_RPC_URL: https://api.devnet.solana.com
+          VITE_SKYHEDGE_PROGRAM_ID: 7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr

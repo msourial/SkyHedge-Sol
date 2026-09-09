@@ -91,7 +91,7 @@ export class SettlementRunner {
           .submitWeatherObservation({ cumulativeRainfallMmX100: new BN(valueMmX100), observedAt: new BN(market.observationEnd.toNumber()), sourceHash: sourceHashBytes(result.evidence.sourceHash) })
           .accounts({ authority: this.authority().publicKey, market: marketAddress })
           .rpc();
-        await this.program.methods.settleMarket().accounts({ market: marketAddress }).rpc();
+        await this.program.methods.settleMarket().accounts({ market: marketAddress, protocol: protocolAddress, settlementAuthority: this.authority().publicKey }).rpc();
         await this.persistEvidence(result.evidence, marketAddress.toBase58(), "AGREED");
         settled.push(marketAddress.toBase58());
         console.log(`[settlement] market ${marketAddress.toBase58()} settled with ${valueMmX100 / 100}mm (${city})`);

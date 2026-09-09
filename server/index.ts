@@ -1,11 +1,26 @@
 import "dotenv/config";
+import { loadEnv } from "./env";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
+const env = loadEnv();
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Security headers: no sniffing, no framing, tight referrer + permissions policy.
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  if (env.nodeEnv === "production") {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+  next();
+});
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -63,7 +78,7 @@ app.use((req, res, next) => {
   }
 
   // ALWAYS serve the app on port 5000 by default; PORT overrides (e.g. 5001 when Skyfall holds 5000).
-  const port = Number(process.env.PORT ?? 5000);
+  const port = env.port;
   server.listen({
     port,
     host: "0.0.0.0",
