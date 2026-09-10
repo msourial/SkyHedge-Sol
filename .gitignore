@@ -60,3 +60,4 @@ test-ledger/
 graphify-out/
 .opencode/
 .planning/
+.vercel
