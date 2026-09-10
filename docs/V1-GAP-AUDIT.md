@@ -2,6 +2,14 @@
 
 Audited: 2026-09-10
 
+## Verified deployment state
+
+- **Public interface:** `https://skyhedge.vercel.app` is deployed as a static Vite site. It has no Vercel production environment variables, so it has no API base URL or service credentials.
+- **Devnet program:** the configured address `7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr` returns `AccountNotFound` from public Solana Devnet. No deployable program-keypair file is present in the repository; the required keypair is intentionally ignored.
+- **Weather credentials:** NOAA Climate Data Online requires a token. The repository has no `NOAA_TOKEN`, and therefore its final-observation and real quote paths must remain unavailable.
+- **Persistence:** no `DATABASE_URL` is configured. The finalized-slot indexer has nowhere durable to write markets, positions, evidence, events, or replay checkpoints.
+- **Local test state:** 38 server tests pass, but they include legacy chain-pricing, 12-city, WeatherXM consensus, staking, and in-memory governance tests. The Anchor integration suite could not start because an existing local validator owns port 8899; that process was left untouched.
+
 ## What is now aligned
 
 - The active web experience presents fixed-payout rainfall protection for New York, Miami, and Chicago.
@@ -17,12 +25,14 @@ Audited: 2026-09-10
 - The configured Devnet program address has not been verified as a deployed `skyhedge_protection` program. The deployment must create a fresh program ID, publish its IDL, and make `/api/health` the sole source for network identity.
 - The public Vercel build is a static interface. It needs a deployed API base URL, a PostgreSQL instance, finalized-slot indexer, and configured NOAA credentials before it can present live markets, evidence, or portfolios.
 - Real Devnet SKYT mint creation, funding, and wallet balance reads remain unverified.
+- The missing deployment authority choices are material: the admin/deployer public key, a separate settlement-service signer, and a safe custody/rotation process must be selected before a new immutable program ID can be generated and funded.
 
 ### V1 protocol integrity
 
 - The server still contains legacy option-chain, staking, and governance services/routes. They are not reachable through the active UI but must be deleted or retired before V1 release.
 - Server city and NOAA registries still include locations beyond New York, Miami, and Chicago. Restrict the API and settlement allowlist to those three V1 cities.
 - The server has WeatherXM-era evidence fields and a `NOAA+WeatherXM` health label. V1 must make NOAA the only final settlement source and remove those fields/claims.
+- The committed README and `.env.example` still describe six-decimal USDC, while the V1 product plan specifies six-decimal SKYT. Resolve the collateral/mint decision before minting or deploying.
 - Contract and local-validator test evidence is still needed for controls, exposure, funding/withdrawal, payout/refund, fee, close, and replay cases specified in the V1 plan.
 
 ### Service and transaction work
@@ -34,3 +44,11 @@ Audited: 2026-09-10
 ## Release gate
 
 Do not market the public URL as a live protection protocol until the Devnet program, API/indexer, NOAA credentials, SPL mint, and complete end-to-end transaction lifecycle have each been verified.
+
+## Inputs required from the project owner
+
+1. NOAA CDO token (created by the owner using their email at NOAA; never paste it into Git).
+2. Neon Postgres connection string, or approval to create a new Neon project under the owner's account.
+3. Deployment choice: owner wallet as protocol admin and a separately generated settlement-authority public key.
+4. A decision to use **SKYT** as specified in V1 or intentionally change the specification to **USDC**.
+5. Hosting choice for the always-on API/indexer/settlement worker. A static Vercel site alone cannot run the durable worker.
