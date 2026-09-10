@@ -9,6 +9,7 @@ export type Health = {
   programDeployment: "DEPLOYED" | "UNDEPLOYED" | "RPC_UNAVAILABLE";
   idlRegistered: false;
   transactionsAvailable: false;
+  runtime: { noaaFinalObservationsConfigured: boolean; indexerPersistenceConfigured: boolean };
 };
 
 export type Market = {

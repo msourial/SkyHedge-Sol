@@ -25,6 +25,8 @@ export class NoaaRainfallProvider implements RainfallProvider {
   readonly name = "NOAA" as const;
   private readonly token = process.env.NOAA_TOKEN;
 
+  get finalObservationsConfigured() { return Boolean(this.token); }
+
   async dailyRainfall(stationId: string, start: string, end: string): Promise<DailyRainfall[]> {
     if (!this.token) throw new DataUnavailableError("NOAA_TOKEN is required for final NOAA station observations");
     const query = new URLSearchParams({ datasetid: "GHCND", datatypeid: "PRCP", stationid: stationId, startdate: start, enddate: end, units: "metric", limit: "1000" });
@@ -43,14 +45,14 @@ export class NoaaRainfallProvider implements RainfallProvider {
     try { point = await fetch(`https://api.weather.gov/points/${station.latitude},${station.longitude}`, { headers: { "User-Agent": "SkyHedge/1.0 contact@skyhedge.dev" } }); }
     catch { throw new DataUnavailableError("NOAA forecast point lookup failed"); }
     if (!point.ok) throw new DataUnavailableError(`NOAA forecast point unavailable (${point.status})`);
-    const pointData = await point.json() as { properties?: { forecast?: string } };
-    if (!pointData.properties?.forecast) throw new DataUnavailableError("NOAA did not provide a forecast endpoint");
-    const forecast = await fetch(pointData.properties.forecast, { headers: { "User-Agent": "SkyHedge/1.0 contact@skyhedge.dev" } });
-    if (!forecast.ok) throw new DataUnavailableError(`NOAA forecast unavailable (${forecast.status})`);
-    const body = await forecast.json() as { properties?: { periods?: Array<{ startTime: string; detailedForecast?: string }> } };
-    const periods = body.properties?.periods ?? [];
-    const values = periods.filter((p) => p.startTime.slice(0, 10) >= start && p.startTime.slice(0, 10) <= end).map((p) => ({ date: p.startTime.slice(0, 10), millimeters: parseForecastMillimeters(p.detailedForecast ?? "") }));
-    if (!values.length) throw new DataUnavailableError("NOAA forecast does not cover the requested observation window");
+    const pointData = await point.json() as { properties?: { forecastGridData?: string } };
+    if (!pointData.properties?.forecastGridData) throw new DataUnavailableError("NOAA did not provide a quantitative-precipitation endpoint");
+    const forecast = await fetch(pointData.properties.forecastGridData, { headers: { "User-Agent": "SkyHedge/1.0 contact@skyhedge.dev" } });
+    if (!forecast.ok) throw new DataUnavailableError(`NOAA quantitative precipitation forecast unavailable (${forecast.status})`);
+    const body = await forecast.json() as { properties?: { quantitativePrecipitation?: { values?: Array<{ validTime: string; value: number | null }> } } };
+    const values = (body.properties?.quantitativePrecipitation?.values ?? [])
+      .flatMap(({ validTime, value }) => normalizeQpfValue(validTime, value, start, end));
+    if (!values.length) throw new DataUnavailableError("NOAA quantitative precipitation forecast does not cover the requested observation window");
     return values;
   }
 }
@@ -58,9 +60,11 @@ export class NoaaRainfallProvider implements RainfallProvider {
 export function cumulativeMillimeters(records: DailyRainfall[]): number { return records.reduce((total, record) => total + record.millimeters, 0); }
 export function canonicalSourceHash(value: unknown): string { return createHash("sha256").update(JSON.stringify(value)).digest("hex"); }
 
-function parseForecastMillimeters(text: string): number {
-  const match = text.match(/([\d.]+)\s*(?:to\s*([\d.]+)\s*)?inches? of rain/i);
-  if (!match) return 0;
-  const inches = match[2] ? (Number(match[1]) + Number(match[2])) / 2 : Number(match[1]);
-  return Math.round(inches * 25.4 * 100) / 100;
+function normalizeQpfValue(validTime: string, value: number | null, start: string, end: string): DailyRainfall[] {
+  if (value === null || !Number.isFinite(value)) return [];
+  const [periodStart] = validTime.split("/");
+  const date = periodStart?.slice(0, 10);
+  if (!date || date < start || date > end) return [];
+  // NOAA's grid QPF values are liquid-water depth in kg/m², equivalent to mm.
+  return [{ date, millimeters: Math.round(value * 100) / 100 }];
 }

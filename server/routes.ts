@@ -15,7 +15,7 @@ const quoteSchema = z.object({ city: citySchema, observationStart: z.string().da
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", async (_req, res) => {
     const identity = await resolveNetworkIdentity(programId);
-    res.json({ name: "SkyHedge", ...identity, settlementSource: "NOAA", generatedData: false });
+    res.json({ name: "SkyHedge", ...identity, settlementSource: "NOAA", generatedData: false, runtime: { noaaFinalObservationsConfigured: provider.finalObservationsConfigured, indexerPersistenceConfigured: Boolean(process.env.DATABASE_URL) } });
   });
 
   app.get("/api/markets", (_req, res) => res.json(Object.entries(NOAA_STATIONS).map(([id, station]) => ({ id, ...station, metric: "cumulative_rainfall_mm", collateral: "SKYT", decimals: 6, status: "INDEXER_PENDING", maxLiquidity: MARKET_LIMITS.maxLiquidity.toString(), maxExposure: MARKET_LIMITS.maxExposure.toString(), perWalletMax: MARKET_LIMITS.perWallet.toString(), programId }))));

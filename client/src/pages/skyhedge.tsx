@@ -11,6 +11,13 @@ const nav: { id: View; label: string; icon: typeof CloudRain }[] = [
   { id: "markets", label: "Markets", icon: CloudRain }, { id: "protect", label: "Protect", icon: ShieldCheck }, { id: "liquidity", label: "Liquidity", icon: Landmark }, { id: "portfolio", label: "Portfolio", icon: WalletCards }, { id: "evidence", label: "Evidence", icon: FileCheck2 },
 ];
 const cityLabel = (city: string) => city.split("-").map(word => word[0].toUpperCase() + word.slice(1)).join(" ");
+const isStaticPreview = import.meta.env.VITE_STATIC_PREVIEW === "true";
+const previewHealth: Health = { name: "SkyHedge", network: "devnet", programId: "HY3EyQW3qvZfqWPHn5nwUfY5FwHTFxTzVgjntG8ERCEK", settlementSource: "NOAA", generatedData: false, programDeployment: "UNDEPLOYED", idlRegistered: false, transactionsAvailable: false, runtime: { noaaFinalObservationsConfigured: false, indexerPersistenceConfigured: false } };
+const previewMarkets: Market[] = [
+  { id: "new-york", city: "New York", stationId: "GHCND:USW00094728", latitude: 40.7789, longitude: -73.9692, metric: "cumulative_rainfall_mm", collateral: "SKYT", decimals: 6, status: "INDEXER_PENDING", maxLiquidity: "10000000000", maxExposure: "8000000000", perWalletMax: "500000000", programId: previewHealth.programId },
+  { id: "miami", city: "Miami", stationId: "GHCND:USW00012839", latitude: 25.7933, longitude: -80.2906, metric: "cumulative_rainfall_mm", collateral: "SKYT", decimals: 6, status: "INDEXER_PENDING", maxLiquidity: "10000000000", maxExposure: "8000000000", perWalletMax: "500000000", programId: previewHealth.programId },
+  { id: "chicago", city: "Chicago", stationId: "GHCND:USW00094846", latitude: 41.995, longitude: -87.9336, metric: "cumulative_rainfall_mm", collateral: "SKYT", decimals: 6, status: "INDEXER_PENDING", maxLiquidity: "10000000000", maxExposure: "8000000000", perWalletMax: "500000000", programId: previewHealth.programId },
+];
 
 export default function SkyHedgePage() {
   const [view, setView] = useState<View>("markets");
@@ -25,11 +32,18 @@ export default function SkyHedgePage() {
   const [portfolio, setPortfolio] = useState<Portfolio>();
 
   useEffect(() => {
+    if (isStaticPreview) {
+      setHealth(previewHealth);
+      setMarkets(previewMarkets);
+      setWalletNotice("This is the public SkyHedge product preview. Wallet, pricing, and transaction actions will activate after Devnet deployment.");
+      return;
+    }
     void skyHedgeApi.health().then(setHealth).catch(() => setMarketError("SkyHedge network identity is temporarily unavailable."));
     void skyHedgeApi.markets().then(setMarkets).catch(() => setMarketError("Markets cannot be read from the indexer service right now."));
   }, []);
 
   async function connectWallet() {
+    if (isStaticPreview) return setWalletNotice("Wallet connection is intentionally disabled in this public preview because the Devnet program is not deployed.");
     const provider = [window.solana, window.solflare].filter(Boolean).find(item => item?.isPhantom || item?.isSolflare);
     if (!provider) return setWalletNotice("Install Phantom or Solflare, switch it to Devnet, then reconnect.");
     setWalletNotice("Requesting wallet connection…");
@@ -59,6 +73,7 @@ export default function SkyHedgePage() {
     <div className="app-content">
       <div className="top-utility"><div className="truth-row"><StatusChip tone={health?.programDeployment === "DEPLOYED" ? "success" : "warning"}>{health ? `${health.network.toUpperCase()} · NOAA ONLY` : "NETWORK CHECKING"}</StatusChip><span>{health?.programDeployment === "DEPLOYED" ? "Protection contracts, not weather trading." : "Program deployment is pending; transactions stay disabled."}</span></div><Button onClick={connectWallet} className="wallet-button"><WalletCards />{wallet ? shortAddress(wallet) : "Connect wallet"}</Button></div>
       {walletNotice && <div className="transaction-notice" role="status"><Network aria-hidden="true" /><span>{walletNotice}</span>{wallet && <strong>SOL {solBalance ?? "loading…"}</strong>}</div>}
+      {health && (!health.runtime.noaaFinalObservationsConfigured || !health.runtime.indexerPersistenceConfigured) && <div className="readiness-notice" role="status"><TriangleAlert aria-hidden="true" /><span>{!health.runtime.noaaFinalObservationsConfigured ? "NOAA final-observation credentials are not configured; settlement evidence will remain unavailable." : ""}{!health.runtime.noaaFinalObservationsConfigured && !health.runtime.indexerPersistenceConfigured ? " " : ""}{!health.runtime.indexerPersistenceConfigured ? "Finalized-indexer persistence is not configured; portfolios remain empty by design." : ""}</span></div>}
       {marketError && <UnavailableState title="Service unavailable" error>{marketError}</UnavailableState>}
       {view === "markets" && <Markets markets={markets} onSelect={chooseMarket} />}
       {view === "protect" && <Protect city={selectedCity} markets={markets} health={health} />}
