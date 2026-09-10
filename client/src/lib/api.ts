@@ -23,7 +23,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function apiUnavailable(error: unknown): boolean {
-  return error instanceof ApiError && (error.status === undefined || error.status >= 500 || error.status === 404);
+  return error instanceof ApiError && (error.status === undefined || error.status >= 500 || error.status === 404 || error.status === 405);
 }
 
 export function mm(value: number | null | undefined): string {
