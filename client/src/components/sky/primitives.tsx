@@ -5,7 +5,7 @@ export function Card({ children, className, hover }: { children: ReactNode; clas
   return <div className={cn("sky-card", hover && "sky-card-hover", className)}>{children}</div>;
 }
 
-export function Pill({ children, tone = "slate", className }: { children: ReactNode; tone?: "cyan" | "green" | "amber" | "red" | "slate"; className?: string }) {
+export function Pill({ children, tone = "slate", className }: { children: ReactNode; tone?: "cyan" | "magenta" | "green" | "amber" | "red" | "slate"; className?: string }) {
   return <span className={cn("sky-badge", `sky-badge-${tone}`, className)}>{children}</span>;
 }
 

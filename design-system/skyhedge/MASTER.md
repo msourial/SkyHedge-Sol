@@ -7,9 +7,9 @@
 ---
 
 **Project:** SkyHedge
-**Generated:** 2026-08-18 17:08:36
-**Category:** Financial Dashboard
-**Design Dials:** Variance 7/10 (Balanced / Modern) | Density 8/10 (Dense / Dashboard)
+**Generated:** 2026-09-10 15:38:37
+**Category:** Weather App
+**Design Dials:** Variance 7/10 (Balanced / Modern) | Motion 4/10 (Standard) | Density 7/10 (Standard)
 
 ---
 
@@ -19,44 +19,45 @@
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#0F172A` | `--color-primary` |
-| On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#1E293B` | `--color-secondary` |
-| Accent/CTA | `#22C55E` | `--color-accent` |
-| Background | `#020617` | `--color-background` |
-| Foreground | `#F8FAFC` | `--color-foreground` |
-| Muted | `#1A1E2F` | `--color-muted` |
-| Border | `#334155` | `--color-border` |
-| Destructive | `#EF4444` | `--color-destructive` |
-| Ring | `#0F172A` | `--color-ring` |
+| Primary | `#2DE2E6` | `--identity` |
+| On Primary | `#041012` | `--color-on-primary` |
+| Signal | `#FF3CAC` | `--signal` |
+| Violet | `#8B78FF` | `--violet` |
+| Background | `#050510` | `--background` |
+| Foreground | `#F0F4FF` | `--foreground` |
+| Muted | `#10182E` | `--surface-2` |
+| Border | `rgba(123,97,255,.32)` | `--border` |
+| Destructive | `#FF5C77` | `--destructive` |
+| Ring | `#2DE2E6` | `--ring` |
 
-**Color Notes:** Terminal dark + success green
+**Color Notes:** Cyan is reserved for interaction and verified protocol signal; magenta and violet carry atmospheric hierarchy; green only denotes success.
 
 ### Typography
 
-- **Heading Font:** Inter
+- **Heading Font:** Orbitron
 - **Body Font:** Inter
-- **Mood:** dark, cinematic, technical, precision, clean, premium, developer, professional, high-end utility
-- **Google Fonts:** [Inter + Inter](https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap)
+- **Data Font:** JetBrains Mono
+- **Mood:** cyberpunk, neon, atmospheric, HUD, climate-fintech, dark, cyan, magenta, chamfered, precise
+- **Google Fonts:** Orbitron + Inter + JetBrains Mono
 
 **CSS Import:**
 ```css
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@700;900&display=swap');
 ```
 
 ### Spacing Variables
 
-*Density: 8/10 — Dense / Dashboard*
+*Density: 7/10 — Standard*
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--space-xs` | `2px` / `0.125rem` | Tight gaps |
-| `--space-sm` | `4px` / `0.25rem` | Icon gaps, inline spacing |
-| `--space-md` | `8px` / `0.5rem` | Standard padding |
-| `--space-lg` | `12px` / `0.75rem` | Section padding |
-| `--space-xl` | `16px` / `1rem` | Large gaps |
-| `--space-2xl` | `24px` / `1.5rem` | Section margins |
-| `--space-3xl` | `32px` / `2rem` | Hero padding |
+| `--space-xs` | `4px` / `0.25rem` | Tight gaps |
+| `--space-sm` | `8px` / `0.5rem` | Icon gaps, inline spacing |
+| `--space-md` | `16px` / `1rem` | Standard padding |
+| `--space-lg` | `24px` / `1.5rem` | Section padding |
+| `--space-xl` | `32px` / `2rem` | Large gaps |
+| `--space-2xl` | `48px` / `3rem` | Section margins |
+| `--space-3xl` | `64px` / `4rem` | Hero padding |
 
 ### Shadow Depths
 
@@ -76,8 +77,8 @@
 ```css
 /* Primary Button */
 .btn-primary {
-  background: #22C55E;
-  color: white;
+  background: #2DE2E6;
+  color: #041012;
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -93,8 +94,8 @@
 /* Secondary Button */
 .btn-secondary {
   background: transparent;
-  color: #0F172A;
-  border: 2px solid #0F172A;
+  color: #F0F4FF;
+  border: 1px solid rgba(123,97,255,.32);
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -107,8 +108,9 @@
 
 ```css
 .card {
-  background: #020617;
-  border-radius: 12px;
+  background: #0B1021;
+  border: 1px solid rgba(123,97,255,.32);
+  border-radius: 4px 14px 4px 14px;
   padding: 24px;
   box-shadow: var(--shadow-md);
   transition: all 200ms ease;
@@ -171,17 +173,34 @@
 
 ### Page Pattern
 
-**Pattern Name:** Data-Dense Dashboard
+**Pattern Name:** Portfolio Grid
 
-- **CTA Placement:** Above fold
-- **Section Order:** Hero > Features > CTA
+- **Conversion Strategy:** Visuals first. Filter by category. Fast loading essential.
+- **CTA Placement:** Project Card Hover + Footer Contact
+- **Section Order:** 1. Hero (Name/Role), 2. Project Grid (Masonry), 3. About/Philosophy, 4. Contact
+
+---
+
+## Motion
+
+**Stagger List** (Standard) — Trigger: load or scroll | Duration: 300-450ms | Easing: `back.out(1.4)`
+
+```js
+gsap.from('.grid-item', { opacity: 0, scale: 0.92, y: 16, duration: 0.4, stagger: { each: 0.06, from: 'start', grid: 'auto' }, ease: 'back.out(1.4)' });
+```
+
+**Framework notes:** grid: 'auto' lets GSAP infer rows/columns from a CSS grid layout for a natural wave stagger
+
+- ✅ Combine with from: 'center' for a bento-grid layout to draw the eye inward first
+- ❌ Don't use back.out on dense data tables; the overshoot reads as sloppy on informational UI
+- ⚡ Group DOM writes; avoid interleaving layout reads (getBoundingClientRect) between staggered tweens
 
 ---
 
 ## Anti-Patterns (Do NOT Use)
 
-- ❌ Light mode default
-- ❌ Slow rendering
+- ❌ Inconsistent styling
+- ❌ Poor contrast ratios
 
 ### Additional Forbidden Patterns
 

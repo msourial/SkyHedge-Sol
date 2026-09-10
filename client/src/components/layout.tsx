@@ -1,13 +1,10 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { Check, CloudRain, Copy, LayoutDashboard, Coins } from "lucide-react";
+import { Check, CloudRain, Copy, LayoutDashboard } from "lucide-react";
 import { WalletButton } from "@/components/wallet-button";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/staking", label: "Staking", icon: Coins },
-];
+const NAV = [{ to: "/", label: "Protocol", icon: LayoutDashboard }];
 
 function NetworkPill() {
   const network = import.meta.env.VITE_SOLANA_RPC_URL?.includes("8899") ? "localnet" : "devnet";
@@ -46,7 +43,7 @@ function ProgramIdFooter() {
         {copied ? <Check className="h-3 w-3 text-[var(--success)]" /> : <Copy className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />}
       </button>
       <span aria-hidden>·</span>
-      <span>NOAA FINAL / WXM VERIFIES · TX SIGNED BY YOUR WALLET</span>
+      <span>NOAA ONLY · DEVNET · TX SIGNED BY YOUR WALLET</span>
     </p>
   );
 }
@@ -57,12 +54,12 @@ export default function Layout() {
       <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--background)]/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           <NavLink to="/" className="group flex shrink-0 items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--identity)] to-[var(--identity-deep)] text-[#052033] shadow-[0_4px_12px_-4px_rgba(56,189,248,0.5)]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-[3px_10px_3px_10px] bg-gradient-to-br from-[var(--identity)] to-[var(--signal)] text-[#050510] shadow-[0_0_22px_-4px_rgba(45,226,230,0.7)]">
               <CloudRain className="h-5 w-5" />
             </div>
             <div className="hidden leading-tight min-[420px]:block">
               <div className="sky-display text-sm font-bold tracking-[0.18em] text-[var(--foreground)]">SKYHEDGE</div>
-              <div className="sky-eyebrow hidden sm:block">Weather indices, on-chain</div>
+              <div className="sky-eyebrow hidden sm:block">Weather protection / Devnet</div>
             </div>
           </NavLink>
           <nav className="flex min-w-0 items-center gap-1">

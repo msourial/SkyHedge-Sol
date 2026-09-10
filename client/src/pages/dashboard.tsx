@@ -1,188 +1,86 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Coins, LayoutDashboard, Search, WalletCards } from "lucide-react";
-import type { ChainGrid, CityIndexState, CitySearchResult } from "@/lib/types";
-import { api } from "@/lib/api";
-import { Card, Skeleton } from "@/components/sky";
-import { WeatherCard, MarketStatusCard } from "@/components/dashboard/weather-card";
-import { TrendChart } from "@/components/dashboard/trend-chart";
-import { OptionsChain } from "@/components/dashboard/options-chain";
-import { PortfolioTab } from "@/components/dashboard/portfolio-tab";
-import { CommunityTab } from "@/components/dashboard/community-tab";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { Activity, AlertTriangle, ArrowRight, Database, Droplets, FileCheck2, ShieldPlus, WalletCards } from "lucide-react";
+import type { EvidenceRow, Market, Portfolio, Quote } from "@/lib/types";
+import { api, apiUnavailable, mm, usdcDisplay } from "@/lib/api";
+import { Card, EmptyState, Pill, SectionLabel, Stat } from "@/components/sky";
 import { cn } from "@/lib/utils";
 
-const TABS = [
-  { id: "trading", label: "Trading", icon: LayoutDashboard },
-  { id: "portfolio", label: "Portfolio", icon: WalletCards },
-  { id: "community", label: "Community", icon: Coins },
+const MARKETS = [
+  { id: "new-york", city: "New York", station: "USW00094728 · Central Park" },
+  { id: "miami", city: "Miami", station: "USW00012839 · Miami Intl." },
+  { id: "chicago", city: "Chicago", station: "USW00094846 · O'Hare Intl." },
 ] as const;
+const TABS = [
+  { id: "markets", label: "Markets", icon: Activity },
+  { id: "protect", label: "Protect", icon: ShieldPlus },
+  { id: "liquidity", label: "Liquidity", icon: Droplets },
+  { id: "portfolio", label: "Portfolio", icon: WalletCards },
+  { id: "evidence", label: "Evidence", icon: FileCheck2 },
+] as const;
+type Tab = (typeof TABS)[number]["id"];
+type MarketId = (typeof MARKETS)[number]["id"];
+const today = new Date().toISOString().slice(0, 10);
+const weekFromToday = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
 
-type TabId = (typeof TABS)[number]["id"];
-
-function toTab(v: string | null): TabId {
-  return TABS.some((t) => t.id === v) ? (v as TabId) : "trading";
+function validTab(value: string | null): Tab { return TABS.some((tab) => tab.id === value) ? value as Tab : "markets"; }
+function validMarket(value: string | null): MarketId { return MARKETS.some((market) => market.id === value) ? value as MarketId : "new-york"; }
+function baseUnits(value: string): string | null {
+  if (!/^\d+(\.\d{0,6})?$/.test(value) || Number(value) <= 0) return null;
+  const [whole, fractional = ""] = value.split(".");
+  return `${whole}${fractional.padEnd(6, "0")}`.replace(/^0+(?=\d)/, "");
 }
 
 export default function DashboardPage() {
-  const [params, setParams] = useSearchParams();
-  const navigate = useNavigate();
-  const tab = toTab(params.get("tab"));
-  const citySlug = params.get("city") ?? "new-york";
-  const [query, setQuery] = useState("");
-  const [focused, setFocused] = useState(false);
-
-  useEffect(() => {
-    if (!params.get("tab") && !params.get("city")) setParams({ tab: "trading" }, { replace: true });
-  }, [params, setParams]);
-
-  const setTab = (t: TabId) => setParams((prev) => { prev.set("tab", t); return prev; }, { replace: true });
-
-  const cityQuery = useQuery({
-    queryKey: ["city", citySlug],
-    queryFn: () => api<CityIndexState>(`/api/cities/${citySlug}`),
-    refetchInterval: 60_000,
+  const query = new URLSearchParams(window.location.search);
+  const [tab, setTab] = useState<Tab>(() => validTab(query.get("tab")));
+  const [marketId, setMarketId] = useState<MarketId>(() => validMarket(query.get("city")));
+  const [amount, setAmount] = useState("100");
+  const [threshold, setThreshold] = useState("50");
+  const [operator, setOperator] = useState<"gte" | "lte">("gte");
+  const [start, setStart] = useState(today);
+  const [end, setEnd] = useState(weekFromToday);
+  const [quoteRequest, setQuoteRequest] = useState(0);
+  const marketQuery = useQuery({ queryKey: ["markets"], queryFn: () => api<Market[]>("/api/markets"), retry: false });
+  const amountBase = baseUnits(amount);
+  const quoteQuery = useQuery({
+    queryKey: ["quote", quoteRequest],
+    queryFn: () => api<Quote>("/api/quotes", { method: "POST", body: JSON.stringify({ city: marketId, observationStart: start, observationEnd: end, thresholdMm: Number(threshold), operator, protectedAmount: amountBase }) }),
+    enabled: quoteRequest > 0 && Boolean(amountBase) && Boolean(threshold) && start < end,
+    retry: false,
   });
+  const switchTab = (next: Tab) => { setTab(next); window.history.replaceState(null, "", `/?tab=${next}&city=${marketId}`); };
+  const selectMarket = (id: MarketId) => { setMarketId(id); setQuoteRequest(0); switchTab("protect"); };
 
-  const chainQuery = useQuery({
-    queryKey: ["chain", citySlug],
-    queryFn: () => api<ChainGrid>(`/api/cities/${citySlug}/chain`),
-    refetchInterval: 30_000,
-  });
-
-  const search = useQuery({
-    queryKey: ["cities-search", query.trim()],
-    queryFn: () => api<{ results: CitySearchResult[] }>(`/api/cities/search?q=${encodeURIComponent(query.trim())}`),
-    enabled: query.trim().length > 0,
-  });
-
-  const city = cityQuery.data;
-  const chain = chainQuery.data;
-  const [activeIdx, setActiveIdx] = useState(-1);
-  const results = (search.data?.results ?? []).slice(0, 6);
-
-  const pickCity = (slug: string) => {
-    navigate(`/?tab=trading&city=${slug}`);
-    setQuery("");
-    setActiveIdx(-1);
-    setFocused(false);
-  };
-
-  const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!results.length) return;
-    if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx((i) => (i + 1) % results.length); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIdx((i) => (i <= 0 ? results.length - 1 : i - 1)); }
-    else if (e.key === "Enter" && activeIdx >= 0) { e.preventDefault(); pickCity(results[activeIdx].slug); }
-    else if (e.key === "Escape") { setFocused(false); setActiveIdx(-1); }
-  };
-  const atmCell = useMemo(() => {
-    const strikes = chain?.strikes ?? [];
-    if (!strikes.length || !city) return null;
-    const anchor = city.cumulativeMm ?? city.windowNormalMm;
-    const closest = strikes.reduce((prev, curr) => (Math.abs(curr - anchor) < Math.abs(prev - anchor) ? curr : prev));
-    return chain?.cells.find((c) => c.strikeMm === closest && c.expiry === chain.windows[0]?.end && c.side === "call") ?? null;
-  }, [chain, city]);
-
-  return (
-    <div>
-      <section className="mb-5">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="sky-display text-2xl font-bold tracking-tight sm:text-3xl">
-              {city ? city.name : "Loading…"}
-            </h1>
-            {city && (
-              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--muted-foreground)]">
-                <span className="sky-mono">{city.stationName}</span>
-                <span className="text-[var(--faint)]">·</span>
-                <span>{city.metric.replaceAll("_", " ")}</span>
-                <span className="text-[var(--faint)]">·</span>
-                <span className="sky-mono">{city.currentWindow.start.slice(5)} → {city.currentWindow.end.slice(5)}</span>
-                <span className="inline-flex items-center gap-1.5 text-[var(--success)]"><span className="sky-live-dot" /> live</span>
-              </p>
-            )}
-          </div>
-          <div className="relative w-full max-w-xs">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--faint)]" />
-            <input
-              aria-label="Search cities"
-              role="combobox"
-              aria-expanded={focused && results.length > 0}
-              aria-controls="city-search-listbox"
-              aria-activedescendant={activeIdx >= 0 ? `city-option-${activeIdx}` : undefined}
-              aria-autocomplete="list"
-              value={query}
-              onChange={(e) => { setQuery(e.target.value); setActiveIdx(-1); }}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setTimeout(() => { setFocused(false); setActiveIdx(-1); }, 150)}
-              onKeyDown={onSearchKeyDown}
-              placeholder="Search cities…"
-              className="sky-input py-2.5 pl-10 text-sm"
-            />
-            {focused && query.trim().length > 0 && results.length > 0 && (
-              <ul id="city-search-listbox" role="listbox" aria-label="Cities" className="absolute left-0 right-0 top-full z-30 mt-1.5 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-2)] shadow-2xl">
-                {results.map((r, i) => (
-                  <li key={r.slug} id={`city-option-${i}`} role="option" aria-selected={i === activeIdx}>
-                    <button
-                      onMouseDown={(e) => { e.preventDefault(); pickCity(r.slug); }}
-                      onMouseEnter={() => setActiveIdx(i)}
-                      className={cn(
-                        "flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left text-sm transition-colors",
-                        i === activeIdx ? "bg-[var(--identity-dim)] text-[var(--identity)]" : "hover:bg-[var(--identity-dim)]",
-                      )}
-                    >
-                      <span>{r.name}</span>
-                      <span className="sky-mono text-[10px] text-[var(--faint)]">{r.country}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <div className="sticky top-16 z-20 -mx-4 mb-6 border-b border-[var(--border)] bg-[var(--background)]/90 px-4 backdrop-blur-md sm:-mx-6 sm:px-6">
-        <div className="sky-scroll-x flex min-w-0 gap-1 py-2">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              className={cn(
-                "flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg px-3.5 text-sm font-medium transition-colors",
-                tab === id ? "bg-[var(--identity-dim)] text-[var(--identity)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-1)] hover:text-[var(--foreground)]",
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {tab === "trading" && (
-        <div className="space-y-6">
-          {cityQuery.isLoading ? (
-            <div className="space-y-4"><Skeleton className="h-48" /><Skeleton className="h-72" /><Skeleton className="h-96" /></div>
-          ) : !city ? (
-            <Card className="py-12 text-center text-sm text-[var(--muted-foreground)]">No index for “{citySlug}” — search a city above.</Card>
-          ) : (
-            <>
-              <div className="grid gap-6 md:grid-cols-2">
-                <WeatherCard city={city} probBps={atmCell?.quoteProbabilityBps ?? null} strikeMm={atmCell?.strikeMm ?? null} />
-                <MarketStatusCard city={city} chain={chain} />
-              </div>
-              <Card>
-                <TrendChart history={city.weeklyHistoryMm ?? []} normalMm={city.windowNormalMm} strikeMm={atmCell?.strikeMm ?? null} side={atmCell?.side ?? null} />
-              </Card>
-              <OptionsChain city={city} chain={chain} />
-            </>
-          )}
-        </div>
-      )}
-
-      {tab === "portfolio" && <PortfolioTab />}
-      {tab === "community" && <CommunityTab />}
-    </div>
-  );
+  return <div className="space-y-6">
+    <header className="relative overflow-hidden border-b border-[var(--border)] pb-6">
+      <div className="absolute right-0 top-0 h-32 w-64 opacity-60 [background:repeating-linear-gradient(135deg,transparent_0_10px,rgba(45,226,230,.12)_10px_11px)]" aria-hidden />
+      <p className="sky-section-label text-[var(--identity)]">DEVNET / NOAA-ONLY / PROTECTION PROTOCOL</p>
+      <div className="mt-2 flex flex-wrap items-end justify-between gap-4"><div><h1 className="sky-display text-2xl font-bold leading-tight sm:text-4xl">Climate risk, <span className="text-[var(--identity)]">deterministically settled.</span></h1><p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">SkyHedge is fixed-payout rainfall protection—not a trading venue. Your wallet remains in control of every real transaction.</p></div><Pill tone="cyan">Signal online</Pill></div>
+    </header>
+    {marketQuery.isError && <DeploymentNotice />}
+    <nav aria-label="Product sections" className="sky-scroll-x flex gap-2 border-b border-[var(--border)] pb-3">{TABS.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => switchTab(id)} className={cn("flex min-h-11 shrink-0 items-center gap-2 border px-3.5 text-sm transition-colors", tab === id ? "border-[var(--identity)] bg-[var(--identity-dim)] text-[var(--identity)]" : "border-transparent text-[var(--muted-foreground)] hover:border-[var(--border)] hover:text-[var(--foreground)]")}><Icon className="h-4 w-4" />{label}</button>)}</nav>
+    {tab === "markets" && <Markets markets={marketQuery.data} onSelect={selectMarket} />}
+    {tab === "protect" && <Protect marketId={marketId} amount={amount} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} valid={Boolean(amountBase) && start < end && Number(threshold) > 0} requestQuote={() => setQuoteRequest((count) => count + 1)} quote={quoteQuery.data} loading={quoteQuery.isFetching} error={quoteQuery.error} />}
+    {tab === "liquidity" && <Liquidity />}
+    {tab === "portfolio" && <PortfolioView />}
+    {tab === "evidence" && <Evidence />}
+  </div>;
 }
+
+function DeploymentNotice() { return <div role="status" className="flex gap-3 border border-[var(--warning)]/50 bg-[var(--warning-dim)] p-4 text-sm text-[var(--muted-foreground)]"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warning)]" /><p><strong className="text-[var(--foreground)]">Indexer pending.</strong> This public interface is live, but its data service is not configured here. Market, quote, portfolio, and evidence values stay unavailable rather than being simulated.</p></div>; }
+
+function Markets({ markets, onSelect }: { markets?: Market[]; onSelect: (id: MarketId) => void }) { return <section><SectionLabel>Rainfall protection markets</SectionLabel><div className="grid gap-4 lg:grid-cols-3">{MARKETS.map((market) => { const indexed = markets?.find((item) => item.city === market.id); return <Card key={market.id} hover className="relative overflow-hidden p-5"><div className="absolute right-0 top-0 h-16 w-16 border-b border-l border-[var(--signal)]/40" aria-hidden /><div className="flex items-start justify-between gap-3"><div><p className="sky-eyebrow">Cumulative rainfall</p><h2 className="sky-display mt-1 text-lg font-semibold">{market.city}</h2></div><Pill tone={indexed?.indexed ? "green" : "amber"}>{indexed?.indexed ? "Indexed" : "Indexer pending"}</Pill></div><p className="sky-mono mt-5 text-xs text-[var(--muted-foreground)]">{indexed?.stationId === "committed" ? "Station committed on-chain" : market.station}</p><div className="mt-5 grid grid-cols-3 gap-2"><Stat label="Max pool" value="10,000 SKYT" /><Stat label="Exposure" value="8,000 SKYT" /><Stat label="Per wallet" value="500 SKYT" /></div><button className="sky-btn-primary mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2" onClick={() => onSelect(market.id)}>View protection <ArrowRight className="h-4 w-4" /></button></Card>; })}</div></section>; }
+
+function Protect(props: { marketId: MarketId; amount: string; setAmount: (value: string) => void; threshold: string; setThreshold: (value: string) => void; operator: "gte" | "lte"; setOperator: (value: "gte" | "lte") => void; start: string; setStart: (value: string) => void; end: string; setEnd: (value: string) => void; valid: boolean; requestQuote: () => void; quote?: Quote; loading: boolean; error: unknown }) {
+  const market = MARKETS.find((item) => item.id === props.marketId)!;
+  return <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]"><section className="sky-hero-card"><SectionLabel className="text-[var(--identity)]">Protection request / {market.city}</SectionLabel><h2 className="sky-display mt-2 text-2xl font-semibold">Set your rainfall boundary.</h2><p className="mt-2 max-w-xl text-sm text-[var(--muted-foreground)]">A qualifying trigger pays 100% of the protected amount. Quotes use published NOAA inputs and require approval before a transaction can be prepared.</p><div className="mt-6 grid gap-4 sm:grid-cols-2"><Field label="Protected amount (SKYT)"><input className="sky-input" inputMode="decimal" value={props.amount} onChange={(event) => props.setAmount(event.target.value)} /></Field><Field label="Rainfall threshold (mm)"><input className="sky-input" inputMode="decimal" value={props.threshold} onChange={(event) => props.setThreshold(event.target.value)} /></Field><Field label="Risk direction"><select className="sky-input" value={props.operator} onChange={(event) => props.setOperator(event.target.value as "gte" | "lte")}><option value="gte">Rainfall at or above threshold</option><option value="lte">Rainfall at or below threshold</option></select></Field><div className="grid grid-cols-2 gap-3"><Field label="Window start"><input className="sky-input" type="date" value={props.start} onChange={(event) => props.setStart(event.target.value)} /></Field><Field label="Window end"><input className="sky-input" type="date" value={props.end} onChange={(event) => props.setEnd(event.target.value)} /></Field></div></div>{!props.valid && <p role="alert" className="mt-4 text-sm text-[var(--destructive-foreground)]">Enter a positive SKYT amount and threshold, with an end date after the start date.</p>}<button disabled={!props.valid || props.loading} className="sky-btn-primary mt-6 min-h-11 w-full sm:w-auto" onClick={props.requestQuote}>{props.loading ? "Pricing from NOAA…" : "Get protection quote"}</button></section><QuotePanel quote={props.quote} error={props.error} /></div>;
+}
+function Field({ label, children }: { label: string; children: ReactNode }) { return <label><span className="sky-label">{label}</span>{children}</label>; }
+function QuotePanel({ quote, error }: { quote?: Quote; error: unknown }) { if (error) return <Card className="border-[var(--destructive)]/50"><Pill tone="red">DATA_UNAVAILABLE</Pill><h2 className="sky-display mt-4 text-lg">No quote was created.</h2><p role="alert" className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">{apiUnavailable(error) ? "NOAA or pricing evidence is unavailable in this deployment. SkyHedge never substitutes generated weather data." : error instanceof Error ? error.message : "The protection request could not be priced."}</p></Card>; if (!quote) return <Card><Pill tone="magenta">Approval required</Pill><h2 className="sky-display mt-4 text-lg">Quote evidence will appear here.</h2><p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">The premium is derived from 70% historical probability and 30% NOAA forecast probability, with a 15% risk loading and 1% protocol fee.</p></Card>; return <Card className="border-[var(--identity)]/50"><Pill tone="cyan">Quote ready</Pill><h2 className="sky-display mt-4 text-lg">{usdcDisplay(quote.premium)}</h2><p className="text-sm text-[var(--muted-foreground)]">Premium before explicit transaction approval</p><div className="mt-5 grid grid-cols-2 gap-2"><Stat label="Probability" value={`${(quote.probabilityBps / 100).toFixed(2)}%`} accent="cyan" /><Stat label="Premium rate" value={`${(quote.premiumRateBps / 100).toFixed(2)}%`} /><Stat label="Protocol fee" value={usdcDisplay(quote.protocolFee)} /><Stat label="Model" value={quote.modelVersion} /></div><p className="sky-mono mt-4 break-all text-[10px] leading-relaxed text-[var(--faint)]">Methodology hash: {quote.inputsHash}</p><button disabled className="sky-btn-primary mt-5 min-h-11 w-full">Connect wallet to approve</button></Card>; }
+
+function Liquidity() { return <div className="grid gap-5 lg:grid-cols-[1fr_340px]"><Card><SectionLabel>Liquidity safeguards</SectionLabel><h2 className="sky-display text-xl">Collateral is available only before lock.</h2><div className="mt-5 grid gap-3 sm:grid-cols-2"><Guardrail title="Pre-lock only" text="LP funding and withdrawals are permitted only while the market is open." /><Guardrail title="Reserved exposure" text="Withdrawals cannot reduce collateral below protection already reserved." /><Guardrail title="Final accounting" text="The 1% protocol fee transfers after the claim deadline; residual funds redeem pro rata." /><Guardrail title="No synthetic actions" text="Funding remains disabled until a deployed Devnet IDL can prepare a real unsigned transaction." /></div></Card><Card><Pill tone="amber">Program IDL required</Pill><h2 className="sky-display mt-4 text-lg">Liquidity actions unavailable</h2><p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">The interface will not manufacture a funding or withdrawal transaction before Devnet program identity and IDL registration are available.</p><button disabled className="sky-btn-primary mt-5 min-h-11 w-full">Prepare liquidity transaction</button></Card></div>; }
+function Guardrail({ title, text }: { title: string; text: string }) { return <div className="border-l-2 border-[var(--violet)] bg-[var(--surface-2)] p-4"><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">{text}</p></div>; }
+function PortfolioView() { const { publicKey, connected } = useWallet(); const portfolio = useQuery({ queryKey: ["portfolio", publicKey?.toBase58()], queryFn: () => api<Portfolio>(`/api/portfolio/${publicKey!.toBase58()}`), enabled: Boolean(publicKey), retry: false }); if (!connected || !publicKey) return <EmptyState icon={<WalletCards className="h-8 w-8" />} title="Connect Phantom or Solflare to inspect your portfolio" hint="Only finalized indexed Solana positions appear here. Nothing is simulated." />; if (portfolio.isError) return <DeploymentNotice />; const data = portfolio.data; return <div className="space-y-5"><div className="grid gap-3 sm:grid-cols-3"><Stat label="Wallet" value={`${publicKey.toBase58().slice(0, 4)}…${publicKey.toBase58().slice(-4)}`} accent="cyan" /><Stat label="Protections" value={data?.protections.length ?? "—"} /><Stat label="Liquidity positions" value={data?.liquidity.length ?? "—"} /></div>{data && data.protections.length + data.liquidity.length === 0 ? <EmptyState icon={<Database className="h-8 w-8" />} title="No finalized positions indexed" hint={data.message ?? "The indexer has not reported positions for this wallet."} /> : <Card><p className="text-sm text-[var(--muted-foreground)]">Fetching final-chain records…</p></Card>}</div>; }
+function Evidence() { const evidence = useQuery({ queryKey: ["evidence"], queryFn: () => api<{ rows: EvidenceRow[] }>("/api/settlement/evidence"), retry: false }); if (evidence.isError) return <DeploymentNotice />; if (!evidence.data?.rows.length) return <EmptyState icon={<FileCheck2 className="h-8 w-8" />} title="No settlement evidence indexed yet" hint="NOAA observation evidence is shown only once a valid observation window and source hash have been finalized." />; return <section><SectionLabel>NOAA evidence chain</SectionLabel><div className="space-y-3">{evidence.data.rows.map((item) => <Card key={item.id}><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="sky-display text-base">{item.city.replaceAll("-", " ")}</h2><p className="sky-mono mt-1 text-xs text-[var(--faint)]">{item.windowStart} → {item.windowEnd}</p></div><Pill tone={item.verdict === "DATA_UNAVAILABLE" ? "red" : "green"}>{item.verdict}</Pill></div><div className="mt-3 grid gap-2 sm:grid-cols-2"><Stat label="NOAA rainfall" value={mm(item.noaaMm ? Number(item.noaaMm) : null)} /><p className="sky-mono break-all text-[10px] leading-relaxed text-[var(--faint)]">Source hash: {item.sourceHash}</p></div></Card>)}</div></section>; }

@@ -5,15 +5,12 @@ import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adap
 import { useEffect, type FC, type ReactNode } from "react";
 import { queryClient } from "./lib/queryClient";
 import { RPC_URL } from "./lib/solana";
-import { DemoWalletAdapter } from "./lib/demo-wallet";
 import Layout from "@/components/layout";
 import DashboardPage from "@/pages/dashboard";
-import StakingPage from "@/pages/staking";
 
 const WALLETS = [
   new PhantomWalletAdapter(),
   new SolflareWalletAdapter(),
-  new DemoWalletAdapter(),
 ];
 
 const SafeConnectionProvider = ConnectionProvider as unknown as FC<ConnectionProviderProps & { children?: ReactNode }>;
@@ -28,7 +25,7 @@ function ScrollToTop() {
 
 function CityRedirect() {
   const { slug } = useParams();
-  return <Navigate to={`/?tab=trading&city=${slug}`} replace />;
+  return <Navigate to={`/?tab=markets&city=${slug}`} replace />;
 }
 
 function App() {
@@ -41,10 +38,11 @@ function App() {
             <Routes>
               <Route element={<Layout />}>
                 <Route index element={<DashboardPage />} />
-                <Route path="/staking" element={<StakingPage />} />
+                <Route path="/liquidity" element={<Navigate to="/?tab=liquidity" replace />} />
+                <Route path="/staking" element={<Navigate to="/?tab=liquidity" replace />} />
                 <Route path="/city/:slug" element={<CityRedirect />} />
                 <Route path="/advisor" element={<Navigate to="/" replace />} />
-                <Route path="/settlements" element={<Navigate to="/?tab=community" replace />} />
+                <Route path="/settlements" element={<Navigate to="/?tab=evidence" replace />} />
                 <Route path="/portfolio" element={<Navigate to="/?tab=portfolio" replace />} />
                 <Route path="/explore" element={<Navigate to="/" replace />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

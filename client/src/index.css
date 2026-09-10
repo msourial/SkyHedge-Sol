@@ -3,32 +3,35 @@
 @tailwind utilities;
 
 :root {
-  /* SkyHedge design system — institutional dark + weather atmosphere */
-  --background: #050B14;
-  --surface-1: #0A1220;
-  --surface-2: #0E1A2E;
-  --foreground: #F1F5F9;
-  --muted-foreground: #94A3B8;
-  --faint: #64748B;
-  --border: #1C2A3F;
-  --identity: #38BDF8;
-  --identity-deep: #0EA5E9;
-  --identity-dim: rgba(56, 189, 248, 0.12);
-  --success: #22C55E;
-  --success-dim: rgba(34, 197, 94, 0.12);
-  --warning: #F59E0B;
-  --warning-dim: rgba(245, 158, 11, 0.12);
-  --destructive: #EF4444;
-  --destructive-dim: rgba(239, 68, 68, 0.12);
-  --destructive-foreground: #FCA5A5;
-  --ring: #38BDF8;
+  /* SkyHedge signal system — cyberpunk climate-fintech, deliberately restrained. */
+  --background: #050510;
+  --surface-1: #0b1021;
+  --surface-2: #10182e;
+  --foreground: #f0f4ff;
+  --muted-foreground: #b6bed5;
+  --faint: #77809b;
+  --border: rgba(123, 97, 255, 0.32);
+  --identity: #2de2e6;
+  --identity-deep: #16b7c0;
+  --identity-dim: rgba(45, 226, 230, 0.12);
+  --signal: #ff3cac;
+  --signal-dim: rgba(255, 60, 172, 0.12);
+  --violet: #8b78ff;
+  --success: #4ade80;
+  --success-dim: rgba(74, 222, 128, 0.12);
+  --warning: #ffcc4d;
+  --warning-dim: rgba(255, 204, 77, 0.12);
+  --destructive: #ff5c77;
+  --destructive-dim: rgba(255, 92, 119, 0.12);
+  --destructive-foreground: #ffc1ce;
+  --ring: #2de2e6;
 
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Orbitron", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --radius-card: 12px;
-  --radius-control: 8px;
+  --radius-card: 4px 14px 4px 14px;
+  --radius-control: 3px 9px 3px 9px;
 }
 
 @layer base {
@@ -45,12 +48,18 @@
     background-color: var(--background);
     color: var(--foreground);
     -webkit-font-smoothing: antialiased;
+    background-image:
+      linear-gradient(rgba(45, 226, 230, 0.028) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(45, 226, 230, 0.028) 1px, transparent 1px),
+      radial-gradient(circle at 78% -10%, rgba(255, 60, 172, 0.11), transparent 30%),
+      radial-gradient(circle at 6% 0%, rgba(45, 226, 230, 0.09), transparent 30%);
+    background-size: 36px 36px, 36px 36px, auto, auto;
   }
 
   h1, h2, h3, h4 {
     font-family: var(--font-display);
     font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: 0.035em;
   }
 
   button, [role="button"], a, select, summary {
@@ -75,18 +84,20 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-card);
     padding: 1.25rem 1.5rem;
-    transition: border-color 200ms ease-out, transform 200ms ease-out;
+    box-shadow: inset 0 1px 0 rgba(240, 244, 255, 0.035), 0 18px 40px -35px rgba(0, 0, 0, 0.9);
+    transition: border-color 200ms ease-out, transform 200ms ease-out, box-shadow 200ms ease-out;
   }
 
   .sky-card-hover:hover {
     border-color: var(--identity);
     transform: translateY(-1px);
+    box-shadow: inset 0 1px 0 rgba(240, 244, 255, 0.05), 0 0 0 1px rgba(45, 226, 230, 0.08), 0 18px 42px -28px rgba(45, 226, 230, 0.25);
   }
 
   /* Buttons */
   .sky-btn-primary {
     background: var(--identity);
-    color: #052033;
+    color: #041012;
     padding: 0.65rem 1.25rem;
     border-radius: var(--radius-control);
     font-weight: 600;
@@ -96,7 +107,7 @@
     transition: background-color 200ms ease-out, opacity 200ms ease-out, transform 200ms ease-out;
   }
 
-  .sky-btn-primary:hover { background: var(--identity-deep); }
+  .sky-btn-primary:hover { background: #75f5f6; box-shadow: 0 0 22px rgba(45, 226, 230, 0.35); }
   .sky-btn-primary:active { transform: translateY(1px); }
   .sky-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -112,7 +123,7 @@
     transition: border-color 200ms ease-out, color 200ms ease-out;
   }
 
-  .sky-btn-ghost:hover { border-color: var(--identity); color: var(--identity); }
+  .sky-btn-ghost:hover { border-color: var(--identity); color: var(--identity); box-shadow: 0 0 16px rgba(45, 226, 230, 0.12); }
   .sky-btn-ghost:active { background: var(--identity-dim); }
   .sky-btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -148,7 +159,7 @@
   .sky-input:focus {
     outline: none;
     border-color: var(--identity);
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+    box-shadow: 0 0 0 3px rgba(45, 226, 230, 0.2);
   }
 
   .sky-input::placeholder { color: var(--faint); }
@@ -179,6 +190,7 @@
   }
 
   .sky-badge-cyan { background: var(--identity-dim); color: var(--identity); }
+  .sky-badge-magenta { background: var(--signal-dim); color: var(--signal); }
   .sky-badge-green { background: var(--success-dim); color: var(--success); }
   .sky-badge-amber { background: var(--warning-dim); color: var(--warning); }
   .sky-badge-red { background: var(--destructive-dim); color: #F87171; }
@@ -188,14 +200,15 @@
   .sky-hero-card {
     position: relative;
     background:
-      linear-gradient(160deg, rgba(56, 189, 248, 0.08), transparent 42%),
+      linear-gradient(145deg, rgba(45, 226, 230, 0.11), transparent 42%),
+      linear-gradient(315deg, rgba(255, 60, 172, 0.09), transparent 48%),
       linear-gradient(180deg, var(--surface-2), var(--surface-1));
-    border: 1px solid rgba(56, 189, 248, 0.35);
+    border: 1px solid rgba(45, 226, 230, 0.45);
     border-radius: var(--radius-card);
     padding: 1.25rem 1.5rem;
     box-shadow:
-      0 0 0 1px rgba(56, 189, 248, 0.06),
-      0 12px 40px -18px rgba(56, 189, 248, 0.25),
+      0 0 0 1px rgba(45, 226, 230, 0.06),
+      0 12px 40px -18px rgba(45, 226, 230, 0.28),
       0 4px 16px -8px rgba(2, 6, 17, 0.6);
   }
 
@@ -250,8 +263,8 @@
     inset: 0;
     pointer-events: none;
     background:
-      radial-gradient(600px 220px at 18% -10%, rgba(56, 189, 248, 0.07), transparent 70%),
-      radial-gradient(480px 200px at 85% -20%, rgba(14, 165, 233, 0.05), transparent 70%);
+      radial-gradient(600px 220px at 18% -10%, rgba(45, 226, 230, 0.09), transparent 70%),
+      radial-gradient(480px 200px at 85% -20%, rgba(255, 60, 172, 0.08), transparent 70%);
   }
 
   .sky-live-dot {
