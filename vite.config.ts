@@ -28,7 +28,9 @@ export default defineConfig({
   root: path.resolve(import.meta.dirname, "client"),
   envDir: path.resolve(import.meta.dirname),
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    // Sites serves the SPA directly from dist. The standard production build
+    // remains unchanged so the Express server can continue to serve dist/public.
+    outDir: path.resolve(import.meta.dirname, process.env.VITE_STATIC_PREVIEW === "true" ? "dist" : "dist/public"),
     emptyOutDir: true,
   },
   server: {
