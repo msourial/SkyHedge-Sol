@@ -38,6 +38,30 @@ export const AGRICULTURAL_MARKETS: readonly AgriculturalMarket[] = [
 
 export type AgriculturalMarketSlug = (typeof AGRICULTURAL_MARKETS)[number]["slug"];
 export const agriculturalMarketBySlug = (slug: string) => AGRICULTURAL_MARKETS.find((market) => market.slug === slug);
+export const SUGGESTED_AGRICULTURAL_MARKET_SLUGS = ["des-moines", "cordoba", "ludhiana"] as const satisfies readonly AgriculturalMarketSlug[];
+
+/** Normalizes customer-entered places and crops without changing market metadata. */
+export function normalizeAgriculturalMarketSearch(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase().trim();
+}
+
+/** Searches the release-gated catalog only; it never discovers or activates new areas. */
+export function searchAgriculturalMarkets(query: string): readonly AgriculturalMarket[] {
+  const terms = normalizeAgriculturalMarketSearch(query).split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return AGRICULTURAL_MARKETS;
+
+  return AGRICULTURAL_MARKETS.filter((market) => {
+    const searchable = normalizeAgriculturalMarketSearch([
+      market.slug.replaceAll("-", " "),
+      market.name,
+      market.region,
+      market.country,
+      market.crops.join(" "),
+      market.agriculturalContext,
+    ].join(" "));
+    return terms.every((term) => searchable.includes(term));
+  });
+}
 export const millimetersToInches = (mm: number) => Math.round((mm / 25.4) * 100) / 100;
 
 /** Friday 23:59:59 UTC is the standardized weekly index cut-off. */
