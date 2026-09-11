@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Activity, AlertTriangle, ArrowRight, Database, Droplets, FileCheck2, ShieldCheck, ShieldPlus, WalletCards } from "lucide-react";
+import { Activity, AlertTriangle, ArrowRight, Code2, Database, Droplets, ExternalLink, FileCheck2, ShieldCheck, ShieldPlus, WalletCards } from "lucide-react";
 import type { EvidenceRow, Portfolio, Quote } from "@/lib/types";
 import { api, apiUnavailable, mm, skytDisplay } from "@/lib/api";
 import { Card, EmptyState, Pill, SectionLabel, Stat } from "@/components/sky";
@@ -17,6 +17,7 @@ const TABS = [
   { id: "liquidity", label: "Liquidity", icon: Droplets },
   { id: "portfolio", label: "Portfolio", icon: WalletCards },
   { id: "evidence", label: "Evidence", icon: FileCheck2 },
+  { id: "builders", label: "Builders", icon: Code2 },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 type MarketId = AgriculturalMarketSlug;
@@ -65,7 +66,19 @@ export default function DashboardPage() {
     {tab === "liquidity" && <Liquidity />}
     {tab === "portfolio" && <PortfolioView />}
     {tab === "evidence" && <Evidence />}
+    {tab === "builders" && <BuilderProof />}
   </div>;
+}
+
+function BuilderProof() {
+  const steps = [
+    ["Anchor protocol", "Implemented", "PDA-based protocol, market, vault, position, and observation accounts."],
+    ["Devnet program", "In progress", "Prepared program ID; publication verification remains the current release gate."],
+    ["NOAA settlement", "Implemented", "Deterministic source-hash workflow and explicit DATA_UNAVAILABLE resolution."],
+    ["Agricultural indexes", "Researching", "12 regional crop-belt candidates are gated on final NOAA station validation."],
+    ["USDC consumer flow", "Planned", "USD-facing checkout, embedded wallet, and optional self-custody are not enabled yet."],
+  ] as const;
+  return <section className="space-y-6"><header className="border-b border-[var(--border)] pb-6"><p className="sky-section-label text-[var(--identity)]">SOLANA BUILDER PROOF</p><h2 className="sky-display mt-2 max-w-3xl text-2xl font-semibold sm:text-3xl">Climate protection, with verifiable settlement.</h2><p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)]">SkyHedge is building a consumer-friendly climate-risk product with Solana used as the transparent settlement rail—not as a requirement for customers to understand or use crypto.</p></header><div className="grid gap-4 md:grid-cols-3"><Stat label="Protocol model" value="Fixed payout" accent="cyan" /><Stat label="Settlement source" value="NOAA only" accent="green" /><Stat label="Public collateral" value="USDC planned" accent="amber" /></div><div className="grid gap-5 lg:grid-cols-[1fr_360px]"><Card className="p-5"><SectionLabel>Build status</SectionLabel><div className="space-y-3">{steps.map(([title, status, detail]) => <div key={title} className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3 last:border-0 last:pb-0"><div><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1 max-w-xl text-xs leading-relaxed text-[var(--muted-foreground)]">{detail}</p></div><Pill tone={status === "Implemented" ? "green" : status === "In progress" ? "amber" : "slate"}>{status}</Pill></div>)}</div></Card><Card className="p-5"><Pill tone="cyan">Grant-ready narrative</Pill><h3 className="sky-display mt-4 text-xl font-semibold">Why Solana?</h3><p className="mt-3 text-sm leading-relaxed text-[var(--muted-foreground)]">USDC collateral can be escrowed transparently; immutable market terms and source-hashed weather evidence make every settlement auditable. Customers may eventually pay by bank, card, or self-custody wallet.</p><a className="sky-btn-primary mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2" href="https://github.com/msourial/SkyHedge-Sol" target="_blank" rel="noreferrer">View open-source build <ExternalLink className="h-4 w-4" /></a></Card></div><Card className="p-5"><SectionLabel>Current funding milestone</SectionLabel><h3 className="sky-display text-lg font-semibold">One reproducible agricultural-market lifecycle on Devnet.</h3><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)]">The next public proof is program publication, protocol initialization, one NOAA-pinned market, real test collateral transfers, and an Explorer-linked payout or data-unavailable refund. SkyHedge does not represent this milestone as complete until every transaction is finalized.</p></Card></section>;
 }
 
 function OwnerConsole() {
