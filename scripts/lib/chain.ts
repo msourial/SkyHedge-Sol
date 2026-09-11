@@ -13,7 +13,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(__dirname, "../..");
 
 export const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
-export const PROGRAM_ID = new PublicKey(process.env.SKYHEDGE_PROGRAM_ID ?? "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr");
+export const PROGRAM_ID = new PublicKey(process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx");
 export const USDC_DECIMALS = 6;
 export const UNIT = 10 ** USDC_DECIMALS;
 export const PROGRAM_KEYPAIR_PATH = path.join(ROOT, "anchor/target/deploy/skyhedge_protection-keypair.json");

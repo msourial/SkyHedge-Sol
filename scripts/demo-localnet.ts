@@ -60,7 +60,7 @@ async function ensureValidator(): Promise<void> {
 }
 
 async function ensureDeployed(): Promise<void> {
-  const program = new PublicKey(process.env.SKYHEDGE_PROGRAM_ID ?? "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr");
+  const program = new PublicKey(process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx");
   const connection = new Connection(LOCAL_RPC, "confirmed");
   if (await connection.getAccountInfo(program)) {
     log("program", "already deployed to localnet");
@@ -138,7 +138,7 @@ async function main(): Promise<void> {
     log("funded", `${FUND_EXTRA_USDC} USDC extra`);
   }
 
-  const positionAddress = PublicKey.findProgramAddressSync([Buffer.from("position"), marketAddress.toBuffer(), admin.publicKey.toBuffer()], new PublicKey(env.SKYHEDGE_PROGRAM_ID ?? "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr"))[0];
+  const positionAddress = PublicKey.findProgramAddressSync([Buffer.from("position"), marketAddress.toBuffer(), admin.publicKey.toBuffer()], new PublicKey(env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx"))[0];
   if (await connection.getAccountInfo(positionAddress)) {
     log("position", "already open — skipping");
   } else {

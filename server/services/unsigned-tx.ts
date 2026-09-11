@@ -5,7 +5,7 @@ import { BN } from "bn.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr";
+const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 
 export type TxAction = "fund_pool" | "withdraw_liquidity" | "open_position" | "claim_payout" | "claim_premium_refund" | "redeem_closed_liquidity";

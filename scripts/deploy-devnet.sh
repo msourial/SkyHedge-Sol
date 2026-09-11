@@ -2,7 +2,7 @@
 # Deploy the SkyHedge program to Devnet.
 # Requires: deployer wallet ~/.config/solana/id.json with >= 3.4 SOL (program ~3.34 SOL rent).
 # The deploy keypair (anchor/target/deploy/skyhedge_protection-keypair.json) is the immutable
-# program authority and MUST match declare_id! — it does (7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr).
+# program authority and MUST match declare_id! — it does (5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -23,4 +23,4 @@ echo "== Deploying to Devnet =="
 (cd anchor && anchor deploy --provider.cluster devnet)
 
 echo "== Verifying on-chain =="
-npm run skyt:status
+npm run usdc:status

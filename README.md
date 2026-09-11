@@ -56,7 +56,7 @@ Required env:
 | `DATABASE_URL` | Neon Postgres connection string |
 | `NOAA_TOKEN` | NOAA Climate Data Online token (historical observations + forecast) |
 | `SOLANA_RPC_URL` | Default `https://api.devnet.solana.com` |
-| `SKYHEDGE_PROGRAM_ID` | Default `7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr` |
+| `SKYHEDGE_PROGRAM_ID` | Prepared Devnet ID `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` (not deployed yet) |
 | `SETTLEMENT_AUTHORITY_KEYPAIR` | Path to the settlement authority keypair (`anchor/keys/settlement-authority.json`) |
 | `ANTHROPIC_API_KEY` | Optional — AI advisory enrichment |
 | `USDC_MINT` | Mint address for the six-decimal USDC test token |
@@ -95,7 +95,7 @@ npm run usdc:init                        # initialize protocol (admin wallet)
 npm run usdc:seed                        # create city markets
 ```
 
-The program ID is `7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr`; its deployment keypair (`anchor/target/deploy/skyhedge_protection-keypair.json`) and the settlement authority keypair are gitignored. The settlement authority pubkey is committed as an admin config choice; keep the keypair itself secret.
+The prepared program ID is `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx`; its deployment keypair (`anchor/target/deploy/skyhedge_protection-keypair.json`) and the settlement authority keypair are gitignored. The settlement authority public key is recorded in the Devnet authority document; keep the keypair itself secret. This program ID is not deployed yet.
 
 ## API surface
 

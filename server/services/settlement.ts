@@ -12,7 +12,7 @@ import { RainfallConsensusService, type ConsensusResult } from "./consensus";
 import { NOAA_STATIONS, type SkyHedgeCity } from "./noaa";
 import { DATA_GRACE_SECONDS } from "./settlement-constants";
 
-const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr";
+const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 const SETTLEMENT_KEYPAIR_ENV = process.env.SETTLEMENT_AUTHORITY_KEYPAIR;
 

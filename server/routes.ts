@@ -21,7 +21,7 @@ const db = createDb();
 const indexer = new AnchorIndexer(db);
 const unsignedTx = new UnsignedTransactionBuilder();
 const settlement = new SettlementRunner(db);
-const programId = "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr";
+const programId = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const citySchema = z.enum(Object.keys(NOAA_STATIONS) as [SkyHedgeCity, ...SkyHedgeCity[]]);
 const quoteSchema = z.object({ city: citySchema, observationStart: z.string().date(), observationEnd: z.string().date(), thresholdMm: z.number().positive(), operator: z.enum(["gt", "gte", "lt", "lte"]), protectedAmount: z.string().regex(/^\d+$/) });
 

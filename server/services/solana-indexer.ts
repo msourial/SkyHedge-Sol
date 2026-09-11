@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import type { Db } from "../db";
 import { chainEvents, indexedSlots, liquidityPositions, markets, protectionPositions, settlementObservations } from "../../shared/schema";
 
-const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr";
+const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 const NETWORK = process.env.SOLANA_NETWORK ?? "devnet";
 

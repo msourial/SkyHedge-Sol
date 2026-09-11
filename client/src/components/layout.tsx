@@ -16,7 +16,7 @@ function NetworkPill() {
   );
 }
 
-const PROGRAM_ID = import.meta.env.VITE_SKYHEDGE_PROGRAM_ID ?? "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr";
+const PROGRAM_ID = import.meta.env.VITE_SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 
 function ProgramIdFooter() {
   const [copied, setCopied] = useState(false);

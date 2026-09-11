@@ -60,7 +60,7 @@ export function loadEnv(): ServerEnv {
     nodeEnv,
     network: network as SolanaNetwork,
     solanaRpcUrl: process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com",
-    programId: process.env.SKYHEDGE_PROGRAM_ID ?? "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr",
+    programId: process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx",
     databaseUrl,
     usdcMint: process.env.USDC_MINT ?? null,
     settlementKeypairPath: process.env.SETTLEMENT_AUTHORITY_KEYPAIR ?? null,
