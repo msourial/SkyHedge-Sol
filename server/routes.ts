@@ -14,6 +14,7 @@ import { AnchorIndexer } from "./services/solana-indexer";
 import { UnsignedTransactionBuilder, type TxAction } from "./services/unsigned-tx";
 import { SettlementRunner } from "./services/settlement";
 import { WeatherXmProvider } from "./services/weatherxm";
+import { AGRICULTURAL_MARKETS, calendarMonthlyWindow, weeklyFridayWindow } from "../shared/agricultural-markets";
 
 const provider = new NoaaRainfallProvider();
 const quotes = new RainfallQuoteEngine(provider);
@@ -71,6 +72,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const q = z.string().min(1).max(64).safeParse(req.query.q);
     if (!q.success) return res.status(400).json({ error: "a non-empty q query parameter is required" });
     res.json({ query: q.data, results: searchCities(q.data) });
+  });
+
+  app.get("/api/agricultural-markets", (_req, res) => {
+    // This is a public research catalog. A missing pinned NOAA station is an
+    // intentional release gate, not a synthetic/available market state.
+    res.json({
+      metric: "cumulative_rainfall_mm",
+      settlementSource: "NOAA",
+      collateralStatus: "USD_PREVIEW_ONLY",
+      windows: { weekly: weeklyFridayWindow(), monthly: calendarMonthlyWindow() },
+      markets: AGRICULTURAL_MARKETS,
+    });
   });
 
   app.get("/api/markets", async (_req, res) => {
