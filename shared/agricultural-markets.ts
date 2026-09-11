@@ -13,6 +13,10 @@ export interface AgriculturalMarket {
   timezone: string;
   latitude: number;
   longitude: number;
+  /** Optional presentation metadata; coordinates never imply evidence validation. */
+  mapZoom?: number;
+  stationCoordinates?: { latitude: number; longitude: number };
+  coverageLabel?: string;
   metric: "cumulative_rainfall_mm";
   displayUnit: "mm";
   displayConversion: "inches";
