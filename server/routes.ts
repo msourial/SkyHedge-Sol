@@ -98,13 +98,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           maxLiquidity: hexToBigInt(metadata?.max_liquidity).toString(),
           maxExposure: hexToBigInt(metadata?.max_exposure).toString(),
           perWalletMax: hexToBigInt(metadata?.per_wallet_max).toString(),
-          collateral: "USDC",
+          collateral: "SKYT",
           decimals: 6,
           programId,
           indexed: true,
         };
       });
-      if (!enriched.length) return res.json(Object.entries(NOAA_STATIONS).map(([id, station]) => ({ id, ...station, metric: "cumulative_rainfall_mm", collateral: "USDC", decimals: 6, status: "INDEXER_PENDING", maxLiquidity: MARKET_LIMITS.maxLiquidity.toString(), maxExposure: MARKET_LIMITS.maxExposure.toString(), perWalletMax: MARKET_LIMITS.perWallet.toString(), programId })));
+      if (!enriched.length) return res.json(Object.entries(NOAA_STATIONS).map(([id, station]) => ({ id, ...station, metric: "cumulative_rainfall_mm", collateral: "SKYT", decimals: 6, status: "INDEXER_PENDING", maxLiquidity: MARKET_LIMITS.maxLiquidity.toString(), maxExposure: MARKET_LIMITS.maxExposure.toString(), perWalletMax: MARKET_LIMITS.perWallet.toString(), programId })));
       enriched.sort((a, b) => a.city.localeCompare(b.city));
       return res.json(enriched);
     } catch (error) { return dataUnavailable(res, error); }

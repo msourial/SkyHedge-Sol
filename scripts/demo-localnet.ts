@@ -12,8 +12,8 @@ import { protectionPositions, markets as marketsTable } from "../shared/schema";
 
 const LOCAL_RPC = "http://127.0.0.1:8899";
 const VALIDATOR_LEDGER = path.join(ROOT, ".localnet-ledger");
-const POSITION_USDC = 500;      // perWalletMax
-const FUND_EXTRA_USDC = 3_000;  // extra pool beyond seed's 2,000/market
+const POSITION_SKYT = 500;      // perWalletMax
+const FUND_EXTRA_SKYT = 3_000;  // extra pool beyond seed's 2,000/market
 
 function sh(command: string, env: Record<string, string> = {}): string {
   log("$", command);
@@ -95,47 +95,47 @@ async function main(): Promise<void> {
   if (protocolAccount) {
     log("step", "protocol already initialized — reusing on-chain mint");
     const protocol = (await accounts["protocolConfig"].fetch(protocolAddress)) as unknown as { collateralMint: PublicKey; nextMarketId: { toNumber: () => number } };
-    env.USDC_MINT = protocol.collateralMint.toBase58();
-    log("USDC_MINT", env.USDC_MINT);
+    env.SKYT_MINT = protocol.collateralMint.toBase58();
+    log("SKYT_MINT", env.SKYT_MINT);
   } else {
-    log("step", "1/7 create USDC mint");
-    const mintOutput = sh("npm run usdc:mint", env);
-    const mintMatch = mintOutput.match(/USDC mint created:\s*(\w+)/) ?? mintOutput.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
-    if (!mintMatch) throw new Error("could not parse USDC mint from create-usdc-mint output");
-    env.USDC_MINT = mintMatch[1];
-    log("USDC_MINT", env.USDC_MINT);
+    log("step", "1/7 create SKYT mint");
+    const mintOutput = sh("npm run skyt:mint", env);
+    const mintMatch = mintOutput.match(/SKYT mint created\s*(\w+)/) ?? mintOutput.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+    if (!mintMatch) throw new Error("could not parse SKYT mint from create-skyt-mint output");
+    env.SKYT_MINT = mintMatch[1];
+    log("SKYT_MINT", env.SKYT_MINT);
 
     log("step", "2/7 initialize protocol (admin + settlement authority)");
-    sh("npm run usdc:init", env);
+    sh("npm run skyt:init", env);
 
-    log("step", "3/7 faucet USDC to admin wallet");
-    sh(`npm run usdc:faucet -- ${admin.publicKey.toBase58()} 70000`, env);
+    log("step", "3/7 issue SKYT through the local demo mint authority");
+    sh(`spl-token mint ${env.SKYT_MINT} 70000 ${admin.publicKey.toBase58()} --url ${LOCAL_RPC}`, env);
 
     log("step", "4/7 seed + fund + open city markets");
-    sh("npm run usdc:seed", env);
+    sh("npm run skyt:seed", env);
 
     log("step", "4b/7 V1 protection markets seeded; options-chain creation is not part of SkyHedge.");
   }
 
   const protocol = (await accounts["protocolConfig"].fetch(protocolAddress)) as unknown as { nextMarketId: { toNumber: () => number } };
   const [marketAddress] = marketPda(protocolAddress, protocol.nextMarketId.toNumber() - 1);
-  log("step", `5/7 fund extra ${FUND_EXTRA_USDC} USDC into market ${marketAddress.toBase58()}`);
+  log("step", `5/7 fund extra ${FUND_EXTRA_SKYT} SKYT into market ${marketAddress.toBase58()}`);
 
-  const mint = new PublicKey(env.USDC_MINT);
+  const mint = new PublicKey(env.SKYT_MINT);
   const adminAta = (await getOrCreateAssociatedTokenAccount(connection, admin, mint, admin.publicKey)).address;
   const market = (await accounts["market"].fetch(marketAddress)) as unknown as { status: unknown; premiumRateBps: number; totalShares: { toString: () => string }; protectedAmount: { toString: () => string } };
   log("market state", { city: "last-seeded", status: JSON.stringify(market.status), premiumRateBps: market.premiumRateBps, totalShares: market.totalShares.toString() });
 
-  const TARGET_POOL_USDC = 5_000 * UNIT;
-  if (BigInt(market.totalShares.toString()) >= BigInt(TARGET_POOL_USDC)) {
-    log("fund", `pool already >= ${TARGET_POOL_USDC / UNIT} USDC — skipping`);
+  const TARGET_POOL_SKYT = 5_000 * UNIT;
+  if (BigInt(market.totalShares.toString()) >= BigInt(TARGET_POOL_SKYT)) {
+    log("fund", `pool already >= ${TARGET_POOL_SKYT / UNIT} SKYT — skipping`);
   } else {
     await program.methods
-      .fundPool(bn(FUND_EXTRA_USDC * UNIT))
+      .fundPool(bn(FUND_EXTRA_SKYT * UNIT))
       .accounts({ provider: admin.publicKey, market: marketAddress, providerTokenAccount: adminAta, collateralMint: mint, tokenProgram: await import("@solana/spl-token").then((m) => m.TOKEN_PROGRAM_ID) })
       .signers([admin])
       .rpc();
-    log("funded", `${FUND_EXTRA_USDC} USDC extra`);
+    log("funded", `${FUND_EXTRA_SKYT} SKYT extra`);
   }
 
   const positionAddress = PublicKey.findProgramAddressSync([Buffer.from("position"), marketAddress.toBuffer(), admin.publicKey.toBuffer()], new PublicKey(env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx"))[0];
@@ -144,11 +144,11 @@ async function main(): Promise<void> {
   } else {
     log("step", "6/7 open a protection position");
     await program.methods
-      .openPosition(bn(POSITION_USDC * UNIT))
+      .openPosition(bn(POSITION_SKYT * UNIT))
       .accounts({ owner: admin.publicKey, market: marketAddress, ownerTokenAccount: adminAta, collateralMint: mint, tokenProgram: await import("@solana/spl-token").then((m) => m.TOKEN_PROGRAM_ID) })
       .signers([admin])
       .rpc();
-    log("position", `${POSITION_USDC} USDC protected @ ${market.premiumRateBps / 100}%`);
+    log("position", `${POSITION_SKYT} SKYT protected @ ${market.premiumRateBps / 100}%`);
   }
 
   log("step", "6b/7 wait for the position tx to finalize (indexer reads finalized only)");

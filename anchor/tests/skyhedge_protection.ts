@@ -11,8 +11,8 @@ import {
 import { expect } from "chai";
 import { SkyhedgeProtection } from "../target/types/skyhedge_protection";
 
-const USDC_DECIMALS = 6;
-const UNIT = 1_000_000; // 1 USDC in base units
+const SKYT_DECIMALS = 6;
+const UNIT = 1_000_000; // 1 SKYT in base units
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 const randomHash = () => Array.from(Keypair.generate().publicKey.toBytes());
@@ -49,7 +49,7 @@ describe("skyhedge_protection localnet lifecycle (real token CPIs)", () => {
   const FUND = 5_000 * UNIT;
   const WITHDRAW = 1_000 * UNIT;
   const COVERAGE = 100 * UNIT;
-  // quote_probability 2000 bps -> rate = ceil(2000*1.15)+100 = 2400 bps -> premium 24 USDC, fee 1 USDC
+  // quote_probability 2000 bps -> rate = ceil(2000*1.15)+100 = 2400 bps -> premium 24 SKYT, fee 1 SKYT
   const PREMIUM = 24 * UNIT;
   const FEE = 1 * UNIT;
 
@@ -62,7 +62,7 @@ describe("skyhedge_protection localnet lifecycle (real token CPIs)", () => {
       const sig = await connection.requestAirdrop(wallet.publicKey, LAMPORTS_PER_SOL);
       await connection.confirmTransaction(sig, "confirmed");
     }
-    mint = await createMint(connection, admin, admin.publicKey, null, USDC_DECIMALS);
+    mint = await createMint(connection, admin, admin.publicKey, null, SKYT_DECIMALS);
     lpAta = (await getOrCreateAssociatedTokenAccount(connection, lp, mint, lp.publicKey)).address;
     buyerAta = (await getOrCreateAssociatedTokenAccount(connection, buyer, mint, buyer.publicKey)).address;
     buyer2Ata = (await getOrCreateAssociatedTokenAccount(connection, buyer2, mint, buyer2.publicKey)).address;
@@ -131,7 +131,7 @@ describe("skyhedge_protection localnet lifecycle (real token CPIs)", () => {
     expect(market.dataDeadline.toNumber()).to.eq(observationEnd + 7 * 24 * 60 * 60);
   });
 
-  it("LP funds 5,000 USDC then withdraws 1,000 pre-lock (token CPIs)", async () => {
+  it("LP funds 5,000 SKYT then withdraws 1,000 pre-lock (token CPIs)", async () => {
     await program.methods
       .fundPool(new BN(FUND))
       .accounts({ provider: lp.publicKey, market: marketPda, providerTokenAccount: lpAta, collateralMint: mint, tokenProgram: TOKEN_PROGRAM_ID })
@@ -151,7 +151,7 @@ describe("skyhedge_protection localnet lifecycle (real token CPIs)", () => {
     expect(lpPos.shares.toNumber()).to.eq(FUND - WITHDRAW);
   });
 
-  it("opens the market and sells 100 USDC coverage with correct premium/fee", async () => {
+  it("opens the market and sells 100 SKYT coverage with correct premium/fee", async () => {
     await program.methods.openMarket().accounts({ admin: admin.publicKey, market: marketPda }).signers([admin]).rpc();
 
     const before = Number((await getAccount(connection, buyerAta)).amount);

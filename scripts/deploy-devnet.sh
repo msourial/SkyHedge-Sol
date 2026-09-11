@@ -23,4 +23,4 @@ echo "== Deploying to Devnet =="
 (cd anchor && anchor deploy --provider.cluster devnet)
 
 echo "== Verifying on-chain =="
-npm run usdc:status
+npm run skyt:status

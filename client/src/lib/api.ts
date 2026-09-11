@@ -31,8 +31,8 @@ export function mm(value: number | null | undefined): string {
   return `${value.toLocaleString("en-US", { maximumFractionDigits: 1 })} mm`;
 }
 
-export function usdcDisplay(base: string | number | bigint | null | undefined): string {
+export function skytDisplay(base: string | number | bigint | null | undefined): string {
   if (base === null || base === undefined) return "—";
   const value = typeof base === "bigint" ? base : BigInt(String(base));
-  return `${(Number(value) / 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 })} USDC`;
+  return `${(Number(value) / 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 })} SKYT`;
 }

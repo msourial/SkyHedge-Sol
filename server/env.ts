@@ -7,7 +7,7 @@ export interface ServerEnv {
   solanaRpcUrl: string;
   programId: string;
   databaseUrl: string;
-  usdcMint: string | null;
+  skytMint: string | null;
   settlementKeypairPath: string | null;
   noaaToken: string | null;
 }
@@ -41,7 +41,7 @@ export function loadEnv(): ServerEnv {
   if (production) {
     const chainRequired = [
       ["SOLANA_RPC_URL", process.env.SOLANA_RPC_URL],
-      ["USDC_MINT", process.env.USDC_MINT],
+      ["SKYT_MINT", process.env.SKYT_MINT],
       ["SETTLEMENT_AUTHORITY_KEYPAIR", process.env.SETTLEMENT_AUTHORITY_KEYPAIR],
     ] as const;
     const missing = chainRequired.filter(([, value]) => !value).map(([key]) => key);
@@ -50,7 +50,7 @@ export function loadEnv(): ServerEnv {
     }
   } else {
     if (!process.env.SOLANA_RPC_URL) console.warn("[env] SOLANA_RPC_URL not set; defaulting to public devnet (rate limits apply)");
-    if (!process.env.USDC_MINT) console.warn("[env] USDC_MINT not set; position/quote flow assumes the default demo mint");
+    if (!process.env.SKYT_MINT) console.warn("[env] SKYT_MINT not set; position/quote flow is unavailable");
   }
 
   if (!process.env.NOAA_TOKEN) console.warn("[env] NOAA_TOKEN not set; weather endpoints will return DATA_UNAVAILABLE");
@@ -62,7 +62,7 @@ export function loadEnv(): ServerEnv {
     solanaRpcUrl: process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com",
     programId: process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx",
     databaseUrl,
-    usdcMint: process.env.USDC_MINT ?? null,
+    skytMint: process.env.SKYT_MINT ?? null,
     settlementKeypairPath: process.env.SETTLEMENT_AUTHORITY_KEYPAIR ?? null,
     noaaToken: process.env.NOAA_TOKEN ?? null,
   };

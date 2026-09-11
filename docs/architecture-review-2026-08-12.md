@@ -13,5 +13,5 @@
 
 - Run local-validator integration tests that exercise the actual token CPIs before Devnet deployment.
 - Register generated Anchor IDL/client transaction builders before enabling transaction endpoints.
-- Configure `NOAA_TOKEN`, a dedicated settlement-service signer, Devnet USDC mint, and PostgreSQL persistence.
+- Configure `NOAA_TOKEN`, a dedicated settlement-service signer, Devnet SKYT mint, and optional PostgreSQL persistence.
 - Complete external security review before any non-test-value use.

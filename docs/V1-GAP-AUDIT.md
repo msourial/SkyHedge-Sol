@@ -30,7 +30,7 @@ Audited: 2026-09-10
 ### V1 protocol integrity
 
 - The active routes and settlement path are now NOAA-only and restricted to New York, Miami, and Chicago. Legacy options, governance, staking, demo-wallet, and WeatherXM implementation files have been removed. Historic database columns still need a final removal migration before V1 release.
-- The committed README and `.env.example` still describe six-decimal USDC, while the V1 product plan specifies six-decimal SKYT. Resolve the collateral/mint decision before minting or deploying.
+- The six-decimal Devnet SKYT mint is created at `3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g`, with the protocol-admin wallet as mint authority. Initial supply remains zero until the owner approves issuance.
 - Contract and local-validator test evidence is still needed for controls, exposure, funding/withdrawal, payout/refund, fee, close, and replay cases specified in the V1 plan.
 
 ### Service and transaction work
@@ -47,5 +47,4 @@ Do not market the public URL as a live protection protocol until the Devnet prog
 ## Inputs required from the project owner
 
 1. NOAA CDO token (created by the owner using their email at NOAA; never paste it into Git).
-2. A decision to use **SKYT** as specified in V1 or intentionally change the specification to **USDC**.
-3. Hosting choice for the always-on NOAA settlement worker. A static Vercel site alone cannot run the durable worker.
+2. Hosting choice for the always-on NOAA settlement worker. A static Vercel site alone cannot run the durable worker.

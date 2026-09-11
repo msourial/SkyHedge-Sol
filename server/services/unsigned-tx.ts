@@ -47,14 +47,14 @@ export class UnsignedTransactionBuilder {
         tx = action === "fund_pool"
           ? await this.program.methods.fundPool(amountBn).accounts({ provider: wallet, protocol: protocolAddress, market, vault, providerTokenAccount, liquidityPosition, collateralMint: this.mint, tokenProgram }).transaction()
           : await this.program.methods.withdrawLiquidity(amountBn).accounts({ provider: wallet, protocol: protocolAddress, market, vault, providerTokenAccount, liquidityPosition, collateralMint: this.mint, tokenProgram }).transaction();
-        return this.finalize(action, marketAddress, walletAddress, tx, `${action === "fund_pool" ? "Fund" : "Withdraw"} ${amount} USDC ${action === "fund_pool" ? "into" : "from"} the market pool`);
+        return this.finalize(action, marketAddress, walletAddress, tx, `${action === "fund_pool" ? "Fund" : "Withdraw"} ${amount} SKYT ${action === "fund_pool" ? "into" : "from"} the market pool`);
       }
       case "open_position": {
         const ownerTokenAccount = await getAssociatedTokenAddress(this.mint, wallet);
         const [position] = PublicKey.findProgramAddressSync([Buffer.from("position"), market.toBuffer(), wallet.toBuffer()], this.programId);
         const protectedAmount = requireAmount(action, amount);
         tx = await this.program.methods.openPosition(protectedAmount).accounts({ owner: wallet, protocol: protocolAddress, market, vault, ownerTokenAccount, position, collateralMint: this.mint, tokenProgram }).transaction();
-        return this.finalize(action, marketAddress, walletAddress, tx, `Buy ${amount} USDC of rainfall coverage (fixed payout)`);
+        return this.finalize(action, marketAddress, walletAddress, tx, `Buy ${amount} SKYT of rainfall coverage (fixed payout)`);
       }
       case "claim_payout":
       case "claim_premium_refund": {
@@ -86,7 +86,7 @@ export class UnsignedTransactionBuilder {
 type BNInstance = InstanceType<typeof BN>;
 
 function requireAmount(action: TxAction, amount: string | undefined): BNInstance {
-  if (!amount) throw new Error(`${action} requires an amount in USDC base units`);
+  if (!amount) throw new Error(`${action} requires an amount in SKYT base units`);
   if (!/^\d+$/.test(amount)) throw new Error(`${action} amount must be a positive integer`);
   const value = new BN(amount);
   if (value.isZero()) throw new Error(`${action} amount must be greater than zero`);
