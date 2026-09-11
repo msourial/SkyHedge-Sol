@@ -14,7 +14,7 @@ import { AnchorIndexer } from "./services/solana-indexer";
 import { UnsignedTransactionBuilder, type TxAction } from "./services/unsigned-tx";
 import { SettlementRunner } from "./services/settlement";
 import { WeatherXmProvider } from "./services/weatherxm";
-import { AGRICULTURAL_MARKETS, calendarMonthlyWindow, weeklyFridayWindow } from "../shared/agricultural-markets";
+import { agriculturalMarketBySlug, AGRICULTURAL_MARKETS, calendarMonthlyWindow, weeklyFridayWindow } from "../shared/agricultural-markets";
 
 const provider = new NoaaRainfallProvider();
 const quotes = new RainfallQuoteEngine(provider);
@@ -219,9 +219,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/weatherxm/:city/latest", async (req, res) => {
     if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
-    const city = citySchema.safeParse(req.params.city);
-    if (!city.success) return res.status(400).json({ error: "unknown SkyHedge city" });
-    try { return res.json(await weatherXm.latest(city.data)); }
+    const city = req.params.city;
+    if (!(city in NOAA_STATIONS) && !agriculturalMarketBySlug(city)) return res.status(400).json({ error: "UNKNOWN_MARKET_LOCATION" });
+    try { return res.json(await weatherXm.latest(city as SkyHedgeCity)); }
     catch (error) { return dataUnavailable(res, error); }
   });
 
