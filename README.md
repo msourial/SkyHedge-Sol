@@ -38,7 +38,7 @@ Trust model: the server builds unsigned `VersionedTransaction`s and the wallet s
 
 - Node 22+, npm
 - solana-cli 2.x, anchor-cli 0.30, Rust `nightly-2024-08-01`
-- A Neon Postgres instance (or local pg) for `DATABASE_URL`
+- A WeatherXM Pro API key only if you want supplemental live WeatherXM context; it is never used for settlement.
 - Phantom or Solflare wallet set to Devnet
 
 ## Setup
@@ -60,6 +60,7 @@ Required env:
 | `SETTLEMENT_AUTHORITY_KEYPAIR` | Path to the settlement authority keypair (`anchor/keys/settlement-authority.json`) |
 | `ANTHROPIC_API_KEY` | Optional — AI advisory enrichment |
 | `SKYT_MINT` | Mint address for the six-decimal SKYT test token |
+| `WEATHERXM_API_KEY` | Optional server-side WeatherXM Pro key for supplemental live context; never a VITE variable and never a settlement source |
 
 If any weather provider is unreachable or a key is missing, the API returns `DATA_UNAVAILABLE` (HTTP 503). It never creates fallback weather observations.
 
@@ -105,6 +106,7 @@ The prepared program ID is `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx`; its d
 | `GET /api/markets` | Indexed markets (falls back to seed catalog while empty) |
 | `GET /api/weather/:city` `?start&end` | NOAA evidence for a window |
 | `GET /api/weather/:city/forecast` | NOAA forecast for a window |
+| `GET /api/weatherxm/:city/latest` | Supplemental nearest-station WeatherXM live observation; never settlement eligible |
 | `POST /api/quotes` | Premium quote (city, window, threshold, operator, amount) |
 | `POST /api/advisory` | Structured advisory (city, risk, threshold, amount) |
 | `GET /api/portfolio/:wallet` | Indexer-backed positions (never simulated) |

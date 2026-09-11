@@ -13,6 +13,7 @@ import { cityIndexState, allCityIndexStates, weeklyHistory } from "./services/we
 import { AnchorIndexer } from "./services/solana-indexer";
 import { UnsignedTransactionBuilder, type TxAction } from "./services/unsigned-tx";
 import { SettlementRunner } from "./services/settlement";
+import { WeatherXmProvider } from "./services/weatherxm";
 
 const provider = new NoaaRainfallProvider();
 const quotes = new RainfallQuoteEngine(provider);
@@ -21,6 +22,7 @@ const db = createDb();
 const indexer = new AnchorIndexer(db);
 const unsignedTx = new UnsignedTransactionBuilder();
 const settlement = new SettlementRunner(db);
+const weatherXm = new WeatherXmProvider();
 const programId = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const citySchema = z.enum(Object.keys(NOAA_STATIONS) as [SkyHedgeCity, ...SkyHedgeCity[]]);
 const quoteSchema = z.object({ city: citySchema, observationStart: z.string().date(), observationEnd: z.string().date(), thresholdMm: z.number().positive(), operator: z.enum(["gt", "gte", "lt", "lte"]), protectedAmount: z.string().regex(/^\d+$/) });
@@ -55,6 +57,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         weather: {
           status: process.env.NOAA_TOKEN ? "configured" : "degraded",
           noaa: process.env.NOAA_TOKEN ? "configured" : "missing",
+          weatherXm: process.env.WEATHERXM_API_KEY ? "configured" : "missing",
         },
         settlement: {
           status: process.env.SETTLEMENT_AUTHORITY_KEYPAIR ? "configured" : "missing",
@@ -199,6 +202,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cumulativeMm = cumulativeMillimeters(deduped);
       return res.json({ source: "NOAA-forecast", city: city.data, stationId: NOAA_STATIONS[city.data].stationId, start: range.data.start, end: range.data.end, records: deduped, cumulativeMm });
     } catch (error) { return dataUnavailable(res, error); }
+  });
+
+  app.get("/api/weatherxm/:city/latest", async (req, res) => {
+    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
+    const city = citySchema.safeParse(req.params.city);
+    if (!city.success) return res.status(400).json({ error: "unknown SkyHedge city" });
+    try { return res.json(await weatherXm.latest(city.data)); }
+    catch (error) { return dataUnavailable(res, error); }
   });
 
   app.post("/api/quotes", async (req, res) => {

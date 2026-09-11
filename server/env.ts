@@ -10,6 +10,7 @@ export interface ServerEnv {
   skytMint: string | null;
   settlementKeypairPath: string | null;
   noaaToken: string | null;
+  weatherXmApiKey: string | null;
 }
 
 const NETWORKS: readonly SolanaNetwork[] = ["localnet", "devnet", "mainnet-beta"];
@@ -54,6 +55,7 @@ export function loadEnv(): ServerEnv {
   }
 
   if (!process.env.NOAA_TOKEN) console.warn("[env] NOAA_TOKEN not set; weather endpoints will return DATA_UNAVAILABLE");
+  if (!process.env.WEATHERXM_API_KEY) console.warn("[env] WEATHERXM_API_KEY not set; supplemental WeatherXM evidence is unavailable");
 
   return {
     port,
@@ -65,5 +67,6 @@ export function loadEnv(): ServerEnv {
     skytMint: process.env.SKYT_MINT ?? null,
     settlementKeypairPath: process.env.SETTLEMENT_AUTHORITY_KEYPAIR ?? null,
     noaaToken: process.env.NOAA_TOKEN ?? null,
+    weatherXmApiKey: process.env.WEATHERXM_API_KEY ?? null,
   };
 }
