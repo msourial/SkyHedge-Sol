@@ -3,16 +3,17 @@ import { CITY_INDEX, cityByHash, cityBySlug, cityHash, upcomingWeeklyWindows, we
 import { NOAA_STATIONS } from "./noaa";
 import { searchCities } from "./city-index";
 
-describe("City registry (12 global cities, GHCN/GSOD resolution, climate normals)", () => {
-  it("commits exactly 12 index cities with unique slugs", () => {
-    expect(CITY_INDEX.length).to.eq(12);
+describe("V1 city registry (three NOAA-pinned US cities)", () => {
+  it("commits exactly New York, Miami, and Chicago", () => {
+    expect(CITY_INDEX.length).to.eq(3);
     const slugs = CITY_INDEX.map((c) => c.slug);
+    expect(slugs).to.have.members(["new-york", "miami", "chicago"]);
     expect(new Set(slugs).size).to.eq(slugs.length);
   });
 
-  it("has GHCN/GSOD station ids and 12 monthly normals per city", () => {
+  it("has GHCN station ids and 12 monthly normals per city", () => {
     for (const city of CITY_INDEX) {
-      expect(city.noaaDataset, city.slug).to.be.oneOf(["GHCND", "GSOD"]);
+      expect(city.noaaDataset, city.slug).to.eq("GHCND");
       expect(city.noaaStationId, city.slug).to.match(/^(GHCND|GSOD):[A-Z0-9]+$/);
       expect(city.monthlyNormalsMm.length, city.slug).to.eq(12);
       expect(city.monthlyNormalsMm.every((mm) => mm >= 0), city.slug).to.eq(true);
@@ -33,9 +34,9 @@ describe("City registry (12 global cities, GHCN/GSOD resolution, climate normals
   });
 
   it("resolves slugs and on-chain city hashes", () => {
-    expect(cityBySlug("london")?.name).to.eq("London");
+    expect(cityBySlug("miami")?.name).to.eq("Miami");
     expect(cityBySlug("nope")).to.be.undefined;
-    expect(cityByHash(cityHash("tokyo"))?.slug).to.eq("tokyo");
+    expect(cityByHash(cityHash("chicago"))?.slug).to.eq("chicago");
   });
 
   it("computes weekly windows as Monday-to-Monday UTC", () => {
@@ -47,9 +48,9 @@ describe("City registry (12 global cities, GHCN/GSOD resolution, climate normals
   });
 
   it("prorates window normals by day overlap", () => {
-    const mumbai = cityBySlug("mumbai")!;
+    const miami = cityBySlug("miami")!;
     const fullWeek = upcomingWeeklyWindows(new Date("2026-06-01T00:00:00Z"), 1)[0];
-    const weekNormal = windowNormalMm(mumbai, fullWeek.start.getTime(), fullWeek.end.getTime());
+    const weekNormal = windowNormalMm(miami, fullWeek.start.getTime(), fullWeek.end.getTime());
     expect(weekNormal).to.be.greaterThan(0);
   });
 });
@@ -61,26 +62,16 @@ describe("City search index", () => {
   });
 
   it("ranks an exact name match first with a perfect score", () => {
-    const results = searchCities("london");
-    expect(results[0].slug).to.eq("london");
+    const results = searchCities("miami");
+    expect(results[0].slug).to.eq("miami");
     expect(results[0].score).to.eq(100);
   });
 
-  it("resolves aliases (nyc, sf-like city abbreviations, vegas-style nicknames)", () => {
+  it("resolves the V1 New York alias", () => {
     expect(searchCities("nyc")[0].slug).to.eq("new-york");
-    expect(searchCities("bombay")[0].slug).to.eq("mumbai");
-    expect(searchCities("japan")[0].slug).to.eq("tokyo");
-  });
-
-  it("matches countries and country codes", () => {
-    expect(searchCities("brazil")[0].slug).to.eq("sao-paulo");
-    expect(searchCities("ng")[0].slug).to.eq("lagos");
-    expect(searchCities("australia")[0].slug).to.eq("sydney");
   });
 
   it("fuzzily matches typos against city names", () => {
-    expect(searchCities("sao paulo")[0].slug).to.eq("sao-paulo");
-    expect(searchCities("singapre")[0].slug).to.eq("singapore");
     expect(searchCities("new yrok")[0].slug).to.eq("new-york");
   });
 

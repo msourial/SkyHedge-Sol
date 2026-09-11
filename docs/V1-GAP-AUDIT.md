@@ -29,9 +29,7 @@ Audited: 2026-09-10
 
 ### V1 protocol integrity
 
-- The server still contains legacy option-chain, staking, and governance services/routes. They are not reachable through the active UI but must be deleted or retired before V1 release.
-- Server city and NOAA registries still include locations beyond New York, Miami, and Chicago. Restrict the API and settlement allowlist to those three V1 cities.
-- The server has WeatherXM-era evidence fields and a `NOAA+WeatherXM` health label. V1 must make NOAA the only final settlement source and remove those fields/claims.
+- The active routes and settlement path are now NOAA-only and restricted to New York, Miami, and Chicago. Unused legacy implementation files and database columns still need a final removal migration before V1 release.
 - The committed README and `.env.example` still describe six-decimal USDC, while the V1 product plan specifies six-decimal SKYT. Resolve the collateral/mint decision before minting or deploying.
 - Contract and local-validator test evidence is still needed for controls, exposure, funding/withdrawal, payout/refund, fee, close, and replay cases specified in the V1 plan.
 

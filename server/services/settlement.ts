@@ -20,7 +20,7 @@ interface MarketState { address: string; marketId: number; status: string; resul
 
 /**
  * SettlementRunner: drives AWAITING_SETTLEMENT markets through deterministic
- * NOAA/WXM consensus → submit_weather_observation + settle_market, or
+ * NOAA final observations → submit_weather_observation + settle_market, or
  * mark_data_unavailable after the data deadline. Idempotent: every action
  * re-checks on-chain status first. Never synthesizes weather values.
  */
@@ -108,7 +108,7 @@ export class SettlementRunner {
 
   private async deadlineEvidence(marketAddress: string): Promise<ConsensusResult["evidence"]> {
     const generatedAt = new Date().toISOString();
-    const evidence = { methodologyVersion: "methodology-v1", city: "unknown", windowStart: "", windowEnd: "", noaa: { stationId: "", cumulativeMm: 0, records: [] }, wxm: { cumulativeMm: null, stations: [], perStationMm: [] }, deltaMm: null, toleranceMm: null, verdict: "DATA_UNAVAILABLE" as const, rule: "data deadline exceeded", sourceHash: "", generatedAt };
+    const evidence = { methodologyVersion: "methodology-v1", city: "unknown" as SkyHedgeCity, windowStart: "", windowEnd: "", noaa: { stationId: "", cumulativeMm: 0, records: [] }, verdict: "DATA_UNAVAILABLE" as const, rule: "NOAA final observation" as const, sourceHash: "", generatedAt };
     evidence.sourceHash = canonicalHash({ marketAddress, reason: "data_deadline_exceeded", generatedAt });
     return evidence;
   }
@@ -123,9 +123,9 @@ export class SettlementRunner {
       methodologyVersion: evidence.methodologyVersion,
       verdict,
       noaaMm: String(evidence.noaa.cumulativeMm),
-      wxmMm: evidence.wxm.cumulativeMm === null ? null : String(evidence.wxm.cumulativeMm),
-      deltaMm: evidence.deltaMm === null ? null : String(evidence.deltaMm),
-      toleranceMm: evidence.toleranceMm === null ? null : String(evidence.toleranceMm),
+      wxmMm: null,
+      deltaMm: null,
+      toleranceMm: null,
       evidence,
     }).onConflictDoNothing();
   }

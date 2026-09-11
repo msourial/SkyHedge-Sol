@@ -1,6 +1,6 @@
 # SkyHedge
 
-Devnet Solana software for **fixed-payout cumulative-rainfall protection markets**. Buyers pay a premium for a fixed payout if a station's cumulative rainfall crosses a threshold; liquidity providers earn those premiums. Settlement is driven by a **dual-source oracle consensus**: NOAA is final, WeatherXM verifies, and any failure resolves `DATA_UNAVAILABLE` — the system never synthesizes weather values.
+Devnet Solana software for **fixed-payout cumulative-rainfall protection markets**. Buyers pay a premium for a fixed payout if a station's cumulative rainfall crosses a threshold; liquidity providers earn those premiums. Settlement uses one normalized **NOAA final observation**; unavailable source data resolves `DATA_UNAVAILABLE` — the system never synthesizes weather values.
 
 `Weather risk → protection contract → Solana → deterministic NOAA settlement → payout`
 
@@ -10,7 +10,7 @@ Devnet Solana software for **fixed-payout cumulative-rainfall protection markets
 - Collateral: six-decimal `USDC` Devnet SPL test token.
 - Capacity per market: 10,000 USDC liquidity, 8,000 USDC exposure, 500 USDC per wallet.
 - Pricing: ten analogous NOAA windows plus a 30%-weighted NOAA forecast signal; expected payout, 15% risk loading, and a 1% protocol fee.
-- Settlement: NOAA final + WeatherXM verification within `max(5mm, 15% of NOAA)`; source hash committed on chain. If final NOAA data is unavailable after a 7-day grace window, the market enters `DATA_UNAVAILABLE` and buyers can reclaim premiums.
+- Settlement: NOAA is the sole final source; its source hash is committed on chain. If final NOAA data is unavailable after a 7-day grace window, the market enters `DATA_UNAVAILABLE` and buyers can reclaim premiums.
 - AI advisory is advisory-only: it returns structured parameters and requires explicit user approval before an unsigned transaction can be prepared.
 
 SkyHedge is not an options exchange, futures market, staking product, multi-chain app, or automated trading system.
@@ -21,8 +21,7 @@ SkyHedge is not an options exchange, futures market, staking product, multi-chai
 client/            React + Vite SPA (wallet-adapter, sign & send of unsigned txs)
 server/            Express API + services
   services/noaa.ts           NOAA CDO rainfall provider
-  services/weatherxm.ts      WeatherXM Pro dual-source verifier
-  services/consensus.ts      deterministic agree/disagree rule
+  services/consensus.ts      NOAA-only deterministic evidence builder
   services/quote-engine.ts   pricing (analogous windows + forecast)
   services/solana-indexer.ts finalized-state indexer (30s sweep)
   services/unsigned-tx.ts    base64 VersionedTransaction builder (6 actions)
@@ -56,7 +55,6 @@ Required env:
 | --- | --- |
 | `DATABASE_URL` | Neon Postgres connection string |
 | `NOAA_TOKEN` | NOAA Climate Data Online token (historical observations + forecast) |
-| `WXM_API_KEY` | WeatherXM Pro API key (settlement verification) |
 | `SOLANA_RPC_URL` | Default `https://api.devnet.solana.com` |
 | `SKYHEDGE_PROGRAM_ID` | Default `7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr` |
 | `SETTLEMENT_AUTHORITY_KEYPAIR` | Path to the settlement authority keypair (`anchor/keys/settlement-authority.json`) |
@@ -118,9 +116,9 @@ The program ID is `7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr`; its deployment
 
 Unsigned actions: `fund_pool`, `withdraw_liquidity`, `open_position`, `claim_payout`, `claim_premium_refund`, `redeem_closed_liquidity`. All amounts are in USDC base units (6 decimals).
 
-## Consensus rule (locked)
+## Settlement rule (locked)
 
-`shared/methodology-v1.json` pins the settlement rule. NOAA is final; WXM verifies; agree iff `|NOAA − WXM| ≤ max(5mm, 15% of NOAA)`; disagreement or any source failure → `DATA_UNAVAILABLE` after the on-chain deadline; never synthesize a value.
+`shared/methodology-v1.json` pins the settlement rule. NOAA is the sole final source; its normalized cumulative-rainfall observation is committed with a source hash. Source failure → `DATA_UNAVAILABLE` after the on-chain deadline; never synthesize a value.
 
 ## Security posture
 
@@ -132,5 +130,5 @@ Unsigned actions: `fund_pool`, `withdraw_liquidity`, `open_position`, `claim_pay
 ## Known limits
 
 - Devnet faucet airdrops are often rate-limited (429); retry later or use faucet.solana.com.
-- Settlement to consensus requires `NOAA_TOKEN` + `WXM_API_KEY`; without them, markets stay pending and honest `DATA_UNAVAILABLE` paths apply.
+- Settlement requires `NOAA_TOKEN`; without it, markets stay pending and honest `DATA_UNAVAILABLE` paths apply.
 - `seed-markets.ts` uses a fixed 2,000 bps quote probability per city; real quote-engine seeding needs `NOAA_TOKEN`.

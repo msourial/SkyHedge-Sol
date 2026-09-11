@@ -10,7 +10,6 @@ export interface ServerEnv {
   usdcMint: string | null;
   settlementKeypairPath: string | null;
   noaaToken: string | null;
-  wxmApiKey: string | null;
 }
 
 const NETWORKS: readonly SolanaNetwork[] = ["localnet", "devnet", "mainnet-beta"];
@@ -55,7 +54,6 @@ export function loadEnv(): ServerEnv {
   }
 
   if (!process.env.NOAA_TOKEN) console.warn("[env] NOAA_TOKEN not set; weather endpoints will return DATA_UNAVAILABLE");
-  if (!process.env.WXM_API_KEY) console.warn("[env] WXM_API_KEY not set; settlement consensus is degraded to NOAA-only");
 
   return {
     port,
@@ -67,6 +65,5 @@ export function loadEnv(): ServerEnv {
     usdcMint: process.env.USDC_MINT ?? null,
     settlementKeypairPath: process.env.SETTLEMENT_AUTHORITY_KEYPAIR ?? null,
     noaaToken: process.env.NOAA_TOKEN ?? null,
-    wxmApiKey: process.env.WXM_API_KEY ?? null,
   };
 }

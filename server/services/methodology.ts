@@ -4,9 +4,9 @@ import * as path from "node:path";
 export interface Methodology {
   version: string;
   updatedAt: string;
-  consensus: { finalSource: string; verificationSource: string; agreementToleranceMm: number; agreementTolerancePct: number; rule: string; disagreementAction: string };
+  settlement: { finalSource: string; rule: string; unavailableAction: string };
   observation: { metric: string; units: string; window: string };
-  cities: Record<string, { noaaStation: string; wxmDiscovery: { radiusKm: number; minQod: number; maxStations: number; aggregation: string } }>;
+  cities: Record<string, { noaaStation: string }>;
 }
 
 let cached: Methodology | null = null;

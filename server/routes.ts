@@ -8,11 +8,9 @@ import { MARKET_LIMITS, RainfallQuoteEngine, type TriggerOperator } from "./serv
 import { RainfallConsensusService } from "./services/consensus";
 import { createDb } from "./db";
 import { settlementEvidence, markets as marketsTable, protectionPositions as protectionPositionsTable, liquidityPositions as liquidityPositionsTable } from "../shared/schema";
-import { cityHash, CITY_INDEX, cityBySlug, windowNormalMm, upcomingWeeklyWindows, type CityIndex } from "../shared/cities";
+import { cityHash, cityBySlug } from "../shared/cities";
 import { cityIndexState, allCityIndexStates, weeklyHistory } from "./services/weather-index";
-import { buildChainGrid } from "./services/chain-view";
-import { portfolioStats, stakingPools, stakingUser } from "./services/dashboard-stats";
-import { GovernanceStore } from "./services/governance";
+import { portfolioStats } from "./services/dashboard-stats";
 import { AnchorIndexer } from "./services/solana-indexer";
 import { UnsignedTransactionBuilder, type TxAction } from "./services/unsigned-tx";
 import { SettlementRunner } from "./services/settlement";
@@ -25,7 +23,6 @@ const indexer = new AnchorIndexer(db);
 const unsignedTx = new UnsignedTransactionBuilder();
 const settlement = new SettlementRunner(db);
 const programId = "7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr";
-const governance = new GovernanceStore();
 const citySchema = z.enum(Object.keys(NOAA_STATIONS) as [SkyHedgeCity, ...SkyHedgeCity[]]);
 const quoteSchema = z.object({ city: citySchema, observationStart: z.string().date(), observationEnd: z.string().date(), thresholdMm: z.number().positive(), operator: z.enum(["gt", "gte", "lt", "lte"]), protectedAmount: z.string().regex(/^\d+$/) });
 
@@ -52,14 +49,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       timestamp: new Date().toISOString(),
       network: process.env.SOLANA_NETWORK ?? "devnet",
       programId,
-      settlementSource: "NOAA+WeatherXM",
+      settlementSource: "NOAA",
       generatedData: false,
       checks: {
         database: { status: database, latencyMs: databaseLatencyMs, required: true },
         weather: {
-          status: process.env.NOAA_TOKEN && process.env.WXM_API_KEY ? "configured" : "degraded",
+          status: process.env.NOAA_TOKEN ? "configured" : "degraded",
           noaa: process.env.NOAA_TOKEN ? "configured" : "missing",
-          wxm: process.env.WXM_API_KEY ? "configured" : "missing",
         },
         settlement: {
           status: process.env.SETTLEMENT_AUTHORITY_KEYPAIR ? "configured" : "missing",
@@ -148,9 +144,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           methodologyVersion: result.evidence.methodologyVersion,
           verdict: result.evidence.verdict,
           noaaMm: String(result.evidence.noaa.cumulativeMm),
-          wxmMm: result.evidence.wxm.cumulativeMm === null ? null : String(result.evidence.wxm.cumulativeMm),
-          deltaMm: result.evidence.deltaMm === null ? null : String(result.evidence.deltaMm),
-          toleranceMm: result.evidence.toleranceMm === null ? null : String(result.evidence.toleranceMm),
+          wxmMm: null,
+          deltaMm: null,
+          toleranceMm: null,
           evidence: result.evidence,
         }).onConflictDoNothing();
       }
@@ -174,14 +170,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let history: Array<{ week: string; mm: number | null }> | null = null;
     try { history = await weeklyHistory(city); } catch { history = null; }
     return res.json({ ...state, weeklyHistoryMm: history });
-  });
-
-  app.get("/api/cities/:slug/chain", async (req, res) => {
-    const slug = z.string().min(2).max(32).safeParse(req.params.slug);
-    if (!slug.success) return res.status(400).json({ error: "a city slug is required" });
-    const grid = await buildChainGrid(slug.data);
-    if (!grid) return res.status(404).json({ error: "UNKNOWN_CITY", message: `no index for "${slug.data}"` });
-    return res.json(grid);
   });
 
   app.get("/api/markets/:id/evidence", async (req, res) => {
@@ -252,40 +240,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       return res.json({ wallet, source: "finalized-chain-indexer", indexed: false, positions: [], message: "Indexer state is not available yet; SkyHedge never substitutes mock positions." });
     }
-  });
-
-  app.get("/api/staking/pools", async (_req, res) => {
-    try {
-      return res.json({ pools: await stakingPools() });
-    } catch (error) { return dataUnavailable(res, error); }
-  });
-
-  app.get("/api/staking/user/:wallet", async (req, res) => {
-    const wallet = z.string().min(32).safeParse(req.params.wallet);
-    if (!wallet.success) return res.status(400).json({ error: "a wallet address is required" });
-    try {
-      return res.json(await stakingUser(wallet.data));
-    } catch (error) { return dataUnavailable(res, error); }
-  });
-
-  app.get("/api/governance/proposals", (_req, res) => {
-    res.json({ proposals: governance.list() });
-  });
-
-  app.post("/api/governance/proposals", (req, res) => {
-    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
-    const input = z.object({ poolId: z.string().min(1).max(64), title: z.string().min(3).max(200), description: z.string().min(3).max(2000) }).safeParse(req.body);
-    if (!input.success) return res.status(400).json({ error: "poolId, title, and description are required" });
-    res.status(201).json({ proposal: governance.create(input.data.poolId, input.data.title, input.data.description) });
-  });
-
-  app.post("/api/governance/vote", (req, res) => {
-    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
-    const input = z.object({ proposalId: z.string().min(1).max(64), support: z.boolean() }).safeParse(req.body);
-    if (!input.success) return res.status(400).json({ error: "proposalId and support are required" });
-    const updated = governance.vote(input.data);
-    if (!updated) return res.status(404).json({ error: "UNKNOWN_PROPOSAL", message: "no active proposal with that id" });
-    res.json({ proposal: updated });
   });
 
   app.post("/api/transactions/unsigned", async (req, res) => {
