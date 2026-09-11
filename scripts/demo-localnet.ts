@@ -81,7 +81,6 @@ async function ensureDeployed(): Promise<void> {
 
 async function main(): Promise<void> {
   const env: Record<string, string> = { SOLANA_RPC_URL: LOCAL_RPC };
-  let chainCreated = 0;
   await ensureValidator();
   await purgeDb();
   await ensureDeployed();
@@ -115,14 +114,7 @@ async function main(): Promise<void> {
     log("step", "4/7 seed + fund + open city markets");
     sh("npm run usdc:seed", env);
 
-    if (process.env.NOAA_TOKEN) {
-      log("step", "4b/7 create weekly options chains for all index cities");
-      const chainOutput = sh("npm run usdc:chains", env);
-      chainCreated = Number(chainOutput.match(/"created":\s*(\d+)/)?.[1] ?? 0);
-      log("chains created", chainCreated);
-    } else {
-      log("step", "4b/7 skipped (NOAA_TOKEN not set — chains require NOAA pricing)");
-    }
+    log("step", "4b/7 V1 protection markets seeded; options-chain creation is not part of SkyHedge.");
   }
 
   const protocol = (await accounts["protocolConfig"].fetch(protocolAddress)) as unknown as { nextMarketId: { toNumber: () => number } };
@@ -170,8 +162,8 @@ async function main(): Promise<void> {
   log("step", "7/7 indexer reconcile → portfolio in DB");
   const indexer = new AnchorIndexer(createDb());
   const db = createDb();
-  const expectedMarkets = 3 + (chainCreated > 0 ? chainCreated : 0);
-  log("indexer", `expecting ${expectedMarkets} markets (3 legacy seed + ${chainCreated} chain) in the index`);
+  const expectedMarkets = 3;
+  log("indexer", `expecting ${expectedMarkets} V1 protection markets in the index`);
 
   let result = await indexer.reconcile();
   for (let attempt = 0; attempt < 5; attempt++) {

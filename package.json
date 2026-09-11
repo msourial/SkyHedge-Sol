@@ -19,7 +19,6 @@
     "usdc:faucet": "tsx scripts/faucet-usdc.ts",
     "usdc:init": "tsx scripts/init-protocol.ts",
     "usdc:seed": "tsx scripts/seed-markets.ts",
-    "usdc:chains": "SOLANA_RPC_URL=http://127.0.0.1:8899 SOLANA_NETWORK=localnet tsx scripts/create-chains.ts",
     "usdc:status": "tsx scripts/status.ts",
     "usdc:deploy": "bash scripts/deploy-devnet.sh",
     "usdc:demo": "SOLANA_RPC_URL=http://127.0.0.1:8899 SOLANA_NETWORK=localnet tsx scripts/demo-localnet.ts",

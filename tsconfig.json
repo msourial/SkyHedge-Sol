@@ -14,15 +14,13 @@
     "server/services/noaa.ts",
     "server/services/city-index.ts",
     "server/services/quote-engine.ts",
-    "server/services/weatherxm.ts",
     "server/services/consensus.ts",
     "server/services/methodology.ts",
     "server/services/solana-indexer.ts",
     "server/services/unsigned-tx.ts",
     "server/services/settlement.ts",
     "server/services/settlement-constants.ts",
-    "scripts/demo-localnet.ts",
-    "scripts/create-chains.ts"
+    "scripts/demo-localnet.ts"
   ],
   "exclude": [
     "node_modules",

@@ -10,7 +10,6 @@ import { createDb } from "./db";
 import { settlementEvidence, markets as marketsTable, protectionPositions as protectionPositionsTable, liquidityPositions as liquidityPositionsTable } from "../shared/schema";
 import { cityHash, cityBySlug } from "../shared/cities";
 import { cityIndexState, allCityIndexStates, weeklyHistory } from "./services/weather-index";
-import { portfolioStats } from "./services/dashboard-stats";
 import { AnchorIndexer } from "./services/solana-indexer";
 import { UnsignedTransactionBuilder, type TxAction } from "./services/unsigned-tx";
 import { SettlementRunner } from "./services/settlement";
@@ -211,14 +210,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const request = parsed.data;
       const quote = await quotes.quote({ ...request, stationId: NOAA_STATIONS[request.city].stationId, protectedAmount: BigInt(request.protectedAmount), operator: request.operator as TriggerOperator });
       return res.json({ ...quote, premium: quote.premium.toString(), protocolFee: quote.protocolFee.toString(), protectedAmount: request.protectedAmount, source: "NOAA", explicitApprovalRequired: true });
-    } catch (error) { return dataUnavailable(res, error); }
-  });
-
-  app.get("/api/portfolio/stats", async (req, res) => {
-    const wallet = z.string().min(32).safeParse(req.query.wallet);
-    if (!wallet.success) return res.status(400).json({ error: "a wallet address is required" });
-    try {
-      return res.json(await portfolioStats(wallet.data));
     } catch (error) { return dataUnavailable(res, error); }
   });
 

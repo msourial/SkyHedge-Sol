@@ -8,7 +8,7 @@ Audited: 2026-09-10
 - **Devnet program:** the configured address `7thTyPBaVCEBL2z28ojTxfmrbNMydXV3EAgbYgrz7GKr` returns `AccountNotFound` from public Solana Devnet. No deployable program-keypair file is present in the repository; the required keypair is intentionally ignored.
 - **Weather credentials:** NOAA Climate Data Online requires a token. The repository has no `NOAA_TOKEN`, and therefore its final-observation and real quote paths must remain unavailable.
 - **Persistence:** no `DATABASE_URL` is configured. The finalized-slot indexer has nowhere durable to write markets, positions, evidence, events, or replay checkpoints.
-- **Local test state:** 38 server tests pass, but they include legacy chain-pricing, 12-city, WeatherXM consensus, staking, and in-memory governance tests. The Anchor integration suite could not start because an existing local validator owns port 8899; that process was left untouched.
+- **Local test state:** 13 V1-focused service tests pass. The Anchor integration suite could not start because an existing local validator owns port 8899; that process was left untouched.
 
 ## What is now aligned
 
@@ -29,7 +29,7 @@ Audited: 2026-09-10
 
 ### V1 protocol integrity
 
-- The active routes and settlement path are now NOAA-only and restricted to New York, Miami, and Chicago. Unused legacy implementation files and database columns still need a final removal migration before V1 release.
+- The active routes and settlement path are now NOAA-only and restricted to New York, Miami, and Chicago. Legacy options, governance, staking, demo-wallet, and WeatherXM implementation files have been removed. Historic database columns still need a final removal migration before V1 release.
 - The committed README and `.env.example` still describe six-decimal USDC, while the V1 product plan specifies six-decimal SKYT. Resolve the collateral/mint decision before minting or deploying.
 - Contract and local-validator test evidence is still needed for controls, exposure, funding/withdrawal, payout/refund, fee, close, and replay cases specified in the V1 plan.
 
