@@ -1,11 +1,13 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Activity, AlertTriangle, ArrowRight, Database, Droplets, FileCheck2, ShieldPlus, WalletCards } from "lucide-react";
+import { Activity, AlertTriangle, ArrowRight, Database, Droplets, FileCheck2, ShieldCheck, ShieldPlus, WalletCards } from "lucide-react";
 import type { EvidenceRow, Market, Portfolio, Quote } from "@/lib/types";
 import { api, apiUnavailable, mm, skytDisplay } from "@/lib/api";
 import { Card, EmptyState, Pill, SectionLabel, Stat } from "@/components/sky";
 import { cn } from "@/lib/utils";
+import { approveAndConfirm, explorerTx, initializeProtocolTransaction, isProtocolAdmin, issueSkytTransaction, protocolExists, SKYT_ISSUANCE } from "@/lib/admin";
+import { PROTOCOL_ADMIN } from "@/lib/solana";
 
 const MARKETS = [
   { id: "new-york", city: "New York", station: "USW00094728 · Central Park" },
@@ -59,6 +61,7 @@ export default function DashboardPage() {
       <p className="sky-section-label text-[var(--identity)]">DEVNET / NOAA-ONLY / PROTECTION PROTOCOL</p>
       <div className="mt-2 flex flex-wrap items-end justify-between gap-4"><div><h1 className="sky-display text-2xl font-bold leading-tight sm:text-4xl">Climate risk, <span className="text-[var(--identity)]">deterministically settled.</span></h1><p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">SkyHedge is fixed-payout rainfall protection—not a trading venue. Your wallet remains in control of every real transaction.</p></div><Pill tone="cyan">Signal online</Pill></div>
     </header>
+    <OwnerConsole />
     {marketQuery.isError && <DeploymentNotice />}
     <nav aria-label="Product sections" className="sky-scroll-x flex gap-2 border-b border-[var(--border)] pb-3">{TABS.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => switchTab(id)} className={cn("flex min-h-11 shrink-0 items-center gap-2 border px-3.5 text-sm transition-colors", tab === id ? "border-[var(--identity)] bg-[var(--identity-dim)] text-[var(--identity)]" : "border-transparent text-[var(--muted-foreground)] hover:border-[var(--border)] hover:text-[var(--foreground)]")}><Icon className="h-4 w-4" />{label}</button>)}</nav>
     {tab === "markets" && <Markets markets={marketQuery.data} onSelect={selectMarket} />}
@@ -67,6 +70,38 @@ export default function DashboardPage() {
     {tab === "portfolio" && <PortfolioView />}
     {tab === "evidence" && <Evidence />}
   </div>;
+}
+
+function OwnerConsole() {
+  const wallet = useWallet();
+  const [initialized, setInitialized] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState<"initialize" | "mint" | null>(null);
+  const [message, setMessage] = useState<{ tone: "green" | "red"; text: string; signature?: string } | null>(null);
+  const owner = isProtocolAdmin(wallet.publicKey);
+  useEffect(() => {
+    let active = true;
+    protocolExists().then((value) => active && setInitialized(value)).catch(() => active && setInitialized(null));
+    return () => { active = false; };
+  }, [wallet.publicKey?.toBase58()]);
+  if (!wallet.connected) return null;
+  if (!owner) return <div role="status" className="border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm text-[var(--muted-foreground)]">Connected wallet is not the configured protocol admin. Owner controls are restricted to {PROTOCOL_ADMIN.slice(0, 4)}…{PROTOCOL_ADMIN.slice(-4)}.</div>;
+  const run = async (kind: "initialize" | "mint") => {
+    if (!wallet.publicKey) return;
+    setBusy(kind); setMessage(null);
+    try {
+      const transaction = kind === "initialize" ? initializeProtocolTransaction(wallet.publicKey) : issueSkytTransaction(wallet.publicKey);
+      const signature = await approveAndConfirm(transaction, wallet);
+      setMessage({ tone: "green", text: kind === "initialize" ? "Protocol initialized on finalized Devnet." : "50,000 SKYT minted to your associated token account.", signature });
+      if (kind === "initialize") setInitialized(true);
+    } catch (error) { setMessage({ tone: "red", text: error instanceof Error ? error.message : "Wallet approval did not complete." }); }
+    finally { setBusy(null); }
+  };
+  return <section aria-labelledby="owner-console" className="border border-[var(--identity)]/40 bg-[var(--surface-1)] p-5 shadow-[0_0_40px_rgba(45,226,230,.05)]">
+    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="sky-section-label text-[var(--identity)]">Owner-only Devnet controls</p><h2 id="owner-console" className="sky-display mt-1 text-xl font-semibold">Initialize the real protocol.</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">Each action opens your connected wallet. Nothing is submitted until you approve it; final status is checked against Devnet.</p></div><Pill tone={initialized ? "green" : "amber"}>{initialized ? "Protocol finalized" : initialized === false ? "Initialization required" : "Checking Devnet"}</Pill></div>
+    <div className="mt-5 grid gap-3 lg:grid-cols-2"><Card className="p-4"><ShieldCheck className="h-5 w-5 text-[var(--identity)]" aria-hidden /><h3 className="mt-3 text-sm font-semibold">1. Initialize protocol</h3><p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">Pins the SKYT collateral mint, protocol PDA, fee vault, and separate settlement authority.</p><button disabled={busy !== null || initialized !== false} className="sky-btn-primary mt-4 min-h-11 w-full" onClick={() => run("initialize")}>{busy === "initialize" ? "Awaiting wallet…" : initialized ? "Protocol initialized" : "Approve initialization"}</button></Card><Card className="p-4"><WalletCards className="h-5 w-5 text-[var(--identity)]" aria-hidden /><h3 className="mt-3 text-sm font-semibold">2. Issue Devnet test collateral</h3><p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">Mints exactly {(Number(SKYT_ISSUANCE) / 1_000_000).toLocaleString()} SKYT with six decimals to your wallet.</p><button disabled={busy !== null || initialized !== true} className="sky-btn-primary mt-4 min-h-11 w-full" onClick={() => run("mint")}>{busy === "mint" ? "Awaiting wallet…" : "Approve 50,000 SKYT mint"}</button></Card></div>
+    <p className="mt-4 text-xs text-[var(--faint)]">Market seeding remains unavailable until this exact program is executable and the protocol PDA is finalized. It will never display invented market balances.</p>
+    {message && <p role="alert" className={cn("mt-4 border p-3 text-sm", message.tone === "green" ? "border-[var(--success)]/50 text-[var(--success)]" : "border-[var(--destructive)]/50 text-[var(--destructive-foreground)]")}>{message.text}{message.signature && <> <a className="underline" href={explorerTx(message.signature)} target="_blank" rel="noreferrer">View finalized transaction</a></>}</p>}
+  </section>;
 }
 
 function DeploymentNotice() { return <div role="status" className="flex gap-3 border border-[var(--warning)]/50 bg-[var(--warning-dim)] p-4 text-sm text-[var(--muted-foreground)]"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warning)]" /><p><strong className="text-[var(--foreground)]">Indexer pending.</strong> This public interface is live, but its data service is not configured here. Market, quote, portfolio, and evidence values stay unavailable rather than being simulated.</p></div>; }

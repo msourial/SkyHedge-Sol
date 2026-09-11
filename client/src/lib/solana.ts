@@ -3,6 +3,9 @@ import type { WalletContextState } from "@solana/wallet-adapter-react";
 
 export const RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 export const PROGRAM_ID = import.meta.env.VITE_SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
+export const PROTOCOL_ADMIN = import.meta.env.VITE_PROTOCOL_ADMIN ?? "DKA9RkGvaW4isyj5xdiZ2oGVUkD1UL64Ha1BazXZFD6y";
+export const SETTLEMENT_AUTHORITY = import.meta.env.VITE_SETTLEMENT_AUTHORITY ?? "AVe5ULAoAyDaXAPS7s2sAUJo7A2QmDuph9Nwyrm9v5Vh";
+export const SKYT_MINT = import.meta.env.VITE_SKYT_MINT ?? "3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g";
 
 export const connection = new Connection(RPC_URL, "confirmed");
 
