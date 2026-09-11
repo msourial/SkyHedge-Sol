@@ -26,4 +26,4 @@ NOAA is the only V1 data source. The service normalizes daily precipitation into
 
 ## Off-chain services
 
-PostgreSQL tables in `migrations/0000_skyhedge_chain_state.sql` store finalized chain state, slots, markets, positions, observations, events, quotes, and advisory sessions. The indexer reconciles finalized Solana slots. APIs expose markets, NOAA evidence, quotes, advisory matching, portfolios, and transaction-intent validation. The latter intentionally returns no fabricated transaction before a deployed Anchor IDL is registered.
+Solana PDAs and finalized transactions are the V1 system of record for markets, positions, observations, and claims. The initial UI reads those accounts directly from Devnet RPC. A PostgreSQL read model and finalized-slot indexer are optional later additions for faster history, analytics, and replay operations; they never control settlement or balances. APIs expose NOAA evidence, quotes, advisory matching, and transaction-intent validation. The latter intentionally returns no fabricated transaction before a deployed Anchor IDL is registered.
