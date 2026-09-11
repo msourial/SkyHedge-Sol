@@ -9,10 +9,12 @@ cd "$(dirname "$0")/.."
 
 WRITE_RPC="${SOLANA_DEPLOY_RPC_URL:-https://api.devnet.solana.com}"
 VERIFY_RPC="${SOLANA_RPC_URL:-$WRITE_RPC}"
+WRITE_TRANSPORT_ARGS=(--use-tpu-client)
+if [[ "${SOLANA_DEPLOY_USE_RPC:-false}" == "true" ]]; then WRITE_TRANSPORT_ARGS=(--use-rpc); fi
 PROGRAM_ID="5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx"
 PROGRAM_KEYPAIR="anchor/target/deploy/skyhedge_protection-keypair.json"
 PROGRAM_SO="anchor/target/deploy/skyhedge_protection.so"
-BUFFER_KEYPAIR="anchor/keys/devnet-deployment-buffer.json"
+BUFFER_KEYPAIR="${SOLANA_DEPLOY_BUFFER_KEYPAIR:-anchor/keys/devnet-deployment-buffer-v2.json}"
 
 fail() { echo "DEPLOYMENT FAILED: $*" >&2; exit 1; }
 trap 'fail "line $LINENO (exit $?)"' ERR
@@ -37,18 +39,23 @@ fi
 echo "== Buffer validation =="
 if test -f "$BUFFER_KEYPAIR"; then
   BUFFER_ADDRESS=$(solana address -k "$BUFFER_KEYPAIR")
-  if ! solana account "$BUFFER_ADDRESS" --url "$WRITE_RPC" --output json >/tmp/skyhedge-buffer.json 2>/dev/null; then
-    fail "configured buffer $BUFFER_ADDRESS is not present on Devnet; remove only that keypair and retry"
+  if solana account "$BUFFER_ADDRESS" --url "$WRITE_RPC" --output json >/tmp/skyhedge-buffer.json 2>/dev/null; then
+    rg -q 'BPFLoaderUpgradeab1e11111111111111111111111' /tmp/skyhedge-buffer.json || fail "buffer $BUFFER_ADDRESS is not owned by the upgradeable loader"
+    echo "Using validated buffer: $BUFFER_ADDRESS"
+  else
+    echo "Buffer keypair is new; the write step will create it on Devnet."
   fi
-  rg -q 'BPFLoaderUpgradeab1e11111111111111111111111' /tmp/skyhedge-buffer.json || fail "buffer $BUFFER_ADDRESS is not owned by the upgradeable loader"
-  echo "Using validated buffer: $BUFFER_ADDRESS"
 else
   echo "No reusable buffer keypair found; the CLI will create one and report its address."
 fi
 
 echo "== Publishing to Devnet =="
-DEPLOY_ARGS=(program deploy "$PROGRAM_SO" --program-id "$PROGRAM_KEYPAIR" --url "$WRITE_RPC" --use-rpc --max-sign-attempts 12)
-if test -f "$BUFFER_KEYPAIR"; then DEPLOY_ARGS+=(--buffer "$BUFFER_KEYPAIR"); fi
+DEPLOY_ARGS=(program deploy "$PROGRAM_SO" --program-id "$PROGRAM_KEYPAIR" --url "$WRITE_RPC" "${WRITE_TRANSPORT_ARGS[@]}" --max-sign-attempts 12)
+if test -f "$BUFFER_KEYPAIR"; then
+  echo "Writing program bytes to the reusable buffer (resumable upload)"
+  solana program write-buffer "$PROGRAM_SO" --buffer "$BUFFER_KEYPAIR" --url "$WRITE_RPC" "${WRITE_TRANSPORT_ARGS[@]}" --max-sign-attempts 20 --commitment confirmed
+  DEPLOY_ARGS+=(--buffer "$BUFFER_KEYPAIR")
+fi
 solana "${DEPLOY_ARGS[@]}" 2>&1 | tee /tmp/skyhedge-deploy.log
 rg -q 'Program Id:' /tmp/skyhedge-deploy.log || fail "the Solana CLI returned no publish signature or Program Id; see /tmp/skyhedge-deploy.log"
 
