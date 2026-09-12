@@ -7,6 +7,12 @@ describe("agricultural market registry", () => {
     expect(AGRICULTURAL_MARKETS.every((market) => market.metric === "cumulative_rainfall_mm" && market.administrativeArea.length > 0 && market.evidenceStatus === "researching_evidence" && market.noaaStationId === null)).to.equal(true);
   });
 
+  it("pins a valid, distinct reference coordinate for every mapped area", () => {
+    const coordinates = AGRICULTURAL_MARKETS.map((market) => `${market.latitude},${market.longitude}`);
+    expect(new Set(coordinates).size).to.equal(AGRICULTURAL_MARKETS.length);
+    expect(AGRICULTURAL_MARKETS.every((market) => Number.isFinite(market.latitude) && market.latitude >= -85 && market.latitude <= 85 && Number.isFinite(market.longitude) && market.longitude >= -180 && market.longitude <= 180)).to.equal(true);
+  });
+
   it("converts rainfall display units without changing the canonical mm value", () => {
     expect(millimetersToInches(25.4)).to.equal(1);
   });
