@@ -1,0 +1,9 @@
+node_modules
+dist
+.git
+.planning
+anchor/target
+target
+coverage
+playwright-report
+test-results

@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import { ExternalLink, MapPin } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ExternalLink, MapPin, RefreshCw } from "lucide-react";
+import { CircleMarker, MapContainer, TileLayer, Tooltip, ZoomControl, useMap } from "react-leaflet";
 import type { AgriculturalMarket } from "../../../../shared/agricultural-markets";
+import { agriculturalMarketLocation } from "../../../../shared/agricultural-markets";
 
 type MapStatus = "researching_evidence" | "validated" | "DATA_UNAVAILABLE" | "map_unavailable";
+type MapLoadPhase = "idle" | "loading" | "slow" | "ready" | "unavailable";
 
 interface AgriculturalAreaMapProps {
   market: AgriculturalMarket;
@@ -18,25 +21,22 @@ const STATUS_LABELS: Record<MapStatus, string> = {
   map_unavailable: "Map unavailable",
 };
 
-function bounded(value: number, minimum: number, maximum: number): number {
-  return Math.min(Math.max(value, minimum), maximum);
-}
-
-function openStreetMapUrls(market: AgriculturalMarket) {
-  const latitudeSpan = 0.16;
-  const longitudeSpan = 0.24;
-  const south = bounded(market.latitude - latitudeSpan, -85, 85).toFixed(5);
-  const north = bounded(market.latitude + latitudeSpan, -85, 85).toFixed(5);
-  const west = bounded(market.longitude - longitudeSpan, -180, 180).toFixed(5);
-  const east = bounded(market.longitude + longitudeSpan, -180, 180).toFixed(5);
+function openStreetMapUrl(market: AgriculturalMarket): string {
   const latitude = market.latitude.toFixed(5);
   const longitude = market.longitude.toFixed(5);
-  const bbox = encodeURIComponent(`${west},${south},${east},${north}`);
+  return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=${market.mapZoom ?? 11}/${latitude}/${longitude}`;
+}
 
-  return {
-    embed: `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${latitude}%2C${longitude}`,
-    larger: `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=${market.mapZoom ?? 11}/${latitude}/${longitude}`,
-  };
+function MapSizeController({ marketSlug }: { marketSlug: string }) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.invalidateSize(false);
+    const frame = window.requestAnimationFrame(() => map.invalidateSize(false));
+    return () => window.cancelAnimationFrame(frame);
+  }, [map, marketSlug]);
+
+  return null;
 }
 
 export function AgriculturalAreaMap({
@@ -45,105 +45,172 @@ export function AgriculturalAreaMap({
   stationCoordinates,
   variant = "standard",
 }: AgriculturalAreaMapProps) {
-  const [loaded, setLoaded] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const urls = useMemo(() => openStreetMapUrls(market), [market]);
-  const preciseLocation = `${market.name}, ${market.administrativeArea}, ${market.country}`;
-  const mapTitle = `${preciseLocation} reference location on OpenStreetMap`;
-  const hasValidatedStation = status === "validated" && Boolean(stationCoordinates);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const tileErrors = useRef(0);
+  const [shouldLoad, setShouldLoad] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [phase, setPhase] = useState<MapLoadPhase>("idle");
+  const location = agriculturalMarketLocation(market);
+  const largerMapUrl = openStreetMapUrl(market);
+  const coordinatesValid = Number.isFinite(market.latitude) && Number.isFinite(market.longitude) && Math.abs(market.latitude) <= 85 && Math.abs(market.longitude) <= 180;
+  const stationValidated = status === "validated" && Boolean(stationCoordinates);
 
   useEffect(() => {
-    setLoaded(false);
-    setFailed(false);
-  }, [market.slug]);
+    const node = shellRef.current;
+    if (!node || shouldLoad) return;
+    if (!("IntersectionObserver" in window)) {
+      setShouldLoad(true);
+      return;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting) {
+        setShouldLoad(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "240px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [shouldLoad]);
+
+  useEffect(() => {
+    tileErrors.current = 0;
+    if (!coordinatesValid) {
+      setPhase("unavailable");
+      return;
+    }
+    if (!shouldLoad) {
+      setPhase("idle");
+      return;
+    }
+    setPhase("loading");
+    const slowTimer = window.setTimeout(() => {
+      setPhase((current) => current === "loading" ? "slow" : current);
+    }, 6_000);
+    const unavailableTimer = window.setTimeout(() => {
+      setPhase((current) => current === "ready" ? current : "unavailable");
+    }, 15_000);
+    return () => {
+      window.clearTimeout(slowTimer);
+      window.clearTimeout(unavailableTimer);
+    };
+  }, [attempt, coordinatesValid, market.slug, shouldLoad]);
+
+  const handleLayerLoad = useCallback(() => {
+    if (tileErrors.current === 0) setPhase("ready");
+    else if (tileErrors.current >= 3) setPhase("unavailable");
+  }, []);
+  const handleTileError = useCallback(() => {
+    tileErrors.current += 1;
+    if (tileErrors.current >= 3) setPhase((current) => current === "ready" ? current : "unavailable");
+  }, []);
+  const retry = () => {
+    tileErrors.current = 0;
+    setShouldLoad(true);
+    setPhase("loading");
+    setAttempt((current) => current + 1);
+  };
+
+  const mapUnavailable = phase === "unavailable";
+  const statusLabel = STATUS_LABELS[mapUnavailable ? "map_unavailable" : status];
 
   return (
     <figure
-      className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-2)]"
+      className="isolate overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-2)]"
       aria-labelledby={`map-caption-${market.slug}-${variant}`}
+      data-map-state={phase}
+      data-testid={`area-map-${market.slug}`}
     >
       <div
+        ref={shellRef}
         className={variant === "compact" ? "relative h-40 w-full bg-[var(--surface-1)]" : "relative h-56 w-full bg-[var(--surface-1)] sm:h-64"}
-        aria-busy={!loaded && !failed}
+        aria-label={`${location} reference location map`}
+        aria-busy={phase === "idle" || phase === "loading" || phase === "slow"}
       >
-        {!loaded && !failed && (
-          <div className="absolute inset-0 flex items-center justify-center px-5 text-center" role="status">
+        {shouldLoad && !mapUnavailable && coordinatesValid && (
+          <MapContainer
+            key={`${market.slug}-${attempt}`}
+            center={[market.latitude, market.longitude]}
+            zoom={market.mapZoom ?? 11}
+            zoomControl={false}
+            scrollWheelZoom={false}
+            className="sky-leaflet-map h-full w-full"
+          >
+            <MapSizeController marketSlug={market.slug} />
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+              url={`https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?market=${market.slug}&attempt=${attempt}`}
+              eventHandlers={{ load: handleLayerLoad, tileerror: handleTileError }}
+            />
+            <ZoomControl position="topright" />
+            <CircleMarker center={[market.latitude, market.longitude]} radius={8} pathOptions={{ color: "#041012", fillColor: "#2de2e6", fillOpacity: 1, weight: 3 }}>
+              <Tooltip direction="top">{location}</Tooltip>
+            </CircleMarker>
+            {stationValidated && stationCoordinates && (
+              <CircleMarker center={[stationCoordinates.latitude, stationCoordinates.longitude]} radius={6} pathOptions={{ color: "#041012", fillColor: "#ffcc4d", fillOpacity: 1, weight: 2 }}>
+                <Tooltip direction="top">Validated NOAA settlement station</Tooltip>
+              </CircleMarker>
+            )}
+          </MapContainer>
+        )}
+
+        {(phase === "idle" || phase === "loading") && (
+          <div className="pointer-events-none absolute inset-0 z-[800] flex items-center justify-center bg-[var(--surface-1)]/90 px-5 text-center" role="status">
             <div>
               <MapPin className="mx-auto h-6 w-6 text-[var(--identity)]" aria-hidden="true" />
               <p className="mt-2 text-xs font-semibold text-[var(--foreground)]">Loading geographic context</p>
-              <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">{preciseLocation}</p>
+              <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">{location}</p>
             </div>
           </div>
         )}
 
-        {!failed && (
-          <iframe
-            key={market.slug}
-            src={urls.embed}
-            title={mapTitle}
-            loading={variant === "compact" ? "lazy" : "eager"}
-            referrerPolicy="strict-origin-when-cross-origin"
-            className="absolute inset-0 h-full w-full border-0 bg-transparent"
-            onLoad={() => setLoaded(true)}
-            onError={() => setFailed(true)}
-          />
+        {phase === "slow" && (
+          <div className="absolute inset-x-3 bottom-3 z-[800] rounded-lg border border-[var(--warning)]/50 bg-[var(--surface-1)]/95 p-3 shadow-xl" role="status">
+            <p className="text-xs font-semibold text-[var(--foreground)]">Map is taking longer than expected.</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={retry} className="sky-btn-ghost inline-flex min-h-11 items-center gap-2 px-3 py-2 text-xs"><RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />Retry</button>
+              <a href={largerMapUrl} target="_blank" rel="noreferrer" className="sky-btn-ghost inline-flex min-h-11 items-center gap-2 px-3 py-2 text-xs">Open larger map <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></a>
+            </div>
+          </div>
         )}
 
-        {failed && (
-          <div className="absolute inset-0 flex items-center justify-center px-5 text-center" role="status">
+        {mapUnavailable && (
+          <div className="absolute inset-0 z-[800] flex items-center justify-center bg-[var(--surface-1)] px-5 text-center" role="alert">
             <div>
               <MapPin className="mx-auto h-6 w-6 text-[var(--warning)]" aria-hidden="true" />
               <p className="mt-2 text-xs font-semibold text-[var(--foreground)]">Map unavailable</p>
-              <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted-foreground)]">{preciseLocation}<br />Reference coordinates: {market.latitude.toFixed(4)}, {market.longitude.toFixed(4)}</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted-foreground)]">{location}<br />Reference coordinates: {market.latitude.toFixed(4)}, {market.longitude.toFixed(4)}</p>
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                <button type="button" onClick={retry} className="sky-btn-ghost inline-flex min-h-11 items-center gap-2 px-3 py-2 text-xs"><RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />Retry</button>
+                <a href={largerMapUrl} target="_blank" rel="noreferrer" className="sky-btn-ghost inline-flex min-h-11 items-center gap-2 px-3 py-2 text-xs">Open larger map <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></a>
+              </div>
             </div>
           </div>
         )}
 
-        <span className="pointer-events-none absolute left-3 top-3 rounded-md border border-black/15 bg-white/95 px-2 py-1 text-[10px] font-semibold uppercase tracking-[.12em] text-slate-800 shadow-sm">
-          Reference location
-        </span>
+        <span className="pointer-events-none absolute left-3 top-3 z-[700] rounded-md border border-black/15 bg-white/95 px-2 py-1 text-[10px] font-semibold uppercase tracking-[.12em] text-slate-800 shadow-sm">Reference location</span>
       </div>
 
       <figcaption id={`map-caption-${market.slug}-${variant}`} className="border-t border-[var(--border)] px-3 py-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <strong className="block text-xs text-[var(--foreground)]">{preciseLocation}</strong>
+            <strong className="block text-xs text-[var(--foreground)]">{location}</strong>
             <span className="mt-1 block text-[11px] text-[var(--muted-foreground)]">Catalog group: {market.region}</span>
           </div>
-          <span className="shrink-0 rounded-full border border-[var(--border)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[.08em] text-[var(--muted-foreground)]">
-            {STATUS_LABELS[failed ? "map_unavailable" : status]}
-          </span>
+          <span className="shrink-0 rounded-full border border-[var(--border)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[.08em] text-[var(--muted-foreground)]">{statusLabel}</span>
         </div>
 
-        {variant === "standard" && (
+        {variant === "standard" ? (
           <div className="mt-3 grid gap-2 border-t border-[var(--border)] pt-3 text-[11px] leading-relaxed text-[var(--muted-foreground)] sm:grid-cols-[1fr_auto] sm:items-end">
             <div>
               <p>The marker identifies the index reference location, not an insured boundary.</p>
               <p className="mt-1">WeatherXM: context only—not used for settlement. NOAA is the sole settlement source.</p>
-              {hasValidatedStation && <p className="mt-1 text-[var(--warning)]">A validated NOAA station exists; its coordinates are listed in the evidence record outside this map.</p>}
             </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-2 sm:justify-end">
-              <a href={urls.larger} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1.5 text-[var(--identity)] underline underline-offset-4 hover:text-[var(--foreground)]">
-                Open larger map <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-              </a>
-              <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-[var(--muted-foreground)] underline underline-offset-4 hover:text-[var(--foreground)]">
-                © OpenStreetMap contributors
-              </a>
-            </div>
+            <a href={largerMapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1.5 text-[var(--identity)] underline underline-offset-4 hover:text-[var(--foreground)]">Open larger map <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></a>
           </div>
-        )}
-
-        {variant === "compact" && (
+        ) : (
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-2 text-[11px]">
             <span className="text-[var(--faint)]">Reference point only · no coverage boundary</span>
-            <span className="flex flex-wrap items-center gap-x-4">
-              <a href={urls.larger} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1.5 text-[var(--identity)] underline underline-offset-4 hover:text-[var(--foreground)]">
-                Larger map <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-              </a>
-              <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-[var(--muted-foreground)] underline underline-offset-4 hover:text-[var(--foreground)]">
-                © OpenStreetMap contributors
-              </a>
-            </span>
+            <a href={largerMapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1.5 text-[var(--identity)] underline underline-offset-4 hover:text-[var(--foreground)]">Larger map <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></a>
           </div>
         )}
       </figcaption>

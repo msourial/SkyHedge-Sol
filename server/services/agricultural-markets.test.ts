@@ -4,7 +4,21 @@ import { AGRICULTURAL_MARKETS, agriculturalMarketLocation, calendarMonthlyWindow
 describe("agricultural market registry", () => {
   it("contains the 12 research-gated crop-belt markets", () => {
     expect(AGRICULTURAL_MARKETS).to.have.length(12);
-    expect(AGRICULTURAL_MARKETS.every((market) => market.metric === "cumulative_rainfall_mm" && market.administrativeArea.length > 0 && market.evidenceStatus === "researching_evidence" && market.noaaStationId === null)).to.equal(true);
+    expect(AGRICULTURAL_MARKETS.every((market) => market.metric === "cumulative_rainfall_mm" && market.locality.length > 0 && market.administrativeArea.length > 0 && market.evidenceStatus === "researching_evidence" && market.noaaStationId === null)).to.equal(true);
+    expect(AGRICULTURAL_MARKETS.map(agriculturalMarketLocation)).to.deep.equal([
+      "Des Moines, Iowa, United States",
+      "Fresno, California, United States",
+      "Lubbock, Texas, United States",
+      "Winnipeg, Manitoba, Canada",
+      "Córdoba, Córdoba Province, Argentina",
+      "Sorriso, Mato Grosso, Brazil",
+      "Asunción, Capital District, Paraguay",
+      "Santa Cruz, Santa Cruz Department, Bolivia",
+      "Ludhiana, Punjab, India",
+      "Nagpur, Maharashtra, India",
+      "Eldoret, Uasin Gishu County, Kenya",
+      "Arusha, Arusha Region, Tanzania",
+    ]);
   });
 
   it("pins a valid, distinct reference coordinate for every mapped area", () => {
@@ -23,6 +37,8 @@ describe("agricultural market registry", () => {
     expect(searchAgriculturalMarkets("emerging coffee").map((market) => market.slug)).to.deep.equal(["arusha"]);
     expect(searchAgriculturalMarkets("cordoba").map((market) => market.slug)).to.deep.equal(["cordoba"]);
     expect(searchAgriculturalMarkets("texas").map((market) => market.slug)).to.deep.equal(["lubbock"]);
+    expect(searchAgriculturalMarkets("lubbock").map((market) => market.slug)).to.deep.equal(["lubbock"]);
+    expect(searchAgriculturalMarkets("punjab").map((market) => market.slug)).to.deep.equal(["ludhiana"]);
     expect(searchAgriculturalMarkets("")).to.have.length(12);
     expect(agriculturalMarketLocation(AGRICULTURAL_MARKETS[2])).to.equal("Lubbock, Texas, United States");
   });
