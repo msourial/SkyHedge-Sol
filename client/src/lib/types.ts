@@ -67,6 +67,18 @@ export type EvidenceRow = {
   generatedAt: string;
 };
 
+export type DevnetStatus = {
+  network: string;
+  program: { address: string; status: "ready" | "pending" | "unavailable" | "error"; executable: boolean; explorerUrl: string };
+  idl: { status: "ready" | "pending" | "unavailable" | "error"; source: string; instructionCount: number; accountCount: number };
+  protocol: { address: string; status: "ready" | "pending" | "unavailable" | "error"; initialized: boolean; admin: string | null; settlementAuthority: string | null; collateralMint: string | null; nextMarketId: string | null };
+  feeVault: { address: string; status: "ready" | "pending" | "unavailable" | "error"; exists: boolean; balance: string | null };
+  skytMint: { address: string; status: "ready" | "pending" | "unavailable" | "error"; exists: boolean; decimals: number | null; supply: string | null; mintAuthority: string | null };
+  desMoinesMarket: { status: "ready" | "pending" | "unavailable" | "error"; address: string | null; marketId: string | null; vault: string | null; vaultBalance: string | null; onchainStatus: string | null; evidenceStatus: "researching_evidence"; targetCityHash: string };
+  noaaEvidence: { status: "researching_evidence"; settlementSource: "NOAA"; message: string };
+  generatedAt: string;
+};
+
 export type CityIndexState = {
   slug: string;
   name: string;

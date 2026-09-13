@@ -6,7 +6,7 @@ export interface ServerEnv {
   network: SolanaNetwork;
   solanaRpcUrl: string;
   programId: string;
-  databaseUrl: string;
+  databaseUrl: string | null;
   skytMint: string | null;
   settlementKeypairPath: string | null;
   noaaToken: string | null;
@@ -32,26 +32,17 @@ export function loadEnv(): ServerEnv {
 
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    throw new Error("DATABASE_URL is required — set it in .env (see .env.example)");
+    console.warn("[env] DATABASE_URL not set; optional read-model persistence is disabled");
   }
 
   const nodeEnv = process.env.NODE_ENV === "production" ? "production" : "development";
 
   const production = nodeEnv === "production";
 
-  if (production) {
-    const chainRequired = [
-      ["SOLANA_RPC_URL", process.env.SOLANA_RPC_URL],
-      ["SKYT_MINT", process.env.SKYT_MINT],
-      ["SETTLEMENT_AUTHORITY_KEYPAIR", process.env.SETTLEMENT_AUTHORITY_KEYPAIR],
-    ] as const;
-    const missing = chainRequired.filter(([, value]) => !value).map(([key]) => key);
-    if (missing.length > 0) {
-      throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
-    }
-  } else {
-    if (!process.env.SOLANA_RPC_URL) console.warn("[env] SOLANA_RPC_URL not set; defaulting to public devnet (rate limits apply)");
-    if (!process.env.SKYT_MINT) console.warn("[env] SKYT_MINT not set; position/quote flow is unavailable");
+  if (!process.env.SOLANA_RPC_URL) console.warn("[env] SOLANA_RPC_URL not set; defaulting to public devnet (rate limits apply)");
+  if (!process.env.SKYT_MINT) console.warn("[env] SKYT_MINT not set; status reads use the committed Devnet mint and transaction flows stay unavailable");
+  if (production && !process.env.SETTLEMENT_AUTHORITY_KEYPAIR) {
+    console.warn("[env] SETTLEMENT_AUTHORITY_KEYPAIR not set; settlement worker disabled for this process");
   }
 
   if (!process.env.NOAA_TOKEN) console.warn("[env] NOAA_TOKEN not set; weather endpoints will return DATA_UNAVAILABLE");
@@ -62,7 +53,7 @@ export function loadEnv(): ServerEnv {
     network: network as SolanaNetwork,
     solanaRpcUrl: process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com",
     programId: process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx",
-    databaseUrl,
+    databaseUrl: databaseUrl ?? null,
     skytMint: process.env.SKYT_MINT ?? null,
     settlementKeypairPath: process.env.SETTLEMENT_AUTHORITY_KEYPAIR ?? null,
     noaaToken: process.env.NOAA_TOKEN ?? null,

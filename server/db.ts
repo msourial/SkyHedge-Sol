@@ -5,8 +5,8 @@ import * as schema from "../shared/schema";
 const connectionString = process.env.DATABASE_URL;
 
 export function createDb() {
-  if (!connectionString) throw new Error("DATABASE_URL is required for persistence");
+  if (!connectionString) return null;
   return drizzle(neon(connectionString), { schema });
 }
 
-export type Db = ReturnType<typeof createDb>;
+export type Db = NonNullable<ReturnType<typeof createDb>>;

@@ -21,14 +21,15 @@ For the product-level operating model, audience split, first activation market, 
 
 ```
 client/            React + Vite SPA (wallet-adapter, sign & send of unsigned txs)
-server/            Express API + services
+server/            Express API + services; PostgreSQL is optional for Devnet V1
   services/noaa.ts           NOAA CDO rainfall provider
   services/consensus.ts      NOAA-only deterministic evidence builder
   services/quote-engine.ts   pricing (analogous windows + forecast)
-  services/solana-indexer.ts finalized-state indexer (30s sweep)
+  services/solana-indexer.ts optional finalized-state indexer (30s sweep)
+  services/devnet-status.ts  direct finalized-RPC status reads
   services/unsigned-tx.ts    base64 VersionedTransaction builder (6 actions)
   services/settlement.ts     SettlementRunner (60s sweep, deadline + consensus)
-shared/            Neon Postgres schema, IDL, methodology-v1.json
+shared/            optional Neon Postgres schema, IDL, methodology-v1.json
 anchor/            Anchor program (skyhedge_protection) + 9 integration tests
 scripts/           deploy/seed/status tooling
 design-system/     OLED dark theme spec (MASTER.md + page specs)
@@ -49,20 +50,20 @@ Trust model: the server builds unsigned `VersionedTransaction`s and the wallet s
 ```sh
 npm install
 cp .env.example .env   # fill in the values below
-npm run db:push        # apply shared/schema.ts to Neon
+npm run db:push        # optional: apply shared/schema.ts to Neon when using the read model
 ```
 
-Required env:
+Environment:
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | Neon Postgres connection string |
+| `DATABASE_URL` | Optional Neon Postgres connection string for analytics/read-model persistence |
 | `NOAA_TOKEN` | NOAA Climate Data Online token (historical observations + forecast) |
 | `SOLANA_RPC_URL` | Default `https://api.devnet.solana.com` |
-| `SKYHEDGE_PROGRAM_ID` | Prepared Devnet ID `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` (not deployed yet) |
-| `SETTLEMENT_AUTHORITY_KEYPAIR` | Path to the settlement authority keypair (`anchor/keys/settlement-authority.json`) |
+| `SKYHEDGE_PROGRAM_ID` | Deployed Devnet program ID `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` |
+| `SETTLEMENT_AUTHORITY_KEYPAIR` | Optional path to the settlement authority keypair (`anchor/keys/settlement-authority.json`); settlement worker stays disabled when absent |
 | `ANTHROPIC_API_KEY` | Optional — AI advisory enrichment |
-| `SKYT_MINT` | Mint address for the six-decimal SKYT test token |
+| `SKYT_MINT` | Mint address for the six-decimal SKYT test token; defaults to the committed Devnet mint for status reads |
 | `VITE_MAP_PROVIDER` | Defaults to `maptiler`; keeps future map providers isolated behind one component |
 | `VITE_MAPTILER_KEY` | Browser-visible MapTiler key for premium Hybrid/Basic maps |
 | `VITE_MAPTILER_SHARE_BASE_URL` | Optional public larger-map base URL; falls back to OpenStreetMap when unset |
@@ -93,22 +94,22 @@ npm run skyt:status        # inspect on-chain protocol/markets
 
 The demo leaves its localnet rows in Neon (markets/protections are not network-scoped). To keep the DB devnet-only before a real deploy: `TRUNCATE chain_events, markets, liquidity_positions, protection_positions, settlement_observations, indexed_slots;`
 
-## Devnet deploy
+## Devnet activation
 
 ```sh
 npm run skyt:airdrop -- <wallet> 2 12 4   # retry loop until balance >= 4 SOL
-npm run skyt:deploy                     # build + transfer + deploy program
 npm run skyt:init                        # initialize protocol (admin wallet)
 npm run skyt:seed                        # create city markets
 ```
 
-The prepared program ID is `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx`; its deployment keypair (`anchor/target/deploy/skyhedge_protection-keypair.json`) and the settlement authority keypair are gitignored. The settlement authority public key is recorded in the Devnet authority document; keep the keypair itself secret. This program ID is not deployed yet.
+The program ID `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` is executable on Devnet. The protocol PDA is not initialized yet, and the SKYT mint exists with zero supply and admin mint authority. The deployment keypair (`anchor/target/deploy/skyhedge_protection-keypair.json`) and the settlement authority keypair are gitignored. The settlement authority public key is recorded in the Devnet authority document; keep the keypair itself secret.
 
 ## API surface
 
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /api/health` | Program ID, network, settlement source |
+| `GET /api/devnet/status` | Direct finalized-RPC status for program, IDL, protocol PDA, SKYT mint, fee vault, and Des Moines market |
 | `GET /api/markets` | Indexed markets (falls back to seed catalog while empty) |
 | `GET /api/weather/:city` `?start&end` | NOAA evidence for a window |
 | `GET /api/weather/:city/forecast` | NOAA forecast for a window |

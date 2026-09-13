@@ -28,11 +28,23 @@ function shFile(bin: string, args: string[], env: Record<string, string> = {}): 
 async function purgeDb(): Promise<void> {
   try {
     const db = createDb();
+    if (!db) {
+      log("db", "purge skipped (DATABASE_URL not set) — portfolio indexing demo requires Postgres");
+      return;
+    }
     await db.execute(sql`TRUNCATE chain_events, markets, liquidity_positions, protection_positions, settlement_observations, indexed_slots;`);
     log("db", "purged (fresh ledger = fresh index)");
   } catch (error) {
     log("db", `purge skipped (${(error as Error).message}) — stale rows may remain`);
   }
+}
+
+function requireDemoDb(): NonNullable<ReturnType<typeof createDb>> {
+  const db = createDb();
+  if (!db) {
+    throw new Error("DATABASE_URL is required for scripts/demo-localnet.ts because it verifies DB-backed indexing");
+  }
+  return db;
 }
 
 async function ensureValidator(): Promise<void> {
@@ -160,8 +172,8 @@ async function main(): Promise<void> {
   if (!finalized) log("warning", "position not finalized within 60s — portfolio row may lag behind");
 
   log("step", "7/7 indexer reconcile → portfolio in DB");
-  const indexer = new AnchorIndexer(createDb());
-  const db = createDb();
+  const db = requireDemoDb();
+  const indexer = new AnchorIndexer(db);
   const expectedMarkets = 3;
   log("indexer", `expecting ${expectedMarkets} V1 protection markets in the index`);
 

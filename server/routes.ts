@@ -14,16 +14,18 @@ import { AnchorIndexer } from "./services/solana-indexer";
 import { UnsignedTransactionBuilder, type TxAction } from "./services/unsigned-tx";
 import { SettlementRunner } from "./services/settlement";
 import { WeatherXmProvider } from "./services/weatherxm";
+import { DevnetStatusReader } from "./services/devnet-status";
 import { agriculturalMarketBySlug, AGRICULTURAL_MARKETS, calendarMonthlyWindow, weeklyFridayWindow } from "../shared/agricultural-markets";
 
 const provider = new NoaaRainfallProvider();
 const quotes = new RainfallQuoteEngine(provider);
 const consensus = new RainfallConsensusService();
 const db = createDb();
-const indexer = new AnchorIndexer(db);
+const indexer = db ? new AnchorIndexer(db) : null;
 const unsignedTx = new UnsignedTransactionBuilder();
-const settlement = new SettlementRunner(db);
+const settlement = db && process.env.SETTLEMENT_AUTHORITY_KEYPAIR ? new SettlementRunner(db) : null;
 const weatherXm = new WeatherXmProvider();
+const devnetStatus = new DevnetStatusReader();
 const programId = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const citySchema = z.enum(Object.keys(NOAA_STATIONS) as [SkyHedgeCity, ...SkyHedgeCity[]]);
 const quoteSchema = z.object({ city: citySchema, observationStart: z.string().date(), observationEnd: z.string().date(), thresholdMm: z.number().positive(), operator: z.enum(["gt", "gte", "lt", "lte"]), protectedAmount: z.string().regex(/^\d+$/) });
@@ -33,16 +35,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/health", async (_req, res) => {
     const started = Date.now();
-    let database = "ok";
+    let database = db ? "ok" : "deferred";
     let databaseLatencyMs: number | null = null;
     try {
+      if (!db) throw new Error("optional persistence is not configured");
       const before = Date.now();
       await db.execute(sql`select 1`);
       databaseLatencyMs = Date.now() - before;
     } catch {
-      database = "degraded";
+      database = db ? "degraded" : "deferred";
     }
-    const healthy = database === "ok";
+    const healthy = database === "ok" || database === "deferred";
     res.status(healthy ? 200 : 503).json({
       name: "SkyHedge",
       status: healthy ? "ok" : "degraded",
@@ -54,18 +57,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       settlementSource: "NOAA",
       generatedData: false,
       checks: {
-        database: { status: database, latencyMs: databaseLatencyMs, required: true },
+        database: { status: database, latencyMs: databaseLatencyMs, required: false },
         weather: {
           status: process.env.NOAA_TOKEN ? "configured" : "degraded",
           noaa: process.env.NOAA_TOKEN ? "configured" : "missing",
           weatherXm: "agent-api-health-free",
         },
         settlement: {
-          status: process.env.SETTLEMENT_AUTHORITY_KEYPAIR ? "configured" : "missing",
+          status: process.env.SETTLEMENT_AUTHORITY_KEYPAIR ? "configured" : "manual-or-missing",
         },
       },
       responseMs: Date.now() - started,
     });
+  });
+
+  app.get("/api/devnet/status", async (_req, res) => {
+    try { return res.json(await devnetStatus.read()); }
+    catch (error) { return res.status(503).json({ error: "DEVNET_STATUS_UNAVAILABLE", message: (error as Error).message }); }
   });
 
   app.get("/api/cities/search", (req, res) => {
@@ -87,6 +95,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/markets", async (_req, res) => {
+    if (!db) return res.json({
+      source: "finalized-solana-rpc",
+      indexed: false,
+      status: "READ_MODEL_DEFERRED",
+      message: "PostgreSQL indexing is deferred for Devnet V1; agricultural catalog entries remain research-gated until on-chain activation.",
+      markets: [],
+    });
     try {
       const rows = await db.select().from(marketsTable);
       const enriched = rows.map((row) => {
@@ -128,6 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/indexer/reconcile", async (req, res) => {
     if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
+    if (!indexer) return res.status(503).json({ error: "INDEXER_DEFERRED", message: "PostgreSQL read-model persistence is not configured for this Devnet deployment." });
     try {
       const result = await indexer.reconcile();
       return res.json({ ok: true, toSlot: result.toSlot.toString(), events: result.events, accounts: result.accounts });
@@ -136,6 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/settlement/run", async (req, res) => {
     if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
+    if (!settlement) return res.status(503).json({ error: "SETTLEMENT_WORKER_DEFERRED", message: "Settlement worker persistence or signer is not configured for this deployment." });
     try {
       const result = await settlement.runOnce();
       return res.json({ ok: true, ...result });
@@ -150,7 +167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!city.success || !range.success) return res.status(400).json({ error: "city, start, and end are required" });
     try {
       const result = await consensus.evidenceFor(city.data, range.data.start, range.data.end);
-      if (result.verdict !== "DATA_UNAVAILABLE") {
+      if (db && result.verdict !== "DATA_UNAVAILABLE") {
         await db.insert(settlementEvidence).values({
           sourceHash: result.evidence.sourceHash,
           city: result.evidence.city,
@@ -190,6 +207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/markets/:id/evidence", async (req, res) => {
     const id = z.string().min(32).safeParse(req.params.id);
     if (!id.success) return res.status(400).json({ error: "a market address is required" });
+    if (!db) return res.json({ market: id.data, evidence: [], indexed: false, message: "Evidence read-model persistence is deferred." });
     try {
       const rows = await db.select().from(settlementEvidence).where(eq(settlementEvidence.marketAddress, id.data)).orderBy(settlementEvidence.createdAt);
       return res.json({ market: id.data, evidence: rows.map((row) => ({ sourceHash: row.sourceHash, verdict: row.verdict, noaaMm: row.noaaMm, wxmMm: row.wxmMm, deltaMm: row.deltaMm, toleranceMm: row.toleranceMm, windowStart: row.windowStart, windowEnd: row.windowEnd, createdAt: row.createdAt })) });
@@ -197,6 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/settlement/evidence", async (_req, res) => {
+    if (!db) return res.json({ rows: [], indexed: false, message: "Evidence appears after finalized on-chain settlement; PostgreSQL read-model persistence is deferred." });
     try {
       const rows = await db.select().from(settlementEvidence).orderBy(settlementEvidence.createdAt);
       return res.json({ rows: rows.map((row, i) => ({ id: i + 1, sourceHash: row.sourceHash, marketAddress: row.marketAddress, city: row.city, windowStart: row.windowStart, windowEnd: row.windowEnd, verdict: row.verdict, noaaMm: row.noaaMm, wxmMm: row.wxmMm, deltaMm: row.deltaMm, toleranceMm: row.toleranceMm, generatedAt: row.createdAt })) });
@@ -239,6 +258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/portfolio/:wallet", async (req, res) => {
     const wallet = req.params.wallet;
+    if (!db) return res.json({ wallet, source: "finalized-solana-rpc", indexed: false, protections: [], liquidity: [], message: "Portfolio read-model persistence is deferred; no positions are fabricated." });
     try {
       const [protections, liquidities] = await Promise.all([
         db.select().from(protectionPositionsTable).where(eq(protectionPositionsTable.owner, wallet)),
@@ -269,10 +289,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const indexerTimer = setInterval(() => { void indexer.reconcile().catch((error) => console.error("[indexer] reconcile failed:", error)); }, 30_000);
-  const settlementStop = settlement.start(60_000);
+  const indexerTimer = indexer ? setInterval(() => { void indexer.reconcile().catch((error) => console.error("[indexer] reconcile failed:", error)); }, 30_000) : null;
+  const settlementStop = settlement ? settlement.start(60_000) : null;
   const server = createServer(app);
-  server.on("close", () => { clearInterval(indexerTimer); settlementStop(); });
+  server.on("close", () => { if (indexerTimer) clearInterval(indexerTimer); settlementStop?.(); });
 
   return server;
 }
