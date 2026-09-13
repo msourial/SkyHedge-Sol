@@ -236,12 +236,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { return dataUnavailable(res, error); }
   });
 
-  app.get("/api/weatherxm/:city/latest", async (req, res) => {
-    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
-    const city = req.params.city;
+  const sendWeatherXmLatest = async (city: string, res: Response) => {
     if (!(city in NOAA_STATIONS) && !agriculturalMarketBySlug(city)) return res.status(400).json({ error: "UNKNOWN_MARKET_LOCATION" });
     try { return res.json(await weatherXm.context(city as SkyHedgeCity)); }
     catch (error) { return dataUnavailable(res, error); }
+  };
+
+  app.get("/api/weatherxm/latest", async (req, res) => {
+    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
+    const city = z.string().min(1).safeParse(req.query.city);
+    if (!city.success) return res.status(400).json({ error: "UNKNOWN_MARKET_LOCATION" });
+    return sendWeatherXmLatest(city.data, res);
+  });
+
+  app.get("/api/weatherxm/:city/latest", async (req, res) => {
+    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
+    return sendWeatherXmLatest(req.params.city, res);
   });
 
   app.post("/api/quotes", async (req, res) => {
