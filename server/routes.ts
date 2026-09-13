@@ -58,7 +58,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         weather: {
           status: process.env.NOAA_TOKEN ? "configured" : "degraded",
           noaa: process.env.NOAA_TOKEN ? "configured" : "missing",
-          weatherXm: process.env.WEATHERXM_API_KEY ? "configured" : "missing",
+          weatherXm: "agent-api-health-free",
         },
         settlement: {
           status: process.env.SETTLEMENT_AUTHORITY_KEYPAIR ? "configured" : "missing",
@@ -221,7 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
     const city = req.params.city;
     if (!(city in NOAA_STATIONS) && !agriculturalMarketBySlug(city)) return res.status(400).json({ error: "UNKNOWN_MARKET_LOCATION" });
-    try { return res.json(await weatherXm.latest(city as SkyHedgeCity)); }
+    try { return res.json(await weatherXm.context(city as SkyHedgeCity)); }
     catch (error) { return dataUnavailable(res, error); }
   });
 

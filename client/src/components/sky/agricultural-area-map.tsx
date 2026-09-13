@@ -21,9 +21,28 @@ const STATUS_LABELS: Record<MapStatus, string> = {
   map_unavailable: "Map unavailable",
 };
 
+const MAP_PROVIDER = import.meta.env.VITE_MAP_PROVIDER ?? "maptiler";
+const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY ?? "";
+const MAPTILER_SHARE_BASE_URL = import.meta.env.VITE_MAPTILER_SHARE_BASE_URL ?? "";
+const MAPTILER_ATTRIBUTION = '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>';
+
+function mapProviderConfigured(): boolean {
+  return MAP_PROVIDER === "maptiler" && MAPTILER_KEY.trim().length > 0;
+}
+
+function mapTilerTileUrl(market: AgriculturalMarket, variant: "compact" | "standard", attempt: number): string {
+  const style = variant === "compact" ? "basic-v2" : "hybrid";
+  const extension = variant === "compact" ? "png" : "jpg";
+  const key = encodeURIComponent(MAPTILER_KEY.trim());
+  return `https://api.maptiler.com/maps/${style}/{z}/{x}/{y}.${extension}?key=${key}&market=${market.slug}&attempt=${attempt}`;
+}
+
 function openStreetMapUrl(market: AgriculturalMarket): string {
   const latitude = market.latitude.toFixed(5);
   const longitude = market.longitude.toFixed(5);
+  if (MAPTILER_SHARE_BASE_URL) {
+    return `${MAPTILER_SHARE_BASE_URL.replace(/\/$/, "")}/#${market.mapZoom ?? 11}/${latitude}/${longitude}`;
+  }
   return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=${market.mapZoom ?? 11}/${latitude}/${longitude}`;
 }
 
@@ -53,11 +72,12 @@ export function AgriculturalAreaMap({
   const location = agriculturalMarketLocation(market);
   const largerMapUrl = openStreetMapUrl(market);
   const coordinatesValid = Number.isFinite(market.latitude) && Number.isFinite(market.longitude) && Math.abs(market.latitude) <= 85 && Math.abs(market.longitude) <= 180;
+  const providerConfigured = mapProviderConfigured();
   const stationValidated = status === "validated" && Boolean(stationCoordinates);
 
   useEffect(() => {
     const node = shellRef.current;
-    if (!node || shouldLoad) return;
+    if (!node || shouldLoad || !providerConfigured) return;
     if (!("IntersectionObserver" in window)) {
       setShouldLoad(true);
       return;
@@ -70,11 +90,11 @@ export function AgriculturalAreaMap({
     }, { rootMargin: "240px" });
     observer.observe(node);
     return () => observer.disconnect();
-  }, [shouldLoad]);
+  }, [providerConfigured, shouldLoad]);
 
   useEffect(() => {
     tileErrors.current = 0;
-    if (!coordinatesValid) {
+    if (!coordinatesValid || !providerConfigured) {
       setPhase("unavailable");
       return;
     }
@@ -93,7 +113,7 @@ export function AgriculturalAreaMap({
       window.clearTimeout(slowTimer);
       window.clearTimeout(unavailableTimer);
     };
-  }, [attempt, coordinatesValid, market.slug, shouldLoad]);
+  }, [attempt, coordinatesValid, market.slug, providerConfigured, shouldLoad]);
 
   const handleLayerLoad = useCallback(() => {
     if (tileErrors.current === 0) setPhase("ready");
@@ -112,6 +132,10 @@ export function AgriculturalAreaMap({
 
   const mapUnavailable = phase === "unavailable";
   const statusLabel = STATUS_LABELS[mapUnavailable ? "map_unavailable" : status];
+  const unavailableTitle = !providerConfigured ? "Map provider not configured" : "Map unavailable";
+  const unavailableHint = !providerConfigured
+    ? "Add VITE_MAPTILER_KEY to load the premium MapTiler map."
+    : "The map tiles did not load. The exact reference location remains available below.";
 
   return (
     <figure
@@ -122,7 +146,7 @@ export function AgriculturalAreaMap({
     >
       <div
         ref={shellRef}
-        className={variant === "compact" ? "relative h-40 w-full bg-[var(--surface-1)]" : "relative h-56 w-full bg-[var(--surface-1)] sm:h-64"}
+        className={variant === "compact" ? "relative h-40 w-full bg-[var(--surface-1)]" : "relative h-48 w-full bg-[var(--surface-1)] sm:h-56"}
         aria-label={`${location} reference location map`}
         aria-busy={phase === "idle" || phase === "loading" || phase === "slow"}
       >
@@ -137,13 +161,13 @@ export function AgriculturalAreaMap({
           >
             <MapSizeController marketSlug={market.slug} />
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-              url={`https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?market=${market.slug}&attempt=${attempt}`}
+              attribution={MAPTILER_ATTRIBUTION}
+              url={mapTilerTileUrl(market, variant, attempt)}
               eventHandlers={{ load: handleLayerLoad, tileerror: handleTileError }}
             />
             <ZoomControl position="topright" />
             <CircleMarker center={[market.latitude, market.longitude]} radius={8} pathOptions={{ color: "#041012", fillColor: "#2de2e6", fillOpacity: 1, weight: 3 }}>
-              <Tooltip direction="top">{location}</Tooltip>
+              <Tooltip direction="top"><strong>{location}</strong><br />Reference point only</Tooltip>
             </CircleMarker>
             {stationValidated && stationCoordinates && (
               <CircleMarker center={[stationCoordinates.latitude, stationCoordinates.longitude]} radius={6} pathOptions={{ color: "#041012", fillColor: "#ffcc4d", fillOpacity: 1, weight: 2 }}>
@@ -174,13 +198,13 @@ export function AgriculturalAreaMap({
         )}
 
         {mapUnavailable && (
-          <div className="absolute inset-0 z-[800] flex items-center justify-center bg-[var(--surface-1)] px-5 text-center" role="alert">
+          <div className="absolute inset-0 z-[800] flex items-center justify-center bg-[radial-gradient(circle_at_50%_20%,rgba(45,226,230,.13),transparent_36%),var(--surface-1)] px-5 text-center" role="alert">
             <div>
               <MapPin className="mx-auto h-6 w-6 text-[var(--warning)]" aria-hidden="true" />
-              <p className="mt-2 text-xs font-semibold text-[var(--foreground)]">Map unavailable</p>
-              <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted-foreground)]">{location}<br />Reference coordinates: {market.latitude.toFixed(4)}, {market.longitude.toFixed(4)}</p>
+              <p className="mt-2 text-xs font-semibold text-[var(--foreground)]">{unavailableTitle}</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted-foreground)]">{location}<br />Reference coordinates: {market.latitude.toFixed(4)}, {market.longitude.toFixed(4)}<br />Evidence status: {STATUS_LABELS[status]}<br />{unavailableHint}</p>
               <div className="mt-3 flex flex-wrap justify-center gap-2">
-                <button type="button" onClick={retry} className="sky-btn-ghost inline-flex min-h-11 items-center gap-2 px-3 py-2 text-xs"><RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />Retry</button>
+                {providerConfigured && <button type="button" onClick={retry} className="sky-btn-ghost inline-flex min-h-11 items-center gap-2 px-3 py-2 text-xs"><RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />Retry</button>}
                 <a href={largerMapUrl} target="_blank" rel="noreferrer" className="sky-btn-ghost inline-flex min-h-11 items-center gap-2 px-3 py-2 text-xs">Open larger map <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></a>
               </div>
             </div>

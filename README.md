@@ -17,6 +17,8 @@ SkyHedge is not an options exchange, futures market, staking product, multi-chai
 
 ## Architecture
 
+For the product-level operating model, audience split, first activation market, and demo flow, read [How SkyHedge Should Work](docs/how-skyhedge-should-work.md).
+
 ```
 client/            React + Vite SPA (wallet-adapter, sign & send of unsigned txs)
 server/            Express API + services
@@ -38,7 +40,8 @@ Trust model: the server builds unsigned `VersionedTransaction`s and the wallet s
 
 - Node 22+, npm
 - solana-cli 2.x, anchor-cli 0.30, Rust `nightly-2024-08-01`
-- A WeatherXM Pro API key only if you want supplemental live WeatherXM context; it is never used for settlement.
+- WeatherXM Agent API access is optional and supplemental. SkyHedge uses only its free health endpoint by default; live WeatherXM weather endpoints require x402 payment and are never used for settlement.
+- A browser-visible MapTiler key (`VITE_MAPTILER_KEY`) for premium map tiles. Restrict it by domain before production use. Without a key, the app shows a truthful location fallback.
 - Phantom or Solflare wallet set to Devnet
 
 ## Setup
@@ -60,9 +63,12 @@ Required env:
 | `SETTLEMENT_AUTHORITY_KEYPAIR` | Path to the settlement authority keypair (`anchor/keys/settlement-authority.json`) |
 | `ANTHROPIC_API_KEY` | Optional — AI advisory enrichment |
 | `SKYT_MINT` | Mint address for the six-decimal SKYT test token |
-| `WEATHERXM_API_KEY` | Optional server-side WeatherXM Pro key for supplemental live context; never a VITE variable and never a settlement source |
+| `VITE_MAP_PROVIDER` | Defaults to `maptiler`; keeps future map providers isolated behind one component |
+| `VITE_MAPTILER_KEY` | Browser-visible MapTiler key for premium Hybrid/Basic maps |
+| `VITE_MAPTILER_SHARE_BASE_URL` | Optional public larger-map base URL; falls back to OpenStreetMap when unset |
+| `WEATHERXM_AGENT_BASE_URL` | Optional override for the WeatherXM Agent API base URL; defaults to `https://agent.weatherxm.com` |
 
-If any weather provider is unreachable or a key is missing, the API returns `DATA_UNAVAILABLE` (HTTP 503). It never creates fallback weather observations.
+If NOAA is unreachable or its token is missing, the API returns `DATA_UNAVAILABLE` (HTTP 503). It never creates fallback weather observations. MapTiler configuration affects only visual map tiles, not settlement.
 
 ## Run
 
@@ -106,7 +112,7 @@ The prepared program ID is `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx`; its d
 | `GET /api/markets` | Indexed markets (falls back to seed catalog while empty) |
 | `GET /api/weather/:city` `?start&end` | NOAA evidence for a window |
 | `GET /api/weather/:city/forecast` | NOAA forecast for a window |
-| `GET /api/weatherxm/:city/latest` | Supplemental nearest-station WeatherXM live observation; never settlement eligible |
+| `GET /api/weatherxm/:city/latest` | Supplemental WeatherXM Agent API status; uses the free health endpoint and reports that live observations are x402-paid and not settlement eligible |
 | `POST /api/quotes` | Premium quote (city, window, threshold, operator, amount) |
 | `POST /api/advisory` | Structured advisory (city, risk, threshold, amount) |
 | `GET /api/portfolio/:wallet` | Indexer-backed positions (never simulated) |

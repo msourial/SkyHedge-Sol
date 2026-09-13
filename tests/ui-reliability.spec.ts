@@ -6,7 +6,7 @@ const transparentTile = Buffer.from(
 );
 
 test.beforeEach(async ({ page }) => {
-  await page.route("https://*.tile.openstreetmap.org/**", async (route) => {
+  await page.route("https://api.maptiler.com/maps/**", async (route) => {
     await route.fulfill({ status: 200, contentType: "image/png", body: transparentTile });
   });
 });
@@ -42,8 +42,8 @@ test("Leaflet renders the exact reference location and switches markets", async 
 });
 
 test("map tile failures expose a truthful fallback and retry", async ({ page }) => {
-  await page.unroute("https://*.tile.openstreetmap.org/**");
-  await page.route("https://*.tile.openstreetmap.org/**", (route) => route.abort());
+  await page.unroute("https://api.maptiler.com/maps/**");
+  await page.route("https://api.maptiler.com/maps/**", (route) => route.abort());
   await page.goto("/?tab=protect&city=lubbock");
   const map = page.getByTestId("area-map-lubbock");
   await expect(map).toHaveAttribute("data-map-state", "unavailable");

@@ -330,13 +330,25 @@
 }
 
 .sky-leaflet-map .leaflet-control-zoom a {
-  color: #111827;
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(4, 16, 18, 0.86);
+  color: #f8fafc;
+}
+
+.sky-leaflet-map .leaflet-control-zoom a:hover,
+.sky-leaflet-map .leaflet-control-zoom a:focus-visible {
+  background: rgba(45, 226, 230, 0.92);
+  color: #041012;
 }
 
 .sky-leaflet-map .leaflet-control-attribution {
-  background: rgba(255, 255, 255, 0.92);
-  color: #334155;
+  background: rgba(4, 16, 18, 0.78);
+  color: rgba(248, 250, 252, 0.78);
   font-size: 10px;
+}
+
+.sky-leaflet-map .leaflet-control-attribution a {
+  color: #2de2e6;
 }
 
 .sky-wallet-button.wallet-adapter-button {
