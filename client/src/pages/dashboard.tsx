@@ -90,7 +90,7 @@ function BuilderProof() {
 function OwnerConsole() {
   const wallet = useWallet();
   const [initialized, setInitialized] = useState<boolean | null>(null);
-  const [busy, setBusy] = useState<"initialize" | "mint" | null>(null);
+  const [busy, setBusy] = useState<"initialize" | "mint" | "seed" | null>(null);
   const [message, setMessage] = useState<{ tone: "green" | "red"; text: string; signature?: string } | null>(null);
   const owner = isProtocolAdmin(wallet.publicKey);
   useEffect(() => {
@@ -100,10 +100,13 @@ function OwnerConsole() {
   }, [wallet.publicKey?.toBase58()]);
   if (!wallet.connected) return null;
   if (!owner) return <div role="status" className="border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm text-[var(--muted-foreground)]">Connected wallet is not the configured protocol admin. Owner controls are restricted to {PROTOCOL_ADMIN.slice(0, 4)}…{PROTOCOL_ADMIN.slice(-4)}.</div>;
-  const run = async (kind: "initialize" | "mint") => {
+  const run = async (kind: "initialize" | "mint" | "seed") => {
     if (!wallet.publicKey) return;
     setBusy(kind); setMessage(null);
     try {
+      if (kind === "seed") {
+        throw new Error("Des Moines remains gated until a real NOAA final-observation station is validated and pinned. No market transaction was prepared.");
+      }
       const transaction = kind === "initialize" ? initializeProtocolTransaction(wallet.publicKey) : issueSkytTransaction(wallet.publicKey);
       const signature = await approveAndConfirm(transaction, wallet);
       setMessage({ tone: "green", text: kind === "initialize" ? "Protocol initialized on finalized Devnet." : "50,000 SKYT minted to your associated token account.", signature });
@@ -113,8 +116,8 @@ function OwnerConsole() {
   };
   return <section aria-labelledby="owner-console" className="border border-[var(--identity)]/40 bg-[var(--surface-1)] p-5 shadow-[0_0_40px_rgba(45,226,230,.05)]">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="sky-section-label text-[var(--identity)]">Owner-only Devnet controls</p><h2 id="owner-console" className="sky-display mt-1 text-xl font-semibold">Initialize the real protocol.</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">Each action opens your connected wallet. Nothing is submitted until you approve it; final status is checked against Devnet.</p></div><Pill tone={initialized ? "green" : "amber"}>{initialized ? "Protocol finalized" : initialized === false ? "Initialization required" : "Checking Devnet"}</Pill></div>
-    <div className="mt-5 grid gap-3 lg:grid-cols-2"><Card className="p-4"><ShieldCheck className="h-5 w-5 text-[var(--identity)]" aria-hidden /><h3 className="mt-3 text-sm font-semibold">1. Initialize protocol</h3><p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">Pins the SKYT collateral mint, protocol PDA, fee vault, and separate settlement authority.</p><button disabled={busy !== null || initialized !== false} className="sky-btn-primary mt-4 min-h-11 w-full" onClick={() => run("initialize")}>{busy === "initialize" ? "Awaiting wallet…" : initialized ? "Protocol initialized" : "Approve initialization"}</button></Card><Card className="p-4"><WalletCards className="h-5 w-5 text-[var(--identity)]" aria-hidden /><h3 className="mt-3 text-sm font-semibold">2. Issue Devnet test collateral</h3><p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">Mints exactly {(Number(SKYT_ISSUANCE) / 1_000_000).toLocaleString()} SKYT with six decimals to your wallet.</p><button disabled={busy !== null || initialized !== true} className="sky-btn-primary mt-4 min-h-11 w-full" onClick={() => run("mint")}>{busy === "mint" ? "Awaiting wallet…" : "Approve 50,000 SKYT mint"}</button></Card></div>
-    <p className="mt-4 text-xs text-[var(--faint)]">Market seeding remains unavailable until this exact program is executable and the protocol PDA is finalized. It will never display invented market balances.</p>
+    <div className="mt-5 grid gap-3 lg:grid-cols-3"><Card className="p-4"><ShieldCheck className="h-5 w-5 text-[var(--identity)]" aria-hidden /><h3 className="mt-3 text-sm font-semibold">1. Initialize protocol</h3><p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">Pins the SKYT collateral mint, protocol PDA, fee vault, and separate settlement authority.</p><button disabled={busy !== null || initialized !== false} className="sky-btn-primary mt-4 min-h-11 w-full" onClick={() => run("initialize")}>{busy === "initialize" ? "Awaiting wallet…" : initialized ? "Protocol initialized" : "Approve initialization"}</button></Card><Card className="p-4"><WalletCards className="h-5 w-5 text-[var(--identity)]" aria-hidden /><h3 className="mt-3 text-sm font-semibold">2. Issue Devnet test collateral</h3><p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">Mints exactly {(Number(SKYT_ISSUANCE) / 1_000_000).toLocaleString()} SKYT with six decimals to your wallet.</p><button disabled={busy !== null || initialized !== true} className="sky-btn-primary mt-4 min-h-11 w-full" onClick={() => run("mint")}>{busy === "mint" ? "Awaiting wallet…" : "Approve 50,000 SKYT mint"}</button></Card><Card className="p-4"><FileCheck2 className="h-5 w-5 text-[var(--warning)]" aria-hidden /><h3 className="mt-3 text-sm font-semibold">3. Seed Des Moines</h3><p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">Creates and funds the first market only after its NOAA station and evidence package are validated.</p><button disabled className="sky-btn-primary mt-4 min-h-11 w-full opacity-60" onClick={() => run("seed")}>{busy === "seed" ? "Checking evidence…" : "Waiting for NOAA validation"}</button></Card></div>
+    <p className="mt-4 text-xs text-[var(--faint)]">Market seeding is intentionally blocked while Des Moines lacks a pinned NOAA station. This prevents placeholder hashes, invented observations, and misleading on-chain markets.</p>
     {message && <p role="alert" className={cn("mt-4 border p-3 text-sm", message.tone === "green" ? "border-[var(--success)]/50 text-[var(--success)]" : "border-[var(--destructive)]/50 text-[var(--destructive-foreground)]")}>{message.text}{message.signature && <> <a className="underline" href={explorerTx(message.signature)} target="_blank" rel="noreferrer">View finalized transaction</a></>}</p>}
   </section>;
 }
