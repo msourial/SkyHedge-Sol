@@ -108,7 +108,7 @@ function OwnerConsole() {
         const end = new Date(); end.setUTCDate(end.getUTCDate() - 1);
         const start = new Date(end); start.setUTCDate(start.getUTCDate() - 7);
         const date = (value: Date) => value.toISOString().slice(0, 10);
-        const evidence = await api<{ validated: true; stationId: string; stationIdHash: string; providerHash: string; methodologyHash: string; quoteInputsHash: string }>(`/api/markets/des-moines/evidence-package?start=${date(start)}&end=${date(end)}`);
+        const evidence = await api<{ validated: true; stationId: string; stationIdHash: string; providerHash: string; methodologyHash: string; quoteInputsHash: string }>(`/api/evidence-package?start=${date(start)}&end=${date(end)}`);
         const seed = await desMoinesSeedTransactions(wallet.publicKey, evidence);
         const signatures = await approveAndConfirmDesMoinesSeed(seed, wallet);
         setMessage({ tone: "green", text: "Des Moines market created, funded, and opened on finalized Devnet.", signature: signatures[2] });
