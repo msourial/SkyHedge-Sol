@@ -1,4 +1,6 @@
 import { createServer, type Server } from "node:http";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import type { Express, Response } from "express";
 import { z } from "zod";
 import { eq, sql } from "drizzle-orm";
@@ -183,6 +185,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }).onConflictDoNothing();
       }
       return res.json({ ...result.evidence, finalValueMm: result.finalValueMm });
+    } catch (error) { return dataUnavailable(res, error); }
+  });
+
+  app.get("/api/markets/des-moines/evidence-package", async (req, res) => {
+    const range = z.object({ start: z.string().date(), end: z.string().date() }).safeParse(req.query);
+    if (!range.success || range.data.start >= range.data.end) return res.status(400).json({ error: "VALID_DATE_WINDOW_REQUIRED" });
+    try {
+      const station = NOAA_STATIONS["des-moines"];
+      const evidence = await consensus.evidenceFor("des-moines", range.data.start, range.data.end);
+      const methodology = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), "shared/methodology-v1.json"), "utf8"));
+      return res.json({
+        validated: evidence.verdict === "AGREED",
+        stationId: station.stationId,
+        stationIdHash: canonicalSourceHash(station.stationId),
+        providerHash: canonicalSourceHash(methodology),
+        methodologyHash: canonicalSourceHash(methodology.version),
+        quoteInputsHash: canonicalSourceHash({ city: "des-moines", start: range.data.start, end: range.data.end, thresholdMm: 50, probabilityBps: 2_000 }),
+        evidence: { sourceHash: evidence.evidence.sourceHash, cumulativeMm: evidence.finalValueMm, windowStart: range.data.start, windowEnd: range.data.end },
+      });
     } catch (error) { return dataUnavailable(res, error); }
   });
 

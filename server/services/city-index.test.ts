@@ -3,11 +3,11 @@ import { CITY_INDEX, cityByHash, cityBySlug, cityHash, upcomingWeeklyWindows, we
 import { NOAA_STATIONS } from "./noaa";
 import { searchCities } from "./city-index";
 
-describe("V1 city registry (three NOAA-pinned US cities)", () => {
-  it("commits exactly New York, Miami, and Chicago", () => {
-    expect(CITY_INDEX.length).to.eq(3);
+describe("V1 city registry (NOAA-pinned US cities)", () => {
+  it("commits Des Moines, New York, Miami, and Chicago", () => {
+    expect(CITY_INDEX.length).to.eq(4);
     const slugs = CITY_INDEX.map((c) => c.slug);
-    expect(slugs).to.have.members(["new-york", "miami", "chicago"]);
+    expect(slugs).to.have.members(["des-moines", "new-york", "miami", "chicago"]);
     expect(new Set(slugs).size).to.eq(slugs.length);
   });
 
@@ -69,6 +69,11 @@ describe("City search index", () => {
 
   it("resolves the V1 New York alias", () => {
     expect(searchCities("nyc")[0].slug).to.eq("new-york");
+  });
+
+  it("resolves the Des Moines station and alias", () => {
+    expect(searchCities("dsm")[0].slug).to.eq("des-moines");
+    expect(NOAA_STATIONS["des-moines"].stationId).to.eq("GHCND:USW00014933");
   });
 
   it("fuzzily matches typos against city names", () => {

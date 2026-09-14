@@ -38,6 +38,13 @@ export interface CityIndex {
 
 export const CITY_INDEX: CityIndex[] = [
   {
+    slug: "des-moines", name: "Des Moines", country: "United States", countryCode: "US",
+    latitude: 41.534, longitude: -93.663,
+    noaaDataset: "GHCND", noaaStationId: "GHCND:USW00014933", stationName: "DES MOINES INTL AP",
+    monthlyNormalsMm: [22, 27, 55, 86, 111, 126, 111, 105, 82, 61, 45, 28],
+    coverageTier: "A",
+  },
+  {
     slug: "new-york", name: "New York", country: "United States", countryCode: "US",
     latitude: 40.7789, longitude: -73.9692,
     noaaDataset: "GHCND", noaaStationId: "GHCND:USW00094728", stationName: "NY CITY CENTRAL PARK",

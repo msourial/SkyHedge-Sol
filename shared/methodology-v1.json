@@ -12,6 +12,9 @@
     "window": "local-midnight-to-midnight over the market observation window"
   },
   "cities": {
+    "des-moines": {
+      "noaaStation": "GHCND:USW00014933"
+    },
     "new-york": {
       "noaaStation": "GHCND:USW00094728"
     },
