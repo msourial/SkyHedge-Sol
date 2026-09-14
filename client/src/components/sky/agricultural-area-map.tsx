@@ -25,9 +25,10 @@ const MAP_PROVIDER = import.meta.env.VITE_MAP_PROVIDER ?? "maptiler";
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY ?? "";
 const MAPTILER_SHARE_BASE_URL = import.meta.env.VITE_MAPTILER_SHARE_BASE_URL ?? "";
 const MAPTILER_ATTRIBUTION = '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>';
+const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>';
 
 function mapProviderConfigured(): boolean {
-  return MAP_PROVIDER === "maptiler" && MAPTILER_KEY.trim().length > 0;
+  return true;
 }
 
 function mapTilerTileUrl(market: AgriculturalMarket, variant: "compact" | "standard", attempt: number): string {
@@ -35,6 +36,11 @@ function mapTilerTileUrl(market: AgriculturalMarket, variant: "compact" | "stand
   const extension = variant === "compact" ? "png" : "jpg";
   const key = encodeURIComponent(MAPTILER_KEY.trim());
   return `https://api.maptiler.com/maps/${style}/{z}/{x}/{y}.${extension}?key=${key}&market=${market.slug}&attempt=${attempt}`;
+}
+
+function tileUrl(market: AgriculturalMarket, variant: "compact" | "standard", attempt: number): string {
+  if (MAP_PROVIDER === "maptiler" && MAPTILER_KEY.trim()) return mapTilerTileUrl(market, variant, attempt);
+  return `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?market=${market.slug}&attempt=${attempt}`;
 }
 
 function openStreetMapUrl(market: AgriculturalMarket): string {
@@ -132,10 +138,8 @@ export function AgriculturalAreaMap({
 
   const mapUnavailable = phase === "unavailable";
   const statusLabel = STATUS_LABELS[mapUnavailable ? "map_unavailable" : status];
-  const unavailableTitle = !providerConfigured ? "Map provider not configured" : "Map unavailable";
-  const unavailableHint = !providerConfigured
-    ? "Add VITE_MAPTILER_KEY to load the premium MapTiler map."
-    : "The map tiles did not load. The exact reference location remains available below.";
+  const unavailableTitle = "Map unavailable";
+  const unavailableHint = "The map tiles did not load. The exact reference location remains available below.";
 
   return (
     <figure
@@ -161,8 +165,8 @@ export function AgriculturalAreaMap({
           >
             <MapSizeController marketSlug={market.slug} />
             <TileLayer
-              attribution={MAPTILER_ATTRIBUTION}
-              url={mapTilerTileUrl(market, variant, attempt)}
+              attribution={MAP_PROVIDER === "maptiler" && MAPTILER_KEY.trim() ? MAPTILER_ATTRIBUTION : OSM_ATTRIBUTION}
+              url={tileUrl(market, variant, attempt)}
               eventHandlers={{ load: handleLayerLoad, tileerror: handleTileError }}
             />
             <ZoomControl position="topright" />
