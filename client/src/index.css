@@ -54,6 +54,7 @@
       radial-gradient(circle at 78% -10%, rgba(255, 60, 172, 0.11), transparent 30%),
       radial-gradient(circle at 6% 0%, rgba(45, 226, 230, 0.09), transparent 30%);
     background-size: 36px 36px, 36px 36px, auto, auto;
+    overflow-x: hidden;
   }
 
   h1, h2, h3, h4 {
@@ -393,6 +394,7 @@
 .wallet-adapter-modal-list .wallet-adapter-button,
 .wallet-adapter-dropdown-list-item {
   color: var(--foreground);
+  min-height: 44px;
 }
 
 .wallet-adapter-modal-list .wallet-adapter-button:hover,
@@ -404,6 +406,16 @@
   .sky-wallet-button.wallet-adapter-button {
     max-width: 10rem;
     padding: 0 0.75rem;
+  }
+
+  .sky-card,
+  .sky-hero-card {
+    padding: 1rem;
+  }
+
+  .wallet-adapter-modal-wrapper {
+    width: calc(100vw - 1.5rem);
+    max-width: 22rem;
   }
 }
 

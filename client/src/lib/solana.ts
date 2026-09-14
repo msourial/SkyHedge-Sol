@@ -1,4 +1,4 @@
-import { Connection, PublicKey, VersionedTransaction } from "@solana/web3.js";
+import { Connection, LAMPORTS_PER_SOL, PublicKey, VersionedTransaction } from "@solana/web3.js";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
 
 export const RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
@@ -8,6 +8,28 @@ export const SETTLEMENT_AUTHORITY = import.meta.env.VITE_SETTLEMENT_AUTHORITY ??
 export const SKYT_MINT = import.meta.env.VITE_SKYT_MINT ?? "3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g";
 
 export const connection = new Connection(RPC_URL, "confirmed");
+
+export type FinalizedWalletState = {
+  sol: number;
+  skytBaseUnits: string;
+  skytDecimals: number;
+  slot: number;
+};
+
+/** Reads only the connected address from Devnet at finalized commitment. */
+export async function finalizedWalletState(owner: PublicKey): Promise<FinalizedWalletState> {
+  const [lamports, tokenAccounts, slot] = await Promise.all([
+    connection.getBalance(owner, "finalized"),
+    connection.getParsedTokenAccountsByOwner(owner, { mint: new PublicKey(SKYT_MINT) }, "finalized"),
+    connection.getSlot("finalized"),
+  ]);
+  const token = tokenAccounts.value.reduce(
+    (total, account) => total + BigInt(account.account.data.parsed.info.tokenAmount.amount),
+    0n,
+  );
+  const decimals = tokenAccounts.value[0]?.account.data.parsed.info.tokenAmount.decimals ?? 6;
+  return { sol: lamports / LAMPORTS_PER_SOL, skytBaseUnits: token.toString(), skytDecimals: decimals, slot };
+}
 
 export function isPubkey(value: string): boolean {
   try {

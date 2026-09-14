@@ -6,6 +6,15 @@ import { cn } from "@/lib/utils";
 
 const NAV = [{ to: "/", label: "Protocol", icon: LayoutDashboard }];
 
+function DevnetTesterNotice() {
+  return <div role="status" className="border-b border-[var(--warning)]/40 bg-[var(--warning-dim)]">
+    <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3 text-xs leading-relaxed text-[var(--muted-foreground)] sm:px-6 sm:text-sm">
+      <p><strong className="text-[var(--foreground)]">Open Devnet tester.</strong> SKYT, Devnet SOL, quotes, and any test positions have no real-world value and are not redeemable.</p>
+      <p><span className="font-semibold text-[var(--warning)]">Tester caps:</span> up to 500 SKYT protection per wallet and 10,000 SKYT total liquidity per seeded test market. Actions stay unavailable until finalized program, IDL, protocol, market, evidence, and collateral gates are satisfied.</p>
+    </div>
+  </div>;
+}
+
 function NetworkPill() {
   const network = import.meta.env.VITE_SOLANA_RPC_URL?.includes("8899") ? "localnet" : "devnet";
   return (
@@ -86,6 +95,7 @@ export default function Layout() {
           </div>
         </div>
       </header>
+      <DevnetTesterNotice />
       <main className="sky-atmosphere mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
         <Outlet />
       </main>

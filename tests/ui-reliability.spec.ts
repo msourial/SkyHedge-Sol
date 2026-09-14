@@ -65,7 +65,7 @@ test("wallet opens the supported chooser without attempting connection on load",
 });
 
 test("locations wrap without horizontal overflow at supported widths", async ({ page }) => {
-  for (const width of [375, 768, 1024, 1440]) {
+  for (const width of [375, 414, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/?tab=markets&city=des-moines");
     await page.getByRole("combobox", { name: "Find an index" }).focus();
