@@ -10,7 +10,9 @@ const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8
 const SKYT_MINT = process.env.SKYT_MINT ?? "3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 const PROTOCOL_PDA = "3XcAwTUdXJwMA3XhgmfhKBMwYf3JaKwQMFpPigdXskdU";
-const FEE_VAULT = "36FaQtaZWeS29hKg1iVBc8iPWwN9tEGAa4USHjBu5aSL";
+// PDA derived from ["fee-vault", protocol PDA] for the deployed program.
+// Keep this aligned with server/services/devnet-status.ts and the Anchor seeds.
+const FEE_VAULT = "HR1UDnVYsBfFxqcyydfkL9zdym3VJ8ZtHRkXbD7iJquu";
 
 async function rpc<T>(method: string, params: unknown[]): Promise<T | null> {
   const response = await fetch(RPC_URL, {
