@@ -4,6 +4,9 @@ dist
 .planning
 anchor/target
 target
+anchor/.anchor
+.localnet-ledger
+test-ledger
 coverage
 playwright-report
 test-results
