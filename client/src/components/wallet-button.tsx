@@ -66,6 +66,11 @@ export function WalletButton() {
       <span className="sr-only" aria-live="polite">
         {connected && publicKey ? `${wallet?.adapter.name ?? "Wallet"} connected: ${publicKey.toBase58()}` : connecting ? "Connecting wallet" : wallet ? `${wallet.adapter.name} selected. Activate the Connect button to continue.` : "No wallet connected"}
       </span>
+      {connecting && !connected && (
+        <div role="status" className="absolute right-0 z-[70] mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3 text-xs leading-relaxed text-[var(--foreground)] shadow-2xl">
+          Approve or reject the connection request in {wallet?.adapter.name ?? "your wallet"}. No transaction is being requested.
+        </div>
+      )}
       {(error || (attempted && !supportedInstalled && !wallet)) && (
         <div role="alert" className="absolute right-0 z-[70] mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-[var(--warning)]/50 bg-[var(--surface-2)] p-3 text-xs leading-relaxed text-[var(--muted-foreground)] shadow-2xl">
           <div className="flex items-start gap-2">

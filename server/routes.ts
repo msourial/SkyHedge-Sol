@@ -1,22 +1,23 @@
 import { createServer, type Server } from "node:http";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import type { Express, Response } from "express";
+import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { eq, sql } from "drizzle-orm";
-import { DataUnavailableError, NOAA_STATIONS, NoaaRainfallProvider, canonicalSourceHash, cumulativeMillimeters, type SkyHedgeCity } from "./services/noaa";
+import { DataUnavailableError, NOAA_STATIONS, NoaaRainfallProvider, cumulativeMillimeters, type SkyHedgeCity } from "./services/noaa";
 import { searchCities } from "./services/city-index";
-import { MARKET_LIMITS, RainfallQuoteEngine, type TriggerOperator } from "./services/quote-engine";
+import { MARKET_LIMITS, quoteFromCommittedMarketTerms, RainfallQuoteEngine, type TriggerOperator } from "./services/quote-engine";
 import { RainfallConsensusService } from "./services/consensus";
 import { createDb } from "./db";
 import { settlementEvidence, markets as marketsTable, protectionPositions as protectionPositionsTable, liquidityPositions as liquidityPositionsTable } from "../shared/schema";
 import { cityHash, cityBySlug } from "../shared/cities";
 import { cityIndexState, allCityIndexStates, weeklyHistory } from "./services/weather-index";
 import { AnchorIndexer } from "./services/solana-indexer";
-import { UnsignedTransactionBuilder, type TxAction } from "./services/unsigned-tx";
+import { ClaimUnavailableError, UnsignedTransactionBuilder, type TxAction } from "./services/unsigned-tx";
 import { SettlementRunner } from "./services/settlement";
 import { WeatherXmProvider } from "./services/weatherxm";
-import { DevnetStatusReader } from "./services/devnet-status";
+import { DevnetStatusReader, publicDevnetStatus } from "./services/devnet-status";
+import { finalizedEvidenceWindow, getDesMoinesEvidencePackage } from "./services/des-moines-evidence";
+import { desMoinesQuoteUnavailableReason, testerProtectionUnavailableReason } from "./services/tester-readiness";
+import { settlementWorkerReadiness } from "./services/settlement-config";
 import { agriculturalMarketBySlug, AGRICULTURAL_MARKETS, calendarMonthlyWindow, weeklyFridayWindow } from "../shared/agricultural-markets";
 
 const provider = new NoaaRainfallProvider();
@@ -25,7 +26,9 @@ const consensus = new RainfallConsensusService();
 const db = createDb();
 const indexer = db ? new AnchorIndexer(db) : null;
 const unsignedTx = new UnsignedTransactionBuilder();
-const settlement = db && process.env.SETTLEMENT_AUTHORITY_KEYPAIR ? new SettlementRunner(db) : null;
+// PostgreSQL is an optional audit read-model; the signed NOAA settlement worker
+// must remain available on finalized Solana RPC without database persistence.
+const settlement = process.env.SETTLEMENT_AUTHORITY_KEYPAIR ? new SettlementRunner(db ?? undefined) : null;
 const weatherXm = new WeatherXmProvider();
 const devnetStatus = new DevnetStatusReader();
 const programId = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
@@ -65,16 +68,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           noaa: process.env.NOAA_TOKEN ? "configured" : "missing",
           weatherXm: "agent-api-health-free",
         },
-        settlement: {
-          status: process.env.SETTLEMENT_AUTHORITY_KEYPAIR ? "configured" : "manual-or-missing",
-        },
+        settlement: settlementWorkerReadiness({
+          signerConfigured: Boolean(process.env.SETTLEMENT_AUTHORITY_KEYPAIR),
+          noaaConfigured: Boolean(process.env.NOAA_TOKEN),
+          cronSecret: process.env.CRON_SECRET,
+        }),
       },
       responseMs: Date.now() - started,
     });
   });
 
   app.get("/api/devnet/status", async (_req, res) => {
-    try { return res.json(await devnetStatus.read()); }
+    try { return res.json(publicDevnetStatus(await devnetStatus.read())); }
     catch (error) { return res.status(503).json({ error: "DEVNET_STATUS_UNAVAILABLE", message: (error as Error).message }); }
   });
 
@@ -188,24 +193,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { return dataUnavailable(res, error); }
   });
 
-  app.get("/api/markets/des-moines/evidence-package", async (req, res) => {
-    const range = z.object({ start: z.string().date(), end: z.string().date() }).safeParse(req.query);
-    if (!range.success || range.data.start >= range.data.end) return res.status(400).json({ error: "VALID_DATE_WINDOW_REQUIRED" });
+  const sendDesMoinesEvidencePackage = async (req: Request, res: Response) => {
+    const requestedRange = z.object({ start: z.string().date().optional(), end: z.string().date().optional() }).safeParse(req.query);
+    if (!requestedRange.success || Boolean(requestedRange.data.start) !== Boolean(requestedRange.data.end)) {
+      return res.status(400).json({ error: "VALID_DATE_WINDOW_REQUIRED" });
+    }
+    const range = finalizedEvidenceWindow();
+    if (requestedRange.data.start && requestedRange.data.end
+      && (requestedRange.data.start !== range.start || requestedRange.data.end !== range.end)) {
+      return res.status(400).json({ error: "VALID_DATE_WINDOW_REQUIRED", message: "Only the server-selected, completed NOAA evidence window is permitted." });
+    }
     try {
-      const station = NOAA_STATIONS["des-moines"];
-      const evidence = await consensus.evidenceFor("des-moines", range.data.start, range.data.end);
-      const methodology = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), "shared/methodology-v1.json"), "utf8"));
-      return res.json({
-        validated: evidence.verdict === "AGREED",
-        stationId: station.stationId,
-        stationIdHash: canonicalSourceHash(station.stationId),
-        providerHash: canonicalSourceHash(methodology),
-        methodologyHash: canonicalSourceHash(methodology.version),
-        quoteInputsHash: canonicalSourceHash({ city: "des-moines", start: range.data.start, end: range.data.end, thresholdMm: 50, probabilityBps: 2_000 }),
-        evidence: { sourceHash: evidence.evidence.sourceHash, cumulativeMm: evidence.finalValueMm, windowStart: range.data.start, windowEnd: range.data.end },
-      });
+      return res.json(await getDesMoinesEvidencePackage(range));
     } catch (error) { return dataUnavailable(res, error); }
-  });
+  };
+  app.get("/api/evidence-package", sendDesMoinesEvidencePackage);
+  app.get("/api/markets/des-moines/evidence-package", sendDesMoinesEvidencePackage);
 
   app.get("/api/cities", async (_req, res) => {
     try {
@@ -282,9 +285,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!parsed.success) return res.status(400).json({ error: "Invalid protection parameters", details: parsed.error.flatten() });
     try {
       const request = parsed.data;
-      const quote = await quotes.quote({ ...request, stationId: NOAA_STATIONS[request.city].stationId, protectedAmount: BigInt(request.protectedAmount), operator: request.operator as TriggerOperator });
+      let finalizedStatus: Awaited<ReturnType<typeof devnetStatus.read>> | null = null;
+      if (request.city === "des-moines") {
+        finalizedStatus = await devnetStatus.read();
+        const reason = desMoinesQuoteUnavailableReason(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator);
+        if (reason) return res.status(409).json({ error: "TESTER_QUOTE_UNAVAILABLE", message: reason });
+      }
+      const quote = request.city === "des-moines" && finalizedStatus
+        ? quoteFromCommittedMarketTerms({ protectedAmount: BigInt(request.protectedAmount), probabilityBps: finalizedStatus.desMoinesMarket.quoteProbabilityBps!, premiumRateBps: finalizedStatus.desMoinesMarket.premiumRateBps!, inputsHash: finalizedStatus.desMoinesMarket.quoteInputsHash! })
+        : await quotes.quote({ ...request, stationId: NOAA_STATIONS[request.city].stationId, protectedAmount: BigInt(request.protectedAmount), operator: request.operator as TriggerOperator });
       return res.json({ ...quote, premium: quote.premium.toString(), protocolFee: quote.protocolFee.toString(), protectedAmount: request.protectedAmount, source: "NOAA", explicitApprovalRequired: true });
     } catch (error) { return dataUnavailable(res, error); }
+  });
+
+  app.get("/api/markets/:market/positions/:wallet/claim-readiness", async (req, res) => {
+    try {
+      return res.json(await unsignedTx.readClaimReadiness(req.params.market, req.params.wallet));
+    } catch (error) {
+      return res.status(400).json({ error: "CLAIM_STATUS_UNAVAILABLE", message: (error as Error).message });
+    }
   });
 
   app.get("/api/portfolio/:wallet", async (req, res) => {
@@ -313,9 +332,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const intent = z.object({ action: z.enum(["fund_pool", "withdraw_liquidity", "open_position", "claim_payout", "claim_premium_refund", "redeem_closed_liquidity"]), market: z.string().min(32), wallet: z.string().min(32), amount: z.string().regex(/^\d+$/).optional(), approved: z.literal(true) }).safeParse(req.body);
     if (!intent.success) return res.status(400).json({ error: "A valid market, wallet, and explicit approval are required." });
     try {
+      if (intent.data.action === "open_position") {
+        const reason = testerProtectionUnavailableReason(await devnetStatus.read(), intent.data.market, intent.data.amount ?? "");
+        if (reason) return res.status(409).json({ error: "TESTER_ACTION_UNAVAILABLE", message: reason });
+      }
       const tx = await unsignedTx.build(intent.data.action as TxAction, intent.data.market, intent.data.wallet, intent.data.amount);
       return res.json({ ...tx, note: "Serialized as base64 VersionedTransaction with zero signatures; the wallet signs offline and the client broadcasts. No simulation." });
     } catch (error) {
+      if (error instanceof ClaimUnavailableError) return res.status(409).json({ error: "CLAIM_UNAVAILABLE", message: error.message });
       return res.status(500).json({ error: "TX_BUILD_ERROR", message: (error as Error).message });
     }
   });

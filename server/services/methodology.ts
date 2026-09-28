@@ -1,5 +1,4 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
+import methodologyData from "../../shared/methodology-v1.json";
 
 export interface Methodology {
   version: string;
@@ -9,13 +8,7 @@ export interface Methodology {
   cities: Record<string, { noaaStation: string }>;
 }
 
-let cached: Methodology | null = null;
-
-/** Committed settlement methodology (shared/methodology-v1.json), cached after first read. */
+/** Committed settlement methodology (shared/methodology-v1.json), bundled into serverless builds. */
 export function loadMethodology(): Methodology {
-  if (!cached) {
-    const file = path.resolve(process.cwd(), "shared/methodology-v1.json");
-    cached = JSON.parse(fs.readFileSync(file, "utf8")) as Methodology;
-  }
-  return cached;
+  return methodologyData as Methodology;
 }

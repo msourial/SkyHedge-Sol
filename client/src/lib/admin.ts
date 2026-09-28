@@ -1,6 +1,7 @@
 import { createAssociatedTokenAccountIdempotentInstruction, createMintToInstruction, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
+import { isValidImmutableMarketPricingTerms } from "../../../shared/market-pricing";
 import { connection, PROGRAM_ID, PROTOCOL_ADMIN, SETTLEMENT_AUTHORITY, SKYT_MINT } from "./solana";
 
 const program = new PublicKey(PROGRAM_ID);
@@ -27,7 +28,8 @@ export type DesMoinesEvidencePackage = {
   stationIdHash: string;
   providerHash: string;
   methodologyHash: string;
-  quoteInputsHash: string;
+  seedSchedule: { salesCloseAt: number; observationStart: number; observationEnd: number };
+  quoteTerms: null | { probabilityBps: number; premiumRateBps: number; inputsHash: string };
 };
 
 export type DesMoinesSeedTransactions = {
@@ -54,6 +56,21 @@ function u64(value: bigint): Buffer { const out = Buffer.alloc(8); out.writeBigU
 export async function desMoinesSeedTransactions(admin: PublicKey, evidence: DesMoinesEvidencePackage): Promise<DesMoinesSeedTransactions> {
   if (!evidence.validated || !evidence.stationId.trim()) throw new Error("Des Moines market seeding requires a validated NOAA station package.");
   hashBytes(evidence.stationIdHash, "stationIdHash");
+  const terms = evidence.quoteTerms;
+  if (!isValidImmutableMarketPricingTerms(terms)) {
+    throw new Error("NOAA station evidence is validated, but no complete actuarial pricing package is available for the immutable market dates. No market transaction was prepared.");
+  }
+  const schedule = evidence.seedSchedule;
+  const day = 86_400;
+  if (!schedule || ![schedule.salesCloseAt, schedule.observationStart, schedule.observationEnd].every(Number.isSafeInteger)
+    || schedule.salesCloseAt <= 0
+    || schedule.observationStart !== Math.ceil(schedule.salesCloseAt / day) * day
+    || schedule.observationEnd - schedule.observationStart !== 5 * day) {
+    throw new Error("NOAA pricing dates are missing or do not match the five-full-day Devnet test schedule. No market transaction was prepared.");
+  }
+  if (Math.floor(Date.now() / 1_000) >= schedule.salesCloseAt) {
+    throw new Error("This NOAA pricing package has expired. Refresh the exact-window quote before preparing any wallet transaction.");
+  }
   const cityHash = await sha256Hex("des-moines");
   const protocol = protocolPda();
   const protocolInfo = await connection.getAccountInfo(protocol, "finalized");
@@ -65,23 +82,22 @@ export async function desMoinesSeedTransactions(admin: PublicKey, evidence: DesM
   const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), market.toBuffer()], program);
   const [liquidityPosition] = PublicKey.findProgramAddressSync([Buffer.from("liquidity"), market.toBuffer(), admin.toBuffer()], program);
   const adminAta = getAssociatedTokenAddressSync(mint, admin);
-  const now = BigInt(Math.floor(Date.now() / 1000));
-  const salesCloseAt = now + 86_400n;
-  const observationStart = salesCloseAt;
-  const observationEnd = observationStart + 7n * 86_400n;
+  const salesCloseAt = BigInt(schedule.salesCloseAt);
+  const observationStart = BigInt(schedule.observationStart);
+  const observationEnd = BigInt(schedule.observationEnd);
   const createData = Buffer.concat([
     createMarketDiscriminator,
     cityHash,
     hashBytes(evidence.stationIdHash, "stationIdHash"),
     hashBytes(evidence.providerHash, "providerHash"),
     hashBytes(evidence.methodologyHash, "methodologyHash"),
-    hashBytes(evidence.quoteInputsHash, "quoteInputsHash"),
+    hashBytes(terms.inputsHash, "quoteInputsHash"),
     Buffer.from([1]), // ComparisonOperator::GreaterThanOrEqual
     i64(5_000n), // 50 mm, canonical on-chain unit is hundredths of a millimetre
     i64(salesCloseAt),
     i64(observationStart),
     i64(observationEnd),
-    u16(2_000),
+    u16(terms.probabilityBps),
     u64(10_000_000_000n),
     u64(8_000_000_000n),
     u64(500_000_000n),

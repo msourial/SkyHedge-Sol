@@ -56,6 +56,26 @@ describe("skyhedge_protection localnet lifecycle (real token CPIs)", () => {
   let salesCloseAt: number;
   let observationStart: number;
   let observationEnd: number;
+  let stationIdHash: number[];
+  let methodologyHash: number[];
+  const observationArgs = (overrides: Partial<{
+    stationIdHash: number[];
+    methodologyHash: number[];
+    observationWindowStart: BN;
+    observationWindowEnd: BN;
+    cumulativeRainfallMmX100: BN;
+    observedAt: BN;
+    sourceHash: number[];
+  }> = {}) => ({
+    stationIdHash: stationIdHash!,
+    methodologyHash: methodologyHash!,
+    observationWindowStart: new BN(observationStart),
+    observationWindowEnd: new BN(observationEnd),
+    cumulativeRainfallMmX100: new BN(6_000), // 60.00 mm >= 50.00 mm threshold
+    observedAt: new BN(observationEnd),
+    sourceHash: randomHash(),
+    ...overrides,
+  });
 
   before(async () => {
     for (const wallet of [lp, buyer, buyer2, settlementAuthority]) {
@@ -105,12 +125,14 @@ describe("skyhedge_protection localnet lifecycle (real token CPIs)", () => {
     salesCloseAt = t + 6;
     observationStart = t + 6;
     observationEnd = t + 14;
+    stationIdHash = randomHash();
+    methodologyHash = randomHash();
     await program.methods
       .createMarket({
         cityHash: randomHash(),
-        stationIdHash: randomHash(),
+        stationIdHash,
         providerHash: randomHash(),
-        methodologyHash: randomHash(),
+        methodologyHash,
         quoteInputsHash: randomHash(),
         operator: { greaterThanOrEqual: {} },
         thresholdMmX100: new BN(5_000), // 50.00 mm
@@ -200,30 +222,97 @@ describe("skyhedge_protection localnet lifecycle (real token CPIs)", () => {
   });
 
   it("rejects an observation from a non-settlement signer", async () => {
-    try {
-      await program.methods
-        .submitWeatherObservation({ cumulativeRainfallMmX100: new BN(1), observedAt: new BN(observationStart + 1), sourceHash: randomHash() })
+    const error = await captureError(() => program.methods
+        .submitWeatherObservation(observationArgs())
         .accounts({ authority: buyer.publicKey, market: marketPda })
         .signers([buyer])
-        .rpc();
-      expect.fail("expected UnauthorizedAuthority");
-    } catch (error) {
-      expect(errorText(error)).to.match(/Unauthorised settlement authority|6016/);
-    }
+        .rpc());
+    expect(error).not.to.eq(null);
+    expect(errorText(error)).to.match(/Unauthorised settlement authority|6016/);
   });
 
-  it("gates settlement to the settlement authority", async () => {
+  it("binds the NOAA attestation to its pinned station and immutable window", async () => {
+    const preSettlementClaimError = await captureError(() => program.methods
+        .claimPayout()
+        .accounts({ owner: buyer.publicKey, market: marketPda, position: positionPda, ownerTokenAccount: buyerAta, collateralMint: mint, tokenProgram: TOKEN_PROGRAM_ID })
+        .signers([buyer])
+        .rpc());
+    expect(preSettlementClaimError).not.to.eq(null);
+    expect(errorText(preSettlementClaimError)).to.contain("NotClaimable");
+
+    const wrongStation = observationArgs({ stationIdHash: randomHash() });
+    const stationError = await captureError(() => program.methods.submitWeatherObservation(wrongStation)
+        .accounts({ authority: settlementAuthority.publicKey, market: marketPda })
+        .signers([settlementAuthority])
+        .rpc());
+    expect(stationError).not.to.eq(null);
+    expect(errorText(stationError)).to.contain("StationMismatch");
+
+    const wrongWindow = observationArgs({ observationWindowEnd: new BN(observationEnd + 1) });
+    const windowError = await captureError(() => program.methods.submitWeatherObservation(wrongWindow)
+        .accounts({ authority: settlementAuthority.publicKey, market: marketPda })
+        .signers([settlementAuthority])
+        .rpc());
+    expect(windowError).not.to.eq(null);
+    expect(errorText(windowError)).to.contain("InvalidObservationWindow");
+
+    const wrongMethodology = observationArgs({ methodologyHash: randomHash() });
+    const methodologyError = await captureError(() => program.methods.submitWeatherObservation(wrongMethodology)
+        .accounts({ authority: settlementAuthority.publicKey, market: marketPda })
+        .signers([settlementAuthority])
+        .rpc());
+    expect(methodologyError).not.to.eq(null);
+    expect(errorText(methodologyError)).to.contain("MethodologyMismatch");
+
+    const staleObservation = observationArgs({ observedAt: new BN(observationEnd - 1) });
+    const staleError = await captureError(() => program.methods.submitWeatherObservation(staleObservation)
+      .accounts({ authority: settlementAuthority.publicKey, market: marketPda })
+      .signers([settlementAuthority])
+      .rpc());
+    expect(staleError).not.to.eq(null);
+    expect(errorText(staleError)).to.contain("InvalidObservationTime");
+
+    const negativeRainfall = observationArgs({ cumulativeRainfallMmX100: new BN(-1) });
+    const rainfallError = await captureError(() => program.methods.submitWeatherObservation(negativeRainfall)
+      .accounts({ authority: settlementAuthority.publicKey, market: marketPda })
+      .signers([settlementAuthority])
+      .rpc());
+    expect(rainfallError).not.to.eq(null);
+    expect(errorText(rainfallError)).to.contain("InvalidObservation");
+
+    const emptyHash = observationArgs({ sourceHash: Array(32).fill(0) });
+    const hashError = await captureError(() => program.methods.submitWeatherObservation(emptyHash)
+      .accounts({ authority: settlementAuthority.publicKey, market: marketPda })
+      .signers([settlementAuthority])
+      .rpc());
+    expect(hashError).not.to.eq(null);
+    expect(errorText(hashError)).to.contain("InvalidObservation");
+
+    const args = observationArgs();
     await program.methods
-      .submitWeatherObservation({
-        cumulativeRainfallMmX100: new BN(6_000), // 60.00 mm >= 50.00 mm threshold
-        observedAt: new BN(observationStart + 2),
-        sourceHash: randomHash(),
-      })
+      .submitWeatherObservation(args)
       .accounts({ authority: settlementAuthority.publicKey, market: marketPda })
       .signers([settlementAuthority])
       .rpc();
     const observation = await program.account.settlementObservation.fetch(observationPda);
     expect(observation.cumulativeRainfallMmX100.toNumber()).to.eq(6_000);
+    expect(observation.stationIdHash).to.deep.eq(stationIdHash);
+    expect(observation.observationWindowStart.toNumber()).to.eq(observationStart);
+    expect(observation.observationWindowEnd.toNumber()).to.eq(observationEnd);
+
+    const unavailableOverrideError = await captureError(() => program.methods.markDataUnavailable(randomHash())
+      .accounts({ authority: settlementAuthority.publicKey, protocol: protocolPda, market: marketPda, observation: observationPda })
+      .signers([settlementAuthority])
+      .rpc());
+    expect(unavailableOverrideError).not.to.eq(null);
+    expect(errorText(unavailableOverrideError)).to.contain("InvalidObservation");
+
+    const duplicateError = await captureError(() => program.methods.submitWeatherObservation(args)
+        .accounts({ authority: settlementAuthority.publicKey, market: marketPda })
+        .signers([settlementAuthority])
+        .rpc());
+    expect(duplicateError).not.to.eq(null);
+    expect(errorText(duplicateError)).to.match(/already in use|already initialized|custom program error/i);
 
     try {
       await program.methods.settleMarket().accounts({ market: marketPda }).rpc();
@@ -267,4 +356,77 @@ describe("skyhedge_protection localnet lifecycle (real token CPIs)", () => {
     const vault = await getAccount(connection, vaultPda);
     expect(Number(vault.amount)).to.eq(FUND - WITHDRAW + PREMIUM - COVERAGE);
   });
+
+  it("settles a below-threshold observation as a loss and rejects a payout claim", async () => {
+    const t = nowSeconds();
+    const start = t + 4;
+    const end = t + 9;
+    const [market] = PublicKey.findProgramAddressSync(
+      [Buffer.from("market"), protocolPda.toBuffer(), new BN(1).toArrayLike(Buffer, "le", 8)],
+      program.programId,
+    );
+    const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), market.toBuffer()], program.programId);
+    const [liquidity] = PublicKey.findProgramAddressSync([Buffer.from("liquidity"), market.toBuffer(), lp.publicKey.toBuffer()], program.programId);
+    const [position] = PublicKey.findProgramAddressSync([Buffer.from("position"), market.toBuffer(), buyer2.publicKey.toBuffer()], program.programId);
+
+    await program.methods.createMarket({
+      cityHash: randomHash(),
+      stationIdHash: randomHash(),
+      providerHash: randomHash(),
+      methodologyHash: randomHash(),
+      quoteInputsHash: randomHash(),
+      operator: { greaterThanOrEqual: {} },
+      thresholdMmX100: new BN(5_000),
+      salesCloseAt: new BN(start),
+      observationStart: new BN(start),
+      observationEnd: new BN(end),
+      quoteProbabilityBps: 2_000,
+      maxLiquidity: new BN(3_000 * UNIT),
+      maxExposure: new BN(2_500 * UNIT),
+      perWalletMax: new BN(500 * UNIT),
+    }).accounts({ admin: admin.publicKey, collateralMint: mint, tokenProgram: TOKEN_PROGRAM_ID }).signers([admin]).rpc();
+    await program.methods.fundPool(new BN(3_000 * UNIT))
+      .accounts({ provider: lp.publicKey, market, providerTokenAccount: lpAta, collateralMint: mint, tokenProgram: TOKEN_PROGRAM_ID })
+      .signers([lp]).rpc();
+    await program.methods.openMarket().accounts({ admin: admin.publicKey, market }).signers([admin]).rpc();
+    await program.methods.openPosition(new BN(100 * UNIT))
+      .accounts({ owner: buyer2.publicKey, market, ownerTokenAccount: buyer2Ata, collateralMint: mint, tokenProgram: TOKEN_PROGRAM_ID })
+      .signers([buyer2]).rpc();
+    while ((await connection.getBlockTime(await connection.getSlot("confirmed")))! <= start) await sleep(500);
+    await program.methods.lockMarket().accounts({ market }).rpc();
+    while ((await connection.getBlockTime(await connection.getSlot("confirmed")))! <= end) await sleep(500);
+    await program.methods.beginSettlement().accounts({ market }).rpc();
+
+    const marketState = await program.account.market.fetch(market);
+    const [observation] = PublicKey.findProgramAddressSync([Buffer.from("settlement"), market.toBuffer()], program.programId);
+    await program.methods.submitWeatherObservation({
+      stationIdHash: marketState.stationIdHash,
+      methodologyHash: marketState.methodologyHash,
+      observationWindowStart: marketState.observationStart,
+      observationWindowEnd: marketState.observationEnd,
+      cumulativeRainfallMmX100: new BN(1_000),
+      observedAt: marketState.observationEnd,
+      sourceHash: randomHash(),
+    }).accounts({ authority: settlementAuthority.publicKey, market }).signers([settlementAuthority]).rpc();
+    await program.methods.settleMarket()
+      .accounts({ settlementAuthority: settlementAuthority.publicKey, market, observation })
+      .signers([settlementAuthority]).rpc();
+
+    const settled = await program.account.market.fetch(market);
+    expect(settled.status).to.deep.eq({ settled: {} });
+    expect(settled.result).to.deep.eq({ notTriggered: {} });
+    expect(settled.payoutLiability.toNumber()).to.eq(0);
+    expect(settled.reservedExposure.toNumber()).to.eq(0);
+    const claimError = await captureError(() => program.methods.claimPayout()
+      .accounts({ owner: buyer2.publicKey, market, position, ownerTokenAccount: buyer2Ata, collateralMint: mint, tokenProgram: TOKEN_PROGRAM_ID })
+      .signers([buyer2]).rpc());
+    expect(claimError).not.to.eq(null);
+    expect(errorText(claimError)).to.contain("NotClaimable");
+  });
+
 });
+
+async function captureError(run: () => Promise<unknown>): Promise<unknown | null> {
+  try { await run(); return null; }
+  catch (error) { return error; }
+}

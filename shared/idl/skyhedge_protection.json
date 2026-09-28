@@ -695,6 +695,23 @@
         },
         {
           "name": "protocol",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          },
           "relations": [
             "market"
           ]
@@ -702,6 +719,33 @@
         {
           "name": "market",
           "writable": true
+        },
+        {
+          "name": "observation",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  116,
+                  116,
+                  108,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market"
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -1186,6 +1230,23 @@
         },
         {
           "name": "protocol",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          },
           "relations": [
             "market"
           ]
@@ -1825,6 +1886,21 @@
     },
     {
       "code": 6027,
+      "name": "StationMismatch",
+      "msg": "Oracle station does not match the market pin"
+    },
+    {
+      "code": 6028,
+      "name": "MethodologyMismatch",
+      "msg": "Oracle methodology does not match the market commitment"
+    },
+    {
+      "code": 6029,
+      "name": "InvalidObservation",
+      "msg": "Invalid NOAA observation payload"
+    },
+    {
+      "code": 6030,
       "name": "MathOverflow",
       "msg": "Arithmetic overflow"
     }
@@ -2005,6 +2081,36 @@
           {
             "name": "market",
             "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "station_id_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "methodology_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "observation_window_start",
+            "type": "i64"
+          },
+          {
+            "name": "observation_window_end",
+            "type": "i64"
           },
           {
             "name": "source_hash",
@@ -2386,6 +2492,36 @@
             "type": "pubkey"
           },
           {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "station_id_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "methodology_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "observation_window_start",
+            "type": "i64"
+          },
+          {
+            "name": "observation_window_end",
+            "type": "i64"
+          },
+          {
             "name": "value",
             "type": "i64"
           },
@@ -2575,6 +2711,32 @@
             "type": "pubkey"
           },
           {
+            "name": "station_id_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "methodology_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "observation_window_start",
+            "type": "i64"
+          },
+          {
+            "name": "observation_window_end",
+            "type": "i64"
+          },
+          {
             "name": "cumulative_rainfall_mm_x100",
             "type": "i64"
           },
@@ -2623,6 +2785,32 @@
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "station_id_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "methodology_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "observation_window_start",
+            "type": "i64"
+          },
+          {
+            "name": "observation_window_end",
+            "type": "i64"
+          },
           {
             "name": "cumulative_rainfall_mm_x100",
             "type": "i64"

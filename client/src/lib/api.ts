@@ -17,7 +17,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
   let body: (T & { error?: string; message?: string }) | undefined;
   try { body = (await res.json()) as T & { error?: string; message?: string }; } catch { /* non-JSON failure */ }
-  if (!res.ok) throw new ApiError(body?.error ?? body?.message ?? `HTTP ${res.status}`, res.status);
+  if (!res.ok) throw new ApiError(body?.message ?? body?.error ?? `HTTP ${res.status}`, res.status);
   if (!body) throw new ApiError("SkyHedge returned an invalid response.", res.status);
   return body;
 }

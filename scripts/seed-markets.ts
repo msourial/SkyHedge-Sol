@@ -6,6 +6,8 @@ import { getOrCreateAssociatedTokenAccount, TOKEN_PROGRAM_ID } from "@solana/spl
 import { Program, Wallet } from "@coral-xyz/anchor";
 import { RPC_URL, ROOT, UNIT, loadDeployer, loadProgram, protocolPda, marketPda, bn, hashBufferAsArray, nowSeconds, log } from "./lib/chain";
 
+throw new Error("Legacy market seeding is disabled: it uses hardcoded 20% pricing and does not require a verified quote-input package. No transactions were sent. Use the Builder only after the audited pricing package is available.");
+
 const MARKET_SPEC: Record<string, { thresholdMm: number; salesCloseHours: number; observationDays: number; quoteProbabilityBps: number }> = {
   "new-york": { thresholdMm: 25, salesCloseHours: 24, observationDays: 7, quoteProbabilityBps: 2_000 },
   miami: { thresholdMm: 50, salesCloseHours: 24, observationDays: 7, quoteProbabilityBps: 2_000 },

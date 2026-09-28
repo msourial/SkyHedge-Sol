@@ -1,7 +1,6 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { BorshCoder, EventParser, type Idl } from "@coral-xyz/anchor";
-import * as fs from "node:fs";
-import * as path from "node:path";
+import committedIdl from "../../shared/idl/skyhedge_protection.json";
 import { eq } from "drizzle-orm";
 import type { Db } from "../db";
 import { chainEvents, indexedSlots, liquidityPositions, markets, protectionPositions, settlementObservations } from "../../shared/schema";
@@ -28,7 +27,7 @@ export class AnchorIndexer {
   private readonly accountNames: string[];
 
   constructor(private readonly db: Db) {
-    const idl = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), "shared/idl/skyhedge_protection.json"), "utf8")) as Idl;
+    const idl = committedIdl as unknown as Idl;
     this.coder = new BorshCoder(idl);
     this.accountNames = (idl.accounts ?? []).map((account) => account.name);
   }

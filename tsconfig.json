@@ -1,5 +1,6 @@
 {
   "include": [
+    "api/**/*.ts",
     "client/src/App.tsx",
     "client/src/main.tsx",
     "client/src/pages/*.tsx",
@@ -18,6 +19,9 @@
     "server/services/methodology.ts",
     "server/services/solana-indexer.ts",
     "server/services/unsigned-tx.ts",
+    "server/services/vercel-api.ts",
+    "server/services/devnet-status.ts",
+    "server/services/tester-readiness.ts",
     "server/services/settlement.ts",
     "server/services/settlement-constants.ts",
     "scripts/demo-localnet.ts"
@@ -42,6 +46,7 @@
     ],
     "jsx": "preserve",
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "moduleResolution": "bundler",

@@ -206,16 +206,34 @@ pub mod skyhedge_protection {
         let market = &ctx.accounts.market;
         require!(market.status == MarketStatus::AwaitingSettlement, ErrorCode::InvalidMarketStatus);
         require_keys_eq!(ctx.accounts.authority.key(), ctx.accounts.protocol.settlement_authority, ErrorCode::UnauthorizedAuthority);
-        require!(args.observed_at >= market.observation_start && args.observed_at <= market.observation_end, ErrorCode::InvalidObservationTime);
+        require!(args.station_id_hash == market.station_id_hash, ErrorCode::StationMismatch);
+        require!(args.methodology_hash == market.methodology_hash, ErrorCode::MethodologyMismatch);
+        require!(args.observation_window_start == market.observation_start && args.observation_window_end == market.observation_end, ErrorCode::InvalidObservationWindow);
+        require!(args.observed_at == market.observation_end, ErrorCode::InvalidObservationTime);
+        require!(args.cumulative_rainfall_mm_x100 >= 0, ErrorCode::InvalidObservation);
+        require!(args.source_hash != [0; 32], ErrorCode::InvalidObservation);
         require!(Clock::get()?.unix_timestamp <= market.data_deadline, ErrorCode::StaleObservation);
         let observation = &mut ctx.accounts.observation;
         observation.market = market.key();
         observation.authority = ctx.accounts.authority.key();
+        observation.station_id_hash = args.station_id_hash;
+        observation.methodology_hash = args.methodology_hash;
+        observation.observation_window_start = args.observation_window_start;
+        observation.observation_window_end = args.observation_window_end;
         observation.cumulative_rainfall_mm_x100 = args.cumulative_rainfall_mm_x100;
         observation.observed_at = args.observed_at;
         observation.source_hash = args.source_hash;
         observation.bump = ctx.bumps.observation;
-        emit!(ObservationSubmitted { market: market.key(), value: args.cumulative_rainfall_mm_x100, source_hash: args.source_hash });
+        emit!(ObservationSubmitted {
+            market: market.key(),
+            authority: ctx.accounts.authority.key(),
+            station_id_hash: args.station_id_hash,
+            methodology_hash: args.methodology_hash,
+            observation_window_start: args.observation_window_start,
+            observation_window_end: args.observation_window_end,
+            value: args.cumulative_rainfall_mm_x100,
+            source_hash: args.source_hash,
+        });
         Ok(())
     }
 
@@ -235,13 +253,25 @@ pub mod skyhedge_protection {
     pub fn mark_data_unavailable(ctx: Context<MarkDataUnavailable>, source_hash: [u8; 32]) -> Result<()> {
         require!(ctx.accounts.market.status == MarketStatus::AwaitingSettlement, ErrorCode::InvalidMarketStatus);
         require_keys_eq!(ctx.accounts.authority.key(), ctx.accounts.protocol.settlement_authority, ErrorCode::UnauthorizedAuthority);
+        require!(data_unavailable_attestation_allowed(ctx.accounts.observation.is_some(), source_hash), ErrorCode::InvalidObservation);
         require!(Clock::get()?.unix_timestamp > ctx.accounts.market.data_deadline, ErrorCode::DataDeadlineNotReached);
         let market = &mut ctx.accounts.market;
         market.result = SettlementResult::DataUnavailable;
         market.refund_liability = market.premium_balance;
+        // Premiums are fully refundable when NOAA cannot produce final data;
+        // do not later extract the included protocol fee from LP principal.
+        market.accrued_protocol_fees = 0;
         market.reserved_exposure = 0;
         market.status = MarketStatus::DataUnavailable;
-        emit!(DataUnavailable { market: market.key(), source_hash });
+        emit!(DataUnavailable {
+            market: market.key(),
+            authority: ctx.accounts.authority.key(),
+            station_id_hash: market.station_id_hash,
+            methodology_hash: market.methodology_hash,
+            observation_window_start: market.observation_start,
+            observation_window_end: market.observation_end,
+            source_hash,
+        });
         Ok(())
     }
 
@@ -276,7 +306,7 @@ pub mod skyhedge_protection {
         require!(matches!(ctx.accounts.market.status, MarketStatus::Settled | MarketStatus::DataUnavailable), ErrorCode::InvalidMarketStatus);
         require!(Clock::get()?.unix_timestamp > ctx.accounts.market.claim_deadline, ErrorCode::ClaimWindowOpen);
         let market = &mut ctx.accounts.market;
-        let fee = market.accrued_protocol_fees;
+        let fee = protocol_fee_for_close(market.status, market.accrued_protocol_fees);
         if fee > 0 {
             transfer_from_market(&ctx.accounts.token_program, &ctx.accounts.vault, &ctx.accounts.fee_vault, market, &ctx.accounts.collateral_mint, fee)?;
         }
@@ -333,6 +363,13 @@ fn transfer_from_market<'info>(token_program: &Interface<'info, TokenInterface>,
 }
 
 fn ceil_bps(amount: u64, bps: u16) -> Result<u64> { (((amount as u128).checked_mul(bps as u128).ok_or(ErrorCode::MathOverflow)? + BPS_DENOMINATOR - 1) / BPS_DENOMINATOR).try_into().map_err(|_| error!(ErrorCode::MathOverflow)) }
+fn protocol_fee_for_close(status: MarketStatus, accrued_fee: u64) -> u64 {
+    if status == MarketStatus::DataUnavailable { 0 } else { accrued_fee }
+}
+
+fn data_unavailable_attestation_allowed(observation_exists: bool, source_hash: [u8; 32]) -> bool {
+    !observation_exists && source_hash != [0; 32]
+}
 fn premium_rate_bps(probability_bps: u16) -> Result<u16> {
     require!(probability_bps >= MIN_PROBABILITY_BPS && probability_bps <= MAX_PROBABILITY_BPS, ErrorCode::InvalidProbability);
     let loaded = ((probability_bps as u128) * (BPS_DENOMINATOR + RISK_LOADING_BPS as u128) + BPS_DENOMINATOR - 1) / BPS_DENOMINATOR;
@@ -350,9 +387,9 @@ pub struct InitializeProtocol<'info> { #[account(mut)] pub admin: Signer<'info>,
 #[derive(Accounts)] pub struct UpdateLiquidity<'info> { #[account(mut)] pub provider: Signer<'info>, pub protocol: Account<'info, ProtocolConfig>, #[account(mut, has_one = protocol)] pub market: Account<'info, Market>, #[account(mut, seeds = [b"vault", market.key().as_ref()], bump, token::mint = collateral_mint, token::authority = market)] pub vault: InterfaceAccount<'info, TokenAccount>, #[account(mut, token::mint = collateral_mint, token::authority = provider)] pub provider_token_account: InterfaceAccount<'info, TokenAccount>, #[account(init_if_needed, payer = provider, space = 8 + LiquidityPosition::INIT_SPACE, seeds = [b"liquidity", market.key().as_ref(), provider.key().as_ref()], bump)] pub liquidity_position: Account<'info, LiquidityPosition>, #[account(address = protocol.collateral_mint)] pub collateral_mint: InterfaceAccount<'info, Mint>, #[account(address = protocol.token_program)] pub token_program: Interface<'info, TokenInterface>, pub system_program: Program<'info, System> }
 #[derive(Accounts)] pub struct OpenPosition<'info> { #[account(mut)] pub owner: Signer<'info>, pub protocol: Account<'info, ProtocolConfig>, #[account(mut, has_one = protocol)] pub market: Account<'info, Market>, #[account(mut, seeds = [b"vault", market.key().as_ref()], bump, token::mint = collateral_mint, token::authority = market)] pub vault: InterfaceAccount<'info, TokenAccount>, #[account(mut, token::mint = collateral_mint, token::authority = owner)] pub owner_token_account: InterfaceAccount<'info, TokenAccount>, #[account(init, payer = owner, space = 8 + ProtectionPosition::INIT_SPACE, seeds = [b"position", market.key().as_ref(), owner.key().as_ref()], bump)] pub position: Account<'info, ProtectionPosition>, #[account(address = protocol.collateral_mint)] pub collateral_mint: InterfaceAccount<'info, Mint>, #[account(address = protocol.token_program)] pub token_program: Interface<'info, TokenInterface>, pub system_program: Program<'info, System> }
 #[derive(Accounts)] pub struct AdvanceMarket<'info> { #[account(mut)] pub market: Account<'info, Market> }
-#[derive(Accounts)] pub struct SubmitObservation<'info> { #[account(mut)] pub authority: Signer<'info>, pub protocol: Account<'info, ProtocolConfig>, #[account(has_one = protocol)] pub market: Account<'info, Market>, #[account(init, payer = authority, space = 8 + SettlementObservation::INIT_SPACE, seeds = [b"settlement", market.key().as_ref()], bump)] pub observation: Account<'info, SettlementObservation>, pub system_program: Program<'info, System> }
+#[derive(Accounts)] pub struct SubmitObservation<'info> { #[account(mut)] pub authority: Signer<'info>, #[account(seeds = [b"protocol"], bump = protocol.bump)] pub protocol: Account<'info, ProtocolConfig>, #[account(has_one = protocol)] pub market: Account<'info, Market>, #[account(init, payer = authority, space = 8 + SettlementObservation::INIT_SPACE, seeds = [b"settlement", market.key().as_ref()], bump)] pub observation: Account<'info, SettlementObservation>, pub system_program: Program<'info, System> }
 #[derive(Accounts)] pub struct SettleMarket<'info> { #[account(seeds = [b"protocol"], bump = protocol.bump, has_one = settlement_authority)] pub protocol: Account<'info, ProtocolConfig>, pub settlement_authority: Signer<'info>, #[account(mut, has_one = protocol)] pub market: Account<'info, Market>, #[account(seeds = [b"settlement", market.key().as_ref()], bump = observation.bump, has_one = market)] pub observation: Account<'info, SettlementObservation> }
-#[derive(Accounts)] pub struct MarkDataUnavailable<'info> { pub authority: Signer<'info>, pub protocol: Account<'info, ProtocolConfig>, #[account(mut, has_one = protocol)] pub market: Account<'info, Market> }
+#[derive(Accounts)] pub struct MarkDataUnavailable<'info> { pub authority: Signer<'info>, #[account(seeds = [b"protocol"], bump = protocol.bump)] pub protocol: Account<'info, ProtocolConfig>, #[account(mut, has_one = protocol)] pub market: Account<'info, Market>, #[account(seeds = [b"settlement", market.key().as_ref()], bump)] pub observation: Option<Account<'info, SettlementObservation>> }
 #[derive(Accounts)] pub struct ClaimPosition<'info> { pub owner: Signer<'info>, pub protocol: Account<'info, ProtocolConfig>, #[account(mut, has_one = protocol)] pub market: Account<'info, Market>, #[account(mut, seeds = [b"vault", market.key().as_ref()], bump, token::mint = collateral_mint, token::authority = market)] pub vault: InterfaceAccount<'info, TokenAccount>, #[account(mut, has_one = market, has_one = owner)] pub position: Account<'info, ProtectionPosition>, #[account(mut, token::mint = collateral_mint, token::authority = owner)] pub owner_token_account: InterfaceAccount<'info, TokenAccount>, #[account(address = protocol.collateral_mint)] pub collateral_mint: InterfaceAccount<'info, Mint>, #[account(address = protocol.token_program)] pub token_program: Interface<'info, TokenInterface> }
 #[derive(Accounts)] pub struct CloseMarket<'info> { pub admin: Signer<'info>, #[account(seeds = [b"protocol"], bump = protocol.bump, has_one = admin)] pub protocol: Account<'info, ProtocolConfig>, #[account(mut, has_one = protocol)] pub market: Account<'info, Market>, #[account(mut, seeds = [b"vault", market.key().as_ref()], bump, token::mint = collateral_mint, token::authority = market)] pub vault: InterfaceAccount<'info, TokenAccount>, #[account(mut, seeds = [b"fee-vault", protocol.key().as_ref()], bump, token::mint = collateral_mint, token::authority = protocol)] pub fee_vault: InterfaceAccount<'info, TokenAccount>, #[account(address = protocol.collateral_mint)] pub collateral_mint: InterfaceAccount<'info, Mint>, #[account(address = protocol.token_program)] pub token_program: Interface<'info, TokenInterface> }
 #[derive(Accounts)] pub struct RedeemClosedLiquidity<'info> { pub provider: Signer<'info>, pub protocol: Account<'info, ProtocolConfig>, #[account(mut, has_one = protocol)] pub market: Account<'info, Market>, #[account(mut, seeds = [b"vault", market.key().as_ref()], bump, token::mint = collateral_mint, token::authority = market)] pub vault: InterfaceAccount<'info, TokenAccount>, #[account(mut, has_one = market, has_one = provider)] pub liquidity_position: Account<'info, LiquidityPosition>, #[account(mut, token::mint = collateral_mint, token::authority = provider)] pub provider_token_account: InterfaceAccount<'info, TokenAccount>, #[account(address = protocol.collateral_mint)] pub collateral_mint: InterfaceAccount<'info, Mint>, #[account(address = protocol.token_program)] pub token_program: Interface<'info, TokenInterface> }
@@ -362,7 +399,7 @@ pub struct InitializeProtocol<'info> { #[account(mut)] pub admin: Signer<'info>,
 #[account] #[derive(InitSpace)] pub struct Market { pub id: u64, pub protocol: Pubkey, pub creator: Pubkey, pub city_hash: [u8; 32], pub station_id_hash: [u8; 32], pub provider_hash: [u8; 32], pub methodology_hash: [u8; 32], pub quote_inputs_hash: [u8; 32], pub operator: ComparisonOperator, pub threshold_mm_x100: i64, pub sales_close_at: i64, pub observation_start: i64, pub observation_end: i64, pub data_deadline: i64, pub claim_deadline: i64, pub quote_probability_bps: u16, pub premium_rate_bps: u16, pub max_liquidity: u64, pub max_exposure: u64, pub per_wallet_max: u64, pub total_shares: u64, pub remaining_shares: u64, pub reserved_exposure: u64, pub premium_balance: u64, pub accrued_protocol_fees: u64, pub payout_liability: u64, pub refund_liability: u64, pub remaining_redemption_assets: u64, pub status: MarketStatus, pub result: SettlementResult, pub bump: u8 }
 #[account] #[derive(InitSpace)] pub struct LiquidityPosition { pub market: Pubkey, pub provider: Pubkey, pub shares: u64, pub redeemed: bool }
 #[account] #[derive(InitSpace)] pub struct ProtectionPosition { pub market: Pubkey, pub owner: Pubkey, pub protected_amount: u64, pub premium_paid: u64, pub potential_payout: u64, pub opened_at: i64, pub payout_claimed: bool, pub refund_claimed: bool }
-#[account] #[derive(InitSpace)] pub struct SettlementObservation { pub market: Pubkey, pub authority: Pubkey, pub cumulative_rainfall_mm_x100: i64, pub observed_at: i64, pub source_hash: [u8; 32], pub bump: u8 }
+#[account] #[derive(InitSpace)] pub struct SettlementObservation { pub market: Pubkey, pub authority: Pubkey, pub station_id_hash: [u8; 32], pub methodology_hash: [u8; 32], pub observation_window_start: i64, pub observation_window_end: i64, pub cumulative_rainfall_mm_x100: i64, pub observed_at: i64, pub source_hash: [u8; 32], pub bump: u8 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)] pub enum ComparisonOperator { GreaterThan, GreaterThanOrEqual, LessThan, LessThanOrEqual }
 impl ComparisonOperator { fn matches(self, actual: i64, threshold: i64) -> bool { match self { Self::GreaterThan => actual > threshold, Self::GreaterThanOrEqual => actual >= threshold, Self::LessThan => actual < threshold, Self::LessThanOrEqual => actual <= threshold } } }
@@ -371,7 +408,7 @@ impl ComparisonOperator { fn matches(self, actual: i64, threshold: i64) -> bool 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)] pub enum AuthorityRole { Admin, Settlement }
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)] pub struct CreateMarketArgs { pub city_hash: [u8; 32], pub station_id_hash: [u8; 32], pub provider_hash: [u8; 32], pub methodology_hash: [u8; 32], pub quote_inputs_hash: [u8; 32], pub operator: ComparisonOperator, pub threshold_mm_x100: i64, pub sales_close_at: i64, pub observation_start: i64, pub observation_end: i64, pub quote_probability_bps: u16, pub max_liquidity: u64, pub max_exposure: u64, pub per_wallet_max: u64 }
 impl CreateMarketArgs { fn validate(&self) -> Result<()> { require!(self.threshold_mm_x100 > 0 && self.max_liquidity > 0 && self.max_exposure > 0 && self.per_wallet_max > 0, ErrorCode::InvalidMarket); require!(self.max_exposure <= self.max_liquidity && self.per_wallet_max <= self.max_exposure, ErrorCode::InvalidMarket); require!(self.sales_close_at <= self.observation_start && self.observation_start < self.observation_end, ErrorCode::InvalidObservationWindow); premium_rate_bps(self.quote_probability_bps)?; Ok(()) } }
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)] pub struct SubmitObservationArgs { pub cumulative_rainfall_mm_x100: i64, pub observed_at: i64, pub source_hash: [u8; 32] }
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)] pub struct SubmitObservationArgs { pub station_id_hash: [u8; 32], pub methodology_hash: [u8; 32], pub observation_window_start: i64, pub observation_window_end: i64, pub cumulative_rainfall_mm_x100: i64, pub observed_at: i64, pub source_hash: [u8; 32] }
 
 #[event] pub struct MarketCreated { pub market: Pubkey, pub id: u64, pub premium_rate_bps: u16 }
 #[event] pub struct AuthorityProposed { pub role: AuthorityRole, pub authority: Pubkey }
@@ -381,14 +418,22 @@ impl CreateMarketArgs { fn validate(&self) -> Result<()> { require!(self.thresho
 #[event] pub struct LiquidityWithdrawn { pub market: Pubkey, pub provider: Pubkey, pub amount: u64 }
 #[event] pub struct PositionOpened { pub market: Pubkey, pub owner: Pubkey, pub premium: u64, pub potential_payout: u64 }
 #[event] pub struct MarketLocked { pub market: Pubkey }
-#[event] pub struct ObservationSubmitted { pub market: Pubkey, pub value: i64, pub source_hash: [u8; 32] }
+#[event] pub struct ObservationSubmitted { pub market: Pubkey, pub authority: Pubkey, pub station_id_hash: [u8; 32], pub methodology_hash: [u8; 32], pub observation_window_start: i64, pub observation_window_end: i64, pub value: i64, pub source_hash: [u8; 32] }
 #[event] pub struct MarketSettled { pub market: Pubkey, pub result: SettlementResult }
-#[event] pub struct DataUnavailable { pub market: Pubkey, pub source_hash: [u8; 32] }
+#[event] pub struct DataUnavailable { pub market: Pubkey, pub authority: Pubkey, pub station_id_hash: [u8; 32], pub methodology_hash: [u8; 32], pub observation_window_start: i64, pub observation_window_end: i64, pub source_hash: [u8; 32] }
 #[event] pub struct PayoutClaimed { pub market: Pubkey, pub owner: Pubkey, pub amount: u64 }
 #[event] pub struct PremiumRefunded { pub market: Pubkey, pub owner: Pubkey, pub amount: u64 }
 #[event] pub struct MarketClosed { pub market: Pubkey, pub redemption_assets: u64, pub fee: u64 }
 #[event] pub struct LiquidityRedeemed { pub market: Pubkey, pub provider: Pubkey, pub shares: u64, pub amount: u64 }
 
-#[error_code] pub enum ErrorCode { #[msg("Protocol is paused")] Paused, #[msg("Invalid market parameters")] InvalidMarket, #[msg("Invalid authority")] InvalidAuthority, #[msg("Invalid probability")] InvalidProbability, #[msg("Invalid premium")] InvalidPremium, #[msg("Invalid observation window")] InvalidObservationWindow, #[msg("Invalid amount")] InvalidAmount, #[msg("Invalid market status")] InvalidMarketStatus, #[msg("Insufficient liquidity")] InsufficientLiquidity, #[msg("Liquidity cap exceeded")] LiquidityCapExceeded, #[msg("Insufficient LP shares")] InsufficientShares, #[msg("Liquidity funding window closed")] LiquidityWindowClosed, #[msg("Position opening window closed")] PositionWindowClosed, #[msg("Position opening window is still open")] PositionWindowOpen, #[msg("Wallet coverage cap exceeded")] WalletCoverageCapExceeded, #[msg("Observation period not finished")] ObservationNotFinished, #[msg("Unauthorised settlement authority")] UnauthorizedAuthority, #[msg("Invalid observation time")] InvalidObservationTime, #[msg("Settlement observation is stale")] StaleObservation, #[msg("Data deadline has not been reached")] DataDeadlineNotReached, #[msg("Claim window has closed")] ClaimWindowClosed, #[msg("Claim window is still open")] ClaimWindowOpen, #[msg("Position is not claimable")] NotClaimable, #[msg("Position is not refundable")] NotRefundable, #[msg("Payout already claimed")] AlreadyClaimed, #[msg("Refund already claimed")] AlreadyRefunded, #[msg("Liquidity already redeemed")] AlreadyRedeemed, #[msg("Arithmetic overflow")] MathOverflow }
+#[error_code] pub enum ErrorCode { #[msg("Protocol is paused")] Paused, #[msg("Invalid market parameters")] InvalidMarket, #[msg("Invalid authority")] InvalidAuthority, #[msg("Invalid probability")] InvalidProbability, #[msg("Invalid premium")] InvalidPremium, #[msg("Invalid observation window")] InvalidObservationWindow, #[msg("Invalid amount")] InvalidAmount, #[msg("Invalid market status")] InvalidMarketStatus, #[msg("Insufficient liquidity")] InsufficientLiquidity, #[msg("Liquidity cap exceeded")] LiquidityCapExceeded, #[msg("Insufficient LP shares")] InsufficientShares, #[msg("Liquidity funding window closed")] LiquidityWindowClosed, #[msg("Position opening window closed")] PositionWindowClosed, #[msg("Position opening window is still open")] PositionWindowOpen, #[msg("Wallet coverage cap exceeded")] WalletCoverageCapExceeded, #[msg("Observation period not finished")] ObservationNotFinished, #[msg("Unauthorised settlement authority")] UnauthorizedAuthority, #[msg("Invalid observation time")] InvalidObservationTime, #[msg("Settlement observation is stale")] StaleObservation, #[msg("Data deadline has not been reached")] DataDeadlineNotReached, #[msg("Claim window has closed")] ClaimWindowClosed, #[msg("Claim window is still open")] ClaimWindowOpen, #[msg("Position is not claimable")] NotClaimable, #[msg("Position is not refundable")] NotRefundable, #[msg("Payout already claimed")] AlreadyClaimed, #[msg("Refund already claimed")] AlreadyRefunded, #[msg("Liquidity already redeemed")] AlreadyRedeemed, #[msg("Oracle station does not match the market pin")] StationMismatch, #[msg("Oracle methodology does not match the market commitment")] MethodologyMismatch, #[msg("Invalid NOAA observation payload")] InvalidObservation, #[msg("Arithmetic overflow")] MathOverflow }
 
-#[cfg(test)] mod tests { use super::*; #[test] fn pricing_is_deterministic() { assert_eq!(premium_rate_bps(1_000).unwrap(), 1_250); assert_eq!(ceil_bps(500_000_000, 1_250).unwrap(), 62_500_000); } #[test] fn probability_bounds_are_enforced() { assert!(premium_rate_bps(99).is_err()); assert!(premium_rate_bps(9_001).is_err()); } #[test] fn rainfall_comparison_is_deterministic() { assert!(ComparisonOperator::GreaterThanOrEqual.matches(2_500, 2_500)); assert!(!ComparisonOperator::LessThan.matches(2_500, 2_500)); } }
+#[cfg(test)] mod tests { use super::*; #[test] fn pricing_is_deterministic() { assert_eq!(premium_rate_bps(1_000).unwrap(), 1_250); assert_eq!(ceil_bps(500_000_000, 1_250).unwrap(), 62_500_000); } #[test] fn probability_bounds_are_enforced() { assert!(premium_rate_bps(99).is_err()); assert!(premium_rate_bps(9_001).is_err()); } #[test] fn rainfall_comparison_is_deterministic() { assert!(ComparisonOperator::GreaterThanOrEqual.matches(2_500, 2_500)); assert!(!ComparisonOperator::LessThan.matches(2_500, 2_500)); }
+#[test] fn data_unavailable_market_does_not_collect_protocol_fees_at_close() { assert_eq!(protocol_fee_for_close(MarketStatus::DataUnavailable, 100), 0); }
+#[test] fn settled_market_collects_accrued_protocol_fees_at_close() { assert_eq!(protocol_fee_for_close(MarketStatus::Settled, 100), 100); }
+#[test] fn data_unavailable_requires_absent_observation_and_nonzero_source_hash() {
+    assert!(!data_unavailable_attestation_allowed(true, [1; 32]));
+    assert!(!data_unavailable_attestation_allowed(false, [0; 32]));
+    assert!(data_unavailable_attestation_allowed(false, [1; 32]));
+}
+}

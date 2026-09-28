@@ -170,11 +170,11 @@ export function AgriculturalAreaMap({
               eventHandlers={{ load: handleLayerLoad, tileerror: handleTileError }}
             />
             <ZoomControl position="topright" />
-            <CircleMarker center={[market.latitude, market.longitude]} radius={8} pathOptions={{ color: "#041012", fillColor: "#2de2e6", fillOpacity: 1, weight: 3 }}>
+            <CircleMarker center={[market.latitude, market.longitude]} radius={8} pathOptions={{ color: "#ffffff", fillColor: "#0878b9", fillOpacity: 1, weight: 3 }}>
               <Tooltip direction="top"><strong>{location}</strong><br />Reference point only</Tooltip>
             </CircleMarker>
             {stationValidated && stationCoordinates && (
-              <CircleMarker center={[stationCoordinates.latitude, stationCoordinates.longitude]} radius={6} pathOptions={{ color: "#041012", fillColor: "#ffcc4d", fillOpacity: 1, weight: 2 }}>
+              <CircleMarker center={[stationCoordinates.latitude, stationCoordinates.longitude]} radius={6} pathOptions={{ color: "#ffffff", fillColor: "#287a55", fillOpacity: 1, weight: 2 }}>
                 <Tooltip direction="top">Validated NOAA settlement station</Tooltip>
               </CircleMarker>
             )}
@@ -202,7 +202,7 @@ export function AgriculturalAreaMap({
         )}
 
         {mapUnavailable && (
-          <div className="absolute inset-0 z-[800] flex items-center justify-center bg-[radial-gradient(circle_at_50%_20%,rgba(45,226,230,.13),transparent_36%),var(--surface-1)] px-5 text-center" role="alert">
+          <div className="absolute inset-0 z-[800] flex items-center justify-center bg-[var(--surface-1)] px-5 text-center" role="alert">
             <div>
               <MapPin className="mx-auto h-6 w-6 text-[var(--warning)]" aria-hidden="true" />
               <p className="mt-2 text-xs font-semibold text-[var(--foreground)]">{unavailableTitle}</p>
@@ -215,7 +215,7 @@ export function AgriculturalAreaMap({
           </div>
         )}
 
-        <span className="pointer-events-none absolute left-3 top-3 z-[700] rounded-md border border-black/15 bg-white/95 px-2 py-1 text-[10px] font-semibold uppercase tracking-[.12em] text-slate-800 shadow-sm">Reference location</span>
+        <span className="pointer-events-none absolute left-3 top-3 z-[700] rounded-md border border-black/15 bg-white/95 px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm">Reference location</span>
       </div>
 
       <figcaption id={`map-caption-${market.slug}-${variant}`} className="border-t border-[var(--border)] px-3 py-3">
@@ -224,7 +224,7 @@ export function AgriculturalAreaMap({
             <strong className="block text-xs text-[var(--foreground)]">{location}</strong>
             <span className="mt-1 block text-[11px] text-[var(--muted-foreground)]">Catalog group: {market.region}</span>
           </div>
-          <span className="shrink-0 rounded-full border border-[var(--border)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[.08em] text-[var(--muted-foreground)]">{statusLabel}</span>
+          <span className="shrink-0 rounded-full border border-[var(--border)] px-2 py-1 text-xs font-semibold text-[var(--muted-foreground)]">{statusLabel}</span>
         </div>
 
         {variant === "standard" ? (

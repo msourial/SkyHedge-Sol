@@ -15,11 +15,11 @@ export function Skeleton({ className }: { className?: string }) {
 
 export function Stat({ label, value, accent, className }: { label: string; value: ReactNode; accent?: "cyan" | "green" | "red" | "amber"; className?: string }) {
   return (
-    <div className={cn("rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2", className)}>
+    <div className={cn("rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5", className)}>
       <div className="sky-eyebrow">{label}</div>
       <div
         className={cn(
-          "sky-mono mt-0.5 text-sm font-medium text-[var(--foreground)]",
+          "mt-1 text-base font-semibold tabular-nums text-[var(--foreground)]",
           accent === "cyan" && "text-[var(--identity)]",
           accent === "green" && "text-[var(--success)]",
           accent === "red" && "text-[#F87171]",

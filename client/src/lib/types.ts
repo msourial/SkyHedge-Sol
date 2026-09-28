@@ -52,6 +52,29 @@ export type UnsignedTx = {
   network: string;
 };
 
+export type ClaimReadiness = {
+  market: string;
+  wallet: string;
+  state: "no_position" | "pending" | "claimable" | "not_claimable" | "claimed" | "expired";
+  action: "claim_payout" | "claim_premium_refund" | null;
+  result: string;
+  amount: string | null;
+  claimDeadline: number | null;
+  finalizedSlot: number;
+  reason: string;
+  observationSignature: string | null;
+  resolutionSignature: string | null;
+  observation: null | {
+    authority: string;
+    stationIdHash: string;
+    methodologyHash: string;
+    sourceHash: string;
+    rainfallMmX100: string;
+    windowStart: number;
+    windowEnd: number;
+  };
+};
+
 export type EvidenceRow = {
   id: number;
   sourceHash: string;
@@ -74,9 +97,23 @@ export type DevnetStatus = {
   protocol: { address: string; status: "ready" | "pending" | "unavailable" | "error"; initialized: boolean; admin: string | null; settlementAuthority: string | null; collateralMint: string | null; nextMarketId: string | null };
   feeVault: { address: string; status: "ready" | "pending" | "unavailable" | "error"; exists: boolean; balance: string | null };
   skytMint: { address: string; status: "ready" | "pending" | "unavailable" | "error"; exists: boolean; decimals: number | null; supply: string | null; mintAuthority: string | null };
-  desMoinesMarket: { status: "ready" | "pending" | "unavailable" | "error"; address: string | null; marketId: string | null; vault: string | null; vaultBalance: string | null; onchainStatus: string | null; evidenceStatus: "researching_evidence"; targetCityHash: string };
-  noaaEvidence: { status: "researching_evidence"; settlementSource: "NOAA"; message: string };
+  desMoinesMarket: { status: "ready" | "pending" | "unavailable" | "error"; address: string | null; marketId: string | null; vault: string | null; vaultBalance: string | null; onchainStatus: string | null; salesCloseAt: number | null; observationStart: number | null; observationEnd: number | null; thresholdMmX100: string | null; operator: "gt" | "gte" | "lt" | "lte" | null; quoteProbabilityBps: number | null; premiumRateBps: number | null; quoteInputsHash: string | null; evidenceStatus: "researching_evidence" | "validated"; targetCityHash: string };
+  noaaEvidence: { status: "ready" | "pending" | "unavailable"; settlementSource: "NOAA"; message: string; package: { stationId: string; seedSchedule: { salesCloseAt: number; observationStart: number; observationEnd: number }; quoteTerms: null | { probabilityBps: number; premiumRateBps: number; inputsHash: string }; evidence: { sourceHash: string; cumulativeMm: number | null; windowStart: string; windowEnd: string } } | null };
   generatedAt: string;
+};
+
+export type HealthResponse = {
+  status: "ok" | "degraded";
+  network?: string;
+  checks?: {
+    settlement?: {
+      status: "configured" | "manual-or-missing";
+      scheduler: "vercel-cron";
+      signerConfigured: boolean;
+      noaaConfigured: boolean;
+      cronAuthConfigured: boolean;
+    };
+  };
 };
 
 export type CityIndexState = {
