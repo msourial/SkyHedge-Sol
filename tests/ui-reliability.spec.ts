@@ -194,6 +194,37 @@ test("wallet opens the supported chooser without attempting connection on load",
   await expect(page.getByText("Solflare", { exact: true })).toBeVisible();
 });
 
+test("wallet connection timeout offers a safe reset without submitting a transaction", async ({ page }) => {
+  await page.addInitScript(() => {
+    const pendingProvider = {
+      isPhantom: true,
+      isConnected: false,
+      publicKey: null,
+      connect: () => new Promise(() => {}),
+      on: () => {},
+      off: () => {},
+    };
+    Object.defineProperty(window, "isPhantomInstalled", { value: true, configurable: true });
+    Object.defineProperty(window, "phantom", { value: { solana: pendingProvider }, configurable: true });
+  });
+  await page.goto("/?tab=markets&city=des-moines");
+  await page.getByRole("button", { name: /Select Wallet|Connect Wallet/ }).click();
+  await page.getByRole("button", { name: "Phantom Detected" }).click();
+  await expect(page.locator("[data-wallet-state=selected]")).toBeVisible();
+  await page.getByRole("button", { name: "Connect" }).click();
+
+  await expect(page.locator("[data-wallet-state=connecting]")).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText("No transaction was requested.", { timeout: 20_000 });
+  const unsignedCalls: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/transactions/unsigned")) unsignedCalls.push(request.url());
+  });
+  await page.getByRole("button", { name: "Reset connection and retry" }).click();
+  await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
+  await expect(page.getByText("Wallet connection is taking longer than expected.")).toHaveCount(0);
+  expect(unsignedCalls).toEqual([]);
+});
+
 test("locations wrap without horizontal overflow at supported widths", async ({ page }) => {
   for (const width of [375, 414, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
