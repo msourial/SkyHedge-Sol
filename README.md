@@ -6,7 +6,7 @@ Devnet Solana software for **fixed-payout cumulative-rainfall protection markets
 
 ## V1 boundaries
 
-- Markets: New York, Miami, and Chicago cumulative rainfall.
+- Catalog: 12 researched agricultural rainfall areas. Des Moines is the first Devnet activation target; the other areas remain research-gated. Wind gust and snowfall are research-only and have no quote or transaction path.
 - Collateral: six-decimal `SKYT` Devnet SPL test token (`3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g`).
 - Capacity per market: 10,000 SKYT liquidity, 8,000 SKYT exposure, 500 SKYT per wallet.
 - Pricing: ten analogous NOAA windows plus a 30%-weighted NOAA forecast signal; expected payout, 15% risk loading, and a 1% protocol fee.
@@ -61,7 +61,7 @@ Environment:
 | `NOAA_TOKEN` | NOAA Climate Data Online token (historical observations + forecast) |
 | `SOLANA_RPC_URL` | Default `https://api.devnet.solana.com` |
 | `SKYHEDGE_PROGRAM_ID` | Deployed Devnet program ID `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` |
-| `SKYHEDGE_DEVNET_CANCEL_EMPTY_DRAFT_READY` | Keep `false` until the empty-Draft cancellation instruction has been deployed and verified on Devnet; then set `true` to expose the admin-only recovery action |
+| `SKYHEDGE_DEVNET_CANCEL_EMPTY_DRAFT_READY` | Fail-closed release gate for empty-Draft recovery. The Devnet instruction and matching IDL have been verified; Vercel Production is currently enabled. |
 | `SETTLEMENT_AUTHORITY_KEYPAIR` | Optional path to the settlement authority keypair (`anchor/keys/settlement-authority.json`); settlement worker stays disabled when absent |
 | `ANTHROPIC_API_KEY` | Optional — AI advisory enrichment |
 | `SKYT_MINT` | Mint address for the six-decimal SKYT test token; defaults to the committed Devnet mint for status reads |
@@ -103,7 +103,7 @@ npm run skyt:init                        # initialize protocol (admin wallet)
 npm run skyt:seed                        # create city markets
 ```
 
-**Current Devnet state:** the program is executable, the protocol is initialized, and the six-decimal SKYT mint has a finalized supply of 350,000 SKYT. Des Moines market ID 0 exists as an empty `Draft` with zero vault balance. Its immutable NOAA quote commitment no longer matches the current exact-window NOAA pricing package, so it cannot be funded or opened. The committed local IDL includes an admin-only empty-Draft cancellation instruction; the deployed IDL does not yet include it. Upgrade the program and deployed IDL before asking the admin wallet to cancel the empty Draft, then create/fund/open a fresh market ID from current NOAA terms. Never fund the stale Draft. The program-upgrade keypair (`anchor/target/deploy/skyhedge_protection-keypair.json`) and settlement-authority keypair are gitignored; keep both private.
+**Current Devnet state (verified 2026-09-29):** the program is executable, the protocol is initialized, and the six-decimal SKYT mint has a finalized supply of 350,000 SKYT. The committed 22-instruction IDL matches the deployed program; the empty-Draft cancellation instruction is verified and its admin-only Builder gate is enabled in Vercel Production. Des Moines market ID 0 remains an expired `Draft` with zero vault balance and stale immutable NOAA pricing terms. Do not fund or open it. The admin wallet must first approve its cancellation; then create, fund with 2,000 SKYT, and open a fresh market ID using the current exact-window NOAA quote package. NOAA seed/pricing inputs are not future settlement observations. Production health currently reports NOAA configured but the settlement signer and cron authentication are missing, so automated oracle settlement is not ready. The program-upgrade keypair (`anchor/target/deploy/skyhedge_protection-keypair.json`) and settlement-authority keypair are gitignored; keep both private.
 
 ## API surface
 
