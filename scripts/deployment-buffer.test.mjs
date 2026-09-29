@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
+import { minimumDeploymentBalance } from "./deployment-budget.mjs";
 import { validateDeploymentBufferAccount } from "./deployment-buffer.mjs";
 
 const loader = "BPFLoaderUpgradeab1e11111111111111111111111";
@@ -44,4 +46,26 @@ test("rejects an unauthorized, immutable, undersized, or executable buffer", () 
 
 test("requires enough data for the new program image before reusing a buffer", () => {
   assert.throws(() => validateDeploymentBufferAccount({ account: bufferAccount({ space: 127 }), loader, authority, requiredDataLength: 128 }), /too small/);
+});
+
+test("uses the size-optimized SBF build for Devnet deployment affordability", () => {
+  const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  assert.match(packageJson.scripts["solana:build"], /--optimize-size/);
+});
+
+test("keeps large program writes off the configured read-verification RPC by default", () => {
+  const deployScript = readFileSync(new URL("./deploy-devnet.sh", import.meta.url), "utf8");
+  assert.match(deployScript, /WRITE_RPC="\$\{SOLANA_DEPLOY_RPC_URL:-https:\/\/api\.devnet\.solana\.com\}"/);
+  assert.match(deployScript, /VERIFY_RPC="\$\{SOLANA_RPC_URL:-\$WRITE_RPC\}"/);
+  assert.match(deployScript, /SOLANA_DEPLOY_USE_TPU:-true/);
+});
+
+test("requires buffer rent only when the buffer does not already exist", () => {
+  assert.equal(minimumDeploymentBalance({ bufferRentSol: "2.2397974", reserveSol: "0.05", reusableBuffer: false }), "2.289797400");
+  assert.equal(minimumDeploymentBalance({ bufferRentSol: "2.2397974", reserveSol: "0.05", reusableBuffer: true }), "0.050000000");
+});
+
+test("rejects invalid deployment funding inputs", () => {
+  assert.throws(() => minimumDeploymentBalance({ bufferRentSol: "unknown", reserveSol: "0.05", reusableBuffer: false }), /finite non-negative/);
+  assert.throws(() => minimumDeploymentBalance({ bufferRentSol: "2", reserveSol: "-1", reusableBuffer: false }), /finite non-negative/);
 });

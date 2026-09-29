@@ -15,7 +15,7 @@
     "db:push": "drizzle-kit push",
     "solana:test": "cargo-build-sbf --manifest-path anchor/Cargo.toml && cargo +nightly test --manifest-path anchor/Cargo.toml",
     "solana:check": "cargo +nightly check --manifest-path anchor/Cargo.toml",
-    "solana:build": "cd anchor && RUSTUP_TOOLCHAIN=1.89.0 anchor build --no-idl",
+    "solana:build": "cd anchor && RUSTUP_TOOLCHAIN=1.89.0 anchor build --no-idl -- --optimize-size",
     "solana:test-local": "cd anchor && RUSTUP_TOOLCHAIN=nightly-2024-08-01 anchor test --skip-build",
     "skyt:airdrop": "tsx scripts/airdrop-sol.ts",
     "skyt:mint": "tsx scripts/create-skyt-mint.ts",
