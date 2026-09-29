@@ -80,6 +80,7 @@ export default function DashboardPage() {
   const [start, setStart] = useState(today);
   const [end, setEnd] = useState(weekFromToday);
   const [quoteRequest, setQuoteRequest] = useState(0);
+  const [quoteActive, setQuoteActive] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const amountBase = baseUnits(amount);
   const selectedMarket = agriculturalMarketBySlug(marketId)!;
@@ -91,10 +92,10 @@ export default function DashboardPage() {
   const quoteQuery = useQuery({
     queryKey: ["quote", quoteRequest, marketId, amountBase, start, end, Number(threshold), operator],
     queryFn: () => api<Quote>("/api/quotes", { method: "POST", body: JSON.stringify({ city: marketId, observationStart: start, observationEnd: end, thresholdMm: Number(threshold), operator, protectedAmount: amountBase }) }),
-    enabled: hazard === "rainfall" && quoteRequest > 0 && testerMarketReady && testerEvidenceReady && Boolean(amountBase) && Boolean(threshold) && start < end,
+    enabled: hazard === "rainfall" && quoteActive && quoteRequest > 0 && testerMarketReady && testerEvidenceReady && Boolean(amountBase) && Boolean(threshold) && start < end,
     retry: false,
   });
-  const currentQuote = hazard === "rainfall" && quoteQuery.data
+  const currentQuote = hazard === "rainfall" && quoteActive && quoteQuery.data
     && amountBase === quoteQuery.data.protectedAmount
     && devnetStatus.data?.desMoinesMarket.quoteProbabilityBps === quoteQuery.data.probabilityBps
     && devnetStatus.data.desMoinesMarket.premiumRateBps === quoteQuery.data.premiumRateBps
@@ -102,8 +103,18 @@ export default function DashboardPage() {
     ? quoteQuery.data
     : undefined;
   const switchTab = (next: Tab, selectedMarket: MarketId = marketId) => { setTab(next); window.history.replaceState(null, "", `/?tab=${next}&city=${selectedMarket}`); };
-  const selectMarket = (id: MarketId) => { setMarketId(id); setQuoteRequest(0); switchTab("protect", id); };
-  const changeHazard = (next: Hazard) => { setHazard(next); setQuoteRequest(0); };
+  const selectMarket = (id: MarketId) => {
+    setMarketId(id);
+    setQuoteActive(false);
+    setQuoteRequest((count) => count + 1);
+    switchTab("protect", id);
+  };
+  const changeHazard = (next: Hazard) => {
+    setHazard(next);
+    setQuoteActive(false);
+    // Give the next explicit quote request a fresh cache key as well as hiding this one.
+    setQuoteRequest((count) => count + 1);
+  };
 
   useEffect(() => {
     if (marketId !== "des-moines" || !onchainWindow) return;
@@ -111,7 +122,8 @@ export default function DashboardPage() {
     setEnd(onchainWindow.end);
     setThreshold(String(onchainWindow.thresholdMm));
     if (onchainWindow.operator === "gte" || onchainWindow.operator === "lte") setOperator(onchainWindow.operator);
-    setQuoteRequest(0);
+    setQuoteActive(false);
+    setQuoteRequest((count) => count + 1);
   }, [marketId, onchainWindow?.start, onchainWindow?.end, onchainWindow?.thresholdMm, onchainWindow?.operator]);
 
   useEffect(() => {
@@ -134,7 +146,7 @@ export default function DashboardPage() {
     <div className="min-w-0 space-y-6">
       <header className="border-b border-[var(--border)] pb-5"><Pill tone={tab === "builders" ? "slate" : researchHazardView ? "amber" : "cyan"}>{tab === "builders" ? "Technical workspace" : researchHazardView ? "Research-only hazard" : "NOAA-settled protection"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></header>
       {tab === "markets" && <Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} selectedSlug={marketId} status={devnetStatus.data} />}
-      {tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") setQuoteRequest((count) => count + 1); }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" ? quoteQuery.error : undefined} />}
+      {tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") { setQuoteActive(true); setQuoteRequest((count) => count + 1); } }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" && quoteActive ? quoteQuery.error : undefined} />}
       {tab === "liquidity" && <Liquidity />}
       {tab === "portfolio" && <PortfolioView />}
       {tab === "evidence" && <Evidence />}
@@ -381,7 +393,7 @@ function ResearchOnlyHazard({ hazard }: { hazard: Exclude<Hazard, "rainfall"> })
   const title = isWind ? "Wind gust protection is research-only" : "Snowfall protection is research-only";
   return <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-card)] sm:p-6" aria-labelledby="hazard-research-title">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><SectionLabel>Proposed protection type</SectionLabel><h2 id="hazard-research-title" className="sky-display mt-2 text-xl font-semibold">{title}</h2></div><Pill tone="amber">Researching NOAA evidence</Pill></div>
-    <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)]">{isWind ? "Proposed index: highest daily peak gust in the observation window." : "New snowfall accumulated during the observation window"}</p>
+    <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)]">{isWind ? "Proposed index: Highest daily peak gust in the observation window." : "New snowfall accumulated during the observation window"}</p>
     {!isWind && <p className="mt-1 text-sm text-[var(--muted-foreground)]">This means newly fallen snow—not snow depth or snow already on the ground.</p>}
     <dl className="mt-5 grid gap-3 sm:grid-cols-2">
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-4"><dt className="sky-label">Display units</dt><dd className="mt-2 text-sm font-medium">{isWind ? "Miles per hour (mph) and kilometres per hour (km/h)" : "Inches and millimetres (mm)"}</dd></div>

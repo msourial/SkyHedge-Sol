@@ -90,6 +90,39 @@ test("research-only hazard selection on Protect hides rainfall inputs and blocks
   expect(apiRequests).toEqual([]);
 });
 
+test("switching hazards clears an earlier rainfall quote until a new quote is requested", async ({ page }) => {
+  await page.route("**/api/devnet/status", (route) => route.fulfill({ json: {
+    network: "devnet",
+    program: { address: "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx", status: "ready", executable: true, explorerUrl: "https://explorer.solana.com" },
+    idl: { status: "ready", source: "committed", instructionCount: 22, accountCount: 5, supportsEmptyDraftCancellation: false },
+    protocol: { address: "Protocol111111111111111111111111111111111", status: "ready", initialized: true, admin: null, settlementAuthority: null, collateralMint: null, nextMarketId: "1" },
+    feeVault: { address: "Fee1111111111111111111111111111111111111", status: "ready", exists: true, balance: "0" },
+    skytMint: { address: "Mint1111111111111111111111111111111111111", status: "ready", exists: true, decimals: 6, supply: "350000000000", mintAuthority: null },
+    desMoinesMarket: { status: "ready", address: "Market11111111111111111111111111111111111", marketId: "1", vault: "Vault111111111111111111111111111111111111", vaultBalance: "2000000000", onchainStatus: "{\"open\":{}}", salesCloseAt: Math.floor(Date.now() / 1000) + 3600, observationStart: Date.parse("2026-09-29T00:00:00Z") / 1000, observationEnd: Date.parse("2026-10-04T00:00:00Z") / 1000, thresholdMmX100: "5000", operator: "gte", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, quoteInputsHash: "ab".repeat(32), evidenceStatus: "validated", targetCityHash: "" },
+    noaaEvidence: { status: "ready", settlementSource: "NOAA", message: "Historical sample only", package: null },
+    generatedAt: new Date().toISOString(),
+  } }));
+  let quoteCalls = 0;
+  await page.route("**/api/quotes", (route) => {
+    quoteCalls += 1;
+    return route.fulfill({ json: {
+    probabilityBps: 2_000, premiumRateBps: 2_400, premium: "2400000", protocolFee: "1000000", protectedAmount: "100000000", modelVersion: "noaa-rain-v1", inputsHash: "ab".repeat(32),
+    } });
+  });
+  await page.goto("/?tab=protect&city=des-moines");
+  await page.getByRole("button", { name: "Request NOAA quote" }).click();
+  await expect(page.getByText("Quote ready", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Wind gust" }).click();
+  await page.getByRole("button", { name: "Rainfall" }).click();
+  await expect(page.getByText("Quote ready", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Request NOAA quote" })).toBeVisible();
+  expect(quoteCalls).toBe(1);
+  await page.getByRole("button", { name: "Request NOAA quote" }).click();
+  await expect(page.getByText("Quote ready", { exact: true })).toBeVisible();
+  expect(quoteCalls).toBe(2);
+});
+
 test("hazard selector remains usable without horizontal overflow on mobile", async ({ page }) => {
   for (const width of [375, 414, 768]) {
     await page.setViewportSize({ width, height: 900 });
