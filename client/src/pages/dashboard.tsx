@@ -166,12 +166,25 @@ function BuilderProof() {
   const data = status.data;
   const worker = health.data?.checks?.settlement;
   const missingWorkerConfig = worker ? [!worker.signerConfigured && "settlement signer", !worker.noaaConfigured && "NOAA credential", !worker.cronAuthConfigured && "cron authentication"].filter(Boolean).join(", ") : "health endpoint unavailable";
+  const market = data?.desMoinesMarket;
+  const marketState = marketStateFromStatusJson(market?.onchainStatus ?? null);
+  const marketVaultBalanceBase = market?.vaultBalance ?? "";
+  const marketVaultBalance = /^\d+$/.test(marketVaultBalanceBase) ? BigInt(marketVaultBalanceBase) : 0n;
+  const desMoinesReady = Boolean(market?.status === "ready" && market.address && marketState === "open" && marketVaultBalance > 0n);
+  const desMoinesRowStatus = market?.status === "unavailable" || market?.status === "error" ? market.status : desMoinesReady ? "ready" : "pending";
+  const desMoinesDetail = market?.status === "unavailable" || market?.status === "error"
+    ? `Finalized Devnet market read is ${market.status}; readiness cannot be verified.`
+    : !market?.address
+      ? "No Des Moines market account is present on finalized Devnet."
+    : marketState === "draft"
+      ? `Market ${market.marketId} is ${market.salesCloseAt && market.salesCloseAt <= Math.floor(Date.now() / 1_000) ? "an expired " : "a "}Draft with ${skytDisplay(marketVaultBalance)} collateral; protection requires an Open, funded market.`
+      : `Market ${market.marketId} is ${marketState ?? "in an unrecognized lifecycle state"} with ${skytDisplay(marketVaultBalance)} collateral; protection requires an Open, funded market.`;
   const rows = data ? [
     ["Program executable", data.program.status, data.program.executable ? "Executable account verified on Devnet." : "Program account is not executable yet.", data.program.explorerUrl],
     ["IDL available", data.idl.status, `${data.idl.instructionCount} instructions and ${data.idl.accountCount} account types loaded from the committed IDL.${data.idl.supportsEmptyDraftCancellation ? " Empty-Draft recovery is verified for this Devnet deployment." : " Empty-Draft recovery stays disabled until the Devnet program upgrade is verified."}`, null],
     ["Protocol initialized", data.protocol.status, data.protocol.initialized ? `Next market id ${data.protocol.nextMarketId ?? "0"}.` : "Protocol PDA has not been initialized.", null],
     ["SKYT mint ready", data.skytMint.status, data.skytMint.exists ? `Supply ${skytDisplay(data.skytMint.supply ?? "0")} with ${data.skytMint.decimals ?? 0} decimals.` : "Configured SKYT mint is not found.", null],
-    ["Des Moines market", data.desMoinesMarket.status, data.desMoinesMarket.address ? `Market ${data.desMoinesMarket.marketId} found; vault balance ${skytDisplay(data.desMoinesMarket.vaultBalance ?? "0")}.` : "Not seeded yet; Des Moines remains the first activation target.", null],
+    ["Des Moines market", desMoinesRowStatus, desMoinesDetail, null],
     ["NOAA station validation", data.noaaEvidence.status === "ready" ? "sample only" : data.noaaEvidence.status, data.noaaEvidence.message, null],
     ["Market pricing terms", data.noaaEvidence.package?.quoteTerms ? "ready" : "unavailable", data.noaaEvidence.package?.quoteTerms ? "Complete NOAA QPF and ten historical windows produced immutable terms for the exact five-day schedule." : data.noaaEvidence.status === "ready" ? "Historical station validation succeeded, but exact-window NOAA QPF or historical quote inputs are incomplete. Market seeding and checkout stay locked." : "NOAA station evidence is unavailable; no market pricing package can be prepared.", null],
     ["Oracle settlement worker", health.isLoading ? "pending" : health.isError || !worker || worker.status !== "configured" ? "unavailable" : "ready", worker?.status === "configured" ? "NOAA settlement signer, NOAA credential, and scheduled-cron authentication are configured." : `Automatic NOAA settlement is not ready; missing or unavailable: ${missingWorkerConfig}.`, null],

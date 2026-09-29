@@ -345,6 +345,29 @@ test("Builder explains that owner controls appear after the admin wallet connect
   await expect(page.getByText("Connect the protocol admin wallet to show the Devnet setup and market-seeding approvals.")).toBeVisible();
 });
 
+test("Builder does not call an expired zero-funded Draft market ready", async ({ page }) => {
+  await page.route("**/api/devnet/status", (route) => route.fulfill({ json: {
+    network: "devnet",
+    program: { address: "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx", status: "ready", executable: true, explorerUrl: "https://explorer.solana.com" },
+    idl: { status: "ready", source: "committed", instructionCount: 22, accountCount: 5, supportsEmptyDraftCancellation: true },
+    protocol: { address: "Protocol111111111111111111111111111111111", status: "ready", initialized: true, admin: null, settlementAuthority: null, collateralMint: null, nextMarketId: "1" },
+    feeVault: { address: "Fee1111111111111111111111111111111111111", status: "ready", exists: true, balance: "0" },
+    skytMint: { address: "Mint1111111111111111111111111111111111111", status: "ready", exists: true, decimals: 6, supply: "350000000000", mintAuthority: null },
+    desMoinesMarket: { status: "ready", address: "Market11111111111111111111111111111111111", marketId: "0", vault: "Vault111111111111111111111111111111111111", vaultBalance: "0", onchainStatus: JSON.stringify({ draft: {} }), salesCloseAt: Math.floor(Date.now() / 1_000) - 3_600, observationStart: null, observationEnd: null, thresholdMmX100: null, operator: null, quoteProbabilityBps: null, premiumRateBps: null, quoteInputsHash: null, evidenceStatus: "researching_evidence", targetCityHash: "" },
+    noaaEvidence: { status: "ready", settlementSource: "NOAA", message: "Historical sample only", package: null },
+    generatedAt: new Date().toISOString(),
+  } }));
+  await page.route("**/api/health", (route) => route.fulfill({ json: {
+    status: "degraded",
+    checks: { settlement: { status: "manual-or-missing", scheduler: "vercel-cron", signerConfigured: false, noaaConfigured: true, cronAuthConfigured: false } },
+  } }));
+
+  await page.goto("/?tab=builders&city=des-moines");
+  const marketRow = page.getByRole("heading", { name: "Des Moines market" }).locator("xpath=../..");
+  await expect(marketRow.getByText("pending", { exact: true })).toBeVisible();
+  await expect(marketRow.getByText("Market 0 is an expired Draft with 0 SKYT collateral; protection requires an Open, funded market.", { exact: true })).toBeVisible();
+});
+
 test("Builder shows that automatic oracle settlement is blocked when cron auth is missing", async ({ page }) => {
   await page.route("**/api/devnet/status", (route) => route.fulfill({ json: {
     network: "devnet",
