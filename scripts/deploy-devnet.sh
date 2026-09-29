@@ -36,9 +36,10 @@ BALANCE=$(solana balance --url "$WRITE_RPC" --keypair "$UPGRADE_AUTHORITY_KEYPAI
 BUFFER_RENT=$(solana rent "$BUFFER_ACCOUNT_BYTES" --url "$WRITE_RPC" | awk '/Rent-exempt minimum:/ {print $3}')
 test -n "$BUFFER_RENT" || fail "could not calculate the deployment buffer's rent-exempt minimum"
 MINIMUM_BALANCE=$(awk -v rent="$BUFFER_RENT" 'BEGIN {printf "%.9f", rent + 0.05}')
+SHORTFALL=$(awk -v balance="$BALANCE" -v minimum="$MINIMUM_BALANCE" 'BEGIN {missing = minimum - balance; if (missing < 0) missing = 0; printf "%.9f", missing}')
 echo "upgrade-authority balance: ${BALANCE} SOL; buffer rent: ${BUFFER_RENT} SOL; required with fees reserve: ${MINIMUM_BALANCE} SOL"
 if ! awk -v balance="$BALANCE" -v minimum="$MINIMUM_BALANCE" 'BEGIN {exit !(balance >= minimum)}'; then
-  fail "insufficient Devnet SOL for the program buffer and transaction fees; add at least $MINIMUM_BALANCE SOL to the upgrade authority, then retry"
+  fail "insufficient Devnet SOL for the program buffer and transaction fees; required total is ${MINIMUM_BALANCE} SOL and current balance is ${BALANCE} SOL, so add at least ${SHORTFALL} SOL more to the upgrade authority, then retry"
 fi
 ACTUAL_ID=$(solana address -k "$PROGRAM_KEYPAIR")
 test "$ACTUAL_ID" = "$PROGRAM_ID" || fail "keypair is $ACTUAL_ID, expected $PROGRAM_ID"
