@@ -2,8 +2,8 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { BorshCoder, EventParser, type Idl } from "@coral-xyz/anchor";
 import committedIdl from "../../shared/idl/skyhedge_protection.json";
 import { eq } from "drizzle-orm";
-import type { Db } from "../db";
-import { chainEvents, indexedSlots, liquidityPositions, markets, protectionPositions, settlementObservations } from "../../shared/schema";
+import type { Db } from "../db.js";
+import { chainEvents, indexedSlots, liquidityPositions, markets, protectionPositions, settlementObservations } from "../../shared/schema.js";
 
 const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";

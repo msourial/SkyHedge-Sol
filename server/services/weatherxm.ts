@@ -1,5 +1,5 @@
-import { agriculturalMarketBySlug, type AgriculturalMarketSlug } from "../../shared/agricultural-markets";
-import { DataUnavailableError, NOAA_STATIONS, type SkyHedgeCity } from "./noaa";
+import { agriculturalMarketBySlug, type AgriculturalMarketSlug } from "../../shared/agricultural-markets.js";
+import { DataUnavailableError, NOAA_STATIONS, type SkyHedgeCity } from "./noaa.js";
 
 type WeatherContext = SkyHedgeCity | AgriculturalMarketSlug;
 

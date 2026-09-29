@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { DevnetStatusReader, publicDevnetStatus, type DevnetStatus } from "../../server/services/devnet-status";
+import { DevnetStatusReader, publicDevnetStatus, type DevnetStatus } from "../../server/services/devnet-status.js";
 
 type JsonResponse = ServerResponse & {
   status: (code: number) => JsonResponse;

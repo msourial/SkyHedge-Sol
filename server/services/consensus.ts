@@ -1,5 +1,5 @@
-import { canonicalSourceHash, NoaaRainfallProvider, NOAA_STATIONS, cumulativeMillimeters, type DailyRainfall, type SkyHedgeCity } from "./noaa";
-import { loadMethodology } from "./methodology";
+import { canonicalSourceHash, NoaaRainfallProvider, NOAA_STATIONS, cumulativeMillimeters, type DailyRainfall, type SkyHedgeCity } from "./noaa.js";
+import { loadMethodology } from "./methodology.js";
 
 const methodology = loadMethodology();
 

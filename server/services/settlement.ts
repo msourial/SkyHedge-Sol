@@ -8,10 +8,10 @@ import { eq } from "drizzle-orm";
 import { BN } from "bn.js";
 type BNInstance = InstanceType<typeof BN>;
 import type { Db } from "../db";
-import { settlementEvidence } from "../../shared/schema";
-import { RainfallConsensusService, utcDailyObservationRange, type ConsensusResult } from "./consensus";
-import { canonicalSourceHash, NOAA_STATIONS, type SkyHedgeCity } from "./noaa";
-import { DATA_GRACE_SECONDS } from "./settlement-constants";
+import { settlementEvidence } from "../../shared/schema.js";
+import { RainfallConsensusService, utcDailyObservationRange, type ConsensusResult } from "./consensus.js";
+import { canonicalSourceHash, NOAA_STATIONS, type SkyHedgeCity } from "./noaa.js";
+import { DATA_GRACE_SECONDS } from "./settlement-constants.js";
 
 const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";

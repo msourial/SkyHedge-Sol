@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { SettlementRunner } from "../../server/services/settlement";
+import { SettlementRunner } from "../../server/services/settlement.js";
 
 type JsonResponse = ServerResponse & {
   status: (code: number) => JsonResponse;

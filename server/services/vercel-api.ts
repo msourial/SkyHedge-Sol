@@ -1,11 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
 import { PublicKey } from "@solana/web3.js";
-import { DataUnavailableError, NOAA_STATIONS, type SkyHedgeCity } from "./noaa";
-import { MARKET_LIMITS, quoteFromCommittedMarketTerms, type Quote, type TriggerOperator } from "./quote-engine";
-import { desMoinesQuoteUnavailableReason, testerProtectionUnavailableReason } from "./tester-readiness";
+import { DataUnavailableError, NOAA_STATIONS, type SkyHedgeCity } from "./noaa.js";
+import { MARKET_LIMITS, quoteFromCommittedMarketTerms, type Quote, type TriggerOperator } from "./quote-engine.js";
+import { desMoinesQuoteUnavailableReason, testerProtectionUnavailableReason } from "./tester-readiness.js";
 import type { DevnetStatus } from "./devnet-status";
-import { ClaimUnavailableError, type ClaimReadiness, type TxAction, type UnsignedTransactionBuilder, type UnsignedTxResult } from "./unsigned-tx";
+import { ClaimUnavailableError, type ClaimReadiness, type TxAction, type UnsignedTransactionBuilder, type UnsignedTxResult } from "./unsigned-tx.js";
 
 export type ApiRequest = IncomingMessage & { body?: unknown; query?: Record<string, string | string[] | undefined> };
 export type ApiResponse = ServerResponse & { status: (code: number) => ApiResponse; json: (body: unknown) => unknown };

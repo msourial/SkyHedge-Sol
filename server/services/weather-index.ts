@@ -1,5 +1,5 @@
-import { DataUnavailableError, NoaaRainfallProvider, NOAA_STATIONS, cumulativeMillimeters, type DailyRainfall, type SkyHedgeCity } from "./noaa";
-import { CITY_INDEX, cityBySlug, upcomingWeeklyWindows, windowNormalMm, type CityIndex, type CoverageTier } from "../../shared/cities";
+import { DataUnavailableError, NoaaRainfallProvider, NOAA_STATIONS, cumulativeMillimeters, type DailyRainfall, type SkyHedgeCity } from "./noaa.js";
+import { CITY_INDEX, cityBySlug, upcomingWeeklyWindows, windowNormalMm, type CityIndex, type CoverageTier } from "../../shared/cities.js";
 
 export const INDEX_METRIC = "cumulative_rainfall_mm";
 

@@ -1,1 +1,1 @@
-export { default } from "../../evidence-package";
+export { default } from "../../evidence-package.js";

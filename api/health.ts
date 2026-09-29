@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { PublicKey } from "@solana/web3.js";
-import { settlementWorkerReadiness, type SettlementWorkerConfig } from "../server/services/settlement-config";
+import { settlementWorkerReadiness, type SettlementWorkerConfig } from "../server/services/settlement-config.js";
 
 type JsonResponse = ServerResponse & {
   status: (code: number) => JsonResponse;

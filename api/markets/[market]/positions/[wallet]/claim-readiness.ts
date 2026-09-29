@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { UnsignedTransactionBuilder } from "../../../../../server/services/unsigned-tx";
-import { createClaimReadinessHandler, type ApiRequest, type ApiResponse } from "../../../../../server/services/vercel-api";
+import { UnsignedTransactionBuilder } from "../../../../../server/services/unsigned-tx.js";
+import { createClaimReadinessHandler, type ApiRequest, type ApiResponse } from "../../../../../server/services/vercel-api.js";
 
 const builder = new UnsignedTransactionBuilder();
 const handler = createClaimReadinessHandler({ read: (market, wallet) => builder.readClaimReadiness(market, wallet) });

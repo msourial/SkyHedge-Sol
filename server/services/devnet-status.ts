@@ -4,8 +4,8 @@ import { getMint } from "@solana/spl-token";
 import { Connection, PublicKey } from "@solana/web3.js";
 import committedIdl from "../../shared/idl/skyhedge_protection.json";
 import methodology from "../../shared/methodology-v1.json";
-import { canonicalSourceHash, NOAA_STATIONS } from "./noaa";
-import { getDesMoinesEvidencePackage, type DesMoinesEvidencePackage } from "./des-moines-evidence";
+import { canonicalSourceHash, NOAA_STATIONS } from "./noaa.js";
+import { getDesMoinesEvidencePackage, type DesMoinesEvidencePackage } from "./des-moines-evidence.js";
 
 const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";

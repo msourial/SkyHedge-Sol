@@ -1,8 +1,8 @@
 import methodology from "../../shared/methodology-v1.json";
-import { RainfallConsensusService } from "./consensus";
-import { canonicalSourceHash, NOAA_STATIONS, NoaaRainfallProvider } from "./noaa";
-import { desMoinesSeedSchedule } from "../../shared/market-schedule";
-import { RainfallQuoteEngine } from "./quote-engine";
+import { RainfallConsensusService } from "./consensus.js";
+import { canonicalSourceHash, NOAA_STATIONS, NoaaRainfallProvider } from "./noaa.js";
+import { desMoinesSeedSchedule } from "../../shared/market-schedule.js";
+import { RainfallQuoteEngine } from "./quote-engine.js";
 
 export type EvidenceWindow = { start: string; end: string };
 

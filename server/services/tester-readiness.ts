@@ -1,5 +1,5 @@
 /** SKYT uses six decimals; open testers may protect at most 500 SKYT. */
-import { isValidImmutableMarketPricingTerms } from "../../shared/market-pricing";
+import { isValidImmutableMarketPricingTerms } from "../../shared/market-pricing.js";
 
 export const TESTER_PROTECTION_CAP = 500_000_000n;
 

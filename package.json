@@ -24,7 +24,7 @@
     "skyt:status": "tsx scripts/status.ts",
     "skyt:deploy": "bash scripts/deploy-devnet.sh",
     "skyt:demo": "SOLANA_RPC_URL=http://127.0.0.1:8899 SOLANA_NETWORK=localnet tsx scripts/demo-localnet.ts",
-    "test:server": "ts-mocha -p ./tsconfig.mocha.json -t 60000 server/services/*.test.ts",
+    "test:server": "node --import tsx ./node_modules/mocha/bin/mocha.js --timeout 60000 'server/services/*.test.ts'",
     "test:ui": "playwright test"
   },
   "dependencies": {

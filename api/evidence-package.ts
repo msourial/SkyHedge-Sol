@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
-import { finalizedEvidenceWindow, getDesMoinesEvidencePackage, type DesMoinesEvidencePackage, type EvidenceWindow } from "../server/services/des-moines-evidence";
+import { finalizedEvidenceWindow, getDesMoinesEvidencePackage, type DesMoinesEvidencePackage, type EvidenceWindow } from "../server/services/des-moines-evidence.js";
 
 type JsonResponse = ServerResponse & { status: (code: number) => JsonResponse; json: (body: unknown) => void };
 type EvidenceLoader = (range: EvidenceWindow) => Promise<DesMoinesEvidencePackage>;
