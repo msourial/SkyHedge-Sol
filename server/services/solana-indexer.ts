@@ -1,6 +1,6 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { BorshCoder, EventParser, type Idl } from "@coral-xyz/anchor";
-import committedIdl from "../../shared/idl/skyhedge_protection.json";
+import committedIdl from "../../shared/idl/skyhedge_protection.json" with { type: "json" };
 import { eq } from "drizzle-orm";
 import type { Db } from "../db.js";
 import { chainEvents, indexedSlots, liquidityPositions, markets, protectionPositions, settlementObservations } from "../../shared/schema.js";

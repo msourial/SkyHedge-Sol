@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { Connection, Keypair, PublicKey, Transaction, type TransactionInstruction } from "@solana/web3.js";
 import { AnchorProvider, Program, Wallet, type Idl } from "@coral-xyz/anchor";
-import committedIdl from "../../shared/idl/skyhedge_protection.json";
+import committedIdl from "../../shared/idl/skyhedge_protection.json" with { type: "json" };
 import { eq } from "drizzle-orm";
 import { BN } from "bn.js";
 type BNInstance = InstanceType<typeof BN>;

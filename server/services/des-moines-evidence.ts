@@ -1,4 +1,4 @@
-import methodology from "../../shared/methodology-v1.json";
+import methodology from "../../shared/methodology-v1.json" with { type: "json" };
 import { RainfallConsensusService } from "./consensus.js";
 import { canonicalSourceHash, NOAA_STATIONS, NoaaRainfallProvider } from "./noaa.js";
 import { desMoinesSeedSchedule } from "../../shared/market-schedule.js";

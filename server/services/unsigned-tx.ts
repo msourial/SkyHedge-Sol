@@ -2,7 +2,7 @@ import { Connection, PublicKey, Transaction, VersionedTransaction } from "@solan
 import { AnchorProvider, Program, type Idl } from "@coral-xyz/anchor";
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { BN } from "bn.js";
-import committedIdl from "../../shared/idl/skyhedge_protection.json";
+import committedIdl from "../../shared/idl/skyhedge_protection.json" with { type: "json" };
 
 const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";

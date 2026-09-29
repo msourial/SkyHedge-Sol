@@ -1,4 +1,4 @@
-import methodologyData from "../../shared/methodology-v1.json";
+import methodologyData from "../../shared/methodology-v1.json" with { type: "json" };
 
 export interface Methodology {
   version: string;

@@ -146,6 +146,11 @@
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
   },
+  "overrides": {
+    "rpc-websockets": {
+      "uuid": "11.1.0"
+    }
+  },
   "description": "Devnet-only Solana rainfall protection",
   "packageManager": "npm@10.9.0"
 }

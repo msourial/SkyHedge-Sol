@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import { BorshCoder, type Idl } from "@coral-xyz/anchor";
 import { getMint } from "@solana/spl-token";
 import { Connection, PublicKey } from "@solana/web3.js";
-import committedIdl from "../../shared/idl/skyhedge_protection.json";
-import methodology from "../../shared/methodology-v1.json";
+import committedIdl from "../../shared/idl/skyhedge_protection.json" with { type: "json" };
+import methodology from "../../shared/methodology-v1.json" with { type: "json" };
 import { canonicalSourceHash, NOAA_STATIONS } from "./noaa.js";
 import { getDesMoinesEvidencePackage, type DesMoinesEvidencePackage } from "./des-moines-evidence.js";
 
