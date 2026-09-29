@@ -41,6 +41,15 @@ export type SeedPricingTerms = {
   inputsHash: string;
 };
 
+/** A live NOAA package may refresh the 24-hour close time; resume only when the immutable observation dates and quote commitment still match. */
+export function seedTermsMatch(market: SeedMarketProgress, pricing: SeedPricingTerms): boolean {
+  return market.observationStart === pricing.observationStart
+    && market.observationEnd === pricing.observationEnd
+    && market.quoteProbabilityBps === pricing.probabilityBps
+    && market.premiumRateBps === pricing.premiumRateBps
+    && market.quoteInputsHash?.toLowerCase() === pricing.inputsHash.toLowerCase();
+}
+
 export type SeedActionMode = "fresh" | "resume" | "open" | "in_progress" | "unavailable";
 
 /** Keep the Builder's enabled action in sync with the finalized market lifecycle. */
@@ -112,12 +121,7 @@ export function planDesMoinesSeed(
   if (market.state === "open") return { steps: [], additionalFundingBase: 0n, alreadyOpen: true };
   if (market.state !== "draft") throw new Error("A Des Moines market is in progress. Only a fresh finalized Draft can be resumed by this Builder flow.");
 
-  const termsMatch = market.salesCloseAt === pricing.salesCloseAt
-    && market.observationStart === pricing.observationStart
-    && market.observationEnd === pricing.observationEnd
-    && market.quoteProbabilityBps === pricing.probabilityBps
-    && market.premiumRateBps === pricing.premiumRateBps
-    && market.quoteInputsHash?.toLowerCase() === pricing.inputsHash.toLowerCase();
+  const termsMatch = seedTermsMatch(market, pricing);
   if (!termsMatch) throw new Error("The finalized Draft has different immutable NOAA pricing terms. It will not be reused or silently replaced before expiry.");
 
   const balance = BigInt(market.totalShares ?? "0");

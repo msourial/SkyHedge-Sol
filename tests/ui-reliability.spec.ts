@@ -41,6 +41,60 @@ test("search shows exact locations and matches locality, state, country, crop, a
   }
 });
 
+test("wind gust and snowfall are research-only in Markets and never request quotes or transactions", async ({ page }) => {
+  const apiRequests: string[] = [];
+  page.on("request", (request) => {
+    if (/\/api\/(quotes|transactions\/unsigned)/.test(request.url())) apiRequests.push(request.url());
+  });
+  await page.goto("/?tab=markets&city=des-moines");
+
+  await page.getByRole("button", { name: "Wind gust" }).click();
+  await expect(page.getByRole("heading", { name: "Wind gust protection is research-only" })).toBeVisible();
+  await expect(page.getByText("Researching NOAA evidence", { exact: true })).toBeVisible();
+  await expect(page.getByText("Highest daily peak gust", { exact: false })).toBeVisible();
+  await expect(page.getByText(/mph.*km\/h/)).toBeVisible();
+  await expect(page.locator('[data-testid^="market-index-option-"]')).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Snowfall" }).click();
+  await expect(page.getByRole("heading", { name: "Snowfall protection is research-only" })).toBeVisible();
+  await expect(page.getByText("New snowfall accumulated during the observation window", { exact: true })).toBeVisible();
+  await expect(page.getByText(/not snow depth/i)).toBeVisible();
+  await expect(page.getByText(/inches.*millimetres/i)).toBeVisible();
+  expect(apiRequests).toEqual([]);
+});
+
+test("research-only hazard selection on Protect hides rainfall inputs and blocks quote and purchase actions", async ({ page }) => {
+  const apiRequests: string[] = [];
+  page.on("request", (request) => {
+    if (/\/api\/(quotes|transactions\/unsigned)/.test(request.url())) apiRequests.push(request.url());
+  });
+  await page.goto("/?tab=protect&city=des-moines");
+  await page.getByRole("button", { name: "Wind gust" }).click();
+
+  await expect(page.getByRole("heading", { name: "Wind gust protection is research-only" })).toBeVisible();
+  await expect(page.getByText("Rainfall threshold (mm / in)")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Request NOAA quote" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Approve Devnet protection" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Snowfall" }).click();
+  await expect(page.getByRole("heading", { name: "Snowfall protection is research-only" })).toBeVisible();
+  expect(apiRequests).toEqual([]);
+
+  await page.getByRole("button", { name: "Rainfall" }).click();
+  await expect(page.getByText("Rainfall threshold (mm / in)")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Request NOAA quote" })).toBeVisible();
+  expect(apiRequests).toEqual([]);
+});
+
+test("hazard selector remains usable without horizontal overflow on mobile", async ({ page }) => {
+  for (const width of [375, 414, 768]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/?tab=protect&city=des-moines");
+    await expect(page.getByRole("group", { name: "Protection type" })).toBeVisible();
+    const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+    expect(hasOverflow, `unexpected horizontal overflow at ${width}px`).toBe(false);
+  }
+});
+
 test("selecting a search result opens the matching market and updates the URL", async ({ page }) => {
   await page.goto("/?tab=markets&city=des-moines");
   const search = page.getByRole("combobox", { name: "Find an index" });

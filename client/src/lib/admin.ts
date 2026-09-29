@@ -2,7 +2,7 @@ import { createAssociatedTokenAccountIdempotentInstruction, createMintToInstruct
 import { PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
 import { isValidImmutableMarketPricingTerms } from "../../../shared/market-pricing";
-import { assertFreshMarketCounterMatches, assertFreshSeedAllowed, DES_MOINES_SEED_LIQUIDITY_BASE, marketStateFromAccountData, marketStateFromStatusJson, planDesMoinesSeed, type SeedStep } from "../../../shared/des-moines-seed-plan";
+import { assertFreshMarketCounterMatches, assertFreshSeedAllowed, DES_MOINES_SEED_LIQUIDITY_BASE, marketStateFromAccountData, marketStateFromStatusJson, planDesMoinesSeed, seedTermsMatch, type SeedStep } from "../../../shared/des-moines-seed-plan";
 import { connection, PROGRAM_ID, PROTOCOL_ADMIN, SETTLEMENT_AUTHORITY, SKYT_MINT } from "./solana";
 
 const program = new PublicKey(PROGRAM_ID);
@@ -128,11 +128,27 @@ export async function desMoinesSeedTransactions(
       || !finalizedMarket.quoteInputsHash) {
       throw new Error("The finalized Draft is missing verified immutable NOAA terms; no follow-up transaction was prepared.");
     }
-    terms = {
+    const committedTerms = {
       probabilityBps: finalizedMarket.quoteProbabilityBps,
       premiumRateBps: finalizedMarket.premiumRateBps,
       inputsHash: finalizedMarket.quoteInputsHash,
     };
+    if (resumeDraft && (!evidence.quoteTerms || !seedTermsMatch({
+      state: "draft",
+      salesCloseAt: finalizedMarket.salesCloseAt,
+      observationStart: finalizedMarket.observationStart,
+      observationEnd: finalizedMarket.observationEnd,
+      quoteProbabilityBps: finalizedMarket.quoteProbabilityBps,
+      premiumRateBps: finalizedMarket.premiumRateBps,
+      quoteInputsHash: finalizedMarket.quoteInputsHash,
+      totalShares: null,
+    }, {
+      ...evidence.seedSchedule,
+      ...evidence.quoteTerms,
+    }))) {
+      throw new Error("This Draft's immutable observation window or quote hash does not match the current NOAA pricing package. No funding or opening transaction was prepared; wait for its sales deadline, then request a fresh seed package.");
+    }
+    terms = resumeDraft ? evidence.quoteTerms! : committedTerms;
     schedule = {
       salesCloseAt: finalizedMarket.salesCloseAt,
       observationStart: finalizedMarket.observationStart,

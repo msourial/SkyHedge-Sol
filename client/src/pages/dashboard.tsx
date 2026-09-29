@@ -12,7 +12,7 @@ import { approveAndConfirm, approveAndConfirmDesMoinesSeed, desMoinesSeedTransac
 import { finalizedSkytMintSupply, finalizedWalletState, PROTOCOL_ADMIN, signAndSend } from "@/lib/solana";
 import { initialSkytMintState } from "../../../shared/mint-issuance";
 import { isValidImmutableMarketPricingTerms } from "../../../shared/market-pricing";
-import { desMoinesSeedActionMode, marketStateFromStatusJson } from "../../../shared/des-moines-seed-plan";
+import { desMoinesSeedActionMode, marketStateFromStatusJson, seedTermsMatch } from "../../../shared/des-moines-seed-plan";
 import { AGRICULTURAL_MARKETS, agriculturalMarketBySlug, agriculturalMarketLocation, millimetersToInches, searchAgriculturalMarkets, type AgriculturalMarketSlug } from "../../../shared/agricultural-markets";
 
 const MARKETS = AGRICULTURAL_MARKETS.map((market) => ({ id: market.slug, city: market.name, location: agriculturalMarketLocation(market), station: market.evidenceStatus === "validated" ? market.noaaStationId : "NOAA station validation in progress", crops: market.crops, region: market.region, context: market.agriculturalContext, evidenceStatus: market.evidenceStatus })) as Array<{ id: AgriculturalMarketSlug; city: string; location: string; station: string | null; crops: readonly string[]; region: string; context: string; evidenceStatus: "researching_evidence" | "validated" }>;
@@ -26,6 +26,7 @@ const TABS = [
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 type MarketId = AgriculturalMarketSlug;
+type Hazard = "rainfall" | "wind_gust" | "snowfall";
 const MARKET_REGIONS = ["North America", "South America", "Emerging markets"] as const;
 const TESTER_PROTECTION_CAP_BASE = 500_000_000n;
 const today = new Date().toISOString().slice(0, 10);
@@ -37,6 +38,10 @@ const PAGE_COPY: Record<Tab, { title: string; description: string }> = {
   portfolio: { title: "Your protection portfolio", description: "View finalized wallet balances and positions directly from Solana Devnet." },
   evidence: { title: "Weather evidence", description: "Review the NOAA-only evidence path used for deterministic settlement." },
   builders: { title: "Builder mode", description: "Administer and verify the SkyHedge Devnet protocol using finalized on-chain state." },
+};
+const RESEARCH_HAZARD_PAGE_COPY: Record<Exclude<Hazard, "rainfall">, { title: string; description: string }> = {
+  wind_gust: { title: "Wind gust protection research", description: "Peak gust is a proposed protection index. NOAA station coverage, exact-window evidence, data-use rights, and pricing rules are still being validated." },
+  snowfall: { title: "Snowfall protection research", description: "New snowfall accumulation is a proposed protection index, distinct from snow depth. NOAA station coverage, exact-window evidence, data-use rights, and pricing rules are still being validated." },
 };
 
 function validTab(value: string | null): Tab { return TABS.some((tab) => tab.id === value) ? value as Tab : "markets"; }
@@ -68,6 +73,7 @@ export default function DashboardPage() {
   const query = new URLSearchParams(window.location.search);
   const [tab, setTab] = useState<Tab>(() => validTab(query.get("tab")));
   const [marketId, setMarketId] = useState<MarketId>(() => validMarket(query.get("city")));
+  const [hazard, setHazard] = useState<Hazard>("rainfall");
   const [amount, setAmount] = useState("100");
   const [threshold, setThreshold] = useState("50");
   const [operator, setOperator] = useState<"gte" | "lte">("gte");
@@ -85,10 +91,10 @@ export default function DashboardPage() {
   const quoteQuery = useQuery({
     queryKey: ["quote", quoteRequest, marketId, amountBase, start, end, Number(threshold), operator],
     queryFn: () => api<Quote>("/api/quotes", { method: "POST", body: JSON.stringify({ city: marketId, observationStart: start, observationEnd: end, thresholdMm: Number(threshold), operator, protectedAmount: amountBase }) }),
-    enabled: quoteRequest > 0 && testerMarketReady && testerEvidenceReady && Boolean(amountBase) && Boolean(threshold) && start < end,
+    enabled: hazard === "rainfall" && quoteRequest > 0 && testerMarketReady && testerEvidenceReady && Boolean(amountBase) && Boolean(threshold) && start < end,
     retry: false,
   });
-  const currentQuote = quoteQuery.data
+  const currentQuote = hazard === "rainfall" && quoteQuery.data
     && amountBase === quoteQuery.data.protectedAmount
     && devnetStatus.data?.desMoinesMarket.quoteProbabilityBps === quoteQuery.data.probabilityBps
     && devnetStatus.data.desMoinesMarket.premiumRateBps === quoteQuery.data.premiumRateBps
@@ -97,6 +103,7 @@ export default function DashboardPage() {
     : undefined;
   const switchTab = (next: Tab, selectedMarket: MarketId = marketId) => { setTab(next); window.history.replaceState(null, "", `/?tab=${next}&city=${selectedMarket}`); };
   const selectMarket = (id: MarketId) => { setMarketId(id); setQuoteRequest(0); switchTab("protect", id); };
+  const changeHazard = (next: Hazard) => { setHazard(next); setQuoteRequest(0); };
 
   useEffect(() => {
     if (marketId !== "des-moines" || !onchainWindow) return;
@@ -120,13 +127,13 @@ export default function DashboardPage() {
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [moreOpen]);
 
-  const page = PAGE_COPY[tab];
+  const page = (tab === "markets" || tab === "protect") && hazard !== "rainfall" ? RESEARCH_HAZARD_PAGE_COPY[hazard] : PAGE_COPY[tab];
   return <div className="grid min-w-0 gap-7 lg:grid-cols-[224px_minmax(0,1fr)]">
     <aside className="hidden lg:block"><nav aria-label="Product sections" className="sticky top-24 flex flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-[var(--shadow-card)]">{TABS.map(({ id, label, icon: Icon }, index) => <button key={id} onClick={() => switchTab(id)} className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors", index === TABS.length - 1 && "mt-3 border-t border-[var(--border)] pt-3", tab === id ? "bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]")}><Icon className="h-5 w-5" />{label}</button>)}</nav></aside>
     <div className="min-w-0 space-y-6">
       <header className="border-b border-[var(--border)] pb-5"><Pill tone={tab === "builders" ? "slate" : "cyan"}>{tab === "builders" ? "Technical workspace" : "NOAA-settled protection"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></header>
-      {tab === "markets" && <Markets onSelect={selectMarket} selectedSlug={marketId} status={devnetStatus.data} />}
-      {tab === "protect" && <Protect marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => setQuoteRequest((count) => count + 1)} quote={currentQuote} loading={quoteQuery.isFetching} error={quoteQuery.error} />}
+      {tab === "markets" && <Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} selectedSlug={marketId} status={devnetStatus.data} />}
+      {tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") setQuoteRequest((count) => count + 1); }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" ? quoteQuery.error : undefined} />}
       {tab === "liquidity" && <Liquidity />}
       {tab === "portfolio" && <PortfolioView />}
       {tab === "evidence" && <Evidence />}
@@ -180,13 +187,19 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
   const seedMarketOpen = seedMarketState === "open";
   const seedDraftNeedsResume = seedMarketState === "draft" && !priorDraftExpired;
   const seedMarketInProgress = seedMarketState === "locked" || seedMarketState === "awaiting_settlement";
-  const seedCommittedTermsReady = Boolean(seedDraftNeedsResume && seedEvidenceReady
-    && status?.desMoinesMarket.salesCloseAt
-    && status.desMoinesMarket.observationStart
-    && status.desMoinesMarket.observationEnd
-    && status.desMoinesMarket.quoteProbabilityBps !== null
-    && status.desMoinesMarket.premiumRateBps !== null
-    && status.desMoinesMarket.quoteInputsHash);
+  const currentSeedSchedule = status?.noaaEvidence.package?.seedSchedule;
+  const currentQuoteTerms = status?.noaaEvidence.package?.quoteTerms;
+  const seedDraftTermsMatch = Boolean(seedDraftNeedsResume && currentSeedSchedule && currentQuoteTerms && seedTermsMatch({
+    state: "draft",
+    salesCloseAt: status?.desMoinesMarket.salesCloseAt ?? null,
+    observationStart: status?.desMoinesMarket.observationStart ?? null,
+    observationEnd: status?.desMoinesMarket.observationEnd ?? null,
+    quoteProbabilityBps: status?.desMoinesMarket.quoteProbabilityBps ?? null,
+    premiumRateBps: status?.desMoinesMarket.premiumRateBps ?? null,
+    quoteInputsHash: status?.desMoinesMarket.quoteInputsHash ?? null,
+    totalShares: null,
+  }, { ...currentSeedSchedule, ...currentQuoteTerms }));
+  const seedCommittedTermsReady = Boolean(seedDraftTermsMatch && seedEvidenceReady);
   const seedActionMode = desMoinesSeedActionMode({
     protocolReady: initialized === true && status?.protocol.status === "ready",
     marketReadStatus: status?.desMoinesMarket.status ?? "unavailable",
@@ -199,6 +212,14 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
   });
   const seedCanResumeDraft = seedActionMode === "resume";
   const seedActionReady = seedActionMode === "fresh" || seedCanResumeDraft;
+  const seedButtonLabel = seedMarketOpen ? "Market already open"
+    : seedMarketInProgress ? "Market lifecycle in progress"
+      : seedMarketState === "unknown" ? "Finalized market status unavailable"
+        : seedDraftNeedsResume && !seedEvidenceReady ? "NOAA evidence check unavailable"
+          : seedDraftNeedsResume && !seedDraftTermsMatch ? "Wait for Draft expiry"
+            : seedCanResumeDraft ? "Resume Des Moines seed"
+              : seedActionReady ? priorDraftExpired ? "Approve fresh Des Moines seed" : "Approve Des Moines seed"
+                : "Actuarial pricing package unavailable";
   useEffect(() => {
     let active = true;
     protocolExists().then((value) => active && setInitialized(value)).catch(() => active && setInitialized(null));
@@ -256,7 +277,7 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
   return <section aria-labelledby="owner-console" className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-card)]">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="sky-section-label text-[var(--identity)]">Owner-only Devnet controls</p><h2 id="owner-console" className="sky-display mt-1 text-xl font-semibold">Initialize the real protocol.</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">Each action opens your connected wallet. Nothing is submitted until you approve it; final status is checked against Devnet.</p></div><Pill tone={initialized ? "green" : "amber"}>{initialized ? "Protocol finalized" : initialized === false ? "Initialization required" : "Checking Devnet"}</Pill></div>
     {seedMarketOpen && <p role="status" className="mt-4 border border-[var(--success)]/40 p-3 text-sm text-[var(--success)]">Des Moines is already Open on finalized Devnet. The Builder will not create a duplicate market.</p>}
-    {seedDraftNeedsResume && <p role="status" className="mt-4 border border-[var(--identity)]/40 p-3 text-sm text-[var(--muted-foreground)]">A Draft already exists on finalized Devnet. It can resume only after its immutable NOAA evidence and terms are verified; this flow will not create a duplicate market.</p>}
+    {seedDraftNeedsResume && <p role="status" className="mt-4 border border-[var(--identity)]/40 p-3 text-sm text-[var(--muted-foreground)]">{seedDraftTermsMatch ? "A Draft already exists on finalized Devnet. Its immutable observation dates and quote commitment match current NOAA pricing, so only the missing funding/open steps can resume." : `The existing Draft's immutable observation dates or NOAA quote hash do not match today's current pricing package. No funding or opening transaction is available. Wait for its sales deadline${status?.desMoinesMarket.salesCloseAt ? ` (${new Date(status.desMoinesMarket.salesCloseAt * 1_000).toISOString()} UTC)` : ""}, then request a fresh seed package.`}</p>}
     {seedMarketInProgress && <p role="status" className="mt-4 border border-[var(--warning)]/40 p-3 text-sm text-[var(--warning)]">A Des Moines market is already in its lifecycle; this Builder will not start a second market.</p>}
     <div className="mt-5 grid gap-3 lg:grid-cols-3">
       <Card className="p-4">
@@ -297,14 +318,7 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
                     : "A validated NOAA station package is not available yet; market creation stays locked."} The Devnet test window is five full UTC days after the 24-hour sales period; historical rainfall is never substituted for future forecast evidence.
         </p>
         <button disabled={busy !== null || initialized !== true || !seedActionReady} className="sky-btn-primary mt-4 min-h-11 w-full" onClick={() => run("seed")}>
-          {busy === "seed" ? "Awaiting wallet approval…"
-            : seedMarketOpen ? "Market already open"
-              : seedMarketInProgress ? "Market lifecycle in progress"
-                : seedCanResumeDraft ? "Resume Des Moines seed"
-                  : seedActionReady ? priorDraftExpired ? "Approve fresh Des Moines seed" : "Approve Des Moines seed"
-                    : seedDraftNeedsResume && !seedEvidenceReady ? "NOAA evidence check unavailable"
-                      : seedMarketState === "unknown" ? "Finalized market status unavailable"
-                        : "Actuarial pricing package unavailable"}
+          {busy === "seed" ? "Awaiting wallet approval…" : seedButtonLabel}
         </button>
         <p className="mt-2 text-[11px] leading-relaxed text-[var(--warning)]">No default 20% probability or substitute data will be committed. A new market is created only when exact-window pricing terms and their input hash are produced.</p>
       </Card>
@@ -316,7 +330,35 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
 
 function DeploymentNotice() { return <div role="status" className="flex gap-3 border border-[var(--warning)]/50 bg-[var(--warning-dim)] p-4 text-sm text-[var(--muted-foreground)]"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warning)]" /><p><strong className="text-[var(--foreground)]">Chain data unavailable.</strong> The Devnet program has not yet published an executable account, or this deployment has no API service. Markets, positions, and settlement evidence remain unavailable rather than simulated.</p></div>; }
 
-function Markets({ onSelect, selectedSlug, status }: { onSelect: (id: MarketId) => void; selectedSlug: MarketId; status?: DevnetStatus }) {
+function HazardSelector({ value, onChange }: { value: Hazard; onChange: (value: Hazard) => void }) {
+  const options: Array<{ id: Hazard; label: string; state: string }> = [
+    { id: "rainfall", label: "Rainfall", state: "Existing pilot" },
+    { id: "wind_gust", label: "Wind gust", state: "Researching" },
+    { id: "snowfall", label: "Snowfall", state: "Researching" },
+  ];
+  return <div role="group" aria-label="Protection type" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+    {options.map((option) => <button key={option.id} type="button" aria-pressed={value === option.id} onClick={() => onChange(option.id)} className={cn("flex min-h-12 items-center justify-between gap-2 rounded-xl border px-4 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]", value === option.id ? "border-[var(--identity)] bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "border-[var(--border)] bg-[var(--surface-1)] text-[var(--muted-foreground)] hover:border-[var(--identity)] hover:text-[var(--foreground)]")}>
+      <span className="font-semibold">{option.label}</span><span className="text-xs">{option.state}</span>
+    </button>)}
+  </div>;
+}
+
+function ResearchOnlyHazard({ hazard }: { hazard: Exclude<Hazard, "rainfall"> }) {
+  const isWind = hazard === "wind_gust";
+  const title = isWind ? "Wind gust protection is research-only" : "Snowfall protection is research-only";
+  return <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-card)] sm:p-6" aria-labelledby="hazard-research-title">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><SectionLabel>Proposed protection type</SectionLabel><h2 id="hazard-research-title" className="sky-display mt-2 text-xl font-semibold">{title}</h2></div><Pill tone="amber">Researching NOAA evidence</Pill></div>
+    <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)]">{isWind ? "Proposed index: highest daily peak gust in the observation window." : "New snowfall accumulated during the observation window"}</p>
+    {!isWind && <p className="mt-1 text-sm text-[var(--muted-foreground)]">This means newly fallen snow—not snow depth or snow already on the ground.</p>}
+    <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-4"><dt className="sky-label">Display units</dt><dd className="mt-2 text-sm font-medium">{isWind ? "Miles per hour (mph) and kilometres per hour (km/h)" : "Inches and millimetres (mm)"}</dd></div>
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-4"><dt className="sky-label">Available areas</dt><dd className="mt-2 text-sm font-medium">None validated for this protection type</dd></div>
+    </dl>
+    <p role="status" className="mt-5 border-l-2 border-[var(--warning)] bg-[var(--warning-dim)] p-4 text-sm leading-relaxed text-[var(--muted-foreground)]"><strong className="text-[var(--warning)]">Researching NOAA evidence.</strong> Exact-window station coverage, observation quality and units, missing-data rules, commercial data-use rights, and hazard-specific pricing must be validated before areas or quotes are offered. No quote or transaction is available.</p>
+  </section>;
+}
+
+function Markets({ hazard, setHazard, onSelect, selectedSlug, status }: { hazard: Hazard; setHazard: (value: Hazard) => void; onSelect: (id: MarketId) => void; selectedSlug: MarketId; status?: DevnetStatus }) {
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -341,6 +383,8 @@ function Markets({ onSelect, selectedSlug, status }: { onSelect: (id: MarketId) 
     return () => document.removeEventListener("mousedown", closeWhenOutside);
   }, []);
 
+  if (hazard !== "rainfall") return <section className="space-y-4"><HazardSelector value={hazard} onChange={setHazard} /><ResearchOnlyHazard hazard={hazard} /></section>;
+
   const selectDropdownOption = (index: number) => {
     const option = dropdownOptions[index];
     if (!option) return;
@@ -359,6 +403,7 @@ function Markets({ onSelect, selectedSlug, status }: { onSelect: (id: MarketId) 
   };
 
   return <section className="space-y-4" aria-labelledby="markets-heading">
+    <HazardSelector value={hazard} onChange={setHazard} />
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div>
         <SectionLabel>Agricultural rainfall indexes</SectionLabel>
@@ -414,7 +459,7 @@ function Markets({ onSelect, selectedSlug, status }: { onSelect: (id: MarketId) 
   </section>;
 }
 
-function Protect(props: { marketId: MarketId; amount: string; amountBase: string | null; setAmount: (value: string) => void; threshold: string; setThreshold: (value: string) => void; operator: "gte" | "lte"; setOperator: (value: "gte" | "lte") => void; start: string; setStart: (value: string) => void; end: string; setEnd: (value: string) => void; status?: DevnetStatus; windowLocked: boolean; salesCloseAt: number | null; valid: boolean; requestQuote: () => void; quote?: Quote; loading: boolean; error: unknown }) {
+function Protect(props: { hazard: Hazard; setHazard: (value: Hazard) => void; marketId: MarketId; amount: string; amountBase: string | null; setAmount: (value: string) => void; threshold: string; setThreshold: (value: string) => void; operator: "gte" | "lte"; setOperator: (value: "gte" | "lte") => void; start: string; setStart: (value: string) => void; end: string; setEnd: (value: string) => void; status?: DevnetStatus; windowLocked: boolean; salesCloseAt: number | null; valid: boolean; requestQuote: () => void; quote?: Quote; loading: boolean; error: unknown }) {
   const market = MARKETS.find((item) => item.id === props.marketId)!;
   const wallet = useWallet();
   const [transaction, setTransaction] = useState<{ state: "idle" | "preparing" | "confirmed" | "error"; message?: string; signature?: string }>({ state: "idle" });
@@ -431,6 +476,7 @@ function Protect(props: { marketId: MarketId; amount: string; amountBase: string
   const canPurchase = props.valid && quoteMatchesCurrentRequest && Boolean(wallet.publicKey) && Boolean(committedMarket?.address);
   const reason = !evidenceReady ? "A final NOAA station package is not available yet." : !marketReady ? "The Des Moines test market has not been seeded and opened on finalized Devnet yet." : !wallet.publicKey ? "Connect a Devnet Phantom or Solflare wallet to continue." : !props.amountBase || BigInt(props.amountBase) > TESTER_PROTECTION_CAP_BASE ? "Open testers can protect up to 500 SKYT per wallet." : "Request a NOAA-backed quote before approving the Devnet transaction.";
   const approveProtection = async () => {
+    if (props.hazard !== "rainfall") return;
     if (!wallet.publicKey || !props.status?.desMoinesMarket.address || !props.amountBase || !props.quote) return;
     setTransaction({ state: "preparing", message: "Preparing an unsigned Devnet transaction for wallet approval…" });
     try {
@@ -441,7 +487,10 @@ function Protect(props: { marketId: MarketId; amount: string; amountBase: string
       setTransaction({ state: "error", message: error instanceof Error ? error.message : "The Devnet transaction was not completed." });
     }
   };
-  return <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+  if (props.hazard !== "rainfall") return <section className="space-y-4"><HazardSelector value={props.hazard} onChange={props.setHazard} /><ResearchOnlyHazard hazard={props.hazard} /></section>;
+  return <div className="space-y-4">
+    <HazardSelector value={props.hazard} onChange={props.setHazard} />
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
     <section className="sky-hero-card">
       <SectionLabel className="text-[var(--identity)]">{market.city} agricultural index</SectionLabel>
       <p className="mt-1 text-sm text-[var(--muted-foreground)]">{market.location}</p>
@@ -461,6 +510,7 @@ function Protect(props: { marketId: MarketId; amount: string; amountBase: string
       {transaction.state !== "idle" && <p role={transaction.state === "error" ? "alert" : "status"} className={cn("mt-4 border p-3 text-sm", transaction.state === "error" ? "border-[var(--destructive)]/50 text-[var(--destructive-foreground)]" : "border-[var(--success)]/50 text-[var(--success)]")}>{transaction.message}{transaction.signature && <> <a className="underline" href={explorerTx(transaction.signature)} target="_blank" rel="noreferrer">View finalized transaction</a></>}</p>}
     </section>
     <div className="space-y-5"><OracleSettlementPanel marketAddress={props.marketId === "des-moines" ? props.status?.desMoinesMarket.address ?? null : null} /><QuotePanel quote={props.quote} error={props.error} /></div>
+    </div>
   </div>;
 }
 

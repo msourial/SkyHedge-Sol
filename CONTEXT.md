@@ -8,6 +8,18 @@ SkyHedge is a Solana-backed climate protection product. This glossary keeps prod
 A fixed-payout contract that pays when a pinned rainfall index meets its published trigger.
 _Avoid_: Option, future, trade, bet
 
+**Wind gust protection**:
+A research-only proposed index based on the highest daily peak gust in an observation window. Display units are mph and km/h; it has no validated areas, quote, or transaction flow in V1.
+_Avoid_: Sustained wind speed, live wind forecast, active coverage
+
+**Snowfall protection**:
+A research-only proposed index based on newly fallen snow accumulated during an observation window, not snow depth. Display units are inches and millimetres; it has no validated areas, quote, or transaction flow in V1.
+_Avoid_: Snow depth, snow on the ground, active coverage
+
+**Research-only hazard**:
+A protection type whose station evidence, observation rules, data-use rights, and pricing method have not passed release validation. It cannot be quoted or transacted.
+_Avoid_: Available market, ready to buy, validated coverage
+
 **Agricultural index**:
 A release-gated rainfall reference area tied to a crop region, precise location label, observation window, and settlement evidence package.
 _Avoid_: City market, commodity market, trading pair

@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { assertFreshMarketCounterMatches, assertFreshSeedAllowed, DES_MOINES_SEED_LIQUIDITY_BASE, desMoinesSeedActionMode, marketStateFromAccountData, marketStateFromStatusJson, planDesMoinesSeed, type SeedMarketProgress, type SeedPricingTerms } from "../../shared/des-moines-seed-plan";
+import { assertFreshMarketCounterMatches, assertFreshSeedAllowed, DES_MOINES_SEED_LIQUIDITY_BASE, desMoinesSeedActionMode, marketStateFromAccountData, marketStateFromStatusJson, planDesMoinesSeed, seedTermsMatch, type SeedMarketProgress, type SeedPricingTerms } from "../../shared/des-moines-seed-plan";
 
 const pricing: SeedPricingTerms = {
   salesCloseAt: 2_000_000_000,
@@ -82,6 +82,14 @@ describe("Des Moines seed recovery plan", () => {
 
   it("resumes an empty finalized Draft without trying to create it again", () => {
     expect(planDesMoinesSeed(draft, pricing, 1_999_000_000).steps).to.deep.equal(["fund", "open"]);
+    expect(planDesMoinesSeed(draft, { ...pricing, salesCloseAt: pricing.salesCloseAt + 3_600 }, 1_999_000_000).steps).to.deep.equal(["fund", "open"]);
+  });
+
+  it("compares resume readiness against the exact observation window and NOAA quote commitment", () => {
+    expect(seedTermsMatch(draft, { ...pricing, salesCloseAt: pricing.salesCloseAt + 3_600 })).to.equal(true);
+    expect(seedTermsMatch(draft, { ...pricing, observationStart: pricing.observationStart + 86_400 })).to.equal(false);
+    expect(seedTermsMatch(draft, { ...pricing, inputsHash: "cd".repeat(32) })).to.equal(false);
+    expect(seedTermsMatch(draft, { ...pricing, premiumRateBps: pricing.premiumRateBps + 1 })).to.equal(false);
   });
 
   it("resumes a funded Draft with only the open approval", () => {
