@@ -162,7 +162,7 @@ test("changing the protection amount invalidates a quote priced for the previous
     generatedAt: new Date().toISOString(),
   } }));
   await page.route("**/api/quotes", (route) => route.fulfill({ json: {
-    probabilityBps: 2_000, premiumRateBps: 2_400, premium: "2400000", protocolFee: "1000000", protectedAmount: "100000000", modelVersion: "noaa-rain-v1", inputsHash: "cd".repeat(32),
+    probabilityBps: 2_000, premiumRateBps: 2_400, premium: "2400000", protocolFee: "1000000", protectedAmount: "100000000", modelVersion: "noaa-rain-v1", inputsHash: "ab".repeat(32),
   } }));
   let unsignedTransactionRequested = false;
   await page.route("**/api/transactions/unsigned", async (route) => {

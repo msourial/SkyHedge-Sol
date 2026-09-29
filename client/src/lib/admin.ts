@@ -1,7 +1,8 @@
-import { createAssociatedTokenAccountIdempotentInstruction, createMintToInstruction, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { createAssociatedTokenAccountIdempotentInstruction, createMintToInstruction, getAccount, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
 import { isValidImmutableMarketPricingTerms } from "../../../shared/market-pricing";
+import { assertFreshMarketCounterMatches, assertFreshSeedAllowed, DES_MOINES_SEED_LIQUIDITY_BASE, marketStateFromAccountData, marketStateFromStatusJson, planDesMoinesSeed, type SeedStep } from "../../../shared/des-moines-seed-plan";
 import { connection, PROGRAM_ID, PROTOCOL_ADMIN, SETTLEMENT_AUTHORITY, SKYT_MINT } from "./solana";
 
 const program = new PublicKey(PROGRAM_ID);
@@ -36,7 +37,24 @@ export type DesMoinesSeedTransactions = {
   market: PublicKey;
   vault: PublicKey;
   liquidityPosition: PublicKey;
-  transactions: [Transaction, Transaction, Transaction];
+  transactions: Array<{ step: SeedStep; transaction: Transaction }>;
+  alreadyOpen: boolean;
+};
+
+export type FinalizedDesMoinesMarket = {
+  status: "ready" | "pending" | "unavailable" | "error";
+  address: string | null;
+  marketId: string | null;
+  vault: string | null;
+  vaultBalance: string | null;
+  onchainStatus: string | null;
+  salesCloseAt: number | null;
+  observationStart: number | null;
+  observationEnd: number | null;
+  quoteProbabilityBps: number | null;
+  premiumRateBps: number | null;
+  quoteInputsHash: string | null;
+  evidenceStatus: "researching_evidence" | "validated";
 };
 
 function hashBytes(value: string, name: string): Buffer {
@@ -53,24 +71,15 @@ function u64(value: bigint): Buffer { const out = Buffer.alloc(8); out.writeBigU
  * This deliberately requires a complete, server-validated NOAA evidence package;
  * coordinates or a station name alone can never unlock market creation.
  */
-export async function desMoinesSeedTransactions(admin: PublicKey, evidence: DesMoinesEvidencePackage): Promise<DesMoinesSeedTransactions> {
+export async function desMoinesSeedTransactions(
+  admin: PublicKey,
+  evidence: DesMoinesEvidencePackage,
+  finalizedMarket: FinalizedDesMoinesMarket,
+  finalizedProtocol: { status: string; initialized: boolean; nextMarketId: string | null },
+): Promise<DesMoinesSeedTransactions> {
+  if (!isProtocolAdmin(admin)) throw new Error("Only the configured protocol admin can seed Des Moines.");
   if (!evidence.validated || !evidence.stationId.trim()) throw new Error("Des Moines market seeding requires a validated NOAA station package.");
   hashBytes(evidence.stationIdHash, "stationIdHash");
-  const terms = evidence.quoteTerms;
-  if (!isValidImmutableMarketPricingTerms(terms)) {
-    throw new Error("NOAA station evidence is validated, but no complete actuarial pricing package is available for the immutable market dates. No market transaction was prepared.");
-  }
-  const schedule = evidence.seedSchedule;
-  const day = 86_400;
-  if (!schedule || ![schedule.salesCloseAt, schedule.observationStart, schedule.observationEnd].every(Number.isSafeInteger)
-    || schedule.salesCloseAt <= 0
-    || schedule.observationStart !== Math.ceil(schedule.salesCloseAt / day) * day
-    || schedule.observationEnd - schedule.observationStart !== 5 * day) {
-    throw new Error("NOAA pricing dates are missing or do not match the five-full-day Devnet test schedule. No market transaction was prepared.");
-  }
-  if (Math.floor(Date.now() / 1_000) >= schedule.salesCloseAt) {
-    throw new Error("This NOAA pricing package has expired. Refresh the exact-window quote before preparing any wallet transaction.");
-  }
   const cityHash = await sha256Hex("des-moines");
   const protocol = protocolPda();
   const protocolInfo = await connection.getAccountInfo(protocol, "finalized");
@@ -78,30 +87,141 @@ export async function desMoinesSeedTransactions(admin: PublicKey, evidence: DesM
   // Anchor account data: discriminator (8) + six Pubkeys, then next_market_id.
   if (protocolInfo.data.length < 208) throw new Error("The finalized protocol account has an invalid layout.");
   const nextMarketId = protocolInfo.data.readBigUInt64LE(200);
-  const [market] = PublicKey.findProgramAddressSync([Buffer.from("market"), protocol.toBuffer(), u64(nextMarketId)], program);
-  const existingMarket = await connection.getAccountInfo(market, "finalized");
-  if (existingMarket) {
-    throw new Error(`Market ID ${nextMarketId.toString()} already exists on finalized Devnet. Refresh Builder status before preparing another seed.`);
+  const hasExisting = finalizedMarket.status === "ready" && Boolean(finalizedMarket.address && finalizedMarket.marketId);
+  if (finalizedProtocol.status !== "ready" || !finalizedProtocol.initialized) {
+    throw new Error("The finalized protocol status is not ready; no market-seed transaction was prepared.");
   }
+  assertFreshSeedAllowed({
+    marketFound: hasExisting,
+    marketReadStatus: finalizedMarket.status,
+    protocolStatus: finalizedProtocol.status,
+    protocolInitialized: finalizedProtocol.initialized,
+  });
+  const apiMarketState = hasExisting ? marketStateFromStatusJson(finalizedMarket.onchainStatus) : "missing";
+  const marketState = apiMarketState ?? "unknown";
+  const nowSeconds = Math.floor(Date.now() / 1_000);
+  const expiredDraft = marketState === "draft" && finalizedMarket.salesCloseAt !== null && finalizedMarket.salesCloseAt <= nowSeconds;
+  const terminal = marketState === "settled" || marketState === "data_unavailable" || marketState === "closed";
+  const useExisting = hasExisting && !expiredDraft && !terminal;
+  if (!useExisting) assertFreshMarketCounterMatches(finalizedProtocol.nextMarketId, nextMarketId);
+  const marketId = useExisting ? BigInt(finalizedMarket.marketId!) : nextMarketId;
+  if (useExisting && marketId >= nextMarketId) throw new Error("Finalized market status is inconsistent with the protocol market counter.");
+  const [market, marketBump] = PublicKey.findProgramAddressSync([Buffer.from("market"), protocol.toBuffer(), u64(marketId)], program);
+  if (useExisting && market.toBase58() !== finalizedMarket.address) throw new Error("The finalized Des Moines market PDA does not match its protocol market ID.");
+  const marketInfo = await connection.getAccountInfo(market, "finalized");
+  if (useExisting && (!marketInfo || !marketInfo.owner.equals(program))) throw new Error("The reported Des Moines market is not present in finalized Devnet RPC.");
+  if (!useExisting && marketInfo) throw new Error(`Market ID ${marketId.toString()} already exists on finalized Devnet. Refresh Builder status before preparing another seed.`);
   const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), market.toBuffer()], program);
-  const [liquidityPosition] = PublicKey.findProgramAddressSync([Buffer.from("liquidity"), market.toBuffer(), admin.toBuffer()], program);
+  if (useExisting && finalizedMarket.vault !== vault.toBase58()) throw new Error("The finalized Des Moines market vault PDA does not match its market.");
+  const liquidityPosition = PublicKey.findProgramAddressSync([Buffer.from("liquidity"), market.toBuffer(), admin.toBuffer()], program)[0];
+  const resumeDraft = useExisting && marketState === "draft" && finalizedMarket.salesCloseAt !== null && finalizedMarket.salesCloseAt > nowSeconds;
+  const useCommittedTerms = resumeDraft || (useExisting && marketState === "open");
+  let terms = evidence.quoteTerms;
+  let schedule = evidence.seedSchedule;
+  if (useCommittedTerms) {
+    if (finalizedMarket.evidenceStatus !== "validated"
+      || finalizedMarket.salesCloseAt === null
+      || finalizedMarket.observationStart === null
+      || finalizedMarket.observationEnd === null
+      || finalizedMarket.quoteProbabilityBps === null
+      || finalizedMarket.premiumRateBps === null
+      || !finalizedMarket.quoteInputsHash) {
+      throw new Error("The finalized Draft is missing verified immutable NOAA terms; no follow-up transaction was prepared.");
+    }
+    terms = {
+      probabilityBps: finalizedMarket.quoteProbabilityBps,
+      premiumRateBps: finalizedMarket.premiumRateBps,
+      inputsHash: finalizedMarket.quoteInputsHash,
+    };
+    schedule = {
+      salesCloseAt: finalizedMarket.salesCloseAt,
+      observationStart: finalizedMarket.observationStart,
+      observationEnd: finalizedMarket.observationEnd,
+    };
+  } else {
+    if (!isValidImmutableMarketPricingTerms(terms)) {
+      throw new Error("NOAA station evidence is validated, but no complete actuarial pricing package is available for the immutable market dates. No market transaction was prepared.");
+    }
+    const day = 86_400;
+    if (!schedule || ![schedule.salesCloseAt, schedule.observationStart, schedule.observationEnd].every(Number.isSafeInteger)
+      || schedule.salesCloseAt <= 0
+      || schedule.observationStart !== Math.ceil(schedule.salesCloseAt / day) * day
+      || schedule.observationEnd - schedule.observationStart !== 5 * day) {
+      throw new Error("NOAA pricing dates are missing or do not match the five-full-day Devnet test schedule. No market transaction was prepared.");
+    }
+    if (nowSeconds >= schedule.salesCloseAt) {
+      throw new Error("This NOAA pricing package has expired. Refresh the exact-window quote before preparing any wallet transaction.");
+    }
+  }
+  if (useExisting) {
+    const data = marketInfo!.data;
+    if (data.length < 325) throw new Error("The finalized Des Moines market account has an invalid layout.");
+    const expectedDiscriminator = await sha256Hex("account:Market");
+    const chainMarketState = marketStateFromAccountData(data);
+    if (!chainMarketState || chainMarketState !== marketState || data[383] !== marketBump) {
+      throw new Error("The finalized market lifecycle state or PDA bump does not match the market record. Refresh status before preparing a follow-up transaction.");
+    }
+    const fieldsMatch = data.length >= 293
+      && data.subarray(0, 8).equals(expectedDiscriminator.subarray(0, 8))
+      && data.readBigUInt64LE(8) === marketId
+      && data.subarray(16, 48).equals(protocol.toBuffer())
+      && data.subarray(80, 112).equals(cityHash)
+      && data.subarray(112, 144).equals(hashBytes(evidence.stationIdHash, "stationIdHash"))
+      && data.subarray(144, 176).equals(hashBytes(evidence.providerHash, "providerHash"))
+      && data.subarray(176, 208).equals(hashBytes(evidence.methodologyHash, "methodologyHash"))
+      && data.subarray(208, 240).equals(hashBytes(terms!.inputsHash, "quoteInputsHash"))
+      && data.readBigInt64LE(249) === BigInt(schedule!.salesCloseAt)
+      && data.readBigInt64LE(257) === BigInt(schedule!.observationStart)
+      && data.readBigInt64LE(265) === BigInt(schedule!.observationEnd)
+      && data.readUInt16LE(289) === terms!.probabilityBps
+      && data.readUInt16LE(291) === terms!.premiumRateBps;
+    if (!fieldsMatch || finalizedMarket.evidenceStatus !== "validated") {
+      throw new Error("The finalized market account does not match the validated NOAA station, immutable schedule, and exact quote hash. No follow-up transaction was prepared.");
+    }
+  }
+  const vaultAccount = useExisting ? await getAccount(connection, vault, "finalized", TOKEN_PROGRAM_ID) : null;
+  if (vaultAccount && (!vaultAccount.mint.equals(mint) || !vaultAccount.owner.equals(market))) {
+    throw new Error("The finalized market vault is not controlled by this market or does not contain SKYT.");
+  }
+  const vaultBalance = vaultAccount?.amount.toString() ?? "0";
+  const totalShares = useExisting ? marketInfo!.data.readBigUInt64LE(317).toString() : "0";
+  if (BigInt(vaultBalance) < BigInt(totalShares)) throw new Error("The finalized market vault is below its recorded LP shares; no funding or opening transaction was prepared.");
+  if (useExisting && marketState === "open") return { market, vault, liquidityPosition, transactions: [], alreadyOpen: true };
+  const seedPlan = planDesMoinesSeed({
+    state: useExisting ? marketState : "missing",
+    salesCloseAt: useExisting ? finalizedMarket.salesCloseAt : null,
+    observationStart: useExisting ? finalizedMarket.observationStart : null,
+    observationEnd: useExisting ? finalizedMarket.observationEnd : null,
+    quoteProbabilityBps: useExisting ? finalizedMarket.quoteProbabilityBps : null,
+    premiumRateBps: useExisting ? finalizedMarket.premiumRateBps : null,
+    quoteInputsHash: useExisting ? finalizedMarket.quoteInputsHash : null,
+    totalShares,
+  }, {
+    salesCloseAt: schedule!.salesCloseAt,
+    observationStart: schedule!.observationStart,
+    observationEnd: schedule!.observationEnd,
+    probabilityBps: terms!.probabilityBps,
+    premiumRateBps: terms!.premiumRateBps,
+    inputsHash: terms!.inputsHash,
+  }, nowSeconds);
+  if (seedPlan.alreadyOpen) return { market, vault, liquidityPosition, transactions: [], alreadyOpen: true };
   const adminAta = getAssociatedTokenAddressSync(mint, admin);
-  const salesCloseAt = BigInt(schedule.salesCloseAt);
-  const observationStart = BigInt(schedule.observationStart);
-  const observationEnd = BigInt(schedule.observationEnd);
+  const salesCloseAt = BigInt(schedule!.salesCloseAt);
+  const observationStart = BigInt(schedule!.observationStart);
+  const observationEnd = BigInt(schedule!.observationEnd);
   const createData = Buffer.concat([
     createMarketDiscriminator,
     cityHash,
     hashBytes(evidence.stationIdHash, "stationIdHash"),
     hashBytes(evidence.providerHash, "providerHash"),
     hashBytes(evidence.methodologyHash, "methodologyHash"),
-    hashBytes(terms.inputsHash, "quoteInputsHash"),
+    hashBytes(terms!.inputsHash, "quoteInputsHash"),
     Buffer.from([1]), // ComparisonOperator::GreaterThanOrEqual
     i64(5_000n), // 50 mm, canonical on-chain unit is hundredths of a millimetre
     i64(salesCloseAt),
     i64(observationStart),
     i64(observationEnd),
-    u16(terms.probabilityBps),
+    u16(terms!.probabilityBps),
     u64(10_000_000_000n),
     u64(8_000_000_000n),
     u64(500_000_000n),
@@ -118,12 +238,16 @@ export async function desMoinesSeedTransactions(admin: PublicKey, evidence: DesM
     { pubkey: adminAta, isSigner: false, isWritable: true }, { pubkey: liquidityPosition, isSigner: false, isWritable: true },
     { pubkey: mint, isSigner: false, isWritable: false }, { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-  ], data: Buffer.concat([fundPoolDiscriminator, u64(2_000_000_000n)]) });
+  ], data: Buffer.concat([fundPoolDiscriminator, u64(seedPlan.additionalFundingBase)]) });
   const open = new TransactionInstruction({ programId: program, keys: [
     { pubkey: admin, isSigner: true, isWritable: true }, { pubkey: protocol, isSigner: false, isWritable: false },
     { pubkey: market, isSigner: false, isWritable: true },
   ], data: openMarketDiscriminator });
-  return { market, vault, liquidityPosition, transactions: [new Transaction().add(create), new Transaction().add(fund), new Transaction().add(open)] };
+  const transactions = seedPlan.steps.map((step) => ({
+    step,
+    transaction: new Transaction().add(step === "create" ? create : step === "fund" ? fund : open),
+  }));
+  return { market, vault, liquidityPosition, transactions, alreadyOpen: false };
 }
 
 async function sha256Hex(value: string): Promise<Buffer> {
@@ -170,13 +294,13 @@ export async function approveAndConfirm(transaction: Transaction, wallet: Wallet
 export async function approveAndConfirmDesMoinesSeed(
   seed: DesMoinesSeedTransactions,
   wallet: WalletContextState,
-  onStep?: (step: "create" | "fund" | "open", signature: string) => void,
+  onStep?: (step: SeedStep, signature: string) => void,
 ) {
   const signatures: string[] = [];
-  for (const [index, transaction] of seed.transactions.entries()) {
+  for (const { step, transaction } of seed.transactions) {
     const signature = await approveAndConfirm(transaction, wallet);
     signatures.push(signature);
-    onStep?.((["create", "fund", "open"] as const)[index], signature);
+    onStep?.(step, signature);
   }
-  return signatures as [string, string, string];
+  return signatures;
 }
