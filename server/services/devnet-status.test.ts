@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { Connection } from "@solana/web3.js";
 import { DevnetStatusReader } from "./devnet-status";
-import { committedIdlMatchesProgram, hasPinnedDesMoinesEvidenceCommitment, latestMatchingMarket, marketTermsFields, noaaStationValidationMessage, protocolConfigFields, publicDevnetStatus } from "./devnet-status";
+import { committedIdlMatchesProgram, hasPinnedDesMoinesEvidenceCommitment, latestMatchingMarket, marketTermsFields, noaaStationValidationMessage, protocolConfigFields, publicDevnetStatus, supportsEmptyDraftCancellation } from "./devnet-status";
 import { canonicalSourceHash, NOAA_STATIONS } from "./noaa";
 import methodology from "../../shared/methodology-v1.json";
 
@@ -28,6 +28,13 @@ describe("Committed IDL identity", () => {
     expect(committedIdlMatchesProgram({ address: "Program111" }, "Program111")).to.equal(true);
     expect(committedIdlMatchesProgram({ address: "Different111" }, "Program111")).to.equal(false);
     expect(committedIdlMatchesProgram({}, "Program111")).to.equal(false);
+  });
+
+  it("keeps empty-Draft cancellation behind an explicit post-deploy release gate", () => {
+    const updatedIdl = { instructions: [{ name: "cancel_empty_draft_market" }] };
+    expect(supportsEmptyDraftCancellation(updatedIdl, false)).to.equal(false);
+    expect(supportsEmptyDraftCancellation(updatedIdl, true)).to.equal(true);
+    expect(supportsEmptyDraftCancellation({ instructions: [] }, true)).to.equal(false);
   });
 });
 

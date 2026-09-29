@@ -4,7 +4,7 @@ import { desMoinesQuoteUnavailableReason, testerProtectionUnavailableReason } fr
 
 const ready = {
   program: { executable: true },
-  idl: { status: "ready" },
+  idl: { status: "ready", supportsEmptyDraftCancellation: false },
   protocol: { initialized: true },
   desMoinesMarket: { status: "ready", address: "Market111111111111111111111111111111111", vaultBalance: "2000000000", onchainStatus: JSON.stringify({ open: {} }), salesCloseAt: 2_000_000_000, thresholdMmX100: "5000", operator: "gte", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, quoteInputsHash: "ab".repeat(32), evidenceStatus: "validated" },
   noaaEvidence: { status: "ready" },

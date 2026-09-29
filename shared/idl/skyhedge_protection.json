@@ -1482,6 +1482,28 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "cancel_empty_draft_market",
+      "discriminator": [
+        11,
+        214,
+        167,
+        114,
+        95,
+        104,
+        107,
+        238
+      ],
+      "accounts": [
+        { "name": "admin", "signer": true },
+        { "name": "protocol" },
+        { "name": "market", "writable": true },
+        { "name": "vault" },
+        { "name": "collateral_mint" },
+        { "name": "token_program" }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -1746,6 +1768,19 @@
         39,
         253
       ]
+    },
+    {
+      "name": "MarketCancelled",
+      "discriminator": [
+        139,
+        163,
+        33,
+        168,
+        19,
+        180,
+        81,
+        170
+      ]
     }
   ],
   "errors": [
@@ -1903,6 +1938,11 @@
       "code": 6030,
       "name": "MathOverflow",
       "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6031,
+      "name": "DraftNotEmpty",
+      "msg": "Draft market is not empty and cannot be cancelled"
     }
   ],
   "types": [
@@ -2478,6 +2518,9 @@
           },
           {
             "name": "Closed"
+          },
+          {
+            "name": "Cancelled"
           }
         ]
       }
@@ -2828,6 +2871,16 @@
               ]
             }
           }
+        ]
+      }
+    },
+    {
+      "name": "MarketCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "market", "type": "pubkey" },
+          { "name": "id", "type": "u64" }
         ]
       }
     }

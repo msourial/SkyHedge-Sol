@@ -2,7 +2,7 @@ import { createAssociatedTokenAccountIdempotentInstruction, createMintToInstruct
 import { PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
 import { isValidImmutableMarketPricingTerms } from "../../../shared/market-pricing";
-import { assertFreshMarketCounterMatches, assertFreshSeedAllowed, DES_MOINES_SEED_LIQUIDITY_BASE, marketStateFromAccountData, marketStateFromStatusJson, planDesMoinesSeed, seedTermsMatch, type SeedStep } from "../../../shared/des-moines-seed-plan";
+import { assertFreshMarketCounterMatches, assertFreshSeedAllowed, DES_MOINES_SEED_LIQUIDITY_BASE, isEmptyDraftMarketAccountData, isValidDesMoinesSeedSchedule, MARKET_ACCOUNT_LAYOUT, PROTOCOL_CONFIG_LAYOUT, marketStateFromAccountData, marketStateFromStatusJson, planDesMoinesSeed, seedTermsMatch, type SeedStep } from "../../../shared/des-moines-seed-plan";
 import { connection, PROGRAM_ID, PROTOCOL_ADMIN, SETTLEMENT_AUTHORITY, SKYT_MINT } from "./solana";
 
 const program = new PublicKey(PROGRAM_ID);
@@ -13,6 +13,7 @@ const initializeDiscriminator = Buffer.from([188, 233, 252, 106, 134, 146, 202, 
 const createMarketDiscriminator = Buffer.from([103, 226, 97, 235, 200, 188, 251, 254]);
 const fundPoolDiscriminator = Buffer.from([36, 57, 233, 176, 181, 20, 87, 159]);
 const openMarketDiscriminator = Buffer.from([116, 19, 123, 75, 217, 244, 69, 44]);
+const cancelEmptyDraftMarketDiscriminator = Buffer.from([11, 214, 167, 114, 95, 104, 107, 238]);
 export const SKYT_ISSUANCE = 50_000_000_000n;
 
 export function protocolPda() { return PublicKey.findProgramAddressSync([protocolSeed], program)[0]; }
@@ -101,7 +102,8 @@ export async function desMoinesSeedTransactions(
   const marketState = apiMarketState ?? "unknown";
   const nowSeconds = Math.floor(Date.now() / 1_000);
   const expiredDraft = marketState === "draft" && finalizedMarket.salesCloseAt !== null && finalizedMarket.salesCloseAt <= nowSeconds;
-  const terminal = marketState === "settled" || marketState === "data_unavailable" || marketState === "closed";
+  if (expiredDraft) throw new Error("The expired Draft must be explicitly cancelled first. No fresh market transaction was prepared.");
+  const terminal = marketState === "settled" || marketState === "data_unavailable" || marketState === "closed" || marketState === "cancelled";
   const useExisting = hasExisting && !expiredDraft && !terminal;
   if (!useExisting) assertFreshMarketCounterMatches(finalizedProtocol.nextMarketId, nextMarketId);
   const marketId = useExisting ? BigInt(finalizedMarket.marketId!) : nextMarketId;
@@ -158,11 +160,7 @@ export async function desMoinesSeedTransactions(
     if (!isValidImmutableMarketPricingTerms(terms)) {
       throw new Error("NOAA station evidence is validated, but no complete actuarial pricing package is available for the immutable market dates. No market transaction was prepared.");
     }
-    const day = 86_400;
-    if (!schedule || ![schedule.salesCloseAt, schedule.observationStart, schedule.observationEnd].every(Number.isSafeInteger)
-      || schedule.salesCloseAt <= 0
-      || schedule.observationStart !== Math.ceil(schedule.salesCloseAt / day) * day
-      || schedule.observationEnd - schedule.observationStart !== 5 * day) {
+    if (!schedule || !isValidDesMoinesSeedSchedule(schedule)) {
       throw new Error("NOAA pricing dates are missing or do not match the five-full-day Devnet test schedule. No market transaction was prepared.");
     }
     if (nowSeconds >= schedule.salesCloseAt) {
@@ -264,6 +262,73 @@ export async function desMoinesSeedTransactions(
     transaction: new Transaction().add(step === "create" ? create : step === "fund" ? fund : open),
   }));
   return { market, vault, liquidityPosition, transactions, alreadyOpen: false };
+}
+
+/**
+ * Builds a cancellation instruction only after independently reading the exact
+ * protocol, Draft account, and token vault from finalized Devnet RPC. The
+ * Anchor program repeats all emptiness checks atomically when the wallet signs.
+ */
+export async function cancelEmptyDraftMarketTransaction(
+  admin: PublicKey,
+  marketAddress: string,
+  marketIdText: string,
+  vaultAddress: string,
+): Promise<Transaction> {
+  if (!isProtocolAdmin(admin)) throw new Error("Only the configured protocol admin can retire a Des Moines Draft.");
+  if (!/^\d+$/.test(marketIdText)) throw new Error("The finalized market ID is invalid.");
+  const marketId = BigInt(marketIdText);
+  const protocol = protocolPda();
+  const [expectedMarket, marketBump] = PublicKey.findProgramAddressSync(
+    [Buffer.from("market"), protocol.toBuffer(), u64(marketId)],
+    program,
+  );
+  const [expectedVault] = PublicKey.findProgramAddressSync(
+    [Buffer.from("vault"), expectedMarket.toBuffer()],
+    program,
+  );
+  if (marketAddress !== expectedMarket.toBase58() || vaultAddress !== expectedVault.toBase58()) {
+    throw new Error("The finalized Draft market or vault address does not match its PDA.");
+  }
+
+  const protocolInfo = await connection.getAccountInfo(protocol, "finalized");
+  if (!protocolInfo || !protocolInfo.owner.equals(program) || protocolInfo.data.length < PROTOCOL_CONFIG_LAYOUT.minimumLength
+    || !protocolInfo.data.subarray(PROTOCOL_CONFIG_LAYOUT.admin, PROTOCOL_CONFIG_LAYOUT.admin + 32).equals(admin.toBuffer())
+    || !protocolInfo.data.subarray(PROTOCOL_CONFIG_LAYOUT.collateralMint, PROTOCOL_CONFIG_LAYOUT.collateralMint + 32).equals(mint.toBuffer())
+    || !protocolInfo.data.subarray(PROTOCOL_CONFIG_LAYOUT.tokenProgram, PROTOCOL_CONFIG_LAYOUT.tokenProgram + 32).equals(TOKEN_PROGRAM_ID.toBuffer())) {
+    throw new Error("Finalized protocol identity or admin authority does not match this wallet.");
+  }
+  const nextMarketId = protocolInfo.data.readBigUInt64LE(PROTOCOL_CONFIG_LAYOUT.nextMarketId);
+  if (marketId >= nextMarketId) throw new Error("The finalized protocol counter does not include this market.");
+
+  const marketInfo = await connection.getAccountInfo(expectedMarket, "finalized");
+  const marketDiscriminator = await sha256Hex("account:Market");
+  if (!marketInfo || !marketInfo.owner.equals(program) || marketInfo.data.length < MARKET_ACCOUNT_LAYOUT.minimumLength
+    || !marketInfo.data.subarray(0, 8).equals(marketDiscriminator.subarray(0, 8))
+    || marketInfo.data.readBigUInt64LE(MARKET_ACCOUNT_LAYOUT.marketId) !== marketId
+    || !marketInfo.data.subarray(MARKET_ACCOUNT_LAYOUT.protocol, MARKET_ACCOUNT_LAYOUT.protocol + 32).equals(protocol.toBuffer())
+    || !isEmptyDraftMarketAccountData(marketInfo.data)
+    || marketInfo.data[MARKET_ACCOUNT_LAYOUT.bump] !== marketBump) {
+    throw new Error("This finalized Draft is not empty or is inconsistent. No cancellation transaction was prepared.");
+  }
+
+  const vaultInfo = await getAccount(connection, expectedVault, "finalized", TOKEN_PROGRAM_ID);
+  if (!vaultInfo.owner.equals(expectedMarket) || !vaultInfo.mint.equals(mint) || vaultInfo.amount !== 0n) {
+    throw new Error("This finalized Draft vault is not an empty SKYT vault controlled by its market.");
+  }
+
+  return new Transaction().add(new TransactionInstruction({
+    programId: program,
+    keys: [
+      { pubkey: admin, isSigner: true, isWritable: false },
+      { pubkey: protocol, isSigner: false, isWritable: false },
+      { pubkey: expectedMarket, isSigner: false, isWritable: true },
+      { pubkey: expectedVault, isSigner: false, isWritable: false },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data: cancelEmptyDraftMarketDiscriminator,
+  }));
 }
 
 async function sha256Hex(value: string): Promise<Buffer> {

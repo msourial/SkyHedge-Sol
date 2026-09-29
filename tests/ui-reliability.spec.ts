@@ -50,6 +50,8 @@ test("wind gust and snowfall are research-only in Markets and never request quot
 
   await page.getByRole("button", { name: "Wind gust" }).click();
   await expect(page.getByRole("heading", { name: "Wind gust protection is research-only" })).toBeVisible();
+  await expect(page.getByText("Research-only hazard", { exact: true })).toBeVisible();
+  await expect(page.getByText("NOAA-settled protection", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Researching NOAA evidence", { exact: true })).toBeVisible();
   await expect(page.getByText("Highest daily peak gust", { exact: false })).toBeVisible();
   await expect(page.getByText(/mph.*km\/h/)).toBeVisible();
@@ -57,6 +59,8 @@ test("wind gust and snowfall are research-only in Markets and never request quot
 
   await page.getByRole("button", { name: "Snowfall" }).click();
   await expect(page.getByRole("heading", { name: "Snowfall protection is research-only" })).toBeVisible();
+  await expect(page.getByText("Research-only hazard", { exact: true })).toBeVisible();
+  await expect(page.getByText("NOAA-settled protection", { exact: true })).toHaveCount(0);
   await expect(page.getByText("New snowfall accumulated during the observation window", { exact: true })).toBeVisible();
   await expect(page.getByText(/not snow depth/i)).toBeVisible();
   await expect(page.getByText(/inches.*millimetres/i)).toBeVisible();
@@ -71,6 +75,7 @@ test("research-only hazard selection on Protect hides rainfall inputs and blocks
   await page.goto("/?tab=protect&city=des-moines");
   await page.getByRole("button", { name: "Wind gust" }).click();
 
+  await expect(page.getByText("Weather protection", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Wind gust protection is research-only" })).toBeVisible();
   await expect(page.getByText("Rainfall threshold (mm / in)")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Request NOAA quote" })).toHaveCount(0);
@@ -207,7 +212,7 @@ test("changing the protection amount invalidates a quote priced for the previous
   await page.route("**/api/devnet/status", (route) => route.fulfill({ json: {
     network: "devnet",
     program: { address: "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx", status: "ready", executable: true, explorerUrl: "https://explorer.solana.com" },
-    idl: { status: "ready", source: "committed", instructionCount: 21, accountCount: 5 },
+    idl: { status: "ready", source: "committed", instructionCount: 22, accountCount: 5, supportsEmptyDraftCancellation: false },
     protocol: { address: "Protocol111111111111111111111111111111111", status: "ready", initialized: true, admin: null, settlementAuthority: null, collateralMint: null, nextMarketId: "1" },
     feeVault: { address: "Fee1111111111111111111111111111111111111", status: "ready", exists: true, balance: "0" },
     skytMint: { address: "Mint1111111111111111111111111111111111111", status: "ready", exists: true, decimals: 6, supply: "350000000000", mintAuthority: null },
@@ -311,7 +316,7 @@ test("Builder shows that automatic oracle settlement is blocked when cron auth i
   await page.route("**/api/devnet/status", (route) => route.fulfill({ json: {
     network: "devnet",
     program: { address: "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx", status: "ready", executable: true, explorerUrl: "https://explorer.solana.com" },
-    idl: { status: "ready", source: "committed", instructionCount: 21, accountCount: 5 },
+    idl: { status: "ready", source: "committed", instructionCount: 22, accountCount: 5, supportsEmptyDraftCancellation: false },
     protocol: { address: "Protocol111111111111111111111111111111111", status: "ready", initialized: true, admin: null, settlementAuthority: null, collateralMint: null, nextMarketId: "0" },
     feeVault: { address: "Fee1111111111111111111111111111111111111", status: "ready", exists: true, balance: "0" },
     skytMint: { address: "Mint1111111111111111111111111111111111111", status: "ready", exists: true, decimals: 6, supply: "350000000000", mintAuthority: null },

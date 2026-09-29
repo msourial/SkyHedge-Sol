@@ -8,7 +8,7 @@ SkyHedge uses Solana to make parametric rainfall protection auditable: immutable
 
 - Anchor program and local-validator lifecycle tests are implemented.
 - NOAA is the only V1 settlement source; WeatherXM is supplemental context only.
-- Devnet program publication is complete: `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` is executable. The next technical gates are protocol initialization, upgrade-authority rotation, SKYT issuance, and one seeded NOAA-pinned Des Moines market.
+- Devnet program `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` is executable; protocol initialization and 350,000 SKYT issuance are finalized. Des Moines market ID 0 is an empty Draft with a stale NOAA quote commitment and zero vault. The current local program/IDL add safe cancellation, but the deployed program/IDL still need upgrading before the admin wallet can cancel ID 0 and seed a fresh market ID 1.
 - Twelve agricultural crop-belt locations are a research catalog, not live markets. Each requires an independently validated NOAA station before activation.
 
 ## Requested milestone support

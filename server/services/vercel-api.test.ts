@@ -18,7 +18,7 @@ class ResponseStub {
 
 const status = {
   program: { executable: true },
-  idl: { status: "ready" },
+  idl: { status: "ready", supportsEmptyDraftCancellation: false },
   protocol: { initialized: true },
   desMoinesMarket: {
     status: "ready", address: MARKET,

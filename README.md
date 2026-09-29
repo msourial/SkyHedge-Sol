@@ -61,6 +61,7 @@ Environment:
 | `NOAA_TOKEN` | NOAA Climate Data Online token (historical observations + forecast) |
 | `SOLANA_RPC_URL` | Default `https://api.devnet.solana.com` |
 | `SKYHEDGE_PROGRAM_ID` | Deployed Devnet program ID `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` |
+| `SKYHEDGE_DEVNET_CANCEL_EMPTY_DRAFT_READY` | Keep `false` until the empty-Draft cancellation instruction has been deployed and verified on Devnet; then set `true` to expose the admin-only recovery action |
 | `SETTLEMENT_AUTHORITY_KEYPAIR` | Optional path to the settlement authority keypair (`anchor/keys/settlement-authority.json`); settlement worker stays disabled when absent |
 | `ANTHROPIC_API_KEY` | Optional — AI advisory enrichment |
 | `SKYT_MINT` | Mint address for the six-decimal SKYT test token; defaults to the committed Devnet mint for status reads |
@@ -102,7 +103,7 @@ npm run skyt:init                        # initialize protocol (admin wallet)
 npm run skyt:seed                        # create city markets
 ```
 
-The program ID `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` is executable on Devnet. The protocol PDA is not initialized yet, and the SKYT mint exists with zero supply and admin mint authority. The deployment keypair (`anchor/target/deploy/skyhedge_protection-keypair.json`) and the settlement authority keypair are gitignored. The settlement authority public key is recorded in the Devnet authority document; keep the keypair itself secret.
+**Current Devnet state:** the program is executable, the protocol is initialized, and the six-decimal SKYT mint has a finalized supply of 350,000 SKYT. Des Moines market ID 0 exists as an empty `Draft` with zero vault balance. Its immutable NOAA quote commitment no longer matches the current exact-window NOAA pricing package, so it cannot be funded or opened. The committed local IDL includes an admin-only empty-Draft cancellation instruction; the deployed IDL does not yet include it. Upgrade the program and deployed IDL before asking the admin wallet to cancel the empty Draft, then create/fund/open a fresh market ID from current NOAA terms. Never fund the stale Draft. The program-upgrade keypair (`anchor/target/deploy/skyhedge_protection-keypair.json`) and settlement-authority keypair are gitignored; keep both private.
 
 ## API surface
 

@@ -8,11 +8,11 @@ import { Card, EmptyState, Pill, SectionLabel, Stat } from "@/components/sky";
 import { AgriculturalAreaMap } from "@/components/sky/agricultural-area-map";
 import { AgriculturalMarketExplorerMap } from "@/components/sky/agricultural-market-explorer-map";
 import { cn } from "@/lib/utils";
-import { approveAndConfirm, approveAndConfirmDesMoinesSeed, desMoinesSeedTransactions, explorerTx, initializeProtocolTransaction, isProtocolAdmin, issueSkytTransaction, protocolExists, SKYT_ISSUANCE } from "@/lib/admin";
+import { approveAndConfirm, approveAndConfirmDesMoinesSeed, cancelEmptyDraftMarketTransaction, desMoinesSeedTransactions, explorerTx, initializeProtocolTransaction, isProtocolAdmin, issueSkytTransaction, protocolExists, SKYT_ISSUANCE } from "@/lib/admin";
 import { finalizedSkytMintSupply, finalizedWalletState, PROTOCOL_ADMIN, signAndSend } from "@/lib/solana";
 import { initialSkytMintState } from "../../../shared/mint-issuance";
 import { isValidImmutableMarketPricingTerms } from "../../../shared/market-pricing";
-import { desMoinesSeedActionMode, marketStateFromStatusJson, seedTermsMatch } from "../../../shared/des-moines-seed-plan";
+import { desMoinesSeedActionMode, isValidDesMoinesSeedSchedule, marketStateFromStatusJson, seedTermsMatch } from "../../../shared/des-moines-seed-plan";
 import { AGRICULTURAL_MARKETS, agriculturalMarketBySlug, agriculturalMarketLocation, millimetersToInches, searchAgriculturalMarkets, type AgriculturalMarketSlug } from "../../../shared/agricultural-markets";
 
 const MARKETS = AGRICULTURAL_MARKETS.map((market) => ({ id: market.slug, city: market.name, location: agriculturalMarketLocation(market), station: market.evidenceStatus === "validated" ? market.noaaStationId : "NOAA station validation in progress", crops: market.crops, region: market.region, context: market.agriculturalContext, evidenceStatus: market.evidenceStatus })) as Array<{ id: AgriculturalMarketSlug; city: string; location: string; station: string | null; crops: readonly string[]; region: string; context: string; evidenceStatus: "researching_evidence" | "validated" }>;
@@ -128,10 +128,11 @@ export default function DashboardPage() {
   }, [moreOpen]);
 
   const page = (tab === "markets" || tab === "protect") && hazard !== "rainfall" ? RESEARCH_HAZARD_PAGE_COPY[hazard] : PAGE_COPY[tab];
+  const researchHazardView = (tab === "markets" || tab === "protect") && hazard !== "rainfall";
   return <div className="grid min-w-0 gap-7 lg:grid-cols-[224px_minmax(0,1fr)]">
     <aside className="hidden lg:block"><nav aria-label="Product sections" className="sticky top-24 flex flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-[var(--shadow-card)]">{TABS.map(({ id, label, icon: Icon }, index) => <button key={id} onClick={() => switchTab(id)} className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors", index === TABS.length - 1 && "mt-3 border-t border-[var(--border)] pt-3", tab === id ? "bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]")}><Icon className="h-5 w-5" />{label}</button>)}</nav></aside>
     <div className="min-w-0 space-y-6">
-      <header className="border-b border-[var(--border)] pb-5"><Pill tone={tab === "builders" ? "slate" : "cyan"}>{tab === "builders" ? "Technical workspace" : "NOAA-settled protection"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></header>
+      <header className="border-b border-[var(--border)] pb-5"><Pill tone={tab === "builders" ? "slate" : researchHazardView ? "amber" : "cyan"}>{tab === "builders" ? "Technical workspace" : researchHazardView ? "Research-only hazard" : "NOAA-settled protection"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></header>
       {tab === "markets" && <Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} selectedSlug={marketId} status={devnetStatus.data} />}
       {tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") setQuoteRequest((count) => count + 1); }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" ? quoteQuery.error : undefined} />}
       {tab === "liquidity" && <Liquidity />}
@@ -155,7 +156,7 @@ function BuilderProof() {
   const missingWorkerConfig = worker ? [!worker.signerConfigured && "settlement signer", !worker.noaaConfigured && "NOAA credential", !worker.cronAuthConfigured && "cron authentication"].filter(Boolean).join(", ") : "health endpoint unavailable";
   const rows = data ? [
     ["Program executable", data.program.status, data.program.executable ? "Executable account verified on Devnet." : "Program account is not executable yet.", data.program.explorerUrl],
-    ["IDL available", data.idl.status, `${data.idl.instructionCount} instructions and ${data.idl.accountCount} account types loaded from the committed IDL.`, null],
+    ["IDL available", data.idl.status, `${data.idl.instructionCount} instructions and ${data.idl.accountCount} account types loaded from the committed IDL.${data.idl.supportsEmptyDraftCancellation ? " Empty-Draft recovery is verified for this Devnet deployment." : " Empty-Draft recovery stays disabled until the Devnet program upgrade is verified."}`, null],
     ["Protocol initialized", data.protocol.status, data.protocol.initialized ? `Next market id ${data.protocol.nextMarketId ?? "0"}.` : "Protocol PDA has not been initialized.", null],
     ["SKYT mint ready", data.skytMint.status, data.skytMint.exists ? `Supply ${skytDisplay(data.skytMint.supply ?? "0")} with ${data.skytMint.decimals ?? 0} decimals.` : "Configured SKYT mint is not found.", null],
     ["Des Moines market", data.desMoinesMarket.status, data.desMoinesMarket.address ? `Market ${data.desMoinesMarket.marketId} found; vault balance ${skytDisplay(data.desMoinesMarket.vaultBalance ?? "0")}.` : "Not seeded yet; Des Moines remains the first activation target.", null],
@@ -170,7 +171,7 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
   const wallet = useWallet();
   const queryClient = useQueryClient();
   const [initialized, setInitialized] = useState<boolean | null>(null);
-  const [busy, setBusy] = useState<"initialize" | "mint" | "seed" | null>(null);
+  const [busy, setBusy] = useState<"initialize" | "mint" | "seed" | "cancel" | null>(null);
   const [message, setMessage] = useState<{ tone: "green" | "red"; text: string; signature?: string } | null>(null);
   const busyRef = useRef(false);
   const owner = isProtocolAdmin(wallet.publicKey);
@@ -189,6 +190,8 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
   const seedMarketInProgress = seedMarketState === "locked" || seedMarketState === "awaiting_settlement";
   const currentSeedSchedule = status?.noaaEvidence.package?.seedSchedule;
   const currentQuoteTerms = status?.noaaEvidence.package?.quoteTerms;
+  const hasKnownInvalidDraftSchedule = Boolean(status?.desMoinesMarket.salesCloseAt && status.desMoinesMarket.observationStart && status.desMoinesMarket.observationEnd
+    && !isValidDesMoinesSeedSchedule(status.desMoinesMarket));
   const seedDraftTermsMatch = Boolean(seedDraftNeedsResume && currentSeedSchedule && currentQuoteTerms && seedTermsMatch({
     state: "draft",
     salesCloseAt: status?.desMoinesMarket.salesCloseAt ?? null,
@@ -199,6 +202,10 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
     quoteInputsHash: status?.desMoinesMarket.quoteInputsHash ?? null,
     totalShares: null,
   }, { ...currentSeedSchedule, ...currentQuoteTerms }));
+  const hasKnownChangedDraftQuote = Boolean(currentSeedSchedule && currentQuoteTerms && !seedDraftTermsMatch);
+  const canCancelEmptyDraft = seedMarketState === "draft" && Boolean(status?.desMoinesMarket.address && status.desMoinesMarket.marketId && status.desMoinesMarket.vault)
+    && status?.idl.supportsEmptyDraftCancellation === true
+    && (priorDraftExpired || hasKnownInvalidDraftSchedule || hasKnownChangedDraftQuote);
   const seedCommittedTermsReady = Boolean(seedDraftTermsMatch && seedEvidenceReady);
   const seedActionMode = desMoinesSeedActionMode({
     protocolReady: initialized === true && status?.protocol.status === "ready",
@@ -215,8 +222,9 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
   const seedButtonLabel = seedMarketOpen ? "Market already open"
     : seedMarketInProgress ? "Market lifecycle in progress"
       : seedMarketState === "unknown" ? "Finalized market status unavailable"
-        : seedDraftNeedsResume && !seedEvidenceReady ? "NOAA evidence check unavailable"
-          : seedDraftNeedsResume && !seedDraftTermsMatch ? "Wait for Draft expiry"
+      : seedDraftNeedsResume && !seedEvidenceReady ? "NOAA evidence check unavailable"
+    : seedDraftNeedsResume && !seedDraftTermsMatch ? "Draft terms mismatch"
+            : priorDraftExpired ? canCancelEmptyDraft ? "Cancel expired empty Draft first" : "Expired Draft recovery unavailable"
             : seedCanResumeDraft ? "Resume Des Moines seed"
               : seedActionReady ? priorDraftExpired ? "Approve fresh Des Moines seed" : "Approve Des Moines seed"
                 : "Actuarial pricing package unavailable";
@@ -230,7 +238,7 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
     <p role="status" className="mt-4 border-t border-[var(--border)] pt-4 text-xs leading-relaxed text-[var(--muted-foreground)]">Connecting only reveals the owner controls. No transaction is sent unless you review and approve it in your wallet.</p>
   </section>;
   if (!owner) return <div role="status" className="border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm text-[var(--muted-foreground)]">Connected wallet is not the configured protocol admin. Owner controls are restricted to {PROTOCOL_ADMIN.slice(0, 4)}…{PROTOCOL_ADMIN.slice(-4)}.</div>;
-  const run = async (kind: "initialize" | "mint" | "seed") => {
+  const run = async (kind: "initialize" | "mint" | "seed" | "cancel") => {
     if (!wallet.publicKey || busyRef.current) return;
     busyRef.current = true;
     setBusy(kind); setMessage(null);
@@ -266,6 +274,24 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
           signature: signatures.at(-1) ?? lastSeedSignature });
         return;
       }
+      if (kind === "cancel") {
+        const finalizedStatus = await api<DevnetStatus>("/api/devnet/status");
+        queryClient.setQueryData(["devnet-status"], finalizedStatus);
+        const market = finalizedStatus.desMoinesMarket;
+        if (market.status !== "ready" || marketStateFromStatusJson(market.onchainStatus) !== "draft"
+          || !market.address || !market.marketId || !market.vault) {
+          throw new Error("The finalized Des Moines account is no longer an eligible Draft. Refresh Builder status.");
+        }
+        const transaction = await cancelEmptyDraftMarketTransaction(wallet.publicKey, market.address, market.marketId, market.vault);
+        const signature = await approveAndConfirm(transaction, wallet);
+        const finalStatus = await api<DevnetStatus>("/api/devnet/status");
+        queryClient.setQueryData(["devnet-status"], finalStatus);
+        const cancelled = marketStateFromStatusJson(finalStatus.desMoinesMarket.onchainStatus) === "cancelled";
+        setMessage({ tone: cancelled ? "green" : "red", text: cancelled
+          ? "The empty Des Moines Draft was cancelled on finalized Devnet. The next seed will use a fresh market ID and current NOAA terms."
+          : "The cancellation signature finalized, but Devnet has not reported the Draft as cancelled. Refresh status before continuing.", signature });
+        return;
+      }
       const transaction = kind === "initialize" ? initializeProtocolTransaction(wallet.publicKey) : issueSkytTransaction(wallet.publicKey);
       const signature = await approveAndConfirm(transaction, wallet);
       setMessage({ tone: "green", text: kind === "initialize" ? "Protocol initialized on finalized Devnet." : "50,000 SKYT minted to your associated token account.", signature });
@@ -277,7 +303,8 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
   return <section aria-labelledby="owner-console" className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-card)]">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="sky-section-label text-[var(--identity)]">Owner-only Devnet controls</p><h2 id="owner-console" className="sky-display mt-1 text-xl font-semibold">Initialize the real protocol.</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">Each action opens your connected wallet. Nothing is submitted until you approve it; final status is checked against Devnet.</p></div><Pill tone={initialized ? "green" : "amber"}>{initialized ? "Protocol finalized" : initialized === false ? "Initialization required" : "Checking Devnet"}</Pill></div>
     {seedMarketOpen && <p role="status" className="mt-4 border border-[var(--success)]/40 p-3 text-sm text-[var(--success)]">Des Moines is already Open on finalized Devnet. The Builder will not create a duplicate market.</p>}
-    {seedDraftNeedsResume && <p role="status" className="mt-4 border border-[var(--identity)]/40 p-3 text-sm text-[var(--muted-foreground)]">{seedDraftTermsMatch ? "A Draft already exists on finalized Devnet. Its immutable observation dates and quote commitment match current NOAA pricing, so only the missing funding/open steps can resume." : `The existing Draft's immutable observation dates or NOAA quote hash do not match today's current pricing package. No funding or opening transaction is available. Wait for its sales deadline${status?.desMoinesMarket.salesCloseAt ? ` (${new Date(status.desMoinesMarket.salesCloseAt * 1_000).toISOString()} UTC)` : ""}, then request a fresh seed package.`}</p>}
+    {seedDraftNeedsResume && <p role="status" className="mt-4 border border-[var(--identity)]/40 p-3 text-sm text-[var(--muted-foreground)]">{seedDraftTermsMatch ? "A Draft already exists on finalized Devnet. Its immutable observation dates and quote commitment match current NOAA pricing, so only the missing funding/open steps can resume." : canCancelEmptyDraft ? "The Draft’s immutable schedule or NOAA quote does not match valid current seed terms. No funding or opening transaction is available; use the separate cancel control only if finalized RPC confirms it has no funds or liabilities." : !status?.idl.supportsEmptyDraftCancellation ? "The existing Draft does not match current NOAA terms. Cancellation is disabled until the matching Devnet program upgrade has been verified; no funding or opening transaction is available." : `The existing Draft's immutable observation dates or NOAA quote hash do not match today's current pricing package. No funding or opening transaction is available. Wait for its sales deadline${status?.desMoinesMarket.salesCloseAt ? ` (${new Date(status.desMoinesMarket.salesCloseAt * 1_000).toISOString()} UTC)` : ""}, then request a fresh seed package.`}</p>}
+    {priorDraftExpired && seedMarketState === "draft" && <p role="status" className="mt-4 border border-[var(--warning)]/40 p-3 text-sm text-[var(--warning)]">The expired Draft must be explicitly cancelled before a fresh market ID can be created. Cancellation is available only after the Devnet program upgrade is verified and only if finalized RPC confirms every balance and liability is zero.</p>}
     {seedMarketInProgress && <p role="status" className="mt-4 border border-[var(--warning)]/40 p-3 text-sm text-[var(--warning)]">A Des Moines market is already in its lifecycle; this Builder will not start a second market.</p>}
     <div className="mt-5 grid gap-3 lg:grid-cols-3">
       <Card className="p-4">
@@ -308,7 +335,7 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
               : seedMarketState === "unknown"
                 ? "Finalized market status is missing or unrecognized. Refresh chain status before preparing any seed transaction."
               : priorDraftExpired
-                ? `Previous market ${status?.desMoinesMarket.marketId} passed its sales deadline and cannot be funded. A fresh market ID (${status?.protocol.nextMarketId ?? "next"}) requires a current NOAA exact-window quote.`
+                ? `Previous market ${status?.desMoinesMarket.marketId} passed its sales deadline and cannot be funded. Cancel its empty Draft first; then a fresh market ID (${status?.protocol.nextMarketId ?? "next"}) can use current NOAA exact-window terms.`
                 : seedCanResumeDraft
                   ? "A Draft is already finalized. Resume uses its committed NOAA terms and dates; only the missing funding or opening approval will be prepared. No new quote is substituted."
                   : status?.noaaEvidence.status === "ready"
@@ -320,6 +347,12 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
         <button disabled={busy !== null || initialized !== true || !seedActionReady} className="sky-btn-primary mt-4 min-h-11 w-full" onClick={() => run("seed")}>
           {busy === "seed" ? "Awaiting wallet approval…" : seedButtonLabel}
         </button>
+        {canCancelEmptyDraft && <>
+          <p className="mt-3 text-xs leading-relaxed text-[var(--warning)]">This Draft’s immutable schedule or NOAA quote no longer matches the valid seed terms. You may retire it only if finalized RPC confirms its vault, shares, and liabilities are all zero; the program rechecks this when your wallet approves.</p>
+          <button disabled={busy !== null || initialized !== true} className="sky-btn-secondary mt-2 min-h-11 w-full" onClick={() => run("cancel")}>
+            {busy === "cancel" ? "Awaiting wallet approval…" : "Approve cancel empty Draft"}
+          </button>
+        </>}
         <p className="mt-2 text-[11px] leading-relaxed text-[var(--warning)]">No default 20% probability or substitute data will be committed. A new market is created only when exact-window pricing terms and their input hash are produced.</p>
       </Card>
     </div>

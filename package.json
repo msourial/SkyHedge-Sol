@@ -15,7 +15,7 @@
     "db:push": "drizzle-kit push",
     "solana:test": "cargo-build-sbf --manifest-path anchor/Cargo.toml && cargo +nightly test --manifest-path anchor/Cargo.toml",
     "solana:check": "cargo +nightly check --manifest-path anchor/Cargo.toml",
-    "solana:build": "cd anchor && RUSTUP_TOOLCHAIN=nightly-2024-08-01 anchor build",
+    "solana:build": "cd anchor && RUSTUP_TOOLCHAIN=1.89.0 anchor build --no-idl",
     "solana:test-local": "cd anchor && RUSTUP_TOOLCHAIN=nightly-2024-08-01 anchor test --skip-build",
     "skyt:airdrop": "tsx scripts/airdrop-sol.ts",
     "skyt:mint": "tsx scripts/create-skyt-mint.ts",
@@ -25,6 +25,7 @@
     "skyt:deploy": "bash scripts/deploy-devnet.sh",
     "skyt:demo": "SOLANA_RPC_URL=http://127.0.0.1:8899 SOLANA_NETWORK=localnet tsx scripts/demo-localnet.ts",
     "test:server": "node --import tsx ./node_modules/mocha/bin/mocha.js --timeout 60000 'server/services/*.test.ts'",
+    "test:deployment": "node --test scripts/deployment-buffer.test.mjs",
     "test:ui": "playwright test"
   },
   "dependencies": {

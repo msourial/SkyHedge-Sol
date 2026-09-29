@@ -35,7 +35,7 @@ export default function Layout() {
     <a href="#main-content" className="sr-only z-[100] rounded-lg bg-[var(--identity)] px-4 py-3 text-white focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to main content</a>
     <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--surface-1)]/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-[92rem] items-center justify-between gap-3 px-4 sm:px-6">
-        <NavLink to="/" className="flex min-w-0 shrink items-center gap-2.5" aria-label="SkyHedge home"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--identity)] text-white"><CloudRain className="h-5 w-5" /></span><span className="min-w-0 leading-tight"><span className="block text-base font-semibold tracking-tight">SkyHedge</span><span className="hidden text-xs text-[var(--muted-foreground)] sm:block">Rainfall protection</span></span></NavLink>
+        <NavLink to="/" className="flex min-w-0 shrink items-center gap-2.5" aria-label="SkyHedge home"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--identity)] text-white"><CloudRain className="h-5 w-5" /></span><span className="min-w-0 leading-tight"><span className="block text-base font-semibold tracking-tight">SkyHedge</span><span className="hidden text-xs text-[var(--muted-foreground)] sm:block">Weather protection</span></span></NavLink>
         <div className="flex items-center gap-2"><NetworkPill /><WalletButton /></div>
       </div>
     </header>

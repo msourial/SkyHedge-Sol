@@ -18,7 +18,7 @@ export interface DevnetStatus {
   network: string;
   rpcUrl: string;
   program: { address: string; status: Status; executable: boolean; explorerUrl: string };
-  idl: { status: Status; source: "local-committed-idl"; instructionCount: number; accountCount: number };
+  idl: { status: Status; source: "local-committed-idl"; instructionCount: number; accountCount: number; supportsEmptyDraftCancellation: boolean };
   protocol: { address: string; status: Status; initialized: boolean; admin: string | null; settlementAuthority: string | null; collateralMint: string | null; nextMarketId: string | null };
   feeVault: { address: string; status: Status; exists: boolean; balance: string | null };
   skytMint: { address: string; status: Status; exists: boolean; decimals: number | null; supply: string | null; mintAuthority: string | null };
@@ -79,6 +79,10 @@ export class DevnetStatusReader {
         source: "local-committed-idl",
         instructionCount: this.idl.instructions?.length ?? 0,
         accountCount: this.idl.accounts?.length ?? 0,
+        supportsEmptyDraftCancellation: supportsEmptyDraftCancellation(
+          this.idl,
+          process.env.SKYHEDGE_DEVNET_CANCEL_EMPTY_DRAFT_READY === "true",
+        ),
       },
       protocol: {
         address: protocolAddress.toBase58(),
@@ -263,6 +267,15 @@ export function protocolConfigFields(decoded: Record<string, unknown> | null | u
 /** The committed IDL is usable only when it declares this deployed program. */
 export function committedIdlMatchesProgram(idl: unknown, programAddress: string): boolean {
   return Boolean(idl && typeof idl === "object" && "address" in idl && (idl as { address?: unknown }).address === programAddress);
+}
+
+/** An IDL entry alone is insufficient: operators enable this only after verifying the Devnet upgrade. */
+export function supportsEmptyDraftCancellation(idl: unknown, deployedFeatureVerified: boolean): boolean {
+  if (!deployedFeatureVerified || !idl || typeof idl !== "object" || !("instructions" in idl)) return false;
+  const instructions = (idl as { instructions?: unknown }).instructions;
+  return Array.isArray(instructions) && instructions.some((instruction) => instruction
+    && typeof instruction === "object" && "name" in instruction
+    && (instruction as { name?: unknown }).name === "cancel_empty_draft_market");
 }
 
 /** Maps immutable market terms emitted by Anchor's snake-case IDL. */
