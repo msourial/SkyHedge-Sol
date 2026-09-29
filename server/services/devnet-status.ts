@@ -135,26 +135,40 @@ export class DevnetStatusReader {
   private async findDesMoinesMarket(protocol: PublicKey, decodedProtocol: Record<string, unknown>): Promise<(DevnetStatus["desMoinesMarket"] & { raw: Record<string, unknown> }) | null> {
     const nextMarketId = BigInt(protocolConfigFields(decodedProtocol).nextMarketId ?? "0");
     const targetHashes = new Set([cityHash("des-moines"), cityHash("Des Moines")]);
-    for (let id = 0n; id < nextMarketId; id++) {
-      const [marketAddress] = PublicKey.findProgramAddressSync([Buffer.from("market"), protocol.toBuffer(), u64Le(id)], this.programId);
-      const marketInfo = await this.connection.getAccountInfo(marketAddress, "finalized");
-      if (!marketInfo) continue;
-      const market = this.decodeAccount<Record<string, unknown>>("Market", marketInfo.data);
-      const marketCityHash = bytesHex(market?.city_hash);
-      if (!targetHashes.has(marketCityHash)) continue;
-      const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), marketAddress.toBuffer()], this.programId);
-      return {
-        status: "ready",
-        address: marketAddress.toBase58(),
-        marketId: id.toString(),
-        vault: vault.toBase58(),
-        vaultBalance: await this.tokenBalance(vault),
-        onchainStatus: JSON.stringify(market?.status ?? null),
-        ...marketTermsFields(market),
-        evidenceStatus: hasPinnedDesMoinesEvidenceCommitment(market) ? "validated" : "researching_evidence",
-        targetCityHash: marketCityHash,
-        raw: market ?? {},
-      };
+    const chunkSize = 100;
+    for (let end = nextMarketId; end > 0n;) {
+      const start = end > BigInt(chunkSize) ? end - BigInt(chunkSize) : 0n;
+      const ids: bigint[] = [];
+      for (let id = end - 1n; id >= start; id--) ids.push(id);
+      const addresses = ids.map((id) => PublicKey.findProgramAddressSync([Buffer.from("market"), protocol.toBuffer(), u64Le(id)], this.programId)[0]);
+      const accounts = await this.connection.getMultipleAccountsInfo(addresses, "finalized");
+      const candidates: Array<{ id: bigint; cityHash: string; address: string; raw: Record<string, unknown> }> = [];
+      for (let index = 0; index < accounts.length; index++) {
+        const account = accounts[index];
+        if (!account) continue;
+        const market = this.decodeAccount<Record<string, unknown>>("Market", account.data);
+        const marketCityHash = bytesHex(market?.city_hash);
+        if (!targetHashes.has(marketCityHash)) continue;
+        candidates.push({ id: ids[index], cityHash: marketCityHash, address: addresses[index].toBase58(), raw: market ?? {} });
+      }
+      const latest = latestMatchingMarket(candidates, targetHashes);
+      if (latest) {
+        const marketAddress = new PublicKey(latest.address);
+        const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), marketAddress.toBuffer()], this.programId);
+        return {
+          status: "ready",
+          address: latest.address,
+          marketId: latest.id.toString(),
+          vault: vault.toBase58(),
+          vaultBalance: await this.tokenBalance(vault),
+          onchainStatus: JSON.stringify(latest.raw.status ?? null),
+          ...marketTermsFields(latest.raw),
+          evidenceStatus: hasPinnedDesMoinesEvidenceCommitment(latest.raw) ? "validated" : "researching_evidence",
+          targetCityHash: latest.cityHash,
+          raw: latest.raw,
+        };
+      }
+      end = start;
     }
     return null;
   }
@@ -197,6 +211,15 @@ export class DevnetStatusReader {
     const balance = await this.connection.getTokenAccountBalance(address, "finalized");
     return balance.value.amount;
   }
+}
+
+/** Select the highest on-chain market ID matching the city, ignoring expired historical drafts. */
+export function latestMatchingMarket<T extends { id: bigint; cityHash: string }>(markets: readonly T[], targetHashes: ReadonlySet<string>): T | null {
+  let latest: T | null = null;
+  for (const market of markets) {
+    if (targetHashes.has(market.cityHash) && (latest === null || market.id > latest.id)) latest = market;
+  }
+  return latest;
 }
 
 function marketStatus(market: DevnetStatus["desMoinesMarket"] & { raw: Record<string, unknown> }): DevnetStatus["desMoinesMarket"] {

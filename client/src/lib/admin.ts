@@ -79,6 +79,10 @@ export async function desMoinesSeedTransactions(admin: PublicKey, evidence: DesM
   if (protocolInfo.data.length < 208) throw new Error("The finalized protocol account has an invalid layout.");
   const nextMarketId = protocolInfo.data.readBigUInt64LE(200);
   const [market] = PublicKey.findProgramAddressSync([Buffer.from("market"), protocol.toBuffer(), u64(nextMarketId)], program);
+  const existingMarket = await connection.getAccountInfo(market, "finalized");
+  if (existingMarket) {
+    throw new Error(`Market ID ${nextMarketId.toString()} already exists on finalized Devnet. Refresh Builder status before preparing another seed.`);
+  }
   const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), market.toBuffer()], program);
   const [liquidityPosition] = PublicKey.findProgramAddressSync([Buffer.from("liquidity"), market.toBuffer(), admin.toBuffer()], program);
   const adminAta = getAssociatedTokenAddressSync(mint, admin);

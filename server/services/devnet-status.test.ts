@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { Connection } from "@solana/web3.js";
 import { DevnetStatusReader } from "./devnet-status";
-import { committedIdlMatchesProgram, hasPinnedDesMoinesEvidenceCommitment, marketTermsFields, noaaStationValidationMessage, protocolConfigFields, publicDevnetStatus } from "./devnet-status";
+import { committedIdlMatchesProgram, hasPinnedDesMoinesEvidenceCommitment, latestMatchingMarket, marketTermsFields, noaaStationValidationMessage, protocolConfigFields, publicDevnetStatus } from "./devnet-status";
 import { canonicalSourceHash, NOAA_STATIONS } from "./noaa";
 import methodology from "../../shared/methodology-v1.json";
 
@@ -77,6 +77,16 @@ describe("Des Moines NOAA evidence commitment", () => {
 });
 
 describe("DevnetStatusReader market decoding", () => {
+  it("selects the newest matching Des Moines market instead of an expired older draft", () => {
+    const latest = latestMatchingMarket([
+      { id: 0n, cityHash: "des-moines", state: "expired-draft" },
+      { id: 1n, cityHash: "other-city", state: "other" },
+      { id: 2n, cityHash: "des-moines", state: "fresh-draft" },
+    ], new Set(["des-moines"]));
+
+    expect(latest).to.deep.equal({ id: 2n, cityHash: "des-moines", state: "fresh-draft" });
+  });
+
   it("reads immutable snake-case market timing fields from the committed Anchor IDL", () => {
     const value = { toString: () => "2000000000" };
     expect(marketTermsFields({
