@@ -80,6 +80,54 @@ export type SeedPricingTerms = {
   inputsHash: string;
 };
 
+export function nextDesMoinesBuilderMilestone(input: {
+  protocolReady: boolean;
+  skytMintReady: boolean;
+  marketReadStatus: "ready" | "pending" | "unavailable" | "error";
+  marketAddress: string | null;
+  marketId: string | null;
+  marketState: SeedMarketState;
+  vaultBalanceBase: string | null;
+  salesCloseAt: number | null;
+  pricingReady: boolean;
+  emptyDraftCancellationReady: boolean;
+  nowSeconds: number;
+}): string {
+  if (!input.protocolReady) return "The next public proof is verifying the executable program and matching IDL, then initializing the protocol on finalized Devnet.";
+  if (!input.skytMintReady) return "The protocol is initialized. The next public proof is verifying the existing six-decimal SKYT mint and its finalized supply.";
+  if (input.marketReadStatus === "unavailable" || input.marketReadStatus === "error" || (input.marketAddress && input.marketReadStatus !== "ready")) return "The finalized Des Moines market read is unavailable; no seed or protection readiness is being claimed.";
+
+  const hasValidVaultBalance = input.vaultBalanceBase !== null && /^\d+$/.test(input.vaultBalanceBase);
+  const vaultBalance = hasValidVaultBalance ? BigInt(input.vaultBalanceBase!) : 0n;
+  if (!input.marketAddress || input.marketState === "missing") {
+    return input.pricingReady
+      ? "Protocol and SKYT are finalized. The next public proof is to create, fund, and open Des Moines using the current exact-window NOAA pricing terms, with each admin approval finalized on Devnet."
+      : "Protocol and SKYT are finalized, but Des Moines stays unseeded until complete exact-window NOAA pricing terms are available.";
+  }
+
+  if (input.marketState === "draft" && !hasValidVaultBalance) return `Market ${input.marketId ?? "unknown"} is a Draft, but its vault balance could not be verified; no market action is described as ready.`;
+  if (input.marketState === "draft" && input.salesCloseAt !== null && input.salesCloseAt <= input.nowSeconds && vaultBalance === 0n) {
+    return input.emptyDraftCancellationReady
+      ? `Protocol and SKYT issuance are finalized. Market ${input.marketId ?? "unknown"} is an expired Draft with zero vault collateral; the admin must confirm it has no shares or liabilities and cancel it before a fresh seed can use current NOAA pricing terms.`
+      : `Protocol and SKYT issuance are finalized. Market ${input.marketId ?? "unknown"} is an expired Draft with zero vault collateral, but cancellation is not verified for this deployment; do not create another market until safe Draft recovery is supported.`;
+  }
+  if (input.marketState === "draft" && !input.pricingReady) return `Market ${input.marketId ?? "unknown"} is still a Draft, but its committed terms do not match a current complete NOAA pricing package; do not reuse or open it.`;
+  if (input.marketState === "draft" && vaultBalance === 0n) return `Market ${input.marketId ?? "unknown"} is a Draft with no collateral; the admin must approve its 2,000 SKYT funding before opening it.`;
+  if (input.marketState === "draft") return `Market ${input.marketId ?? "unknown"} is funded but remains a Draft; the admin must approve opening before testers can protect.`;
+  if (input.marketState === "open" && vaultBalance > 0n) return `Market ${input.marketId ?? "unknown"} is open and funded. After its immutable observation window closes, verify the final NOAA observation and on-chain settlement before enabling a claim.`;
+  if (input.marketState === "open" && !hasValidVaultBalance) return `Market ${input.marketId ?? "unknown"} reports Open, but its finalized vault balance could not be verified; tester protection remains unavailable.`;
+  if (input.marketState === "open") return `Market ${input.marketId ?? "unknown"} reports Open, but its finalized vault has no collateral; tester protection remains unavailable.`;
+  if (input.marketState === "locked") return `Market ${input.marketId ?? "unknown"} is locked. Wait for the immutable observation window to finish before submitting final NOAA evidence.`;
+  if (input.marketState === "awaiting_settlement") return `Market ${input.marketId ?? "unknown"} is awaiting final NOAA evidence and on-chain settlement; no payout or refund is claimable until that settlement finalizes.`;
+  if (input.marketState === "settled") return `Market ${input.marketId ?? "unknown"} has settled on-chain. Verify wallet-specific claim readiness and the finalized payout or non-winning result.`;
+  if (input.marketState === "data_unavailable") return `Market ${input.marketId ?? "unknown"} is marked DATA_UNAVAILABLE on-chain. Verify wallet-specific refund readiness and finalized claims.`;
+  if (input.marketState === "closed") return `Market ${input.marketId ?? "unknown"} is closed. Verify final pro-rata redemption and protocol-fee accounting.`;
+  if (input.marketState === "cancelled") return input.pricingReady
+    ? `Market ${input.marketId ?? "unknown"} is cancelled. The next seed must use the protocol's current next market ID and fresh exact-window NOAA pricing terms.`
+    : `Market ${input.marketId ?? "unknown"} is cancelled; wait for complete exact-window NOAA pricing terms before creating a fresh market.`;
+  return `Market ${input.marketId ?? "unknown"} is ${input.marketState}; the next step must be determined from its finalized lifecycle state.`;
+}
+
 /** V1 Devnet seed markets open sales for 24 hours, then observe five full UTC days. */
 export function isValidDesMoinesSeedSchedule(schedule: {
   salesCloseAt: number | null;

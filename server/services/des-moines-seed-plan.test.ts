@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { assertFreshMarketCounterMatches, assertFreshSeedAllowed, DES_MOINES_SEED_LIQUIDITY_BASE, desMoinesSeedActionMode, isEmptyDraftMarketAccountData, isValidDesMoinesSeedSchedule, MARKET_ACCOUNT_LAYOUT, marketStateFromAccountData, marketStateFromStatusJson, planDesMoinesSeed, seedTermsMatch, type SeedMarketProgress, type SeedPricingTerms } from "../../shared/des-moines-seed-plan";
+import { assertFreshMarketCounterMatches, assertFreshSeedAllowed, DES_MOINES_SEED_LIQUIDITY_BASE, desMoinesSeedActionMode, isEmptyDraftMarketAccountData, isValidDesMoinesSeedSchedule, MARKET_ACCOUNT_LAYOUT, marketStateFromAccountData, marketStateFromStatusJson, nextDesMoinesBuilderMilestone, planDesMoinesSeed, seedTermsMatch, type SeedMarketProgress, type SeedPricingTerms } from "../../shared/des-moines-seed-plan";
 
 const pricing: SeedPricingTerms = {
   salesCloseAt: 2_000_000_000,
@@ -23,6 +23,26 @@ const draft: SeedMarketProgress = {
 };
 
 describe("Des Moines seed recovery plan", () => {
+  it("describes the next Builder proof from finalized market state", () => {
+    const shared = { protocolReady: true, skytMintReady: true, marketReadStatus: "ready" as const, marketAddress: "Market0", marketId: "0", pricingReady: true, emptyDraftCancellationReady: true, nowSeconds: 10_000 };
+    expect(nextDesMoinesBuilderMilestone({ ...shared, marketState: "draft", vaultBalanceBase: "0", salesCloseAt: 9_999 }))
+      .to.match(/expired Draft with zero vault collateral.*confirm it has no shares or liabilities and cancel/i);
+    expect(nextDesMoinesBuilderMilestone({ ...shared, emptyDraftCancellationReady: false, marketState: "draft", vaultBalanceBase: "0", salesCloseAt: 9_999 }))
+      .to.match(/expired Draft with zero vault collateral.*cancellation is not verified.*do not create another market/i);
+    expect(nextDesMoinesBuilderMilestone({ ...shared, marketState: "draft", vaultBalanceBase: "2000000000", salesCloseAt: 11_000 }))
+      .to.match(/funded but remains a Draft.*approve opening/i);
+    expect(nextDesMoinesBuilderMilestone({ ...shared, marketState: "open", vaultBalanceBase: "2000000000", salesCloseAt: 9_000 }))
+      .to.match(/open and funded.*final NOAA observation/i);
+    expect(nextDesMoinesBuilderMilestone({ ...shared, marketState: "open", vaultBalanceBase: "0", salesCloseAt: 9_000 }))
+      .to.match(/Open, but its finalized vault has no collateral.*unavailable/i);
+    expect(nextDesMoinesBuilderMilestone({ ...shared, marketState: "cancelled", vaultBalanceBase: "0", salesCloseAt: 9_000 }))
+      .to.match(/cancelled.*current next market ID.*fresh exact-window NOAA pricing terms/i);
+    expect(nextDesMoinesBuilderMilestone({ ...shared, marketReadStatus: "pending", marketState: "open", vaultBalanceBase: "2000000000", salesCloseAt: 9_000 }))
+      .to.match(/market read is unavailable.*no seed or protection readiness/i);
+    expect(nextDesMoinesBuilderMilestone({ ...shared, marketState: "missing", marketAddress: null, marketId: null, vaultBalanceBase: null, salesCloseAt: null }))
+      .to.match(/create, fund, and open.*exact-window NOAA pricing terms/i);
+  });
+
   it("enables only justified fresh, resume, and no-op Builder actions", () => {
     const base = { protocolReady: true, marketReadStatus: "ready", salesCloseAt: 2_000, evidenceReady: true, committedTermsReady: true, pricingReady: true, nowSeconds: 1_000 };
     expect(desMoinesSeedActionMode({ ...base, marketState: "draft" })).to.equal("resume");
