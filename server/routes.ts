@@ -19,6 +19,7 @@ import { finalizedEvidenceWindow, getDesMoinesEvidencePackage } from "./services
 import { desMoinesQuoteUnavailableReason, testerProtectionUnavailableReason } from "./services/tester-readiness";
 import { settlementWorkerReadiness } from "./services/settlement-config";
 import { agriculturalMarketBySlug, AGRICULTURAL_MARKETS, calendarMonthlyWindow, weeklyFridayWindow } from "../shared/agricultural-markets";
+import { createMobileApiHandler } from "./services/mobile-api";
 
 const provider = new NoaaRainfallProvider();
 const quotes = new RainfallQuoteEngine(provider);
@@ -37,6 +38,9 @@ const quoteSchema = z.object({ city: citySchema, observationStart: z.string().da
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const limiter = new RateLimiter(60, 30); // 30 requests per 60s per key
+  const mobileApi = createMobileApiHandler();
+
+  app.get("/api/mobile", (req, res) => mobileApi(req, res));
 
   app.get("/api/health", async (_req, res) => {
     const started = Date.now();

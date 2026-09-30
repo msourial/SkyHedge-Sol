@@ -1,9 +1,6 @@
 import { expect } from "chai";
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { createCityListHandler } from "../../api/cities";
-import { createCityDetailHandler } from "../../api/cities/[slug]";
-import { createAgriculturalMarketsHandler } from "../../api/agricultural-markets";
-import { createPortfolioHandler } from "../../api/portfolio/[wallet]";
+import { createMobileApiHandler } from "./mobile-api";
 import { readFinalizedWalletState } from "../../mobile/src/chain";
 import { hazardPresentation, type HazardId } from "../../mobile/src/hazards";
 
@@ -23,7 +20,7 @@ describe("mobile read APIs", () => {
   it("returns real city-index states as JSON for the deployed list route", async () => {
     const cities = [{ slug: "des-moines", cumulativeMm: null, weeklyHistoryMm: null }];
     const record = recorder();
-    await createCityListHandler(async () => cities as never)({ method: "GET" } as never, record.response as never);
+    await createMobileApiHandler({ loadCities: async () => cities as never })({ method: "GET", query: { resource: "cities" } } as never, record.response as never);
 
     expect(record.result().statusCode).to.equal(200);
     expect(record.result().body).to.deep.equal({ cities });
@@ -35,11 +32,11 @@ describe("mobile read APIs", () => {
     const state = { slug: city.slug, currentWindow: { start: "2026-09-28", end: "2026-10-05" }, cumulativeMm: null };
     const history = [{ week: "2026-09-21", mm: null }];
     const record = recorder();
-    await createCityDetailHandler({
+    await createMobileApiHandler({
       resolveCity: () => city as never,
-      readState: async () => state as never,
+      readCity: async () => state as never,
       readHistory: async () => history,
-    })({ method: "GET", query: { slug: "des-moines" } } as never, record.response as never);
+    })({ method: "GET", query: { resource: "city", slug: "des-moines" } } as never, record.response as never);
 
     expect(record.result().statusCode).to.equal(200);
     expect(record.result().body).to.deep.equal({ ...state, weeklyHistoryMm: history });
@@ -47,7 +44,7 @@ describe("mobile read APIs", () => {
 
   it("does not invent mobile markets or evidence validation", async () => {
     const record = recorder();
-    await createAgriculturalMarketsHandler({ now: () => new Date("2026-09-30T00:00:00Z") })({ method: "GET" } as never, record.response as never);
+    await createMobileApiHandler({ now: () => new Date("2026-09-30T00:00:00Z") })({ method: "GET", query: { resource: "agricultural-markets" } } as never, record.response as never);
     const body = record.result().body as { markets: Array<{ evidenceStatus: string; noaaStationId: string | null }>; settlementSource: string };
 
     expect(body.markets).to.have.length(12);
@@ -58,7 +55,7 @@ describe("mobile read APIs", () => {
   it("labels a wallet portfolio as not indexed instead of returning false zero positions", async () => {
     const wallet = new PublicKey("DKA9RkGvaW4isyj5xdiZ2oGVUkD1UL64Ha1BazXZFD6y").toBase58();
     const record = recorder();
-    await createPortfolioHandler()({ method: "GET", query: { wallet } } as never, record.response as never);
+    await createMobileApiHandler()({ method: "GET", query: { resource: "portfolio", wallet } } as never, record.response as never);
     const body = record.result().body as { indexed: boolean; source: string; protections: unknown[]; message: string };
 
     expect(record.result().statusCode).to.equal(200);
@@ -70,9 +67,21 @@ describe("mobile read APIs", () => {
 
   it("rejects malformed wallet addresses at the portfolio boundary", async () => {
     const record = recorder();
-    await createPortfolioHandler()({ method: "GET", query: { wallet: "not-a-public-key" } } as never, record.response as never);
+    await createMobileApiHandler()({ method: "GET", query: { resource: "portfolio", wallet: "not-a-public-key" } } as never, record.response as never);
     expect(record.result().statusCode).to.equal(400);
     expect(record.result().body).to.have.property("error", "INVALID_WALLET");
+  });
+
+  it("only dispatches supported read resources and rejects non-GET calls", async () => {
+    const unknown = recorder();
+    await createMobileApiHandler()({ method: "GET", query: { resource: "transactions" } } as never, unknown.response as never);
+    expect(unknown.result().statusCode).to.equal(404);
+    expect(unknown.result().body).to.have.property("error", "UNKNOWN_MOBILE_RESOURCE");
+
+    const write = recorder();
+    await createMobileApiHandler()({ method: "POST", query: { resource: "cities" } } as never, write.response as never);
+    expect(write.result().statusCode).to.equal(405);
+    expect(write.result().headers.get("Allow")).to.equal("GET");
   });
 
   it("sums finalized native and SKYT token balances without estimating", async () => {

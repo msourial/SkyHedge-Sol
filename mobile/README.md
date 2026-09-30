@@ -4,6 +4,8 @@ An Android-first React Native app for SkyHedge. It calls the existing SkyHedge A
 
 This is a native React Native screen set, not a WebView wrapper. It does not generate weather values, sample positions, or substitute an open market when the Devnet release gates fail.
 
+Mobile read-only API requests share one `/api/mobile?resource=...` endpoint. This keeps the client compatible with the current Vercel function allowance; supported resources are `cities`, `city`, `agricultural-markets`, and `portfolio`.
+
 ## Requirements
 
 - Node.js 22 and npm

@@ -55,8 +55,8 @@ export default function App() {
   const loadHome = useCallback(async () => {
     setError(null);
     const results = await Promise.allSettled([
-      getJson<{ cities: CityIndex[] }>("/api/cities"),
-      getJson<{ markets: AgriculturalMarket[] }>("/api/agricultural-markets"),
+      getJson<{ cities: CityIndex[] }>("/api/mobile?resource=cities"),
+      getJson<{ markets: AgriculturalMarket[] }>("/api/mobile?resource=agricultural-markets"),
       getJson<DevnetStatus>("/api/devnet/status"),
     ]);
     const [cityResult, catalogResult, statusResult] = results;
@@ -84,7 +84,7 @@ export default function App() {
   useEffect(() => {
     if (!selectedCity) return;
     let cancelled = false;
-    getJson<CityIndex>(`/api/cities/${selectedCity}`)
+    getJson<CityIndex>(`/api/mobile?resource=city&slug=${encodeURIComponent(selectedCity)}`)
       .then((details) => { if (!cancelled) setCity(details); })
       .catch((reason) => {
         if (!cancelled) setError(reason instanceof Error ? reason.message : "Could not load this NOAA index.");
@@ -95,7 +95,7 @@ export default function App() {
   const loadWalletData = useCallback(async (address: string) => {
     const [balanceResult, portfolioResult] = await Promise.allSettled([
       readFinalizedWalletState(address),
-      getJson<Portfolio>(`/api/portfolio/${address}`),
+      getJson<Portfolio>(`/api/mobile?resource=portfolio&wallet=${encodeURIComponent(address)}`),
     ]);
     setWalletBalances(balanceResult.status === "fulfilled" ? balanceResult.value : null);
     setPortfolio(portfolioResult.status === "fulfilled" ? portfolioResult.value : null);
