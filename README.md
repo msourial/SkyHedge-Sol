@@ -35,6 +35,8 @@ scripts/           deploy/seed/status tooling
 design-system/     OLED dark theme spec (MASTER.md + page specs)
 ```
 
+The Android-first React Native app for the Clock In mobile hackathon lives in [mobile/](mobile/README.md). It uses the SkyHedge API and Solana Mobile Wallet Adapter; it does not wrap the web app.
+
 Trust model: the server builds unsigned `VersionedTransaction`s and the wallet signs them offline; nothing is simulated. Positions shown in the portfolio reflect only finalized Solana state captured by the indexer.
 
 ## Prerequisites

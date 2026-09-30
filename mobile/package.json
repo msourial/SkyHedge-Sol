@@ -1,0 +1,32 @@
+{
+  "name": "skyhedge-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "prebuild:android": "expo prebuild --platform android",
+    "check": "tsc --noEmit",
+    "build:apk": "npx eas build --platform android --profile hackathon-apk"
+  },
+  "dependencies": {
+    "@solana-mobile/mobile-wallet-adapter-protocol": "2.3.0",
+    "@solana-mobile/mobile-wallet-adapter-protocol-web3js": "2.3.0",
+    "@solana/web3.js": "^1.98.4",
+    "buffer": "^6.0.3",
+    "expo": "~57.0.7",
+    "expo-crypto": "~57.0.3",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-get-random-values": "^1.11.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.0",
+    "@types/node": "^22.0.0",
+    "typescript": "~6.0.3"
+  }
+}

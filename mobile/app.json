@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "SkyHedge",
+    "slug": "skyhedge-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "skyhedge",
+    "android": {
+      "package": "com.skyhedge.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#F5F7F4"
+      },
+      "permissions": []
+    }
+  }
+}
