@@ -1,12 +1,9 @@
-node_modules
-dist
-.git
-.planning
-anchor/target
-target
-anchor/.anchor
-.localnet-ledger
-test-ledger
-coverage
-playwright-report
-test-results
+# The Vercel deployment only needs the web app and serverless API source.
+# Android/Gradle outputs are local install artifacts and must never be uploaded.
+mobile/node_modules
+mobile/dist
+mobile/.expo
+mobile/android/.gradle
+mobile/android/.cxx
+mobile/android/build
+mobile/android/app/build
