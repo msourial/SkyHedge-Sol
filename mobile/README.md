@@ -48,7 +48,7 @@ EAS uploads the app source to Expo's build service. Review that upload and use o
 
 The refreshed native Android client has been exported, built as an arm64 release APK, and installed on the local Pixel 7 emulator. This verifies Android launch and screen rendering, not physical-device behavior or MWA signing. The output is `android/app/build/outputs/apk/release/app-release.apk`. Do not upload source to EAS unless you intentionally authorize its cloud build/source upload.
 
-Current local APK SHA-256: `3fae16b559d3cadb82b8682ea675d762576eaa60f5861e2a2f5d7d3556a7ce91`.
+Current production-configured local APK SHA-256: `d6678ab4c11c89d8f5967dc1be5f562f0ecd889488c280a1fa8427bfc3f77eea`.
 
 ## Configuration
 

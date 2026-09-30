@@ -13,8 +13,8 @@ Event requirements were reviewed on September 30, 2026 at [solanamobile.radiant.
 
 | Requirement | State | Next step |
 | --- | --- | --- |
-| Functional Android APK | Refreshed local arm64 release APK built and launched on the Pixel 7 emulator; native navigation/screens render | Install and verify on a physical Android device before demo day |
-| Cloneable GitHub repository | Existing repository is public | Push the mobile branch after review and keep build instructions current |
+| Functional Android APK | Production-configured local arm64 release APK built and launched on the Pixel 7 emulator; native navigation/screens render | Install and verify on a physical Android device before demo day |
+| Cloneable GitHub repository | Mobile work is pushed to `codex/clock-in-mobile` on the public repository | Keep build instructions current; merge only after normal review |
 | Demo video, maximum 3 minutes | Not recorded | Record on a physical device: NOAA screen, research-only market labels, MWA wallet approval, and honest unavailable/empty states |
 | Pitch deck or brief presentation | Five-slide deck and 2:30 demo outline drafted in [`clock-in-submission-draft.md`](clock-in-submission-draft.md); deck source file is in `docs/assets/` | Review the claims against the live deployment before using the deck URL |
 
@@ -38,6 +38,7 @@ Event requirements were reviewed on September 30, 2026 at [solanamobile.radiant.
 - The Pixel 7 emulator launch verifies the native screens only. No MWA-compatible wallet app was available there, so wallet discovery, connection, and transaction signing are not yet device-verified.
 - The arm64 release APK is a locally built install artifact, not a Play Store release. Its local debug signing is suitable for testing, not a production distribution channel.
 - EAS CLI is installed, but no Expo account is signed in. A cloud build requires an Expo login and uploads app source to Expo; the project has not been uploaded or built.
-- The Android app is configured to call the production HTTPS SkyHedge API. The mobile-specific Vercel routes are on this branch; until a preview deployment is verified, the production city APIs still return an incompatible response and NOAA-backed mobile data will be unavailable.
+- The mobile read API is deployed on the public production domain. Catalog, unindexed-portfolio, health identity, and JSON response checks passed. A protected preview was built successfully, but its URLs require Vercel access; no preview URL is used by testers.
+- The local emulator currently has no network connection, so its NOAA screen shows the expected unavailable state. Recheck the production-configured APK on a connected physical Android phone.
 - The hackathon account is already registered as solo with verified email. A project submission draft was saved, but final submission requires GitHub connection, eligibility answers, a demo URL, and an APK URL.
 - The hackathon portal says GitHub connection grants Align read-only access to repositories the builder selects. It has not been authorized.
