@@ -1,6 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program } from "@coral-xyz/anchor";
-import { Keypair, PublicKey, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { createHash } from "node:crypto";
+import { Keypair, PublicKey, SystemProgram, LAMPORTS_PER_SOL, Transaction, TransactionInstruction, sendAndConfirmTransaction } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
   createMint,
@@ -424,9 +425,113 @@ describe("skyhedge_protection localnet lifecycle (real token CPIs)", () => {
     expect(errorText(claimError)).to.contain("NotClaimable");
   });
 
+  it("allows only the admin to cancel an empty Draft and rejects funded Drafts", async () => {
+    const now = nowSeconds();
+    const salesClose = now + 300;
+    const observationStart = salesClose + 60;
+    const observationEnd = observationStart + 5 * 86_400;
+    await program.methods.createMarket({
+      cityHash: randomHash(),
+      stationIdHash: randomHash(),
+      providerHash: randomHash(),
+      methodologyHash: randomHash(),
+      quoteInputsHash: randomHash(),
+      operator: { greaterThanOrEqual: {} },
+      thresholdMmX100: new BN(5_000),
+      salesCloseAt: new BN(salesClose),
+      observationStart: new BN(observationStart),
+      observationEnd: new BN(observationEnd),
+      quoteProbabilityBps: 100,
+      maxLiquidity: new BN(1_000 * UNIT),
+      maxExposure: new BN(800 * UNIT),
+      perWalletMax: new BN(500 * UNIT),
+    }).accounts({ admin: admin.publicKey, collateralMint: mint, tokenProgram: TOKEN_PROGRAM_ID }).signers([admin]).rpc();
+
+    const marketId = new BN(2);
+    const [market] = PublicKey.findProgramAddressSync(
+      [Buffer.from("market"), protocolPda.toBuffer(), marketId.toArrayLike(Buffer, "le", 8)],
+      program.programId,
+    );
+    const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), market.toBuffer()], program.programId);
+    const cancel = (authority: Keypair) => cancelDraftTransaction(
+      connection,
+      program.programId,
+      protocolPda,
+      market,
+      vault,
+      mint,
+      authority,
+    );
+
+    const unauthorized = await captureError(() => cancel(buyer));
+    expect(unauthorized).not.to.eq(null);
+    expect(errorText(unauthorized)).to.match(/has one|ConstraintHasOne|ConstraintSeeds|Unauthorized|custom program error/i);
+    expect((await program.account.market.fetch(market)).status).to.deep.eq({ draft: {} });
+
+    await program.methods.fundPool(new BN(UNIT))
+      .accounts({ provider: lp.publicKey, market, providerTokenAccount: lpAta, collateralMint: mint, tokenProgram: TOKEN_PROGRAM_ID })
+      .signers([lp]).rpc();
+    const fundedDraftError = await captureError(() => cancel(admin));
+    expect(fundedDraftError).not.to.eq(null);
+    expect((await getAccount(connection, vault)).amount).to.eq(BigInt(UNIT));
+    expect((await program.account.market.fetch(market)).status).to.deep.eq({ draft: {} });
+
+    const withdrawalSignature = await program.methods.withdrawLiquidity(new BN(UNIT))
+      .accounts({ provider: lp.publicKey, market, providerTokenAccount: lpAta, collateralMint: mint, tokenProgram: TOKEN_PROGRAM_ID })
+      .signers([lp]).rpc();
+    await connection.confirmTransaction(withdrawalSignature, "finalized");
+    expect((await getAccount(connection, vault)).amount).to.eq(0n);
+    const emptyDraft = await program.account.market.fetch(market);
+    expect(emptyDraft.status).to.deep.eq({ draft: {} });
+    expect(emptyDraft.totalShares.toNumber()).to.eq(0);
+    expect(emptyDraft.remainingShares.toNumber()).to.eq(0);
+    expect(emptyDraft.reservedExposure.toNumber()).to.eq(0);
+    expect(emptyDraft.premiumBalance.toNumber()).to.eq(0);
+    expect(emptyDraft.accruedProtocolFees.toNumber()).to.eq(0);
+    expect(emptyDraft.payoutLiability.toNumber()).to.eq(0);
+    expect(emptyDraft.refundLiability.toNumber()).to.eq(0);
+    expect(emptyDraft.remainingRedemptionAssets.toNumber()).to.eq(0);
+
+    const cancellationSignature = await cancel(admin);
+    await connection.confirmTransaction(cancellationSignature, "finalized");
+    const cancelledMarket = await connection.getAccountInfo(market, "finalized");
+    expect(cancelledMarket).not.to.eq(null);
+    // The local generated IDL predates the Cancelled enum variant, so read its
+    // pinned Borsh status byte instead of decoding through that stale artifact.
+    expect(cancelledMarket!.data[381]).to.eq(7);
+  });
+
 });
 
 async function captureError(run: () => Promise<unknown>): Promise<unknown | null> {
   try { await run(); return null; }
   catch (error) { return error; }
+}
+
+async function cancelDraftTransaction(
+  connection: anchor.web3.Connection,
+  programId: PublicKey,
+  protocol: PublicKey,
+  market: PublicKey,
+  vault: PublicKey,
+  mint: PublicKey,
+  admin: Keypair,
+): Promise<string> {
+  const discriminator = createHash("sha256").update("global:cancel_empty_draft_market").digest().subarray(0, 8);
+  const transaction = new Transaction().add(new TransactionInstruction({
+    programId,
+    keys: [
+      { pubkey: admin.publicKey, isSigner: true, isWritable: false },
+      { pubkey: protocol, isSigner: false, isWritable: false },
+      { pubkey: market, isSigner: false, isWritable: true },
+      { pubkey: vault, isSigner: false, isWritable: false },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data: discriminator,
+  }));
+  const latest = await connection.getLatestBlockhash("confirmed");
+  transaction.feePayer = admin.publicKey;
+  transaction.recentBlockhash = latest.blockhash;
+  return sendAndConfirmTransaction(connection, transaction, [admin], { commitment: "confirmed" });
 }
