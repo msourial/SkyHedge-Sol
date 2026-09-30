@@ -48,6 +48,7 @@ export type DevnetStatus = {
 
 export type Portfolio = {
   wallet: string;
+  source?: "not-indexed" | "finalized-chain-indexer";
   indexed: boolean;
   protections: Array<{
     market: string;
@@ -57,6 +58,13 @@ export type Portfolio = {
   }>;
   liquidity: Array<{ market: string; address: string; shares: string }>;
   message?: string;
+};
+
+export type FinalizedWalletState = {
+  sol: number;
+  skytBaseUnits: string;
+  skytDecimals: number;
+  slot: number;
 };
 
 const apiBase = (process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://10.0.2.2:5000").replace(/\/$/, "");
@@ -69,6 +77,9 @@ export async function getJson<T>(path: string): Promise<T> {
   if (!response.ok) {
     const reason = typeof body?.message === "string" ? body.message : `Service returned ${response.status}`;
     throw new Error(reason);
+  }
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    throw new Error("SkyHedge returned an unreadable API response. Try again later.");
   }
   return body as T;
 }

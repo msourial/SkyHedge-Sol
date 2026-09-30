@@ -38,9 +38,15 @@ EAS uploads the app source to Expo's build service. Review that upload and use o
 ## App behavior
 
 - **Weather:** current weekly rainfall observations and completed-week history from the API. Missing NOAA data remains unavailable; it is never filled with a sample.
-- **Markets:** catalog entries stay explicitly marked as research until their NOAA settlement evidence is validated.
+- **Markets:** the rainfall catalog stays explicitly marked as research until NOAA settlement evidence is validated. Wind gust and new snowfall are shown as separate proposed indexes, with no locations, quotes, or purchase flow until their own evidence and methodology are reviewed. Snowfall means new accumulation, not snow depth.
 - **Wallet:** MWA requests a Devnet public address only. The portfolio screen reads indexed/finalized positions; it does not create test positions.
-- **Checkout:** remains unavailable while the market, evidence, and collateral release gates are not ready.
+- **Checkout:** remains unavailable while the market, evidence, and collateral release gates are not ready. Wind and snowfall do not inherit rainfall readiness.
+
+## Verified local test build
+
+The refreshed native Android client has been exported, built as an arm64 release APK, and installed on the local Pixel 7 emulator. This verifies Android launch and screen rendering, not physical-device behavior or MWA signing. The output is `android/app/build/outputs/apk/release/app-release.apk`. Do not upload source to EAS unless you intentionally authorize its cloud build/source upload.
+
+Current local APK SHA-256: `3fae16b559d3cadb82b8682ea675d762576eaa60f5861e2a2f5d7d3556a7ce91`.
 
 ## Configuration
 

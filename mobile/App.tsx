@@ -12,7 +12,9 @@ import {
   Text,
   View,
 } from "react-native";
-import { AgriculturalMarket, CityIndex, DevnetStatus, getApiHost, getJson, Portfolio } from "./src/api";
+import { AgriculturalMarket, CityIndex, DevnetStatus, FinalizedWalletState, getApiHost, getJson, Portfolio } from "./src/api";
+import { readFinalizedWalletState } from "./src/chain";
+import { hazardPresentation, listHazards, type HazardId } from "./src/hazards";
 import { authorizeDevnetWallet } from "./src/wallet";
 
 type Tab = "weather" | "catalog" | "wallet";
@@ -44,6 +46,8 @@ export default function App() {
   const [city, setCity] = useState<CityIndex | null>(null);
   const [wallet, setWallet] = useState<string | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [walletBalances, setWalletBalances] = useState<FinalizedWalletState | null>(null);
+  const [portfolioError, setPortfolioError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,18 +92,27 @@ export default function App() {
     return () => { cancelled = true; };
   }, [selectedCity]);
 
+  const loadWalletData = useCallback(async (address: string) => {
+    const [balanceResult, portfolioResult] = await Promise.allSettled([
+      readFinalizedWalletState(address),
+      getJson<Portfolio>(`/api/portfolio/${address}`),
+    ]);
+    setWalletBalances(balanceResult.status === "fulfilled" ? balanceResult.value : null);
+    setPortfolio(portfolioResult.status === "fulfilled" ? portfolioResult.value : null);
+    setPortfolioError(portfolioResult.status === "rejected"
+      ? portfolioResult.reason instanceof Error ? portfolioResult.reason.message : "Portfolio indexing is unavailable."
+      : null);
+  }, []);
+
   const refresh = useCallback(async () => {
     setRefreshing(true);
-    await loadHome();
-    if (wallet) {
-      try {
-        setPortfolio(await getJson<Portfolio>(`/api/portfolio/${wallet}`));
-      } catch {
-        setPortfolio(null);
-      }
+    try {
+      await loadHome();
+      if (wallet) await loadWalletData(wallet);
+    } finally {
+      setRefreshing(false);
     }
-    setRefreshing(false);
-  }, [loadHome, wallet]);
+  }, [loadHome, loadWalletData, wallet]);
 
   const connect = useCallback(async () => {
     setLoading(true);
@@ -107,13 +120,13 @@ export default function App() {
     try {
       const address = await authorizeDevnetWallet();
       setWallet(address);
-      setPortfolio(await getJson<Portfolio>(`/api/portfolio/${address}`));
+      await loadWalletData(address);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Wallet connection did not complete.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadWalletData]);
 
   const changeCity = (slug: string) => {
     setSelectedCity(slug);
@@ -131,7 +144,7 @@ export default function App() {
         <View style={styles.brandMark}><Text style={styles.brandMarkText}>S</Text></View>
         <View style={styles.brandCopy}>
           <Text style={styles.brand}>SkyHedge</Text>
-          <Text style={styles.brandSub}>RAINFALL PROTECTION</Text>
+          <Text style={styles.brandSub}>WEATHER PROTECTION · DEVNET</Text>
         </View>
         <View style={styles.networkPill}><View style={styles.networkDot} /><Text style={styles.networkText}>DEVNET</Text></View>
       </View>
@@ -156,9 +169,11 @@ export default function App() {
           <WalletScreen
             wallet={wallet}
             portfolio={portfolio}
+            walletBalances={walletBalances}
+            portfolioError={portfolioError}
             loading={loading}
             onConnect={connect}
-            onDisconnect={() => { setWallet(null); setPortfolio(null); }}
+            onDisconnect={() => { setWallet(null); setPortfolio(null); setWalletBalances(null); setPortfolioError(null); }}
           />
         ) : null}
       </ScrollView>
@@ -277,12 +292,38 @@ function WeatherScreen({
 }
 
 function CatalogScreen({ markets }: { markets: AgriculturalMarket[] }) {
+  const [hazard, setHazard] = useState<HazardId>("rainfall");
+  const selectedHazard = hazardPresentation(hazard);
+
   return (
     <>
       <Text style={styles.kicker}>RESEARCH CATALOG</Text>
-      <Text style={styles.title}>Places we’re studying.</Text>
-      <Text style={styles.intro}>Every location is clearly marked until its station evidence is validated.</Text>
-      {markets.length ? markets.map((market) => (
+      <Text style={styles.title}>Weather risk, by hazard.</Text>
+      <Text style={styles.intro}>Choose an index type. Research status is shown separately; it does not mean a market is available.</Text>
+      <View style={styles.hazardRail} accessibilityRole="tablist" accessibilityLabel="Weather hazard">
+        {listHazards().map((option) => (
+          <Pressable
+            key={option.id}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: hazard === option.id }}
+            onPress={() => setHazard(option.id)}
+            style={[styles.hazardChip, hazard === option.id && styles.hazardChipSelected]}
+          >
+            <Text style={[styles.hazardChipText, hazard === option.id && styles.hazardChipTextSelected]}>{option.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+      <View style={styles.hazardCard} accessibilityLiveRegion="polite">
+        <View style={styles.hazardTop}>
+          <Text style={styles.hazardTitle}>{selectedHazard.label} index</Text>
+          <View style={styles.researchPill}><Text style={styles.researchPillText}>{selectedHazard.status}</Text></View>
+        </View>
+        <MetricRow label="Proposed measurement" value={selectedHazard.metric} />
+        <MetricRow label="Display units" value={selectedHazard.unit} />
+        <Text style={styles.hazardNote}>{selectedHazard.note}</Text>
+        {!selectedHazard.quoteable ? <Text style={styles.hazardBlocked}>No quote or purchase flow is enabled for this index.</Text> : null}
+      </View>
+      {hazard === "rainfall" ? (markets.length ? markets.map((market) => (
         <View key={market.slug} style={styles.marketCard}>
           <View style={styles.marketTop}>
             <View style={styles.marketPin}><Text style={styles.marketPinText}>↗</Text></View>
@@ -300,10 +341,12 @@ function CatalogScreen({ markets }: { markets: AgriculturalMarket[] }) {
               : "No validated NOAA settlement station yet"}
           </Text>
         </View>
-      )) : <EmptyState title="Catalog is unavailable" body="The app will show the research catalog after the API responds." />}
+      )) : <EmptyState title="Rainfall catalog is unavailable" body="The app will show researched locations after the API responds." />) : (
+        <EmptyState title={`${selectedHazard.label} locations are not validated`} body="No areas are listed until NOAA station coverage, observation quality, units, and contract methodology are verified for this hazard." />
+      )}
       <View style={styles.noteCard}>
         <Text style={styles.noteTitle}>Research status is not coverage</Text>
-        <Text style={styles.noteBody}>A location appears here while station quality, observation rules, data rights, and pricing are reviewed. It cannot be quoted or purchased until those checks pass.</Text>
+        <Text style={styles.noteBody}>A location appears under rainfall while station quality, observation rules, data rights, and pricing are reviewed. Wind gust and snowfall do not inherit rainfall evidence or readiness.</Text>
       </View>
     </>
   );
@@ -312,12 +355,16 @@ function CatalogScreen({ markets }: { markets: AgriculturalMarket[] }) {
 function WalletScreen({
   wallet,
   portfolio,
+  walletBalances,
+  portfolioError,
   loading,
   onConnect,
   onDisconnect,
 }: {
   wallet: string | null;
   portfolio: Portfolio | null;
+  walletBalances: FinalizedWalletState | null;
+  portfolioError: string | null;
   loading: boolean;
   onConnect: () => void;
   onDisconnect: () => void;
@@ -346,22 +393,37 @@ function WalletScreen({
       {wallet ? (
         <View style={styles.portfolioCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>On-chain portfolio</Text>
-            <Text style={styles.sectionMeta}>{portfolio?.indexed ? "Finalized index" : "Read-only"}</Text>
+            <Text style={styles.sectionTitle}>Finalized Devnet balances</Text>
+            <Text style={styles.sectionMeta}>{walletBalances ? `Slot ${walletBalances.slot}` : "Live RPC"}</Text>
           </View>
-          {portfolio ? (
+          {walletBalances ? (
+            <>
+              <MetricRow label="SOL" value={walletBalances.sol.toFixed(4)} />
+              <MetricRow label="SKYT · test asset" value={(Number(walletBalances.skytBaseUnits) / 10 ** walletBalances.skytDecimals).toLocaleString()} />
+            </>
+          ) : <Text style={styles.emptyText}>Finalized balance read unavailable. No balance is estimated.</Text>}
+        </View>
+      ) : null}
+
+      {wallet ? (
+        <View style={styles.portfolioCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Positions</Text>
+            <Text style={styles.sectionMeta}>{portfolio?.indexed ? "Finalized index" : "Index pending"}</Text>
+          </View>
+          {portfolio?.indexed ? (
             <>
               <MetricRow label="Protection positions" value={String(portfolio.protections.length)} />
               <MetricRow label="Liquidity positions" value={String(portfolio.liquidity.length)} />
-              <Text style={styles.portfolioFoot}>{portfolio.message ?? "No portfolio message."}</Text>
             </>
-          ) : <Text style={styles.emptyText}>Loading the finalized portfolio…</Text>}
+          ) : <Text style={styles.emptyText}>{portfolioError ?? portfolio?.message ?? "Finalized positions are not available from the indexer yet."}</Text>}
+          {portfolio?.indexed ? <Text style={styles.portfolioFoot}>{portfolio.message ?? "Positions reflect finalized state."}</Text> : null}
         </View>
       ) : null}
 
       <View style={styles.noteCard}>
         <Text style={styles.noteTitle}>Nothing is simulated</Text>
-        <Text style={styles.noteBody}>Portfolio data comes from finalized Solana state. If the indexer is unavailable, SkyHedge says so instead of inventing positions.</Text>
+        <Text style={styles.noteBody}>Balances are read directly from finalized Devnet. Position counts appear only when finalized position data is indexed; SkyHedge never turns missing data into zero.</Text>
       </View>
     </>
   );
@@ -464,6 +526,16 @@ const styles = StyleSheet.create({
   marketContext: { color: C.ink, fontSize: 12, lineHeight: 17, marginTop: 13 },
   marketCrops: { color: C.muted, fontSize: 10, fontWeight: "600", marginTop: 8, textTransform: "capitalize" },
   marketFoot: { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 9, marginTop: 10, color: C.muted, fontSize: 10 },
+  hazardRail: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
+  hazardChip: { minHeight: 44, paddingHorizontal: 14, justifyContent: "center", borderWidth: 1, borderColor: C.border, borderRadius: 22, backgroundColor: C.white },
+  hazardChipSelected: { borderColor: C.blue, backgroundColor: C.blue },
+  hazardChipText: { color: C.ink, fontSize: 13, fontWeight: "600" },
+  hazardChipTextSelected: { color: C.white },
+  hazardCard: { backgroundColor: C.white, borderColor: C.border, borderWidth: 1, borderRadius: 14, padding: 15, marginBottom: 6 },
+  hazardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 },
+  hazardTitle: { color: C.ink, fontSize: 15, fontWeight: "700" },
+  hazardNote: { color: C.muted, fontSize: 11, lineHeight: 17, marginTop: 7 },
+  hazardBlocked: { color: C.amber, fontSize: 11, fontWeight: "700", marginTop: 9 },
   walletCard: { backgroundColor: C.white, borderColor: C.border, borderWidth: 1, borderRadius: 16, alignItems: "center", padding: 22, marginTop: 4 },
   walletOrb: { width: 52, height: 52, borderRadius: 26, backgroundColor: C.blueSoft, justifyContent: "center", alignItems: "center" },
   walletOrbText: { color: C.blue, fontSize: 27, fontWeight: "600" },
