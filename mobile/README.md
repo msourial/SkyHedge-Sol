@@ -39,17 +39,24 @@ EAS uploads the app source to Expo's build service. Review that upload and use o
 
 ## App behavior
 
+- **Place-first Explore:** search the researched catalog, choose a reference place, select rainfall/wind/snowfall, then review its actual evidence and availability. Changing the place or risk clears any previous quote. The advisory guide remains optional beside search.
+- **Reference map:** MapLibre renders the catalog reference point with MapTiler Dataviz Dark only when `EXPO_PUBLIC_MAPTILER_KEY` is configured at build time. Without a key, missing coordinates, or map tiles, the app shows the precise text location and an external OpenStreetMap link. Toronto and Saskatoon have no pinned map marker until their coordinates are verified. No marker is a coverage boundary or NOAA station.
 - **Weather:** current weekly rainfall observations and completed-week history from the API. Missing NOAA data remains unavailable; it is never filled with a sample.
-- **Markets:** the rainfall catalog stays explicitly marked as research until NOAA settlement evidence is validated. Wind gust and new snowfall are shown as separate proposed indexes, with no locations, quotes, or purchase flow until their own evidence and methodology are reviewed. Snowfall means new accumulation, not snow depth.
+- **Explore and guide:** area search stays available beside an advisory-only natural-language guide. Saskatoon dry-spell and Toronto event-rain examples are research pilots, not available contracts. The guide needs the server-side Anthropic configuration and never creates a quote or transaction. Wind gust and new snowfall remain research-only.
+- **Markets:** the rainfall catalog stays explicitly marked as research until NOAA settlement evidence is validated. Snowfall means new accumulation, not snow depth.
 - **Wallet:** MWA requests a Devnet public address only. The portfolio screen reads indexed/finalized positions; it does not create test positions.
 - **Checkout:** remains unavailable while the market, evidence, and collateral release gates are not ready. Wind and snowfall do not inherit rainfall readiness.
 
+The guide distinguishes a non-binding USD preview from SKYT Devnet test amounts. Its maximum-cost explanation refers to a future committed SKYT quote and separate network fee; it does not convert dollars to SKYT. A customer must separately request a quote and approve any wallet transaction.
+
 ## Verified local test build
 
-The refreshed native Android client has been exported, built as an arm64 release APK, and installed on the local Pixel 7 emulator. This verifies Android launch and screen rendering, not physical-device behavior or MWA signing. The output is `android/app/build/outputs/apk/release/app-release.apk`. Do not upload source to EAS unless you intentionally authorize its cloud build/source upload.
+The refreshed native Android client has been exported, built as a release APK, and installed on the local Pixel 7 emulator. This verifies Android launch and screen rendering, not physical-device behavior or MWA signing. The output is `android/app/build/outputs/apk/release/app-release.apk`. Do not upload source to EAS unless you intentionally authorize its cloud build/source upload.
 
-Current production-configured local APK SHA-256: `d6678ab4c11c89d8f5967dc1be5f562f0ecd889488c280a1fa8427bfc3f77eea`.
+Current production-configured local APK SHA-256: `6b6e9aa43d6fe5a4f9e04fe4e30563057e551251ec9e41501c46bba056012ac6`.
 
 ## Configuration
 
 Set `EXPO_PUBLIC_API_BASE_URL` at build time. For local device development, use your host's LAN URL; use an HTTPS SkyHedge deployment for a distributable build. No API URL is inferred from or hard-coded to the hackathon site.
+
+`EXPO_PUBLIC_MAPTILER_KEY` is optional. It is bundled into the Android app and must be treated as a public, appropriately restricted map key—not a server secret. Add it before a build to enable the native basemap. Native MapLibre requires a rebuilt Android app; an Expo Go session or JavaScript-only refresh cannot add that module. The current map shows linked text attribution, but MapTiler Free also requires its official logo; do not distribute a key-enabled Free-plan build until that logo is added and visually verified. Map rendering and tile-failure retry also remain unverified until a key is available.

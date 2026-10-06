@@ -11,22 +11,30 @@
     "android": "expo run:android",
     "prebuild:android": "expo prebuild --platform android",
     "check": "tsc --noEmit",
+    "test:presentation": "node --experimental-strip-types --test src/presentation.test.ts",
+    "test:mobile": "node --experimental-strip-types --test src/*.test.ts",
     "build:apk": "npx eas build --platform android --profile hackathon-apk"
   },
   "dependencies": {
+    "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/space-grotesk": "^0.4.1",
+    "@expo/vector-icons": "^15.1.1",
+    "@maplibre/maplibre-react-native": "^11.5.0",
     "@solana-mobile/mobile-wallet-adapter-protocol": "2.3.0",
     "@solana-mobile/mobile-wallet-adapter-protocol-web3js": "2.3.0",
     "@solana/web3.js": "^1.98.4",
     "buffer": "^6.0.3",
     "expo": "~57.0.7",
     "expo-crypto": "~57.0.3",
+    "expo-font": "^57.0.4",
     "react": "19.2.3",
     "react-native": "0.86.3",
-    "react-native-get-random-values": "^1.11.0"
+    "react-native-get-random-values": "^1.11.0",
+    "react-native-safe-area-context": "~5.7.0"
   },
   "devDependencies": {
-    "@types/react": "~19.2.0",
     "@types/node": "^22.0.0",
+    "@types/react": "~19.2.0",
     "typescript": "~6.0.3"
   }
 }
