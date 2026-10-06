@@ -116,6 +116,13 @@ describe("mobile presentation behavior", () => {
     }), false);
   });
 
+  it("marks a funded market ready when finalized Anchor status uses an uppercase Open key", () => {
+    assert.equal(isMarketReadyForCity("des-moines", {
+      ...readyStatus,
+      desMoinesMarket: { ...readyStatus.desMoinesMarket, onchainStatus: '{"Open":{}}' },
+    }), true);
+  });
+
   it("renders Anchor enum values as readable market states", () => {
     assert.equal(formatOnchainMarketStatus('{"Draft":{}}'), "Draft");
     assert.equal(formatOnchainMarketStatus('{"awaitingSettlement":{}}'), "Awaiting Settlement");

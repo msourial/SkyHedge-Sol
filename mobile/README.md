@@ -53,7 +53,7 @@ The guide distinguishes a non-binding USD preview from SKYT Devnet test amounts.
 
 The refreshed native Android client has been exported, built as a release APK, and installed on the local Pixel 7 emulator. This verifies Android launch and screen rendering, not physical-device behavior or MWA signing. The output is `android/app/build/outputs/apk/release/app-release.apk`. Do not upload source to EAS unless you intentionally authorize its cloud build/source upload.
 
-Current production-configured local APK SHA-256: `6b6e9aa43d6fe5a4f9e04fe4e30563057e551251ec9e41501c46bba056012ac6`.
+Current production-configured local APK SHA-256: `8c6071e6c88d3af8e2faf41f66067a46bcda3b3c6700aab3383ce64c84c71a2c`.
 
 ## Configuration
 

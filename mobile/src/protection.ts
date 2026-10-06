@@ -86,7 +86,8 @@ export function isOnchainMarketOpen(onchainStatus: string | null): boolean {
   try {
     const parsed: unknown = JSON.parse(onchainStatus);
     if (typeof parsed !== "object" || parsed === null) return false;
-    return Object.hasOwn(parsed, "open");
+    const states = Object.keys(parsed);
+    return states.length === 1 && states[0].toLowerCase() === "open";
   } catch {
     return onchainStatus.toLowerCase() === "open";
   }

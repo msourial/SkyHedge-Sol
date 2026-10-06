@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildCommittedQuoteRequest, getProtectionUnavailableReason, parseSkytAmount } from "./protection.ts";
+import { buildCommittedQuoteRequest, getProtectionUnavailableReason, isOnchainMarketOpen, parseSkytAmount } from "./protection.ts";
 import type { DevnetStatus } from "./api.ts";
 
 const now = 1_800_000_000;
@@ -37,6 +37,15 @@ describe("Devnet protection readiness", () => {
 
   it("allows quote and purchase preparation only when every finalized prerequisite is ready", () => {
     assert.equal(getProtectionUnavailableReason({ status: readyStatus(), citySlug: "des-moines", walletConnected: true, walletSkytBalanceBase: "100000000", amountBase: "100000000", nowSeconds: now }), null);
+  });
+
+  it("recognizes the finalized Anchor Open enum without accepting ambiguous states", () => {
+    const status = readyStatus();
+    status.desMoinesMarket.onchainStatus = '{"Open":{}}';
+    assert.equal(isOnchainMarketOpen(status.desMoinesMarket.onchainStatus), true);
+    assert.equal(getProtectionUnavailableReason({ status, citySlug: "des-moines", walletConnected: true, walletSkytBalanceBase: "100000000", amountBase: "100000000", nowSeconds: now }), null);
+    assert.equal(isOnchainMarketOpen('{"Open":{},"Draft":{}}'), false);
+    assert.equal(isOnchainMarketOpen('{"Draft":{}}'), false);
   });
 
   it("builds quote inputs exclusively from immutable finalized market terms", () => {
