@@ -51,7 +51,7 @@ The guide distinguishes a non-binding USD preview from SKYT Devnet test amounts.
 
 ## Verified local test build
 
-The refreshed native Android client has been exported, built as a release APK, and installed on the local Pixel 7 emulator. This verifies Android launch and screen rendering, not physical-device behavior or MWA signing. The output is `android/app/build/outputs/apk/release/app-release.apk`. Do not upload source to EAS unless you intentionally authorize its cloud build/source upload.
+The refreshed native Android client has been exported, built as a release APK, and installed on the local Pixel 7 emulator. The wallet-connect action launched Solflare's passcode screen on the emulator, but no passcode was entered and no account authorization or signature was completed. Physical-device behavior and MWA signing remain unverified. The output is `android/app/build/outputs/apk/release/app-release.apk`. Do not upload source to EAS unless you intentionally authorize its cloud build/source upload.
 
 Current production-configured local APK SHA-256: `8c6071e6c88d3af8e2faf41f66067a46bcda3b3c6700aab3383ce64c84c71a2c`.
 
