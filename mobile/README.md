@@ -37,6 +37,15 @@ npm run build:apk
 
 EAS uploads the app source to Expo's build service. Review that upload and use of an Expo account before running this command. Alternatively, build locally after installing the Android SDK with `npm run android`, then create a release APK in Android Studio.
 
+For the locally verified release build, with Android Studio's JDK and SDK configured:
+
+```sh
+npm ci
+EXPO_PUBLIC_API_BASE_URL=https://skyhedge.vercel.app ./android/gradlew -p android :app:assembleRelease
+```
+
+The APK is written to `android/app/build/outputs/apk/release/app-release.apk`. Verify its SHA-256 and API URL again after any source or configuration change.
+
 ## App behavior
 
 - **Place-first Explore:** search the researched catalog, choose a reference place, select rainfall/wind/snowfall, then review its actual evidence and availability. Changing the place or risk clears any previous quote. The advisory guide remains optional beside search.
@@ -51,9 +60,9 @@ The guide distinguishes a non-binding USD preview from SKYT Devnet test amounts.
 
 ## Verified local test build
 
-The refreshed native Android client has been exported, built as a release APK, and installed on the local Pixel 7 emulator. The wallet-connect action launched Solflare's passcode screen on the emulator, but no passcode was entered and no account authorization or signature was completed. Physical-device behavior and MWA signing remain unverified. The output is `android/app/build/outputs/apk/release/app-release.apk`. Do not upload source to EAS unless you intentionally authorize its cloud build/source upload.
+On October 6, 2026, the release APK was rebuilt with `EXPO_PUBLIC_API_BASE_URL=https://skyhedge.vercel.app`, installed on a physical Seeker, and opened successfully. The Explore and Protect screens read the live NOAA station package and the finalized expired Draft/empty-vault status. Wallet authorization, signing, and a finalized position on the physical phone are **not yet verified**. The output is `android/app/build/outputs/apk/release/app-release.apk`. Do not upload source to EAS unless you intentionally authorize its cloud build/source upload.
 
-Current production-configured local APK SHA-256: `8c6071e6c88d3af8e2faf41f66067a46bcda3b3c6700aab3383ce64c84c71a2c`.
+Current production-API APK SHA-256: `322cfb18428400c63e9173b8e39e5a0181255069ee53589f4bb370111e1e4987`.
 
 ## Configuration
 

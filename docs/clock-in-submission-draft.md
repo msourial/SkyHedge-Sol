@@ -1,51 +1,46 @@
-# Clock In submission draft
+# CLOCK IN submission brief — verify before uploading
 
 ## Project
 
-**SkyHedge — rainfall protection on Solana Mobile**
+**SkyHedge — NOAA-backed rainfall protection on Solana Mobile**
 
-**Category:** Mobile  
-**Entry type:** Solo project
+**Category:** Mobile
 
-## Short description
+**Entry:** Solo project (confirm in the registered Align account)
 
-SkyHedge is an Android-first rainfall-index protection experience. The native app brings NOAA rainfall observations, researched market locations, and Solana Devnet wallet access into one phone-native flow. Missing observations stay unavailable, unvalidated markets stay research-only, and the wallet view shows only indexed positions. The current mobile build does not offer purchases or create sample positions.
+SkyHedge helps someone understand a specific rainfall risk, inspect its NOAA evidence, and—only when a real Devnet market is open—review a fixed-payout test contract and approve it in a Solana Mobile wallet. The Android client is native React Native, not a WebView. SKYT is a valueless Devnet test asset, not USD or USDC. The ordinary dollar amount is a non-binding preview, never a payment quote.
 
-## Why mobile
+## Verified as of October 6, 2026
 
-Farmers and agricultural operators need a clear view of rainfall evidence and protection status while away from a desktop. SkyHedge's Android client uses native navigation and Solana Mobile Wallet Adapter. It connects to an existing SkyHedge API for NOAA index data, the market research catalog, release status, and portfolio reads. It is a React Native client, not a WebView of the existing site.
+- The Devnet program is executable and its committed IDL, protocol account, settlement authority, and SKYT mint are readable at finalized commitment.
+- The admin wallet holds the existing 350,000-SKYT test allocation. No new mint is needed.
+- A live NOAA station/quote package exists for Des Moines. Its historical sample validates station data availability; it is **not** future settlement rainfall.
+- The only on-chain Des Moines market is an **expired Draft with an empty vault**. It must be canceled by the admin, then a fresh market created, funded with 2,000 SKYT, and opened before any purchase can be claimed as working.
+- The earlier Android APK bundled an emulator-only API address. A public-API build and physical Seeker installation are in progress; do not upload that earlier APK.
+- Wallet handoff reached Solflare in an emulator. Physical-device authorization, purchase signing, and finalized position are **not yet verified**.
+- The settlement worker lacks production signer/cron configuration. Do not claim automated live settlement or a completed Devnet payout.
 
-## What is ready
+## Why this is mobile-native
 
-- Native Android screens for rainfall, market research, and wallet/portfolio.
-- NOAA-backed current index data and completed-week history, with explicit unavailable states.
-- Market catalog labels that preserve research status until evidence is validated.
-- Solana Mobile Wallet Adapter authorization on Devnet and a read-only portfolio view.
-- Checkout remains gated by the existing release and evidence checks.
+A grower or event organizer can check a place and its evidence while away from a desk. The app separates a plain-language preview from Devnet testing, uses Solana Mobile Wallet Adapter for explicit wallet approval, and shows finalized on-chain proof only after confirmation. NOAA is the sole settlement source; WeatherXM is not used for settlement. Research-only locations and wind/snow hazards cannot silently inherit rainfall readiness.
 
-## Demo outline (target: 2:30)
+## Three-minute demonstration — record only what is verified
 
-1. **0:00–0:20 — Open the app.** Show the SkyHedge Android home screen and phone-native navigation.
-2. **0:20–0:55 — Inspect rainfall.** Select a location, explain the NOAA station and observation window, then show the measured rainfall or the honest unavailable state returned by the live API.
-3. **0:55–1:20 — Review markets.** Open Markets and explain why locations without validated settlement evidence remain research-only.
-4. **1:20–1:55 — Connect a wallet.** Use an MWA-compatible Android wallet on Devnet, approve public-address access, and show the finalized/indexed portfolio response, including an empty portfolio if there are no positions.
-5. **1:55–2:20 — Explain the safety gate.** Show that the stale Des Moines Draft market is unavailable for purchase while its NOAA evidence is unvalidated.
-6. **2:20–2:30 — Close.** Summarize the mobile workflow and point to the repository and API-backed implementation.
+1. **0:00–0:25 — Real risk.** Name the Des Moines rainfall scenario and show the selected exact location on the physical Android phone.
+2. **0:25–0:55 — Evidence.** Show the NOAA station, exact immutable observation dates, and the difference between historical/forecast pricing inputs and future final rainfall.
+3. **0:55–1:25 — Decision.** Show the fixed payout, actual SKYT test premium as maximum test-asset cost, 500-SKYT wallet cap, and explicit no-real-value notice. Never call a SKYT premium dollars.
+4. **1:25–2:20 — Wallet and proof, only if activated.** On a non-admin tester wallet, approve the transaction yourself, wait for finalized confirmation, then show the real position and Explorer signature. If the market is still Draft or evidence expires, show the exact blocker instead—do not stage a purchase.
+5. **2:20–2:50 — Trust boundary.** Explain that the authorized SkyHedge settlement signer attests final NOAA rainfall, while the program enforces the outcome and claim transfer. Local-validator payout/refund tests are not a live Devnet payout.
+6. **2:50–3:00 — Next step.** Say that regulated USD/USDC collateral and broader locations are future work, not current checkout.
 
-Record this on a physical Android device after the APK and wallet flow have been verified. Use live service data; do not stage observations or positions.
+Do not show private wallet recovery material, API keys, or account notifications in the recording. Keep the exported video at or below three minutes.
 
-## Repository and build
+## Entry package and release gate
 
-- Repository: https://github.com/msourial/SkyHedge-Sol
-- Android client and build notes: [`mobile/README.md`](../mobile/README.md)
-- Build profile: `mobile/eas.json`, profile `hackathon-apk`
-- Device builds need an MWA-compatible wallet and a reachable HTTPS SkyHedge API deployment.
+- Source: https://github.com/msourial/SkyHedge-Sol — link the exact submitted commit and confirm it clones/builds.
+- Android: release APK built with `EXPO_PUBLIC_API_BASE_URL=https://skyhedge.vercel.app`, installed and smoke-tested on the Seeker; record its SHA-256 after the final build.
+- Video: real phone capture following the outline above, with only verified claims.
+- Presentation: short deck explaining problem, evidence-to-wallet journey, on-chain trust boundary, limitations, and USD/USDC path.
+- In the registered Radiants Align account, verify the account's actual cutoff and review the submission agreement yourself. Use **October 8** as the internal cutoff; do not rely on the later calendar date.
 
-## Before submitting
-
-- Build and install the APK; verify it on a physical Android phone.
-- Confirm the project's start date or document the substantial new Android work for eligibility.
-- Record the demo video, no longer than three minutes.
-- Turn this brief into the required pitch deck or presentation.
-- Confirm the current API deployment and Devnet release status; keep claims and screenshots consistent with live evidence.
-- Submit by **October 9, 2026 at 2:59 a.m. EDT** and ensure this is the contestant's only entry.
+Remaining gates before saying “end-to-end purchase works”: admin cancellation and three seed signatures, finalized `OPEN` market and 2,000-SKYT vault, small wallet-approved transfer to a non-admin tester, physical-phone MWA approval, finalized position and Explorer proof, and a production-API APK.
