@@ -39,7 +39,7 @@ Do not show private wallet recovery material, API keys, or account notifications
 
 ## Entry package and release gate
 
-- Source: https://github.com/msourial/SkyHedge-Sol at commit `382592a` — confirm the final submitted commit still clones/builds.
+- Source: https://github.com/msourial/SkyHedge-Sol at the final `main` commit — record its hash when submitting. The installed APK was built from `382592a`; later source changes touch only this brief and the server dependency lockfile, not the mobile app.
 - Android: [production-API APK prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07), installed on the Seeker and checksum-matched. This is debug-signed and remains a Devnet demonstration build; verify the final APK and all four screens before submission.
 - Video: real phone capture following the outline above, with only verified claims.
 - Presentation: [short deck in the prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07) explaining problem, evidence-to-wallet journey, on-chain trust boundary, limitations, and USD/USDC path.
