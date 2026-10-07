@@ -10,14 +10,15 @@
 
 SkyHedge helps someone understand a specific rainfall risk, inspect its NOAA evidence, and—only when a real Devnet market is open—review a fixed-payout test contract and approve it in a Solana Mobile wallet. The Android client is native React Native, not a WebView. SKYT is a valueless Devnet test asset, not USD or USDC. The ordinary dollar amount is a non-binding preview, never a payment quote.
 
-## Verified as of October 6, 2026
+## Verified as of October 7, 2026
 
 - The Devnet program is executable and its committed IDL, protocol account, settlement authority, and SKYT mint are readable at finalized commitment.
-- The admin wallet holds the existing 350,000-SKYT test allocation. No new mint is needed.
+- The SKYT mint's finalized supply is 350,000 test tokens. No new mint is planned for this submission.
 - A live NOAA station/quote package exists for Des Moines. Its historical sample validates station data availability; it is **not** future settlement rainfall.
 - The only on-chain Des Moines market is an **expired Draft with an empty vault**. It must be canceled by the admin, then a fresh market created, funded with 2,000 SKYT, and opened before any purchase can be claimed as working.
-- The earlier Android APK bundled an emulator-only API address. A public-API build and physical Seeker installation are in progress; do not upload that earlier APK.
+- The production-API APK built from commit `382592a` is installed on the physical Seeker and published in the [CLOCK IN prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07). The installed package and release APK have the same SHA-256: `322cfb18428400c63e9173b8e39e5a0181255069ee53589f4bb370111e1e4987`. The Explore screen renders, but the other three screens and wallet approval are not yet physically verified.
 - Wallet handoff reached Solflare in an emulator. Physical-device authorization, purchase signing, and finalized position are **not yet verified**.
+- The Seeker displayed a Play Protect warning before this APK was installed. Identify the flagged app before using a wallet; do not assume the warning concerns SkyHedge or dismiss it without inspection.
 - The settlement worker lacks production signer/cron configuration. Do not claim automated live settlement or a completed Devnet payout.
 
 ## Why this is mobile-native
@@ -37,10 +38,10 @@ Do not show private wallet recovery material, API keys, or account notifications
 
 ## Entry package and release gate
 
-- Source: https://github.com/msourial/SkyHedge-Sol — link the exact submitted commit and confirm it clones/builds.
-- Android: release APK built with `EXPO_PUBLIC_API_BASE_URL=https://skyhedge.vercel.app`, installed and smoke-tested on the Seeker; record its SHA-256 after the final build.
+- Source: https://github.com/msourial/SkyHedge-Sol at commit `382592a` — confirm the final submitted commit still clones/builds.
+- Android: [production-API APK prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07), installed on the Seeker and checksum-matched. This is debug-signed and remains a Devnet demonstration build; verify the final APK and all four screens before submission.
 - Video: real phone capture following the outline above, with only verified claims.
-- Presentation: short deck explaining problem, evidence-to-wallet journey, on-chain trust boundary, limitations, and USD/USDC path.
+- Presentation: [short deck in the prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07) explaining problem, evidence-to-wallet journey, on-chain trust boundary, limitations, and USD/USDC path.
 - In the registered Radiants Align account, verify the account's actual cutoff and review the submission agreement yourself. Use **October 8** as the internal cutoff; do not rely on the later calendar date.
 
-Remaining gates before saying “end-to-end purchase works”: admin cancellation and three seed signatures, finalized `OPEN` market and 2,000-SKYT vault, small wallet-approved transfer to a non-admin tester, physical-phone MWA approval, finalized position and Explorer proof, and a production-API APK.
+Remaining gates before saying “end-to-end purchase works”: admin cancellation and three seed signatures, finalized `OPEN` market and 2,000-SKYT vault, small wallet-approved transfer to a non-admin tester, physical-phone MWA approval, and a finalized position with Explorer proof. The Align draft also cannot be saved until its GitHub App installation is approved for `msourial/SkyHedge-Sol`; a public video is still missing.
