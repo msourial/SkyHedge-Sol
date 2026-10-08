@@ -10,7 +10,7 @@
 
 SkyHedge helps someone understand a specific rainfall risk, inspect its NOAA evidence, and—only when a real Devnet market is open—review a fixed-payout test contract and approve it in a Solana Mobile wallet. The Android client is native React Native, not a WebView. SKYT is a valueless Devnet test asset, not USD or USDC. The ordinary dollar amount is a non-binding preview, never a payment quote.
 
-## Verified as of October 7, 2026
+## Verified as of October 8, 2026
 
 - The Devnet program is executable and its committed IDL, protocol account, settlement authority, and SKYT mint are readable at finalized commitment.
 - The SKYT mint's finalized supply is 350,000 test tokens. No new mint is planned for this submission.
@@ -20,7 +20,8 @@ SkyHedge helps someone understand a specific rainfall risk, inspect its NOAA evi
 - Wallet handoff reached Solflare in an emulator. Physical-device authorization, purchase signing, and finalized position are **not yet verified**.
 - The Seeker displayed a Play Protect warning before this APK was installed. Identify the flagged app before using a wallet; do not assume the warning concerns SkyHedge or dismiss it without inspection.
 - The settlement worker lacks production signer/cron configuration. Do not claim automated live settlement or a completed Devnet payout.
-- Radiants Align has read the public `msourial/SkyHedge-Sol` repository for its advisory audit; the separate GitHub App authorization remains unconfirmed. The entry is **saved as a draft**, not submitted. Its APK, source, and deck links are present; the public demo video is still missing.
+- Radiants Align has read-only access to `msourial/SkyHedge-Sol` and completed an advisory audit. Its AI coach can read the public deck and scored the draft 59/100; that is advisory, not a judge result or security clearance. The entry is **saved as a draft**, not submitted. Its APK, source, and deck links are present; the public demo video is still missing.
+- Finalized Devnet still reports market 0 as Draft with a zero-SKYT vault. The market address has only its original creation signature, so the reported cancellation has not been verified on-chain.
 
 ## Why this is mobile-native
 
@@ -42,7 +43,7 @@ Do not show private wallet recovery material, API keys, or account notifications
 - Source: https://github.com/msourial/SkyHedge-Sol at the final `main` commit — record its hash when submitting. The installed APK was built from `382592a`; later source commits have not been rebuilt into that APK.
 - Android: [production-API APK prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07), installed on the Seeker and checksum-matched. This is debug-signed and remains a Devnet demonstration build; verify the final APK and all four screens before submission.
 - Video: real phone capture following the outline above, with only verified claims.
-- Presentation: [public, downloadable Google Drive PDF](https://drive.google.com/file/d/17ngEonwhYLPA4-_IlPJ8YQdMUHarsVLT/view) explaining problem, evidence-to-wallet journey, on-chain trust boundary, limitations, and USD/USDC path. This is the deck link saved in Align; its AI coach has not yet confirmed it can read the deck.
+- Presentation: [public, downloadable Google Drive PDF](https://drive.google.com/file/d/17ngEonwhYLPA4-_IlPJ8YQdMUHarsVLT/view) explaining problem, evidence-to-wallet journey, on-chain trust boundary, limitations, and USD/USDC path. Align's AI coach confirmed it can read the deck.
 - In the registered Radiants Align account, verify the account's actual cutoff and review the submission agreement yourself. Use **October 8** as the internal cutoff; do not rely on the later calendar date.
 
 Remaining gates before saying “end-to-end purchase works”: admin cancellation and three seed signatures, finalized `OPEN` market and 2,000-SKYT vault, small wallet-approved transfer to a non-admin tester, physical-phone MWA approval, and a finalized position with Explorer proof. The saved Align draft still needs a public video and the user's final submission review.

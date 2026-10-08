@@ -14,9 +14,9 @@ Event requirements were reviewed at [solanamobile.radiant.nexus](https://solanam
 | Requirement | State | Next step |
 | --- | --- | --- |
 | Functional Android APK | Production-API release APK installed on a physical Seeker; Explore and Protect read live API/Devnet state. SHA-256 in [`mobile/README.md`](../mobile/README.md) | Complete wallet handoff and transaction-signing test |
-| Cloneable GitHub repository | Mobile work is pushed to `codex/clock-in-mobile` on the public repository | Keep build instructions current; merge only after normal review |
+| Cloneable GitHub repository | Public `main` is at `046863a`; the Android APK was built from earlier commit `382592a` | Keep the APK/source difference explicit and rebuild only from reviewed files |
 | Demo video, maximum 3 minutes | Not recorded | Record the real Seeker flow after admin activation and tester signing; show the honest blocker if activation fails |
-| Pitch deck or brief presentation | [Five-slide deck](clock-in-pitch.pptx), [PDF](clock-in-pitch.pdf), and [three-minute outline](clock-in-submission-draft.md) prepared | Update pilot-status slide after wallet approvals, then review the final claims |
+| Pitch deck or brief presentation | [Five-slide deck](clock-in-pitch.pptx), [PDF](clock-in-pitch.pdf), and [three-minute outline](clock-in-submission-draft.md) prepared; Align confirmed it can read the public PDF | Update pilot-status slide after wallet approvals, then review the final claims |
 
 ## Important dates
 
@@ -39,5 +39,7 @@ Event requirements were reviewed at [solanamobile.radiant.nexus](https://solanam
 - EAS CLI is installed, but no Expo account is signed in. A cloud build requires an Expo login and uploads app source to Expo; the project has not been uploaded or built.
 - The mobile read API is deployed on the public production domain. Catalog, unindexed-portfolio, health identity, and JSON response checks passed. A protected preview was built successfully, but its URLs require Vercel access; no preview URL is used by testers.
 - The physical Seeker displayed the Des Moines NOAA station, real Draft/empty-vault state, and unavailable purchase reason from the production API on October 6.
-- The hackathon account is already registered as solo with verified email. A project submission draft was saved, but final submission requires GitHub connection, eligibility answers, a demo URL, and an APK URL.
-- The hackathon portal says GitHub connection grants Align read-only access to repositories the builder selects. It has not been authorized.
+- The registered solo entry remains a draft. Align has the repository, direct APK, and readable deck links; the public demo video URL is empty. The final agreement and submission remain user actions.
+- Align has read-only GitHub access to `msourial/SkyHedge-Sol` and ran its advisory audit. Its findings need triage; an audit score is not proof of security.
+- On October 8, finalized Devnet still reports Des Moines market 0 as Draft with a zero-SKYT vault. Its address has only the original creation signature; the admin cancellation has not been recorded on-chain.
+- Current mixed-worktree checks pass: 148 server tests, 27 mobile tests, root/mobile TypeScript, production build, and 20 browser tests (2 skipped). These do not replace physical wallet signing or final-commit verification.
