@@ -4,6 +4,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { AlertTriangle, CheckCircle2, RefreshCw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { walletErrorMessage } from "@/lib/wallet-error";
 
 type WalletUiState = "idle" | "choosing" | "selected" | "connecting" | "connected" | "rejected" | "unavailable" | "rpc_error";
 
@@ -18,8 +19,7 @@ const WalletStatusContext = createContext<WalletStatusContextValue | null>(null)
 export function WalletStatusProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const reportError = useCallback((walletError: WalletError) => {
-    const rejected = /reject|declin|cancel/i.test(`${walletError.name} ${walletError.message}`);
-    setError(rejected ? "Wallet connection was rejected. Nothing was submitted." : "The wallet could not connect. Confirm the extension is unlocked and try again.");
+    setError(walletErrorMessage(walletError));
   }, []);
   const clearError = useCallback(() => setError(null), []);
   const value = useMemo(() => ({ error, reportError, clearError }), [clearError, error, reportError]);
