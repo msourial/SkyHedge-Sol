@@ -20,7 +20,7 @@ SkyHedge helps someone understand a specific rainfall risk, inspect its NOAA evi
 - Wallet handoff reached Solflare in an emulator. Physical-device authorization, purchase signing, and finalized position are **not yet verified**.
 - The Seeker displayed a Play Protect warning before this APK was installed. Identify the flagged app before using a wallet; do not assume the warning concerns SkyHedge or dismiss it without inspection.
 - The settlement worker lacks production signer/cron configuration. Do not claim automated live settlement or a completed Devnet payout.
-- Radiants Align has read-only GitHub access to `msourial/SkyHedge-Sol`, and the entry is **saved as a draft**, not submitted. Its APK, source, and deck links are present; the public demo video is still missing.
+- Radiants Align has read the public `msourial/SkyHedge-Sol` repository for its advisory audit; the separate GitHub App authorization remains unconfirmed. The entry is **saved as a draft**, not submitted. Its APK, source, and deck links are present; the public demo video is still missing.
 
 ## Why this is mobile-native
 
@@ -39,10 +39,10 @@ Do not show private wallet recovery material, API keys, or account notifications
 
 ## Entry package and release gate
 
-- Source: https://github.com/msourial/SkyHedge-Sol at the final `main` commit — record its hash when submitting. The installed APK was built from `382592a`; later source changes touch only this brief and the server dependency lockfile, not the mobile app.
+- Source: https://github.com/msourial/SkyHedge-Sol at the final `main` commit — record its hash when submitting. The installed APK was built from `382592a`; later source commits have not been rebuilt into that APK.
 - Android: [production-API APK prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07), installed on the Seeker and checksum-matched. This is debug-signed and remains a Devnet demonstration build; verify the final APK and all four screens before submission.
 - Video: real phone capture following the outline above, with only verified claims.
-- Presentation: [short deck in the prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07) explaining problem, evidence-to-wallet journey, on-chain trust boundary, limitations, and USD/USDC path.
+- Presentation: [public, downloadable Google Drive PDF](https://drive.google.com/file/d/17ngEonwhYLPA4-_IlPJ8YQdMUHarsVLT/view) explaining problem, evidence-to-wallet journey, on-chain trust boundary, limitations, and USD/USDC path. This is the deck link saved in Align; its AI coach has not yet confirmed it can read the deck.
 - In the registered Radiants Align account, verify the account's actual cutoff and review the submission agreement yourself. Use **October 8** as the internal cutoff; do not rely on the later calendar date.
 
 Remaining gates before saying “end-to-end purchase works”: admin cancellation and three seed signatures, finalized `OPEN` market and 2,000-SKYT vault, small wallet-approved transfer to a non-admin tester, physical-phone MWA approval, and a finalized position with Explorer proof. The saved Align draft still needs a public video and the user's final submission review.
