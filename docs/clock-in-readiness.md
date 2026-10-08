@@ -13,8 +13,8 @@ Event requirements were reviewed at [solanamobile.radiant.nexus](https://solanam
 
 | Requirement | State | Next step |
 | --- | --- | --- |
-| Functional Android APK | Production-API release APK installed on a physical Seeker; Explore and Protect read live API/Devnet state. SHA-256 in [`mobile/README.md`](../mobile/README.md) | Complete wallet handoff and transaction-signing test |
-| Cloneable GitHub repository | Public `main` is at `046863a`; the Android APK was built from earlier commit `382592a` | Keep the APK/source difference explicit and rebuild only from reviewed files |
+| Functional Android APK | The public production-API APK was smoke-tested on a Seeker; its SHA-256 is in [`mobile/README.md`](../mobile/README.md). A clean candidate from `3d7f245` is installed but its screen has not been rechecked. | Unlock the Seeker and smoke-test the candidate before replacing the public download; wallet signing remains unverified |
+| Cloneable GitHub repository | The mobile source on public `main` matches the clean APK built at `3d7f245`; the public APK was built from earlier commit `382592a`, with no intervening mobile source changes | Keep the APK/source difference explicit until the candidate is tested and published |
 | Demo video, maximum 3 minutes | Not recorded | Record the real Seeker flow after admin activation and tester signing; show the honest blocker if activation fails |
 | Pitch deck or brief presentation | [Five-slide deck](clock-in-pitch.pptx), [PDF](clock-in-pitch.pdf), and [three-minute outline](clock-in-submission-draft.md) prepared; Align confirmed it can read the public PDF | Update pilot-status slide after wallet approvals, then review the final claims |
 
@@ -41,5 +41,6 @@ Event requirements were reviewed at [solanamobile.radiant.nexus](https://solanam
 - The physical Seeker displayed the Des Moines NOAA station, real Draft/empty-vault state, and unavailable purchase reason from the production API on October 6.
 - The registered solo entry remains a draft. Align has the repository, direct APK, and readable deck links; the public demo video URL is empty. The final agreement and submission remain user actions.
 - Align has read-only GitHub access to `msourial/SkyHedge-Sol` and ran its advisory audit. Its findings need triage; an audit score is not proof of security.
+- The public release APK link resolves to an asset whose GitHub SHA-256 matches the local public build. The clean `3d7f245` candidate built successfully, passed mobile and web/API checks, and installed on the Seeker, but Android Studio still shows its screen asleep; it has not replaced the public asset.
 - On October 8, finalized Devnet still reports Des Moines market 0 as Draft with a zero-SKYT vault. Its address has only the original creation signature; the admin cancellation has not been recorded on-chain.
-- Current mixed-worktree checks pass: 148 server tests, 27 mobile tests, root/mobile TypeScript, production build, and 20 browser tests (2 skipped). These do not replace physical wallet signing or final-commit verification.
+- Clean `3d7f245` checks pass: 148 server tests, 27 mobile tests, root/mobile TypeScript, production build, and 20 browser tests (2 skipped). These do not replace physical wallet signing. The dependency audit still reports unresolved critical/high findings.

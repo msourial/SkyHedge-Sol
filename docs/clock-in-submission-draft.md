@@ -16,7 +16,7 @@ SkyHedge helps someone understand a specific rainfall risk, inspect its NOAA evi
 - The SKYT mint's finalized supply is 350,000 test tokens. No new mint is planned for this submission.
 - A live NOAA station/quote package exists for Des Moines. Its historical sample validates station data availability; it is **not** future settlement rainfall.
 - The only on-chain Des Moines market is an **expired Draft with an empty vault**. It must be canceled by the admin, then a fresh market created, funded with 2,000 SKYT, and opened before any purchase can be claimed as working.
-- The production-API APK built from commit `382592a` is installed on the physical Seeker and published in the [CLOCK IN prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07). The installed package and release APK have the same SHA-256: `322cfb18428400c63e9173b8e39e5a0181255069ee53589f4bb370111e1e4987`. The Explore screen renders, but the other three screens and wallet approval are not yet physically verified.
+- The production-API APK built from commit `382592a` is published in the [CLOCK IN prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07); GitHub and the local copy agree on SHA-256 `322cfb18428400c63e9173b8e39e5a0181255069ee53589f4bb370111e1e4987`. A clean APK built from `3d7f245` (SHA-256 `cf3224de382e0e80eaf96867f3f0df849cddfda1f747fa2f18e330bededd5de4`) is now installed on the Seeker, but its screen has not been rechecked and the public asset has not been replaced. Earlier Explore and Protect checks do not prove this candidate or wallet approval.
 - Wallet handoff reached Solflare in an emulator. Physical-device authorization, purchase signing, and finalized position are **not yet verified**.
 - The Seeker displayed a Play Protect warning before this APK was installed. Identify the flagged app before using a wallet; do not assume the warning concerns SkyHedge or dismiss it without inspection.
 - The settlement worker lacks production signer/cron configuration. Do not claim automated live settlement or a completed Devnet payout.
@@ -40,8 +40,8 @@ Do not show private wallet recovery material, API keys, or account notifications
 
 ## Entry package and release gate
 
-- Source: https://github.com/msourial/SkyHedge-Sol at the final `main` commit — record its hash when submitting. The installed APK was built from `382592a`; later source commits have not been rebuilt into that APK.
-- Android: [production-API APK prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07), installed on the Seeker and checksum-matched. This is debug-signed and remains a Devnet demonstration build; verify the final APK and all four screens before submission.
+- Source: https://github.com/msourial/SkyHedge-Sol at the final `main` commit — record its hash when submitting. The public APK was built from `382592a`; a candidate from `3d7f245` is built and installed but not yet publicly linked.
+- Android: [production-API APK prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07), checksum-matched to its public asset. This is debug-signed and remains a Devnet demonstration build; verify the clean candidate's screen and wallet flow before replacing it or claiming a complete purchase.
 - Video: real phone capture following the outline above, with only verified claims.
 - Presentation: [public, downloadable Google Drive PDF](https://drive.google.com/file/d/17ngEonwhYLPA4-_IlPJ8YQdMUHarsVLT/view) explaining problem, evidence-to-wallet journey, on-chain trust boundary, limitations, and USD/USDC path. Align's AI coach confirmed it can read the deck.
 - In the registered Radiants Align account, verify the account's actual cutoff and review the submission agreement yourself. Use **October 8** as the internal cutoff; do not rely on the later calendar date.
