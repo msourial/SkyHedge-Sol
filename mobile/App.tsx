@@ -19,7 +19,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AdvisoryResponse, AgriculturalMarket, ClaimReadiness, CityIndex, DevnetStatus, FinalizedWalletState, getJson, Portfolio, postJson, ProtectionQuote, UnsignedTransaction } from "./src/api";
 import { DEVNET_RPC_URL, readFinalizedWalletState } from "./src/chain";
 import { hazardPresentation, listHazards, type HazardId } from "./src/hazards";
-import { formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets } from "./src/presentation";
+import { formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, latestCompletedNoaaWeek, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets } from "./src/presentation";
 import { buildCommittedQuoteRequest, formatSkyt, getProtectionUnavailableReason, isOnchainMarketOpen, parseSkytAmount } from "./src/protection";
 import { authorizeDevnetWallet, signAndConfirmDevnetTransaction, type AuthorizedWallet } from "./src/wallet";
 import { C, F } from "./src/theme";
@@ -402,6 +402,7 @@ function WeatherScreen({
 }) {
   const maxRain = Math.max(1, ...history.map((week) => week.mm ?? 0));
   const researchPlace = researchLocationLabel(selectedCity, selectedPlace);
+  const latestWeek = city?.cumulativeMm == null ? latestCompletedNoaaWeek(history) : null;
   return (
     <>
       <Text style={styles.kicker}>NOAA weather</Text>
@@ -427,23 +428,25 @@ function WeatherScreen({
           <View style={styles.heroCard}>
             <View style={styles.heroTop}>
               <View>
-                <Text style={styles.heroLabel}>Observed rainfall · NOAA</Text>
+                <Text style={styles.heroLabel}>{latestWeek ? "Last completed week · NOAA" : "Observed rainfall · NOAA"}</Text>
                 <Text style={styles.heroPlace}>{city.name}</Text>
                 <Text style={styles.heroSub}>{city.country} · {city.stationName}</Text>
               </View>
-              <View style={[styles.indexBadge, city.cumulativeMm == null && styles.indexBadgeUnavailable]}><Text style={[styles.indexBadgeText, city.cumulativeMm == null && styles.indexBadgeUnavailableText]}>{city.cumulativeMm == null ? "No data" : "Observed"}</Text></View>
+              <View style={[styles.indexBadge, city.cumulativeMm == null && !latestWeek && styles.indexBadgeUnavailable]}><Text style={[styles.indexBadgeText, city.cumulativeMm == null && !latestWeek && styles.indexBadgeUnavailableText]}>{city.cumulativeMm == null && !latestWeek ? "No data" : "Observed"}</Text></View>
             </View>
             <View style={styles.rainValueRow}>
-              <Text style={styles.rainValue}>{city.cumulativeMm == null ? "—" : city.cumulativeMm.toFixed(1)}</Text>
+              <Text style={styles.rainValue}>{city.cumulativeMm == null ? latestWeek?.mm.toFixed(1) ?? "—" : city.cumulativeMm.toFixed(1)}</Text>
               <Text style={styles.rainUnit}>mm</Text>
             </View>
             <Text style={styles.rainCaption}>
               {city.cumulativeMm == null
-                ? "Observation unavailable from NOAA right now. No value is estimated."
+                ? latestWeek
+                  ? `Week of ${latestWeek.week}. Current-window observation unavailable; this past total is not a forecast or a quote.`
+                  : "Observation unavailable from NOAA right now. No value is estimated."
                 : `Observed through ${city.observedThrough ?? "the latest NOAA report"}. This is not a forecast.`}
             </Text>
             <View style={styles.windowRow}>
-              <Text style={styles.windowLabel}>Observation window</Text>
+              <Text style={styles.windowLabel}>{latestWeek ? "Current window" : "Observation window"}</Text>
               <Text style={styles.windowDates}>{city.currentWindow.start} — {city.currentWindow.end}</Text>
             </View>
           </View>

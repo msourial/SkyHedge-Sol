@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { AgriculturalMarket, CityIndex, DevnetStatus } from "./api";
-import { formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets } from "./presentation.ts";
+import { formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, latestCompletedNoaaWeek, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets } from "./presentation.ts";
 
 const markets: AgriculturalMarket[] = [
   {
@@ -73,6 +73,13 @@ describe("mobile presentation behavior", () => {
     assert.deepEqual(recentNoaaHistoryForArea("des-moines", city), city.weeklyHistoryMm);
     assert.equal(recentNoaaHistoryForArea("toronto", city), null);
     assert.equal(recentNoaaHistoryForArea("cordoba", city), null);
+  });
+
+  it("uses the latest available completed NOAA week without inventing unavailable or negative rainfall", () => {
+    const history = [{ week: "2026-09-14", mm: 12.3 }, { week: "2026-09-21", mm: 0 }, { week: "2026-09-28", mm: null }];
+    assert.deepEqual(latestCompletedNoaaWeek(history), history[1]);
+    assert.equal(latestCompletedNoaaWeek([{ week: "2026-09-28", mm: -1 }]), null);
+    assert.equal(latestCompletedNoaaWeek(null), null);
   });
 
   it("shows zero observed rainfall as an empty bar, not a positive-looking bar", () => {

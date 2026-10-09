@@ -27,6 +27,11 @@ export function recentNoaaHistoryForArea(slug: string, city: CityIndex | null): 
   return city?.slug === slug ? city.weeklyHistoryMm?.slice(-6) ?? null : null;
 }
 
+export function latestCompletedNoaaWeek(history: CityIndex["weeklyHistoryMm"]): { week: string; mm: number } | null {
+  return history?.slice().reverse().find((week): week is { week: string; mm: number } =>
+    week.mm !== null && Number.isFinite(week.mm) && week.mm >= 0) ?? null;
+}
+
 export function rainfallBarPercent(millimeters: number | null, maximum: number): number | null {
   if (millimeters === null || !Number.isFinite(millimeters) || millimeters < 0 || !Number.isFinite(maximum) || maximum <= 0) return null;
   return Math.min(100, (millimeters / maximum) * 100);

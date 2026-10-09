@@ -129,8 +129,24 @@ export async function weeklyHistory(city: CityIndex, weeks = 12): Promise<Array<
     const end = new Date(start.getTime() + 7 * 86_400_000);
     const startIso = start.toISOString().slice(0, 10);
     const endIso = end.toISOString().slice(0, 10);
-    const records = await observedDaily(city.noaaStationId, startIso, endIso);
-    out.push({ week: isoWeekStartKey(start), mm: records ? Math.round(cumulativeMillimeters(records) * 10) / 10 : null });
+    const lastDayIso = new Date(end.getTime() - 86_400_000).toISOString().slice(0, 10);
+    const records = await observedDaily(city.noaaStationId, startIso, lastDayIso);
+    out.push({ week: isoWeekStartKey(start), mm: completeWeeklyRainfall(records, startIso, endIso) });
   }
   return out;
+}
+
+export function completeWeeklyRainfall(records: DailyRainfall[] | null, start: string, endExclusive: string): number | null {
+  const firstDay = Date.parse(`${start}T00:00:00Z`);
+  if (!Number.isFinite(firstDay) || Date.parse(`${endExclusive}T00:00:00Z`) - firstDay !== 7 * 86_400_000 || records?.length !== 7) return null;
+  const byDay = new Map(records.map((record) => [record.date, record]));
+  if (byDay.size !== 7) return null;
+  let total = 0;
+  for (let day = 0; day < 7; day++) {
+    const record = byDay.get(new Date(firstDay + day * 86_400_000).toISOString().slice(0, 10));
+    if (!record || !Number.isFinite(record.millimeters) || record.millimeters < 0 || record.qualityFlag?.trim()
+      || (record.measurementFlag?.trim() && !["B", "D", "T"].includes(record.measurementFlag.trim()))) return null;
+    total += record.millimeters;
+  }
+  return Math.round(total * 10) / 10;
 }
