@@ -13,14 +13,14 @@ Event requirements were reviewed at [solanamobile.radiant.nexus](https://solanam
 
 | Requirement | State | Next step |
 | --- | --- | --- |
-| Functional Android APK | The public production-API APK was smoke-tested on a Seeker; its SHA-256 is in [`mobile/README.md`](../mobile/README.md). A clean candidate from `3d7f245` is installed but its screen has not been rechecked. | Unlock the Seeker and smoke-test the candidate before replacing the public download; wallet signing remains unverified |
-| Cloneable GitHub repository | The mobile source on public `main` matches the clean APK built at `3d7f245`; the public APK was built from earlier commit `382592a`, with no intervening mobile source changes | Keep the APK/source difference explicit until the candidate is tested and published |
-| Demo video, maximum 3 minutes | Not recorded | Record the real Seeker flow after admin activation and tester signing; show the honest blocker if activation fails |
+| Functional Android APK | The public production-API APK was built from `382592a`. A keyless-map candidate from `ff23d50` is installed on the Seeker but has not been visually verified; its SHA-256 is in [the submission brief](clock-in-submission-draft.md). | Verify the candidate's map on the Seeker before replacing the public download; wallet signing remains unverified |
+| Cloneable GitHub repository | Public `main` is at `4e83eca`; the map candidate is on `codex/clock-in-mobile`, not in the public APK | Publish only the exact reviewed and device-tested build, then record its source commit |
+| Demo video, maximum 3 minutes | A video URL is entered in Align, but its transcript is unusable and the coach reports `DEMO NONE` | Record a clear narrated Seeker flow and confirm Align can read it; show the honest blocker if activation fails |
 | Pitch deck or brief presentation | [Five-slide deck](clock-in-pitch.pptx), [PDF](clock-in-pitch.pdf), and [three-minute outline](clock-in-submission-draft.md) prepared; Align confirmed it can read the public PDF | Update pilot-status slide after wallet approvals, then review the final claims |
 
 ## Important dates
 
-- Internal submission cutoff: **October 8, 2026**. The official announcement and organizer calendar differ; use the earlier date and confirm the registered account's countdown.
+- The live registered Align draft shows **October 12, 2026 at 7:59 a.m. EDT** (11:59 a.m. UTC); [Solana Mobile's announcement](https://solanamobile.com/blog/clock-in-the-solana-mobile-hackathon) still says October 8. Submit before the live account deadline rather than assuming either source has been reconciled.
 - Winners announced in early November, according to the [Solana Mobile announcement](https://solanamobile.com/blog/clock-in-the-solana-mobile-hackathon).
 - Only one submission per contestant, either solo or on a team.
 
@@ -39,8 +39,8 @@ Event requirements were reviewed at [solanamobile.radiant.nexus](https://solanam
 - EAS CLI is installed, but no Expo account is signed in. A cloud build requires an Expo login and uploads app source to Expo; the project has not been uploaded or built.
 - The mobile read API is deployed on the public production domain. Catalog, unindexed-portfolio, health identity, and JSON response checks passed. A protected preview was built successfully, but its URLs require Vercel access; no preview URL is used by testers.
 - The physical Seeker displayed the Des Moines NOAA station, real Draft/empty-vault state, and unavailable purchase reason from the production API on October 6.
-- The registered solo entry remains a draft. Align has the repository, direct APK, and readable deck links; the public demo video URL is empty. The final agreement and submission remain user actions.
+- The registered solo entry remains a draft. Align has repository, APK, deck, and video URLs, but reports `DEMO NONE` with an unusable transcript. The final agreement and submission remain user actions.
 - Align has read-only GitHub access to `msourial/SkyHedge-Sol` and ran its advisory audit. Its findings need triage; an audit score is not proof of security.
-- The public release APK link resolves to an asset whose GitHub SHA-256 matches the local public build. The clean `3d7f245` candidate built successfully, passed mobile and web/API checks, and installed on the Seeker, but Android Studio still shows its screen asleep; it has not replaced the public asset.
-- On October 8, finalized Devnet still reports Des Moines market 0 as Draft with a zero-SKYT vault. Its address has only the original creation signature; the admin cancellation has not been recorded on-chain.
-- Clean `3d7f245` checks pass: 148 server tests, 27 mobile tests, root/mobile TypeScript, production build, and 20 browser tests (2 skipped). These do not replace physical wallet signing. The dependency audit still reports unresolved critical/high findings.
+- The public release APK link resolves to an asset whose GitHub SHA-256 matches the local public build. The `ff23d50` keyless-map candidate built and installed on the Seeker, but the phone is currently unavailable for visual verification; it has not replaced the public asset.
+- On October 9, finalized Devnet still reports Des Moines market 0 as Draft with a zero-SKYT vault and `nextMarketId` 1. Its address has only the original creation signature; the reported cancellation is not recorded on-chain. The deployed binary contains the cancellation instruction, so the admin transaction signature is needed to trace the failed handoff.
+- Current checks pass: 148 server tests, 27 mobile tests, and root TypeScript. Earlier Android build and browser results do not replace device verification or physical wallet signing. The dependency audit still reports unresolved critical/high findings.
