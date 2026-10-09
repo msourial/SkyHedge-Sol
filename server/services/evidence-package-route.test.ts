@@ -4,6 +4,13 @@ import { createEvidencePackageHandler } from "../../api/evidence-package";
 import { registerRoutes } from "../routes";
 
 describe("local evidence package route", () => {
+  it("does not expose a public settlement signer trigger", async () => {
+    const app = express();
+    await registerRoutes(app);
+    const routeLayer = (app as any)._router.stack.find((layer: any) => layer.route?.path === "/api/settlement/run");
+    expect(routeLayer).to.equal(undefined);
+  });
+
   it("exposes the same flat endpoint as the deployed API", async () => {
     const app = express();
     await registerRoutes(app);

@@ -12,7 +12,6 @@ import { cityHash, cityBySlug } from "../shared/cities";
 import { cityIndexState, allCityIndexStates, weeklyHistory } from "./services/weather-index";
 import { AnchorIndexer } from "./services/solana-indexer";
 import { ClaimUnavailableError, UnsignedTransactionBuilder, type TxAction } from "./services/unsigned-tx";
-import { SettlementRunner } from "./services/settlement";
 import { WeatherXmProvider } from "./services/weatherxm";
 import { DevnetStatusReader, publicDevnetStatus } from "./services/devnet-status";
 import { finalizedEvidenceWindow, getDesMoinesEvidencePackage } from "./services/des-moines-evidence";
@@ -29,9 +28,6 @@ const consensus = new RainfallConsensusService();
 const db = createDb();
 const indexer = db ? new AnchorIndexer(db) : null;
 const unsignedTx = new UnsignedTransactionBuilder();
-// PostgreSQL is an optional audit read-model; the signed NOAA settlement worker
-// must remain available on finalized Solana RPC without database persistence.
-const settlement = process.env.SETTLEMENT_AUTHORITY_KEYPAIR ? new SettlementRunner(db ?? undefined) : null;
 const weatherXm = new WeatherXmProvider();
 const devnetStatus = new DevnetStatusReader();
 const programId = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
@@ -167,15 +163,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await indexer.reconcile();
       return res.json({ ok: true, toSlot: result.toSlot.toString(), events: result.events, accounts: result.accounts });
     } catch (error) { return res.status(500).json({ error: "INDEXER_ERROR", message: (error as Error).message }); }
-  });
-
-  app.post("/api/settlement/run", async (req, res) => {
-    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
-    if (!settlement) return res.status(503).json({ error: "SETTLEMENT_WORKER_DEFERRED", message: "Settlement worker persistence or signer is not configured for this deployment." });
-    try {
-      const result = await settlement.runOnce();
-      return res.json({ ok: true, ...result });
-    } catch (error) { return res.status(500).json({ error: "SETTLEMENT_ERROR", message: (error as Error).message }); }
   });
 
   app.get("/api/weather/:city", async (req, res) => {
@@ -357,9 +344,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const indexerTimer = indexer ? setInterval(() => { void indexer.reconcile().catch((error) => console.error("[indexer] reconcile failed:", error)); }, 30_000) : null;
-  const settlementStop = settlement ? settlement.start(60_000) : null;
   const server = createServer(app);
-  server.on("close", () => { if (indexerTimer) clearInterval(indexerTimer); settlementStop?.(); });
+  server.on("close", () => { if (indexerTimer) clearInterval(indexerTimer); });
 
   return server;
 }
