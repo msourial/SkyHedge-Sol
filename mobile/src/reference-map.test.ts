@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { AgriculturalMarket } from "./api.ts";
-import { mapTilerStyleUrl, openStreetMapUrl, referenceEvidenceLabel, referenceLocationFor, referencePointFor } from "./reference-map.ts";
+import { mapTilerStyleUrl, openStreetMapUrl, referenceEvidenceLabel, referenceLocationFor, referenceMapStyle, referencePointFor } from "./reference-map.ts";
 
 const desMoines: AgriculturalMarket = {
   slug: "des-moines", name: "Des Moines crop belt", locality: "Des Moines", region: "North America",
@@ -31,10 +31,14 @@ describe("native reference map", () => {
     assert.equal(referenceEvidenceLabel(null, true), "Choose a risk to review NOAA evidence");
   });
 
-  it("does not request tiles without a configured key", () => {
+  it("uses a keyless dark map by default and MapTiler when configured", () => {
     assert.equal(mapTilerStyleUrl(undefined), null);
     assert.equal(mapTilerStyleUrl(" "), null);
     assert.match(mapTilerStyleUrl("test-key") ?? "", /dataviz-v4-dark\/style\.json\?key=test-key/);
+    assert.deepEqual(referenceMapStyle(undefined), { url: "https://tiles.openfreemap.org/styles/dark", provider: "openfreemap" });
+    assert.deepEqual(referenceMapStyle(" "), referenceMapStyle(undefined));
+    assert.equal(referenceMapStyle("test-key").provider, "maptiler");
+    assert.match(referenceMapStyle("test-key").url, /dataviz-v4-dark\/style\.json\?key=test-key/);
   });
 
   it("opens an attributed larger reference map for a valid point", () => {

@@ -49,7 +49,7 @@ The APK is written to `android/app/build/outputs/apk/release/app-release.apk`. V
 ## App behavior
 
 - **Place-first Explore:** search the researched catalog, choose a reference place, select rainfall/wind/snowfall, then review its actual evidence and availability. Changing the place or risk clears any previous quote. The advisory guide remains optional beside search.
-- **Reference map:** MapLibre renders the catalog reference point with MapTiler Dataviz Dark only when `EXPO_PUBLIC_MAPTILER_KEY` is configured at build time. Without a key, missing coordinates, or map tiles, the app shows the precise text location and an external OpenStreetMap link. Toronto and Saskatoon have no pinned map marker until their coordinates are verified. No marker is a coverage boundary or NOAA station.
+- **Reference map:** MapLibre renders the catalog reference point with keyless OpenFreeMap Dark by default, or MapTiler Dataviz Dark when `EXPO_PUBLIC_MAPTILER_KEY` is configured at build time. Missing coordinates or failed map tiles show the precise text location, a retry action, and an external OpenStreetMap link. Toronto and Saskatoon have no pinned map marker until their coordinates are verified. No marker is a coverage boundary or NOAA station.
 - **Weather:** current weekly rainfall observations and completed-week history from the API. Missing NOAA data remains unavailable; it is never filled with a sample.
 - **Explore and guide:** area search stays available beside an advisory-only natural-language guide. Saskatoon dry-spell and Toronto event-rain examples are research pilots, not available contracts. The guide needs the server-side Anthropic configuration and never creates a quote or transaction. Wind gust and new snowfall remain research-only.
 - **Markets:** the rainfall catalog stays explicitly marked as research until NOAA settlement evidence is validated. Snowfall means new accumulation, not snow depth.
@@ -64,8 +64,10 @@ On October 6, 2026, the release APK was rebuilt with `EXPO_PUBLIC_API_BASE_URL=h
 
 Public production-API APK SHA-256: `322cfb18428400c63e9173b8e39e5a0181255069ee53589f4bb370111e1e4987` (built from `382592a`). A clean `3d7f245` candidate, SHA-256 `cf3224de382e0e80eaf96867f3f0df849cddfda1f747fa2f18e330bededd5de4`, is installed on the Seeker but its screen remains unverified; it has not replaced the public release asset.
 
+Keyless-map candidate APK SHA-256: `e7d066fe2893197b3e8930570dbad241b67e85696fd9199ca89e8868471a0a7d` (built October 8, 2026, with the production API and installed on the Seeker). Device map rendering is pending an unlocked-screen check; this candidate has not replaced the public release asset.
+
 ## Configuration
 
 Set `EXPO_PUBLIC_API_BASE_URL` at build time. For local device development, use your host's LAN URL; use an HTTPS SkyHedge deployment for a distributable build. No API URL is inferred from or hard-coded to the hackathon site.
 
-`EXPO_PUBLIC_MAPTILER_KEY` is optional. It is bundled into the Android app and must be treated as a public, appropriately restricted map key—not a server secret. Add it before a build to enable the native basemap. Native MapLibre requires a rebuilt Android app; an Expo Go session or JavaScript-only refresh cannot add that module. The current map shows linked text attribution, but MapTiler Free also requires its official logo; do not distribute a key-enabled Free-plan build until that logo is added and visually verified. Map rendering and tile-failure retry also remain unverified until a key is available.
+`EXPO_PUBLIC_MAPTILER_KEY` is optional. Without it, the app uses OpenFreeMap Dark with linked OpenFreeMap, OpenMapTiles, and OpenStreetMap attribution. If supplied, it is bundled into the Android app and must be treated as a public, appropriately restricted map key—not a server secret. Native MapLibre requires a rebuilt Android app; an Expo Go session or JavaScript-only refresh cannot add that module. MapTiler Free also requires its official logo; do not distribute a key-enabled Free-plan build until that logo is added and visually verified.

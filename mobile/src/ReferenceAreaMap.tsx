@@ -3,12 +3,12 @@ import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from "react-n
 import { Camera, Map, ViewAnnotation } from "@maplibre/maplibre-react-native";
 import { C, F } from "./theme";
 import { AppIcon, Text } from "./ui";
-import { mapTilerStyleUrl, openStreetMapUrl, type ReferencePoint } from "./reference-map";
+import { openStreetMapUrl, referenceMapStyle, type ReferencePoint } from "./reference-map";
 
 type MapState = "loading" | "ready" | "unavailable";
 
 export function ReferenceAreaMap({ point, location, evidenceLabel }: { point: ReferencePoint | null; location: string; evidenceLabel: string }) {
-  const styleUrl = mapTilerStyleUrl(process.env.EXPO_PUBLIC_MAPTILER_KEY);
+  const mapStyle = referenceMapStyle(process.env.EXPO_PUBLIC_MAPTILER_KEY);
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<MapState>("loading");
   const [linkError, setLinkError] = useState(false);
@@ -19,10 +19,10 @@ export function ReferenceAreaMap({ point, location, evidenceLabel }: { point: Re
   }, [point?.slug, attempt]);
 
   useEffect(() => {
-    if (!point || !styleUrl || state !== "loading") return;
+    if (!point || state !== "loading") return;
     const timeout = setTimeout(() => setState("unavailable"), 15_000);
     return () => clearTimeout(timeout);
-  }, [point, styleUrl, state, attempt]);
+  }, [point, state, attempt]);
 
   const openLarger = () => {
     if (!point) return;
@@ -31,15 +31,14 @@ export function ReferenceAreaMap({ point, location, evidenceLabel }: { point: Re
   };
 
   const reason = !point ? "Reference coordinates are not verified for this place."
-    : !styleUrl ? "Map provider not configured on this build."
-      : "Map tiles could not be loaded. The exact place remains available below.";
-  const showMap = !!point && !!styleUrl && state !== "unavailable";
+    : "Map tiles could not be loaded. The exact place remains available below.";
+  const showMap = !!point && state !== "unavailable";
 
   return <View style={styles.wrap}>
     <View style={[styles.mapFrame, !showMap && styles.mapFrameFallback]}>
       {showMap && point ? <Map
         key={`${point.slug}:${attempt}`}
-        mapStyle={styleUrl}
+        mapStyle={mapStyle.url}
         style={styles.map}
         logo={false}
         attribution={false}
@@ -69,12 +68,13 @@ export function ReferenceAreaMap({ point, location, evidenceLabel }: { point: Re
       <Text style={styles.note}>{point ? `${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)} · ` : ""}Not an insured boundary or a NOAA station marker.</Text>
       <Text style={styles.note}>WeatherXM is context only—not used for settlement.</Text>
       <View style={styles.actions}>
-        {state === "unavailable" && point && styleUrl ? <Pressable accessibilityRole="button" accessibilityLabel="Retry map loading" onPress={() => setAttempt((value) => value + 1)} style={styles.action}><Text style={styles.actionText}>Retry map</Text></Pressable> : null}
+        {state === "unavailable" && point ? <Pressable accessibilityRole="button" accessibilityLabel="Retry map loading" onPress={() => setAttempt((value) => value + 1)} style={styles.action}><Text style={styles.actionText}>Retry map</Text></Pressable> : null}
         {point ? <Pressable accessibilityRole="link" accessibilityLabel={`Open larger map for ${point.location}`} onPress={openLarger} style={styles.action}><Text style={styles.actionText}>Open larger map</Text><AppIcon name="arrow-up-right" color={C.blue} size={16} /></Pressable> : null}
       </View>
       {linkError ? <Text accessibilityRole="alert" style={styles.linkError}>The larger map could not open. The exact location is shown above.</Text> : null}
       {showMap ? <View style={styles.attribution}>
-        <Pressable accessibilityRole="link" accessibilityLabel="MapTiler attribution" onPress={() => { void Linking.openURL("https://www.maptiler.com/"); }}><Text style={styles.attributionText}>© MapTiler</Text></Pressable>
+        <Pressable accessibilityRole="link" accessibilityLabel={`${mapStyle.provider === "maptiler" ? "MapTiler" : "OpenFreeMap"} attribution`} onPress={() => { void Linking.openURL(mapStyle.provider === "maptiler" ? "https://www.maptiler.com/" : "https://openfreemap.org/"); }}><Text style={styles.attributionText}>© {mapStyle.provider === "maptiler" ? "MapTiler" : "OpenFreeMap"}</Text></Pressable>
+        {mapStyle.provider === "openfreemap" ? <Pressable accessibilityRole="link" accessibilityLabel="OpenMapTiles attribution" onPress={() => { void Linking.openURL("https://www.openmaptiles.org/"); }}><Text style={styles.attributionText}>© OpenMapTiles</Text></Pressable> : null}
         <Pressable accessibilityRole="link" accessibilityLabel="OpenStreetMap attribution" onPress={() => { void Linking.openURL("https://www.openstreetmap.org/copyright"); }}><Text style={styles.attributionText}>© OpenStreetMap contributors</Text></Pressable>
       </View> : null}
     </View>

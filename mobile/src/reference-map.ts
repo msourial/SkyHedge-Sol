@@ -44,6 +44,13 @@ export function mapTilerStyleUrl(key: string | undefined): string | null {
   return `https://api.maptiler.com/maps/dataviz-v4-dark/style.json?key=${encodeURIComponent(trimmed)}`;
 }
 
+export function referenceMapStyle(key: string | undefined): { url: string; provider: "maptiler" | "openfreemap" } {
+  const mapTilerUrl = mapTilerStyleUrl(key);
+  return mapTilerUrl
+    ? { url: mapTilerUrl, provider: "maptiler" }
+    : { url: "https://tiles.openfreemap.org/styles/dark", provider: "openfreemap" };
+}
+
 export function openStreetMapUrl(point: ReferencePoint): string {
   const latitude = point.latitude.toFixed(5);
   const longitude = point.longitude.toFixed(5);
