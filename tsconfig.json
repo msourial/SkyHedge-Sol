@@ -22,6 +22,9 @@
     "server/services/vercel-api.ts",
     "server/services/devnet-status.ts",
     "server/services/tester-readiness.ts",
+    "server/services/advisory.ts",
+    "server/services/advisory-api.ts",
+    "server/services/canadian-pilots.ts",
     "server/services/settlement.ts",
     "server/services/settlement-constants.ts",
     "scripts/demo-localnet.ts"

@@ -20,6 +20,8 @@ import { desMoinesQuoteUnavailableReason, testerProtectionUnavailableReason } fr
 import { settlementWorkerReadiness } from "./services/settlement-config";
 import { agriculturalMarketBySlug, AGRICULTURAL_MARKETS, calendarMonthlyWindow, weeklyFridayWindow } from "../shared/agricultural-markets";
 import { createMobileApiHandler } from "./services/mobile-api";
+import { createAdvisoryHandler } from "./services/advisory-api";
+import { extractProtectionIntent } from "./services/advisory";
 
 const provider = new NoaaRainfallProvider();
 const quotes = new RainfallQuoteEngine(provider);
@@ -41,6 +43,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const mobileApi = createMobileApiHandler();
 
   app.get("/api/mobile", (req, res) => mobileApi(req, res));
+
+  const advisory = createAdvisoryHandler({ extract: extractProtectionIntent, readStatus: () => devnetStatus.read() });
+  app.post("/api/advisory", (req, res) => {
+    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
+    return advisory(req, res);
+  });
 
   app.get("/api/health", async (_req, res) => {
     const started = Date.now();

@@ -38,7 +38,8 @@ Audited: 2026-09-29
 ### Service and transaction work
 
 - PostgreSQL is now optional for Devnet V1 health and builder status. Portfolio and evidence history still need direct-RPC replacements before customer-facing position views can be considered live.
-- The advisory endpoint described by the V1 design has not been implemented; the current protection form calls the quote endpoint directly.
+- The advisory-only endpoint and native guide now extract structured intent and check research/finalized-market state. They do not prepare quotes or transactions; the guide needs server-side Anthropic configuration to answer. The protection form still calls the authoritative quote endpoint only after its existing gates pass.
+- Saskatoon and Toronto remain research-only. Candidate NOAA stations are not pinned; Canadian data-use rights, hourly local-day completeness, ten historical windows, exact-window GFS forecast, and market funding have not passed release validation. See `docs/canadian-pilot-gates.md`.
 - Transaction preparation must be wired to the deployed Anchor IDL only after an explicit user approval. The interface intentionally keeps liquidity actions unavailable until then.
 - The quote panel needs a successful NOAA-backed integration test with immutable source/methodology hashes, forecast inputs, and claim deadline proof.
 

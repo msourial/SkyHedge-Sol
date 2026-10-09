@@ -37,7 +37,8 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
+      // Advisory replies can contain a customer's location and planned event date.
+      if (capturedJsonResponse && path !== "/api/advisory") {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
