@@ -10,18 +10,18 @@
 
 SkyHedge helps someone understand a specific rainfall risk, inspect its NOAA evidence, and—only when a real Devnet market is open—review a fixed-payout test contract and approve it in a Solana Mobile wallet. The Android client is native React Native, not a WebView. SKYT is a valueless Devnet test asset, not USD or USDC. The ordinary dollar amount is a non-binding preview, never a payment quote.
 
-## Verified as of October 8, 2026
+## Verified as of October 9, 2026
 
 - The Devnet program is executable and its committed IDL, protocol account, settlement authority, and SKYT mint are readable at finalized commitment.
 - The SKYT mint's finalized supply is 350,000 test tokens. No new mint is planned for this submission.
 - A live NOAA station/quote package exists for Des Moines. Its historical sample validates station data availability; it is **not** future settlement rainfall.
 - The only on-chain Des Moines market is an **expired Draft with an empty vault**. It must be canceled by the admin, then a fresh market created, funded with 2,000 SKYT, and opened before any purchase can be claimed as working.
-- The production-API APK built from commit `382592a` is published in the [CLOCK IN prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07); GitHub and the local copy agree on SHA-256 `322cfb18428400c63e9173b8e39e5a0181255069ee53589f4bb370111e1e4987`. A clean APK built from `3d7f245` (SHA-256 `cf3224de382e0e80eaf96867f3f0df849cddfda1f747fa2f18e330bededd5de4`) is now installed on the Seeker, but its screen has not been rechecked and the public asset has not been replaced. Earlier Explore and Protect checks do not prove this candidate or wallet approval.
+- The production-API APK built from commit `382592a` is published in the [CLOCK IN prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07); GitHub and the local copy agree on SHA-256 `322cfb18428400c63e9173b8e39e5a0181255069ee53589f4bb370111e1e4987`. A keyless-map candidate built from `ff23d50` (SHA-256 `e7d066fe2893197b3e8930570dbad241b67e85696fd9199ca89e8868471a0a7d`) is installed on the Seeker. Its map has not been visually verified because the Seeker is disconnected from the Mac, and it has not replaced the public asset.
 - Wallet handoff reached Solflare in an emulator. Physical-device authorization, purchase signing, and finalized position are **not yet verified**.
 - The Seeker displayed a Play Protect warning before this APK was installed. Identify the flagged app before using a wallet; do not assume the warning concerns SkyHedge or dismiss it without inspection.
 - The settlement worker lacks production signer/cron configuration. Do not claim automated live settlement or a completed Devnet payout.
-- Radiants Align has read-only access to `msourial/SkyHedge-Sol` and completed an advisory audit. Its AI coach can read the public deck and scored the draft 59/100; that is advisory, not a judge result or security clearance. The entry is **saved as a draft**, not submitted. Its APK, source, and deck links are present; the public demo video is still missing.
-- Finalized Devnet still reports market 0 as Draft with a zero-SKYT vault. The market address has only its original creation signature, so the reported cancellation has not been verified on-chain.
+- Radiants Align has read-only access to `msourial/SkyHedge-Sol` and completed an advisory audit. Its AI coach can read the public deck and scored the draft 59/100; that is advisory, not a judge result or security clearance. The entry is **saved as a draft**, not submitted. APK, source, deck, and video URLs are entered, but Align reports `DEMO NONE` and its current audio transcript is only `you you you you you you`. Replace or repair the video before submitting; a filled URL is not proof of a usable demo.
+- The production `/api/devnet/status` response generated October 9 at 16:29 UTC still reports market 0 as `Draft`, with a zero-SKYT vault and `nextMarketId` of 1. This contradicts the reported cancellation; verify its signature and finalized effect before preparing a replacement market.
 
 ## Why this is mobile-native
 
@@ -40,10 +40,10 @@ Do not show private wallet recovery material, API keys, or account notifications
 
 ## Entry package and release gate
 
-- Source: https://github.com/msourial/SkyHedge-Sol at the final `main` commit — record its hash when submitting. The public APK was built from `382592a`; a candidate from `3d7f245` is built and installed but not yet publicly linked.
-- Android: [production-API APK prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07), checksum-matched to its public asset. This is debug-signed and remains a Devnet demonstration build; verify the clean candidate's screen and wallet flow before replacing it or claiming a complete purchase.
-- Video: real phone capture following the outline above, with only verified claims.
+- Source: https://github.com/msourial/SkyHedge-Sol at the final `main` commit — record its hash when submitting. The public APK was built from `382592a`; the `ff23d50` map candidate is installed but not yet publicly linked.
+- Android: [production-API APK prerelease](https://github.com/msourial/SkyHedge-Sol/releases/tag/clock-in-2026-10-07), checksum-matched to its public asset. This is debug-signed and remains a Devnet demonstration build; verify the keyless-map candidate on the Seeker before replacing it or claiming a complete purchase.
+- Video: a URL is entered in Align, but its generated transcript is unusable and the coach does not recognize a demo. Record a clear phone capture following the outline above, with only verified claims, and confirm Align can read its transcript.
 - Presentation: [public, downloadable Google Drive PDF](https://drive.google.com/file/d/17ngEonwhYLPA4-_IlPJ8YQdMUHarsVLT/view) explaining problem, evidence-to-wallet journey, on-chain trust boundary, limitations, and USD/USDC path. Align's AI coach confirmed it can read the deck.
-- In the registered Radiants Align account, verify the account's actual cutoff and review the submission agreement yourself. Use **October 8** as the internal cutoff; do not rely on the later calendar date.
+- The live Radiants Align draft shows a submission deadline of **October 12, 2026 at 7:59 a.m. EDT** (11:59 a.m. UTC), despite Solana Mobile's earlier October 8 announcement. Submit before the live deadline and review the final agreement yourself.
 
-Remaining gates before saying “end-to-end purchase works”: admin cancellation and three seed signatures, finalized `OPEN` market and 2,000-SKYT vault, small wallet-approved transfer to a non-admin tester, physical-phone MWA approval, and a finalized position with Explorer proof. The saved Align draft still needs a public video and the user's final submission review.
+Remaining gates before saying “end-to-end purchase works”: admin cancellation and three seed signatures, finalized `OPEN` market and 2,000-SKYT vault, small wallet-approved transfer to a non-admin tester, physical-phone MWA approval, and a finalized position with Explorer proof. The saved Align draft still needs a usable video and the user's final submission review.
