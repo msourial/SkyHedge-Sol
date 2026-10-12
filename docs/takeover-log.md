@@ -236,3 +236,11 @@ No transaction was approved, signed, or sent.
 - 497d409: Instrument brand system + PayoffProfile (mobile 47 passing, tsc clean).
 - docs/canadian-market-plan.md: Toronto recommended. Needs 3 admin signatures on the Seeker. Nothing created on-chain.
 - Readiness/market-loading code not touched. No push, deploy, signing or install.
+
+## 2026-10-12 ~02:25 ET: readiness resilience + redesign build-out + APK (executor)
+- Root cause seen on the phone: `java.net.UnknownHostException: skyhedge.vercel.app`. The phone's DNS couldn't resolve the API host. Balance and status reads failed, so Protect kept waiting.
+- d0dda41: 3 tabs (Weather merged into Markets); Protect shows an offline card with Retry instead of an endless wait; `friendlyError` replaces Java/network text; raw GHCND IDs replaced by station names; "Index pending" changed to "Syncing"; one font family (Inter); one-line disclaimers that expand on tap; no purple; Toronto shown as "Opens soon".
+- a2f785c: `getJson` gets a 10s timeout and 3 tries on transport errors; balances read directly from Solana RPC (api.devnet.solana.com, then onfinality public devnet, genesis hash verified) before the server fallback.
+- Tests: mobile 53/53, server 163, tsc clean (mobile + root).
+- APK: mobile/android/app/build/outputs/apk/release/app-release.apk (+ ~/Documents/Codex/apk-backup/SkyHedge-ClockIn-a2f785c.apk), 122,753,929 bytes, SHA-256 9bfa0479a55140989eb71482387180b9954574271419ab32319f018ee2dd03a6. Debug-signed, NOT installed.
+- Still depends on Vercel: market status, quotes, and evidence. If the phone's DNS keeps failing, the app now shows a clear offline state; fix by switching network or DNS (e.g. Private DNS off or dns.google).

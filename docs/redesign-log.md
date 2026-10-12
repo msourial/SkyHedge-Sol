@@ -59,3 +59,6 @@ No on-device or emulator visual check yet.
 - New `PayoffProfile` (mobile/src/ui.tsx) on Protect shows the strike and the gold payout zone on a 0 to 2× scale.
 - Commit 497d409. tsc clean, mobile tests 47/47.
 - Mockup: docs/mockups/skyhedge-instrument-mockup.{html,png}, 3 screens (Markets, Protect ticket, Position). Proposed next step is to merge Weather into Markets for 3 tabs.
+
+## 2026-10-12 ~02:25 ET: build-out
+- d0dda41 + a2f785c (see takeover-log). Mockup docs/mockups/ is still the target; Protect option-ticket restyle is partial (PayoffProfile + strike first; full card reorder not done).
