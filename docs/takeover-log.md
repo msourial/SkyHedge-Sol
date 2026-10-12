@@ -84,3 +84,33 @@ Playwright UI tests were not run.
   - `npm run test:server` is 151 passing. It used node_modules symlinked from the main clone, an uncommitted link.
   - No server/shared/api code differs from clock-in-final.
 - Not done: no push, no APK build or install, no adb device touched. If clock-in-final gets more commits, re-merge them into clock-in-submission.
+
+## Protect "market not open" investigation (2026-10-12 01:19 ET)
+Reported symptom (Seeker, wallet connected): 100 SKYT, then Get quote, showed "Waiting for market readiness: The Des Moines market is not open for protection positions."
+
+**Verdict: state/data issue, not a code bug. No code changed.**
+
+- **What the app checks:** `getProtectionUnavailableReason` (mobile/src/protection.ts:69) reads `/api/devnet/status` and requires `desMoinesMarket.onchainStatus` to be exactly Open. This is a one-shot read plus manual refresh. Nothing polls forever.
+- **What the backend returns** (curl https://skyhedge.vercel.app/api/devnet/status, 01:2x ET):
+  - market id 0 at `9UUNQPXnrzUEDsra8PMMzByp9J9un1yysGdGuaz9JqVJ`, `onchainStatus {"Draft":{}}`, `vaultBalance 0`
+  - salesCloseAt 2026-09-29 13:19 EDT (expired); observation window 2026-09-29 to 2026-10-04 20:00 EDT
+  - protocol `nextMarketId 1`, so this is the only market
+  - `supportsEmptyDraftCancellation true`
+  - the NOAA package seedSchedule is fresh: sales close 2026-10-13 01:18 EDT, observation 2026-10-13 to 2026-10-18 20:00 EDT
+- **On-chain** (Devnet RPC, finalized):
+  - the market account exists, is owned by program 5hGLEG…NPWx, and is 384 bytes
+  - vault `GtENxF…JQ7jY` holds 0 SKYT
+  - this confirms Codex's note: an expired empty Draft, with no cancel ever landed on-chain
+- **Market selection:** the backend's `latestMatchingMarket` picks the highest id, and id 0 is the only one, so the market id is correct.
+- **Admin wallet:** `DKA9RkGvaW4isyj5xdiZ2oGVUkD1UL64Ha1BazXZFD6y` holds 350,000 SKYT and 5.69 SOL on Devnet. It is the protocol admin and the SKYT mint authority.
+- **Local keypair:** the Mac's local `~/.config/solana/id.json` is 7zfJ…HF2c, which is not the admin. The CLI script `scripts/seed-markets.ts` is intentionally disabled (it throws), and `scripts/open-draft-markets.ts` targets localhost:8899 only.
+
+**Fix requires admin-signed transactions** (not done; needs Miro's approval and the DKA9… wallet in a browser wallet). Use the web admin dashboard at https://skyhedge.vercel.app/ (client/src/pages/dashboard.tsx, client/src/lib/admin.ts):
+1. Connect the DKA9… admin wallet and click "Cancel expired empty Draft first". This sends `cancel_empty_draft_market` for market 0, which moves Draft to Cancelled. Wait for finalization.
+2. Click "Seed Des Moines". `desMoinesSeedTransactions` builds three admin-signed transactions:
+   - `create_market`: id 1, using the fresh NOAA seed schedule above
+   - `fund_pool`: 2,000 SKYT (`DES_MOINES_SEED_LIQUIDITY_BASE`)
+   - `open_market`
+3. Refresh the app. The backend auto-selects id 1, and the status should read Open with a 2,000 SKYT vault.
+
+Timing: the seed schedule's sales close is 2026-10-13 01:18 EDT, so the fresh market sells through the 7:59 PM deadline.
