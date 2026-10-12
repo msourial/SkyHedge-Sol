@@ -28,10 +28,15 @@ import { friendlyError, isNetworkError, stationLabel } from "./src/friendly-erro
 import { ScreenTransition, TactilePressable } from "./src/liquid-glass";
 import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
 import { ReferenceAreaMap } from "./src/ReferenceAreaMap";
+import { MarketsScreen, NetworkPill, ProtectTicket, StickyCta, WalletV2 } from "./src/v2";
+import { coverageOptions, type CoverageOption } from "./src/ticket";
 import { referenceEvidenceLabel, referenceLocationFor, referencePointFor } from "./src/reference-map";
 
 type Tab = "weather" | "catalog" | "protect" | "wallet";
 type AmountMode = "usd-preview" | "devnet-test";
+
+/** MWA does not report the wallet's name without changing the auth flow, so copy stays generic. */
+const WALLET_NAME = "Your wallet";
 
 const CITY_ORDER = ["des-moines", "chicago", "new-york", "miami"];
 
@@ -44,7 +49,7 @@ export default function App() {
   const [status, setStatus] = useState<DevnetStatus | null>(null);
   const [selectedCity, setSelectedCity] = useState("des-moines");
   const [hasChosenArea, setHasChosenArea] = useState(false);
-  const [selectedHazard, setSelectedHazard] = useState<HazardId | null>(null);
+  const [selectedHazard, setSelectedHazard] = useState<HazardId | null>("rainfall");
   const [city, setCity] = useState<CityIndex | null>(null);
   const [wallet, setWallet] = useState<string | null>(null);
   const [walletSession, setWalletSession] = useState<AuthorizedWallet | null>(null);
@@ -59,9 +64,19 @@ export default function App() {
   const [homeLoading, setHomeLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [amountMode, setAmountMode] = useState<AmountMode>("usd-preview");
+  const [amountMode, setAmountMode] = useState<AmountMode>("devnet-test");
   const [usdPreviewAmount, setUsdPreviewAmount] = useState("100");
-  const [protectionAmount, setProtectionAmount] = useState("");
+  const [protectionAmount, setProtectionAmount] = useState("100");
+  const [coverageId, setCoverageId] = useState<CoverageOption["id"]>("100");
+  const [quoteBusy, setQuoteBusy] = useState(false);
+  const [indicativeQuote, setIndicativeQuote] = useState<ProtectionQuote | null>(null);
+  const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1_000));
+  const [guideOpen, setGuideOpen] = useState(false);
+  const quoteRequestId = useRef(0);
+  useEffect(() => {
+    const timer = setInterval(() => setNowSeconds(Math.floor(Date.now() / 1_000)), 30_000);
+    return () => clearInterval(timer);
+  }, []);
   const [quote, setQuote] = useState<ProtectionQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [claimReadiness, setClaimReadiness] = useState<ClaimReadiness | null>(null);
@@ -173,8 +188,7 @@ export default function App() {
   const changeCity = (slug: string) => {
     setHasChosenArea(true);
     setSelectedCity(slug);
-    setSelectedHazard(null);
-    setAmountMode("usd-preview");
+    setSelectedHazard(slug === "des-moines" ? "rainfall" : null);
     const next = resolveSelectedNoaaCity(slug, cities);
     setCity(next);
     setError(null);
@@ -226,39 +240,64 @@ export default function App() {
   };
 
   const requestProtectionQuote = async () => {
+    const id = ++quoteRequestId.current;
     setQuoteError(null);
-    setTransactionError(null);
-    setTransactionSignature(null);
     setQuote(null);
-    if (amountMode !== "devnet-test") {
-      setQuoteError("A NOAA quote is available only in the separate Devnet test flow. USD previews are not payable quotes.");
-      return;
-    }
-    if (protectionUnavailableReason || !status || !amountBase) {
-      setQuoteError(protectionUnavailableReason ?? "Finalized market terms are incomplete; a quote cannot be requested.");
-      return;
-    }
+    if (protectionUnavailableReason || !status || !amountBase) return;
     const request = buildCommittedQuoteRequest(status, amountBase);
     if (!request) {
-      setQuoteError("Finalized market terms are incomplete; a quote cannot be requested.");
+      setQuoteError("This window's terms aren't finalized yet, so it can't be priced.");
       return;
     }
-    setTransactionBusy(true);
+    setQuoteBusy(true);
     try {
       const result = await postJson<ProtectionQuote>("/api/quotes", request);
-      if (result.protectedAmount !== amountBase || result.source !== "NOAA" || result.explicitApprovalRequired !== true) throw new Error("The quote did not match the entered amount or NOAA approval requirements.");
-      setQuote(result);
+      if (result.protectedAmount !== amountBase || result.source !== "NOAA" || result.explicitApprovalRequired !== true) throw new Error("The price didn't match the selected coverage. Get a new price.");
+      if (id === quoteRequestId.current) setQuote(result);
     } catch (reason) {
-      setQuoteError(reason instanceof Error ? reason.message : "The NOAA-backed quote is unavailable.");
+      if (id === quoteRequestId.current) setQuoteError(reason instanceof Error ? reason.message : "The NOAA-backed price is unavailable.");
     } finally {
-      setTransactionBusy(false);
+      if (id === quoteRequestId.current) setQuoteBusy(false);
     }
   };
+
+  // Re-price automatically whenever coverage changes or the market becomes quotable.
+  useEffect(() => {
+    if (tab !== "protect" || protectionUnavailableReason || !amountBase) { quoteRequestId.current++; setQuoteBusy(false); return; }
+    void requestProtectionQuote();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, amountBase, protectionUnavailableReason, status?.desMoinesMarket.quoteInputsHash]);
+
+  // Indicative "From X SKYT per 100" for the Markets hero: a real NOAA quote for 100 SKYT, no wallet needed.
+  useEffect(() => {
+    if (!status) { setIndicativeQuote(null); return; }
+    const reason = getProtectionUnavailableReason({ status, citySlug: "des-moines", walletConnected: true, walletSkytBalanceBase: "0", amountBase: "100000000" });
+    const request = reason ? null : buildCommittedQuoteRequest(status, "100000000");
+    if (!request) { setIndicativeQuote(null); return; }
+    let cancelled = false;
+    postJson<ProtectionQuote>("/api/quotes", request)
+      .then((value) => { if (!cancelled && value.protectedAmount === "100000000" && value.source === "NOAA") setIndicativeQuote(value); })
+      .catch(() => { if (!cancelled) setIndicativeQuote(null); });
+    return () => { cancelled = true; };
+  }, [status?.desMoinesMarket.quoteInputsHash, status?.desMoinesMarket.salesCloseAt, status]);
+
+  const chooseCoverage = (option: CoverageOption) => {
+    if (!option.enabled || !option.amountBase) return;
+    setCoverageId(option.id);
+    setProtectionAmount((Number(BigInt(option.amountBase) / 1_000_000n)).toString());
+    setTransactionError(null);
+  };
+  // Keep "Max" in sync with the finalized balance.
+  useEffect(() => {
+    if (coverageId !== "max") return;
+    const max = coverageOptions(walletBalances ? String(walletBalances.skytBaseUnits) : null)[3];
+    if (max.amountBase) setProtectionAmount((Number(BigInt(max.amountBase) / 1_000_000n)).toString());
+  }, [coverageId, walletBalances]);
 
   const submitApprovedAction = async (action: "open_position" | "claim_payout" | "claim_premium_refund") => {
     setTransactionBusy(true);
     setTransactionError(null);
-    setTransactionMessage(action === "open_position" ? "Review and approve the protection in your wallet." : "Review and approve the claim in your wallet.");
+    setTransactionMessage(action === "open_position" ? "Preparing your protection…" : "Preparing your claim…");
     setTransactionSignature(null);
     try {
       if (!walletSession || !wallet || !status?.desMoinesMarket.address) throw new Error("Connect the wallet and refresh finalized market status before continuing.");
@@ -269,10 +308,10 @@ export default function App() {
         action, market: status.desMoinesMarket.address, wallet, ...(action === "open_position" ? { amount: amountBase } : {}), approved: true,
       });
       if (unsigned.network !== "devnet" || unsigned.market !== status.desMoinesMarket.address || unsigned.wallet !== wallet) throw new Error("The prepared transaction does not match this wallet, market, or Devnet.");
-      setTransactionMessage("Waiting for wallet approval…");
+      setTransactionMessage("Approve it in your wallet…");
       const signature = await signAndConfirmDevnetTransaction({ transactionBase64: unsigned.base64, wallet: walletSession, rpcUrl: DEVNET_RPC_URL });
       setTransactionSignature(signature);
-      setTransactionMessage("Finalized on Solana Devnet.");
+      setTransactionMessage(null);
       setQuote(null);
       await loadHome();
       await loadWalletData(wallet);
@@ -313,7 +352,7 @@ export default function App() {
           <Text style={styles.brand}>SkyHedge</Text>
           <Text style={styles.brandSub}>Weather protection</Text>
         </View>
-        <StatusPill label="Devnet" tone="pending" />
+        <NetworkPill />
       </View>
 
       <ScrollView
@@ -324,57 +363,81 @@ export default function App() {
         <ScreenTransition transitionKey={tab}>
         {error ? <ErrorBanner message={error} onRetry={() => { void retryData(); }} /> : null}
         {homeLoading && cities.length === 0 && catalog.length === 0 ? <View style={styles.loadingPanel}><ActivityIndicator color={C.blue} /><Text style={styles.emptyText}>Loading finalized weather, market catalog, and Devnet readiness…</Text></View> : null}
-        {tab === "catalog" ? <CatalogScreen markets={catalog} city={city} status={status} query={marketQuery} activeArea={hasChosenArea ? selectedCity : null} hazard={selectedHazard} guideTurns={guideTurns} guideBusy={guideBusy} onAskGuide={(message) => { void askGuide(message); }} onQueryChange={setMarketQuery} onSelectArea={(slug) => { changeCity(slug); setMarketQuery(""); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} onSelectHazard={(risk) => { setSelectedHazard(risk); setQuote(null); setQuoteError(null); setTransactionSignature(null); setTransactionMessage(null); setTransactionError(null); }} onOpenProtect={() => setTab("protect")} onViewGuideMatch={(result) => { if (!result.match) return; changeCity(result.match.slug); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} /> : null}
         {tab === "catalog" ? (
-          <WeatherScreen
-            cities={cities}
-            city={city}
-            selectedCity={selectedCity}
-            selectedPlace={catalog.find((item) => item.slug === selectedCity)}
+          <MarketsScreen
             status={status}
-            history={orderedHistory}
-            marketReady={marketReady}
-            onCityChange={changeCity}
-            onProtect={() => setTab("protect")}
+            city={city}
+            indicativeQuote={indicativeQuote}
+            nowSeconds={nowSeconds}
+            onProtect={() => { if (selectedCity !== "des-moines") changeCity("des-moines"); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
+            guide={<>
+              <Pressable accessibilityRole="button" accessibilityState={{ expanded: guideOpen }} accessibilityLabel="Describe your plans and let the guide find a market" onPress={() => setGuideOpen((open) => !open)} style={styles.guideToggle}><AppIcon name="message-circle" color={C.blue} size={20} /><Text style={styles.guideToggleText}>Describe your plans instead</Text><AppIcon name={guideOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={18} /></Pressable>
+              {guideOpen ? <GuidePanel turns={guideTurns} busy={guideBusy} onSend={(message) => { void askGuide(message); }} onViewMatch={(result) => { if (result.match?.slug !== "des-moines") return; changeCity("des-moines"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} /> : null}
+            </>}
           />
         ) : null}
         {tab === "protect" ? (
-          <ProtectScreen
-            status={status} selectedCity={selectedCity} selectedHazard={selectedHazard} marketLocation={marketLocation} amountMode={amountMode} usdPreviewAmount={usdPreviewAmount} amount={protectionAmount}
-            amountBase={amountBase} quote={quote} quoteError={quoteError} unavailableReason={protectionUnavailableReason}
-            quotePaymentReason={quotePaymentReason}
-            claimReadiness={claimReadiness} claimError={claimError} transactionBusy={transactionBusy}
-            transactionMessage={transactionMessage} transactionError={transactionError} transactionSignature={transactionSignature}
-            walletConnected={!!wallet}
-            walletSkytBase={walletBalances ? String(walletBalances.skytBaseUnits) : null}
-            onAmountModeChange={changeAmountMode}
-            onUsdPreviewChange={(value) => { if (/^\d{0,9}(?:\.\d{0,2})?$/.test(value)) setUsdPreviewAmount(value); }}
-            onAmountChange={(value) => { setProtectionAmount(value); setQuote(null); setQuoteError(null); }}
-            onRequestQuote={() => { void requestProtectionQuote(); }}
-            onApprove={() => { void submitApprovedAction("open_position"); }}
-            onClaim={() => { if (claimReadiness?.action) void submitApprovedAction(claimReadiness.action); }}
-            onRefresh={() => { void refresh(); }}
-            onOpenWallet={() => setTab("wallet")}
-            onExplore={() => setTab("catalog")}
-            offline={!status && (isNetworkError(error) || isNetworkError(walletError) || isNetworkError(portfolioError))}
-            onRetry={() => { void retryData(); }}
-          />
+          !status && (isNetworkError(error) || isNetworkError(walletError) || isNetworkError(portfolioError)) ? (
+            <View style={styles.emptyState} accessibilityRole="alert">
+              <AppIcon name="wifi-off" color={C.amber} size={22} />
+              <Text style={[styles.emptyTitle, { marginTop: 10 }]}>You’re offline</Text>
+              <Text style={styles.emptyText}>SkyHedge can’t reach its market service from this phone. Check Wi‑Fi or mobile data, then retry.</Text>
+              <View style={{ marginTop: 16 }}><ActionButton label="Retry" icon="refresh-cw" onPress={() => { void retryData(); }} /></View>
+            </View>
+          ) : (
+            <ProtectTicket
+              status={status}
+              nowSeconds={nowSeconds}
+              coverageId={coverageId}
+              onCoverage={chooseCoverage}
+              walletConnected={!!wallet}
+              walletSkytBase={walletBalances ? String(walletBalances.skytBaseUnits) : null}
+              amountBase={amountBase}
+              quote={quote}
+              quoteBusy={quoteBusy}
+              quoteError={quoteError}
+              onRetryQuote={() => { void requestProtectionQuote(); }}
+              unavailableReason={protectionUnavailableReason}
+              claimReadiness={claimReadiness}
+              claimError={claimError}
+              transactionMessage={transactionMessage}
+              transactionError={transactionError}
+              transactionSignature={transactionSignature}
+              walletName={WALLET_NAME}
+              onRefresh={() => { void refresh(); }}
+            />
+          )
         ) : null}
         {tab === "wallet" ? (
-          <WalletScreen
+          <WalletV2
             wallet={wallet}
+            walletName={WALLET_NAME}
+            balances={walletBalances}
             portfolio={portfolio}
-            walletBalances={walletBalances}
             portfolioError={portfolioError}
             walletError={walletError}
             loading={loading}
-            onConnect={connect}
+            marketAddress={status?.desMoinesMarket.address ?? null}
+            onConnect={() => { void connect(); }}
             onDisconnect={() => { setWallet(null); setWalletSession(null); setPortfolio(null); setWalletBalances(null); setPortfolioError(null); setWalletError(null); setClaimReadiness(null); setQuote(null); }}
           />
         ) : null}
         </ScreenTransition>
       </ScrollView>
 
+      {tab === "protect" && status ? (() => {
+        const claimable = claimReadiness?.state === "claimable" && claimReadiness.action;
+        if (claimable) return <StickyCta label={claimReadiness.action === "claim_payout" ? "Claim payout in wallet" : "Claim refund in wallet"} busy={transactionBusy} onPress={() => { if (claimReadiness?.action) void submitApprovedAction(claimReadiness.action); }} />;
+        if (!wallet) return <StickyCta label="Connect wallet to protect" busy={loading} onPress={() => { void connect(); }} />;
+        const quoteReady = !!quote && quote.protectedAmount === amountBase;
+        return <StickyCta
+          label={`Review in ${WALLET_NAME === "Your wallet" ? "wallet" : WALLET_NAME}`}
+          hint={quoteBusy ? "Getting a live NOAA price…" : null}
+          disabled={!quoteReady || !!quotePaymentReason || !!protectionUnavailableReason || quoteBusy}
+          busy={transactionBusy}
+          onPress={() => { void submitApprovedAction("open_position"); }}
+        />;
+      })() : null}
       <View style={styles.bottomBar} accessibilityRole="tablist" accessibilityLabel="Main navigation">
         <TabButton label="Markets" icon="map-pin" selected={tab === "catalog" || tab === "weather"} onPress={() => setTab("catalog")} />
         <TabButton label="Protect" icon="shield" selected={tab === "protect"} onPress={() => setTab("protect")} />
@@ -385,516 +448,9 @@ export default function App() {
   );
 }
 
-function WeatherScreen({
-  cities,
-  city,
-  selectedCity,
-  selectedPlace,
-  status,
-  history,
-  marketReady,
-  onCityChange,
-  onProtect,
-}: {
-  cities: CityIndex[];
-  city: CityIndex | null;
-  selectedCity: string;
-  selectedPlace: AgriculturalMarket | undefined;
-  status: DevnetStatus | null;
-  history: NonNullable<CityIndex["weeklyHistoryMm"]>;
-  marketReady: boolean;
-  onCityChange: (slug: string) => void;
-  onProtect: () => void;
-}) {
-  const maxRain = Math.max(1, ...history.map((week) => week.mm ?? 0));
-  const researchPlace = researchLocationLabel(selectedCity, selectedPlace);
-  const latestWeek = city?.cumulativeMm == null ? latestCompletedNoaaWeek(history) : null;
-  return (
-    <>
-      <ScreenHeader eyebrow="NOAA weather" title="Rainfall evidence" detail="Observed conditions for the selected reference area." />
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cityRail}>
-        {cities.map((item) => (
-          <Pressable
-            key={item.slug}
-            accessibilityRole="button"
-            accessibilityState={{ selected: item.slug === city?.slug }}
-            onPress={() => onCityChange(item.slug)}
-            style={[styles.cityChip, item.slug === city?.slug && styles.cityChipSelected]}
-          >
-            <Text style={[styles.cityChipText, item.slug === city?.slug && styles.cityChipTextSelected]}>{item.name}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      {city ? (
-        <>
-          <View style={styles.heroCard}>
-            <View style={styles.heroTop}>
-              <View>
-                <Text style={styles.heroLabel}>{latestWeek ? "Last completed week · NOAA" : "Observed rainfall · NOAA"}</Text>
-                <Text style={styles.heroPlace}>{city.name}</Text>
-                <Text style={styles.heroSub}>{city.country} · {city.stationName}</Text>
-              </View>
-              <View style={[styles.indexBadge, city.cumulativeMm == null && !latestWeek && styles.indexBadgeUnavailable]}><Text style={[styles.indexBadgeText, city.cumulativeMm == null && !latestWeek && styles.indexBadgeUnavailableText]}>{city.cumulativeMm == null && !latestWeek ? "No data" : "Observed"}</Text></View>
-            </View>
-            <View style={styles.rainValueRow}>
-              <Text style={styles.rainValue}>{city.cumulativeMm == null ? latestWeek?.mm.toFixed(1) ?? "—" : city.cumulativeMm.toFixed(1)}</Text>
-              <Text style={styles.rainUnit}>mm</Text>
-            </View>
-            <Text style={styles.rainCaption}>
-              {city.cumulativeMm == null
-                ? latestWeek
-                  ? `Week of ${latestWeek.week}. Current-window observation unavailable.`
-                  : "Observation unavailable from NOAA right now."
-                : `Observed through ${city.observedThrough ?? "the latest NOAA report"}.`}
-            </Text>
-            <View style={styles.windowRow}>
-              <Text style={styles.windowLabel}>{latestWeek ? "Current window" : "Observation window"}</Text>
-              <Text style={styles.windowDates}>{city.currentWindow.start} — {city.currentWindow.end}</Text>
-            </View>
-          </View>
-
-          <SectionHeader title="Weekly rainfall" detail="Completed weeks · millimetres" />
-          <View style={styles.chartCard} accessible accessibilityLabel={`NOAA completed weekly rainfall history, in millimetres. ${history.map((week) => `${week.week}: ${week.mm == null ? "unavailable" : `${week.mm.toFixed(1)} millimetres`}`).join("; ") || "No history available."}`}>
-            {history.length ? history.map((week) => (
-              <View key={week.week} style={styles.barColumn}>
-                <Text style={styles.barValue}>{formatRainfallBarValue(week.mm)}</Text>
-                <View style={styles.barTrack}>
-                {week.mm == null ? <View style={styles.barUnknown} /> : <View style={[styles.barFill, { height: `${rainfallBarPercent(week.mm, maxRain) ?? 0}%` }]} />}
-                </View>
-                <Text style={styles.barDate}>{formatWeekLabel(week.week)}</Text>
-              </View>
-            )) : (
-              <Text style={styles.emptyText}>Historical observations are not available yet. The chart stays blank until NOAA provides them.</Text>
-            )}
-          </View>
-
-          <Pressable accessibilityRole="button" accessibilityLabel={`Choose a weather risk for ${city.name}`} onPress={onProtect} style={styles.secondaryAction}>
-            <Text style={styles.secondaryActionTitle}>Choose a weather risk for {city.name}</Text>
-          </Pressable>
-        </>
-      ) : (
-        <EmptyState title={researchPlace ? "No validated NOAA observations for this place" : "NOAA index unavailable"} body={researchPlace ? `${researchPlace} is a research-only reference place. No readings or chart are substituted from another area.` : "Connect to the SkyHedge API to load the current index. No sample weather values are shown."} />
-      )}
-
-      <View style={styles.releaseCard}>
-        <View style={styles.releaseIcon}><AppIcon name={marketReady ? "check" : "info"} color={marketReady ? C.green : C.amber} size={16} /></View>
-        <View style={styles.releaseCopy}>
-          <Text style={styles.releaseTitle}>{marketReady ? "A market is release-ready" : "Protection checkout is closed"}</Text>
-          <Text style={styles.releaseBody}>
-            {marketReady
-              ? "The app still requires a current quote and your wallet approval before any transaction."
-              : status?.noaaEvidence.message ?? "The Devnet market has not passed all evidence and collateral checks. Nothing can be purchased yet."}
-          </Text>
-        </View>
-      </View>
-      <Disclosure>Observed station data, not a forecast. Missing values are never estimated.</Disclosure>
-    </>
-  );
-}
-
-function CatalogScreen({ markets, city, status, query, activeArea, hazard, guideTurns, guideBusy, onAskGuide, onViewGuideMatch, onQueryChange, onSelectArea, onSelectHazard, onOpenProtect }: { markets: AgriculturalMarket[]; city: CityIndex | null; status: DevnetStatus | null; query: string; activeArea: string | null; hazard: HazardId | null; guideTurns: GuideTurn[]; guideBusy: boolean; onAskGuide: (message: string) => void; onViewGuideMatch: (result: AdvisoryResponse) => void; onQueryChange: (value: string) => void; onSelectArea: (slug: string) => void; onSelectHazard: (risk: HazardId) => void; onOpenProtect: () => void }) {
-  const [pickerOpen, setPickerOpen] = useState(!activeArea);
-  const [guideOpen, setGuideOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const matchingMarkets = useMemo(() => searchAgriculturalMarkets(markets, query), [markets, query]);
-  const pilotAreas = [
-    { slug: "saskatoon", location: "Saskatoon, Saskatchewan, Canada", context: "Farm dry-spell pilot · NOAA research in progress" },
-    { slug: "toronto", location: "Toronto, Ontario, Canada", context: "Rain hedge · Toronto Pearson · Environment Canada data" },
-  ].filter((area) => !query.trim() || `${area.location} ${area.context}`.toLowerCase().includes(query.trim().toLowerCase()));
-  const chosenMarket = markets.find((market) => market.slug === activeArea);
-  const chosenPlace = referenceLocationFor(activeArea, chosenMarket);
-  const chooseArea = (slug: string) => { onSelectArea(slug); setDetailsOpen(false); setPickerOpen(false); };
-  const riskChoice = activeArea && hazard ? riskChoiceForArea(activeArea, hazard) : null;
-  const rainfallHistory = activeArea && hazard === "rainfall" ? recentNoaaHistoryForArea(activeArea, city) : null;
-  const stationReady = activeArea === "des-moines" && status?.desMoinesMarket.evidenceStatus === "validated" && status.noaaEvidence.status === "ready";
-  const marketState = activeArea === "des-moines" ? formatOnchainMarketStatus(status?.desMoinesMarket.onchainStatus ?? null) : "Research only";
-  const collateralReady = activeArea === "des-moines" && !!status?.desMoinesMarket.vaultBalance && /^\d+$/.test(status.desMoinesMarket.vaultBalance) && BigInt(status.desMoinesMarket.vaultBalance) > 0n;
-  const evidenceLabel = referenceEvidenceLabel(hazard, stationReady);
-
-  if (chosenPlace && !pickerOpen) return <View accessibilityLiveRegion="polite">
-    <EvidenceTimeline steps={[{ label: "Place", ready: true }, { label: "Risk", ready: Boolean(hazard) }, { label: "Evidence", ready: Boolean(hazard) }]} />
-    <ScreenHeader
-      eyebrow="Selected place"
-      title={chosenPlace}
-      detail={activeArea === "toronto" ? "Rain hedge · opens soon on Devnet (Environment Canada data)" : activeArea === "saskatoon" ? "Prairie dry-spell · research only" : chosenMarket?.agriculturalContext}
-      action={<Pressable accessibilityRole="button" accessibilityLabel="Change selected place" onPress={() => setPickerOpen(true)} style={styles.changePlace}><Text style={styles.changePlaceText}>Change</Text></Pressable>}
-    />
-    <View style={styles.riskSheet} accessibilityLabel="Risk sheet">
-    <Text style={styles.selectionPrompt}>Which weather risk matters here?</Text>
-    <View style={styles.riskSegments} accessibilityRole="tablist" accessibilityLabel="Weather risk for the selected place">
-      {listHazards().map((option) => <Pressable key={option.id} accessibilityRole="tab" accessibilityState={{ selected: hazard === option.id }} accessibilityLabel={option.label} onPress={() => onSelectHazard(option.id)} style={[styles.riskSegment, hazard === option.id && styles.riskSegmentSelected]}>
-        <Text style={[styles.riskSegmentText, hazard === option.id && styles.riskSegmentTextSelected]}>{option.label}</Text>
-      </Pressable>)}
-    </View>
-    {hazard ? <View style={[styles.outcomeSurface, styles.card, styles.outcomeSurfaceContent]} accessibilityLiveRegion="polite">
-      <Text style={styles.sectionTitle}>{hazard === "rainfall" ? "Rainfall evidence" : `${hazardPresentation(hazard).label} research`}</Text>
-      <Text style={styles.outcomeSummary}>{hazard === "rainfall" && activeArea === "des-moines"
-        ? stationReady
-          ? collateralReady ? `NOAA station package validated. On-chain market: ${marketState}.` : `NOAA station package validated. The on-chain market is ${marketState} and its SKYT vault is empty.`
-          : `NOAA station evidence is not ready. On-chain market: ${marketState}.`
-        : riskChoice?.detail}</Text>
-      {hazard === "rainfall" && activeArea === "des-moines" ? <>
-        <Pressable accessibilityRole="button" accessibilityState={{ expanded: detailsOpen }} accessibilityLabel="Show verification details" onPress={() => setDetailsOpen((open) => !open)} style={styles.detailsToggle}>
-          <Text style={styles.detailsToggleText}>{detailsOpen ? "Hide verification details" : "View verification details"}</Text>
-          <AppIcon name={detailsOpen ? "chevron-up" : "chevron-down"} color={C.blue} size={18} />
-        </Pressable>
-        {detailsOpen ? <View style={styles.outcomeFacts}>
-          <MetricRow label="NOAA station" value={stationReady ? stationLabel(status?.noaaEvidence.package?.stationId) : "Not validated"} />
-          <MetricRow label="Contract trigger" value={status?.desMoinesMarket.thresholdMmX100 ? `${Number(status.desMoinesMarket.thresholdMmX100) / 100} mm cumulative liquid rain` : "No finalized trigger"} />
-          <MetricRow label="On-chain market" value={`${marketState}${collateralReady ? " · collateral funded" : " · vault empty"}`} />
-        </View> : null}
-      </> : <Text style={styles.hazardBlocked}>Research only · no quote or transaction is available.</Text>}
-      {hazard === "rainfall" ? <RainfallHistoryPreview history={rainfallHistory} place={chosenPlace} /> : null}
-      {riskChoice?.canReview ? <View style={styles.actionWrap}><PrimaryAction label="See protection status" icon="arrow-right" onPress={onOpenProtect} /></View> : null}
-    </View> : <Text style={styles.chosenPrompt}>Choose one risk to see its evidence and availability.</Text>}
-    </View>
-    <ReferenceAreaMap point={referencePointFor(chosenMarket)} location={chosenPlace} evidenceLabel={evidenceLabel} onChangeLocation={() => setPickerOpen(true)} />
-  </View>;
-
-  return (
-    <>
-      <ScreenHeader title="Choose a place" detail="Search the researched catalog, then pick a weather risk." />
-      <View style={styles.searchWrap}>
-        <AppIcon name="search" color={C.blue} size={20} />
-        <TextInput
-          accessibilityLabel="Search a location, state, country, or crop in the researched catalog"
-          placeholder="Search city, region, country, or crop"
-          placeholderTextColor={C.muted}
-          value={query}
-          onChangeText={onQueryChange}
-          returnKeyType="search"
-          style={styles.searchInput}
-        />
-        {query.length ? <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => onQueryChange("")} style={styles.clearSearch}><AppIcon name="x" size={20} /></Pressable> : null}
-      </View>
-      <EvidenceTimeline steps={[{ label: "Place", ready: false }, { label: "Risk", ready: false }, { label: "Evidence", ready: false }]} />
-      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Places</Text><Text style={styles.sectionMeta}>Des Moines live · Toronto opens soon</Text></View>
-      <Text style={styles.resultMeta} accessibilityLiveRegion="polite">{markets.length === 0 ? "Catalog unavailable" : `${matchingMarkets.length + pilotAreas.length} matching ${(matchingMarkets.length + pilotAreas.length) === 1 ? "area" : "areas"}`}</Text>
-      {pilotAreas.map((area) => <Pressable key={area.slug} accessibilityRole="button" accessibilityLabel={`${area.location}. ${area.context}. Select place and choose a weather risk.`} accessibilityState={{ selected: activeArea === area.slug }} onPress={() => chooseArea(area.slug)} style={[styles.marketCard, activeArea === area.slug && styles.marketCardSelected]}>
-        <View style={styles.marketTop}><View style={styles.marketPin}><AppIcon name="map-pin" color={C.blue} size={19} /></View><View style={styles.marketMain}><Text style={styles.marketName}>{area.location}</Text><Text style={styles.marketPlace}>{area.context}</Text></View><StatusPill label={area.slug === "toronto" ? "Opens soon" : "Researching"} tone="pending" /></View>
-      </Pressable>)}
-      {matchingMarkets.length ? matchingMarkets.map((market) => {
-        const availability = catalogAvailability(market, status);
-        return <Pressable key={market.slug} accessibilityRole="button" accessibilityLabel={`${market.locality}, ${market.administrativeArea}, ${market.country}. ${availability.label}. Select place and choose a weather risk.`} accessibilityState={{ selected: activeArea === market.slug }} onPress={() => chooseArea(market.slug)} style={[styles.marketCard, activeArea === market.slug && styles.marketCardSelected]}>
-          <View style={styles.marketTop}>
-            <View style={styles.marketPin}><AppIcon name="map-pin" color={C.blue} size={19} /></View>
-            <View style={styles.marketMain}>
-              <Text style={styles.marketName}>{market.locality}, {market.administrativeArea}</Text>
-              <Text style={styles.marketPlace}>{market.country} · {market.name}</Text>
-            </View>
-            <StatusPill label={availability.label} tone={availability.tone} />
-          </View>
-          <Text style={styles.marketContext}>{market.agriculturalContext} · {market.crops.join(", ")}</Text>
-        </Pressable>;
-      }) : pilotAreas.length === 0 ? <View><EmptyState title={query ? "No researched areas match" : "Catalog unavailable"} body={query ? "Try another place, state or province, country, or crop. Search covers only the current research catalog." : "Researched locations appear after the API responds."} />{query ? <Pressable accessibilityRole="button" onPress={() => onQueryChange("")} style={styles.emptyAction}><Text style={styles.emptyActionText}>Clear search</Text></Pressable> : null}</View> : null}
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: guideOpen }} accessibilityLabel="Ask SkyHedge guide about a place and weather risk" onPress={() => setGuideOpen((open) => !open)} style={styles.guideToggle}><AppIcon name="message-circle" color={C.blue} size={20} /><Text style={styles.guideToggleText}>Describe your plans instead</Text><AppIcon name={guideOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={18} /></Pressable>
-      {guideOpen ? <GuidePanel turns={guideTurns} busy={guideBusy} onSend={onAskGuide} onViewMatch={onViewGuideMatch} /> : null}
-      <Disclosure>Only Des Moines can be quoted today. Toronto opens soon.</Disclosure>
-    </>
-  );
-}
-
-function RainfallHistoryPreview({ history, place }: { history: CityIndex["weeklyHistoryMm"]; place: string }) {
-  const values = history?.map((week) => week.mm !== null && Number.isFinite(week.mm) && week.mm >= 0 ? week.mm : null) ?? [];
-  const maxRain = Math.max(1, ...values.map((value) => value ?? 0));
-  return <View style={styles.miniHistory}>
-    <Text style={styles.miniHistoryTitle}>Recent completed weeks · NOAA</Text>
-    {history?.length ? <View style={styles.miniChart} accessible accessibilityLabel={`Observed NOAA weekly rainfall for ${place}: ${history.map((week, index) => `${week.week}, ${values[index] === null ? "unavailable" : `${values[index]?.toFixed(1)} millimetres`}`).join("; ")}`}>
-      {history.map((week, index) => <View key={week.week} style={styles.barColumn}>
-        <Text style={styles.barValue}>{formatRainfallBarValue(values[index])}</Text>
-        <View style={[styles.barTrack, styles.miniBarTrack]}>{values[index] === null ? <View style={styles.barUnknown} /> : <View style={[styles.barFill, { height: `${rainfallBarPercent(values[index], maxRain) ?? 0}%` }]} />}</View>
-        <Text style={styles.barDate}>{formatWeekLabel(week.week)}</Text>
-      </View>)}
-    </View> : <Text style={styles.hazardNote}>No completed NOAA rainfall history is available for this selected place.</Text>}
-  </View>;
-}
-
-function ProtectScreen(props: {
-  status: DevnetStatus | null;
-  selectedCity: string;
-  selectedHazard: HazardId | null;
-  marketLocation: AgriculturalMarket | undefined;
-  amountMode: AmountMode;
-  usdPreviewAmount: string;
-  amount: string;
-  amountBase: string | null;
-  quote: ProtectionQuote | null;
-  quoteError: string | null;
-  quotePaymentReason: string | null;
-  unavailableReason: string | null;
-  claimReadiness: ClaimReadiness | null;
-  claimError: string | null;
-  transactionBusy: boolean;
-  transactionMessage: string | null;
-  transactionError: string | null;
-  transactionSignature: string | null;
-  walletConnected: boolean;
-  walletSkytBase: string | null;
-  onAmountModeChange: (mode: AmountMode) => void;
-  onUsdPreviewChange: (value: string) => void;
-  onAmountChange: (value: string) => void;
-  onRequestQuote: () => void;
-  onApprove: () => void;
-  onClaim: () => void;
-  onRefresh: () => void;
-  onOpenWallet: () => void;
-  onExplore: () => void;
-  offline?: boolean;
-  onRetry?: () => void;
-}) {
-  const [verificationOpen, setVerificationOpen] = useState(false);
-  if (props.selectedHazard !== "rainfall" || props.selectedCity !== "des-moines") {
-    const location = props.marketLocation
-      ? `${props.marketLocation.locality}, ${props.marketLocation.administrativeArea}, ${props.marketLocation.country}`
-      : props.selectedCity === "toronto" ? "Toronto, Ontario, Canada" : props.selectedCity === "saskatoon" ? "Saskatoon, Saskatchewan, Canada" : null;
-    const title = !location || !props.selectedHazard ? "Choose a place and weather risk" : `${hazardPresentation(props.selectedHazard).label} protection is not available here`;
-    const detail = location && props.selectedHazard
-      ? riskChoiceForArea(props.selectedCity, props.selectedHazard).detail
-      : "Start in Explore. Select the place first, then the weather risk that matters to you.";
-    return <View style={styles.protectCard}>
-      <Text style={styles.kicker}>Protection status</Text>
-      <Text style={styles.protectPlace}>{title}</Text>
-      {location ? <Text style={styles.protectLocation}>{location}</Text> : null}
-      <Text style={styles.protectBlocked}>{detail}</Text>
-      <ActionButton label="Explore places" icon="map-pin" onPress={props.onExplore} />
-    </View>;
-  }
-  const market = props.status?.desMoinesMarket;
-  const isPilot = props.selectedCity === "des-moines";
-  const threshold = market?.thresholdMmX100 ? Number(market.thresholdMmX100) / 100 : null;
-  const windowStart = market?.observationStart ? new Date(market.observationStart * 1_000).toISOString().slice(0, 10) : null;
-  const windowEnd = market?.observationEnd ? new Date(market.observationEnd * 1_000).toISOString().slice(0, 10) : null;
-  const marketOpen = isPilot && !!market?.address && market.status === "ready" && isOnchainMarketOpen(market.onchainStatus);
-  const evidenceReady = isPilot && market?.evidenceStatus === "validated" && !!market.targetCityHash && props.status?.noaaEvidence.status === "ready";
-  const usdPreview = formatUsdPreview(props.usdPreviewAmount);
-  const checks = [
-    { ready: !!props.status?.program.executable && props.status.program.status === "ready", label: "Solana program executable" },
-    { ready: props.status?.idl.status === "ready", label: "Program instructions available" },
-    { ready: !!props.status?.protocol.initialized, label: "Protocol initialized" },
-    { ready: marketOpen, label: "Des Moines market open" },
-    { ready: evidenceReady, label: "NOAA station package pinned" },
-    { ready: !!market?.vaultBalance && /^\d+$/.test(market.vaultBalance) && BigInt(market.vaultBalance) > 0n, label: "SKYT vault funded" },
-  ];
-  const vaultFunded = checks[5].ready;
-  const placeName = props.marketLocation?.locality ?? "Des Moines";
-  const headline = marketHeadline({ place: placeName, open: marketOpen && vaultFunded, days: hedgeWindowDays(market?.observationStart, market?.observationEnd) });
-  const readyChecks = checks.filter((check) => check.ready).length;
-  const needsWallet = props.unavailableReason?.startsWith("Connect your Devnet wallet");
-  const stage = (ready: boolean, label: string) => (
-    <View key={label} style={styles.evidenceStep}>
-      <View style={[styles.evidenceDot, ready ? styles.evidenceDotReady : styles.evidenceDotPending]} />
-      <Text style={styles.evidenceStepText}>{label}</Text>
-      <Text style={[styles.evidenceStepState, ready ? styles.readyText : styles.pendingText]}>{ready ? "Verified" : "Pending"}</Text>
-    </View>
-  );
-  if (props.offline) return <View style={[styles.emptyState]} accessibilityRole="alert">
-    <AppIcon name="wifi-off" color={C.amber} size={22} />
-    <Text style={[styles.emptyTitle, { marginTop: 10 }]}>Can’t reach SkyHedge</Text>
-    <Text style={styles.emptyText}>This phone can’t resolve the SkyHedge service right now, so live market status can’t load. Check Wi‑Fi or mobile data, then retry.</Text>
-    <View style={{ marginTop: 16 }}><ActionButton label="Retry" icon="refresh-cw" onPress={props.onRetry ?? props.onRefresh} /></View>
-  </View>;
-  return (
-    <>
-      <View style={styles.protectCard}>
-        <ScreenHeader
-          eyebrow={props.marketLocation ? `Rain hedge · ${props.marketLocation.locality}, ${props.marketLocation.administrativeArea}` : "Rain hedge"}
-          title={headline.title}
-          detail={headline.detail}
-          action={<StatusPill label={isPilot ? (marketOpen ? "Open" : formatOnchainMarketStatus(market?.onchainStatus ?? null)) : "Research"} tone={marketOpen ? "ready" : "pending"} />}
-        />
-        <View style={styles.stepperWrap}>
-          <EvidenceTimeline steps={[
-        { label: "Evidence", ready: evidenceReady },
-        { label: "Quote", ready: Boolean(props.quote) },
-        { label: "Wallet", ready: props.transactionBusy },
-        { label: "Proof", ready: Boolean(props.transactionSignature) },
-      ]} />
-        </View>
-        <View style={styles.sourceLine}>
-          <AppIcon name="database" color={evidenceReady ? C.blue : C.amber} size={17} />
-          <Text style={styles.sourceText}>{evidenceReady ? `Evidence ready · ${stationLabel(props.status?.noaaEvidence.package?.stationId)}` : market?.evidenceStatus === "validated" ? "Pinned NOAA package temporarily unavailable" : "NOAA station validation pending"}</Text>
-        </View>
-        {isPilot && market?.observationStart && market?.observationEnd ? (
-          <View style={styles.triggerPanel}>
-            <Text style={styles.triggerLabel}>Pays out</Text>
-            <Text style={styles.triggerValue}>{threshold == null ? "Final terms pending" : triggerPhrase(market?.thresholdMmX100, market?.operator).replace(/^if r/, "If r")}</Text>
-            {threshold != null ? <PayoffProfile thresholdMm={threshold} below={market?.operator === "lt" || market?.operator === "lte"} /> : null}
-            <Text style={styles.triggerWindow}>NOAA observation · {windowStart} to {windowEnd} UTC</Text>
-          </View>
-        ) : (
-          <Text style={styles.protectBlocked}>Only Des Moines is eligible for the Devnet pilot. Other catalog locations remain research-only; selecting them cannot produce a quote or transaction.</Text>
-        )}
-        <View style={styles.hedgeBalance} accessibilityLiveRegion="polite"><AppIcon name="credit-card" color={C.mint} size={18} /><Text style={styles.hedgeBalanceText}>{hedgeBalanceLine(props.walletSkytBase, props.walletConnected)}</Text></View>
-        {props.amountMode === "usd-preview" ? <>
-          <View style={styles.amountHeading}><Text style={styles.inputLabel}>Protection amount · USD preview</Text></View>
-          <TextInput
-            accessibilityLabel="Protection amount in US dollars, non-binding preview"
-            accessibilityHint="This is not a payable quote. USD checkout is unavailable."
-            value={props.usdPreviewAmount}
-            onChangeText={props.onUsdPreviewChange}
-            keyboardType="decimal-pad"
-            style={styles.amountInput}
-            placeholder="$100"
-            placeholderTextColor={C.muted}
-          />
-          <Text style={styles.inputHint}>{usdPreview ? `${usdPreview} preview` : "Enter a positive dollar amount."}</Text>
-          <View style={styles.actionWrap}><ActionButton label="Try on Devnet" icon="arrow-right" onPress={() => props.onAmountModeChange("devnet-test")} /></View>
-          {!marketOpen || !vaultFunded ? <Text accessibilityRole="alert" style={styles.previewBlocker}>{headline.title}. You can still preview amounts in USD.</Text> : null}
-        </> : <>
-          <Pressable accessibilityRole="button" accessibilityLabel="Return to USD preview" onPress={() => props.onAmountModeChange("usd-preview")} style={styles.modeBack}><AppIcon name="arrow-left" color={C.blue} size={16} /><Text style={styles.modeBackText}>USD preview</Text></Pressable>
-          <Text style={styles.testModeHeading}>Try on Devnet</Text>
-          <Text style={styles.testModeNote}>Your wallet shows and approves every transaction.</Text>
-          <View style={styles.amountHeading}><Text style={styles.inputLabel}>How much to protect</Text><Text style={styles.amountUnit}>SKYT test tokens</Text></View>
-          <TextInput
-            accessibilityLabel="Test protection amount in SKYT"
-            accessibilityHint="Maximum 500 SKYT per wallet. This amount is separate from the USD preview."
-            value={props.amount}
-            onChangeText={props.onAmountChange}
-            keyboardType="decimal-pad"
-            style={styles.amountInput}
-            editable={isPilot}
-            placeholder="Enter SKYT amount"
-            placeholderTextColor={C.muted}
-          />
-          <Text style={styles.inputHint}>{props.amountBase ? `${formatSkyt(props.amountBase)} SKYT · maximum 500 SKYT per wallet` : "Enter a positive test amount up to 500 SKYT, with up to six decimal places."}</Text>
-          {!props.quote ? (
-            <View style={styles.actionWrap}><ActionButton label={needsWallet ? "Connect Devnet wallet" : "Price my rain option"} icon={needsWallet ? "credit-card" : "arrow-right"} disabled={!needsWallet && !!props.unavailableReason} busy={props.transactionBusy} onPress={needsWallet ? props.onOpenWallet : props.onRequestQuote} /></View>
-          ) : (
-          <Reveal><View style={[styles.quoteCard, styles.ticket]} accessibilityLabel="Rain option ticket">
-            <View style={styles.ticketHead}>
-              <View><Text style={styles.ticketEyebrow}>Option ticket · NOAA priced</Text><Text style={styles.quoteTitle}>Rain option · {placeName}</Text></View>
-              <StatusPill label="Quoted" tone="ready" />
-            </View>
-            <View style={styles.ticketHero}>
-              <View style={styles.ticketHeroCell}><Text style={styles.ticketHeroLabel}>You pay</Text><Text style={styles.ticketHeroMoney}>{formatSkyt(props.quote.premium)}</Text><Text style={styles.ticketHeroUnit}>SKYT premium</Text></View>
-              <View style={styles.ticketDivider} />
-              <View style={styles.ticketHeroCell}><Text style={styles.ticketHeroLabel}>Payout if triggered</Text><Text style={styles.ticketHeroMoney}>{formatSkyt(props.quote.protectedAmount)}</Text><Text style={styles.ticketHeroUnit}>SKYT, paid automatically</Text></View>
-            </View>
-            <Text style={styles.optionLine}>{optionPremiumLine(props.quote.premium, props.quote.protectedAmount, market?.thresholdMmX100, market?.operator)}</Text>
-            <View style={styles.ticketTable}>
-              <MetricRow label="Trigger" value={threshold == null ? "Final terms pending" : triggerPhrase(market?.thresholdMmX100, market?.operator).replace(/^if r/, "R")} />
-              <MetricRow label="Observation window" value={windowStart && windowEnd ? `${windowStart} → ${windowEnd}` : "Pending"} />
-              <MetricRow label="Chance of trigger" value={`${(props.quote.probabilityBps / 100).toFixed(2)}%`} />
-              <MetricRow label="Protocol fee (included)" value={`${formatSkyt(props.quote.protocolFee)} SKYT`} />
-              <MetricRow label="Total charged" value={`${formatSkyt(props.quote.premium)} SKYT`} />
-            </View>
-            <Text style={styles.ticketFoot}>Settles on NOAA final observations · quote {props.quote.inputsHash.slice(0, 8)}</Text>
-            {props.quotePaymentReason ? <View accessibilityRole="alert" style={styles.blockedNotice}><Text style={styles.blockedTitle}>Not enough SKYT for the premium</Text><Text style={styles.blockedBody}>{props.quotePaymentReason}</Text></View> : null}
-            <View style={styles.actionWrap}><ActionButton label="Review in wallet" icon="arrow-right" disabled={!!props.quotePaymentReason || !!props.unavailableReason} busy={props.transactionBusy} onPress={props.onApprove} /></View>
-          </View></Reveal>
-          )}
-          {props.unavailableReason && !needsWallet ? <View accessibilityRole="alert" style={styles.blockedNotice}><AppIcon name="alert-circle" color={C.amber} size={18} /><View style={styles.blockedCopy}><Text style={styles.blockedTitle}>{marketOpen && vaultFunded ? "Not ready to price yet" : headline.title}</Text><Text style={styles.blockedBody}>{marketOpen && vaultFunded ? props.unavailableReason : "The current Des Moines window has closed. Check back shortly; details are under Verification."}</Text><Pressable accessibilityRole="button" onPress={props.onRefresh} style={styles.inlineRetry}><Text style={styles.inlineRetryText}>Refresh status</Text></Pressable></View></View> : null}
-          {props.quoteError ? <View accessibilityRole="alert" style={styles.actionError}><Text style={styles.blockedTitle}>Quote unavailable</Text><Text style={styles.blockedBody}>{friendlyError(props.quoteError)}</Text></View> : null}
-        </>}
-        {props.transactionMessage ? <Text accessibilityLiveRegion="polite" style={styles.actionProgress}>{props.transactionMessage}</Text> : null}
-        {props.transactionError ? <View accessibilityRole="alert" style={styles.actionError}><Text style={styles.blockedTitle}>Transaction not finalized</Text><Text style={styles.blockedBody}>{friendlyError(props.transactionError)}</Text></View> : null}
-        {props.transactionSignature ? <Reveal><View style={styles.signatureCard}><View style={styles.proofHeading}><AppIcon name="check-circle" color={C.green} size={23} /><Text style={styles.signatureTitle}>Finalized on Solana Devnet</Text></View><Text style={styles.signatureText}>{props.transactionSignature}</Text><ExplorerLink signature={props.transactionSignature} /></View></Reveal> : null}
-      </View>
-
-
-      <View style={styles.verificationCard}>
-        <Pressable accessibilityRole="button" accessibilityState={{ expanded: verificationOpen }} accessibilityLabel={`Verification details, ${readyChecks} of ${checks.length} checks verified`} onPress={() => setVerificationOpen((open) => !open)} style={styles.verificationButton}>
-          <AppIcon name="shield" color={C.rain} size={20} />
-          <View style={styles.verificationText}><Text style={styles.verificationTitle}>Verification details</Text><Text style={styles.verificationSummary}>{readyChecks} of {checks.length} Devnet checks verified</Text></View>
-          <AppIcon name={verificationOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={20} />
-        </Pressable>
-        {verificationOpen ? <View style={styles.verificationBody}>
-          {checks.map((check) => stage(check.ready, check.label))}
-          {isPilot && market ? <><MetricRow label="Market state" value={formatOnchainMarketStatus(market.onchainStatus)} /><MetricRow label="Sales close" value={market.salesCloseAt ? new Date(market.salesCloseAt * 1_000).toISOString().replace("T", " ").slice(0, 16) + " UTC" : "Not finalized"} /><MetricRow label="Settlement source" value="NOAA final observations" /></> : null}
-        </View> : null}
-      </View>
-
-      {isPilot ? <View style={styles.portfolioCard}>
-        <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Your position</Text><Text style={styles.sectionMeta}>{props.claimReadiness?.state ?? "Not available"}</Text></View>
-        {props.claimReadiness ? (
-          <>
-            <Text style={styles.claimReason}>{props.claimReadiness.reason}</Text>
-            {props.claimReadiness.observation ? <MetricRow label="Verified rainfall" value={`${(Number(props.claimReadiness.observation.rainfallMmX100) / 100).toFixed(2)} mm · NOAA`} /> : null}
-            {props.claimReadiness.state === "claimable" ? <View style={styles.actionWrap}><ActionButton label={props.claimReadiness.action === "claim_payout" ? "Review payout claim" : "Review premium refund"} icon="arrow-right" busy={props.transactionBusy} onPress={props.onClaim} /></View> : null}
-            {props.claimReadiness.resolutionSignature ? <ExplorerLink signature={props.claimReadiness.resolutionSignature} label="Open finalized settlement proof" /> : null}
-          </>
-        ) : <Text style={styles.emptyText}>{props.walletConnected ? (props.claimError ? friendlyError(props.claimError) : null) ?? (props.status?.desMoinesMarket.address ? "Checking this wallet’s finalized position and claim status." : "A claim appears here only after finalized on-chain settlement or DATA_UNAVAILABLE status.") : "Connect your wallet to view a finalized position or claim."}</Text>}
-      </View> : null}
-      <Disclosure>Devnet test only. Not insurance. SKYT is a test token with no value; USD is a preview.</Disclosure>
-    </>
-  );
-}
-
 function ExplorerLink({ signature, label = "View finalized transaction in Solana Explorer" }: { signature: string; label?: string }) {
   const url = `https://explorer.solana.com/tx/${encodeURIComponent(signature)}?cluster=devnet`;
   return <Pressable accessibilityRole="link" accessibilityLabel={label} onPress={() => { void Linking.openURL(url); }} style={styles.explorerLink}><Text style={styles.explorerLinkText}>{label}</Text></Pressable>;
-}
-
-function WalletScreen({
-  wallet,
-  portfolio,
-  walletBalances,
-  portfolioError,
-  walletError,
-  loading,
-  onConnect,
-  onDisconnect,
-}: {
-  wallet: string | null;
-  portfolio: Portfolio | null;
-  walletBalances: FinalizedWalletState | null;
-  portfolioError: string | null;
-  walletError: string | null;
-  loading: boolean;
-  onConnect: () => void;
-  onDisconnect: () => void;
-}) {
-  return (
-    <>
-      <ScreenHeader eyebrow="Devnet wallet" title="Your account" detail="Connect a compatible Solana wallet on this Android device. Your keys remain in your wallet." />
-      <View style={[styles.walletCard, styles.card, styles.walletCardContent]} accessibilityLabel="Devnet wallet handoff">
-        {walletError ? <View accessibilityRole="alert" style={styles.walletAlert}><Text style={styles.errorTitle}>Wallet not connected</Text><Text style={styles.errorBody}>{friendlyError(walletError)}</Text></View> : null}
-        <Text style={styles.walletTitle}>{wallet ? "Wallet connected" : "Connect a Devnet wallet"}</Text>
-        <Text style={styles.walletAddress}>{wallet ? shorten(wallet) : "No account shared"}</Text>
-        <View style={styles.walletActionWrap}>
-          {wallet
-            ? <ActionButton variant="secondary" label="Disconnect" icon="log-out" onPress={onDisconnect} />
-            : <ActionButton label="Connect wallet" icon="credit-card" busy={loading} onPress={onConnect} />}
-        </View>
-        <Text style={styles.walletHint}>Your wallet asks before sharing its public address. SkyHedge uses it only to read Devnet balances and indexed positions.</Text>
-      </View>
-
-      {wallet ? (
-        <View style={styles.portfolioCard}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Balances</Text>
-            <Text style={styles.sectionMeta}>{walletBalances ? "Devnet · finalized" : "Syncing"}</Text>
-          </View>
-          {walletBalances ? (
-            <>
-              <MetricRow label="SOL" value={walletBalances.sol.toFixed(4)} />
-              <MetricRow label="SKYT · test asset" value={(Number(walletBalances.skytBaseUnits) / 10 ** walletBalances.skytDecimals).toLocaleString()} />
-            </>
-          ) : <Text style={styles.emptyText}>Balances will appear once the network responds. Pull down to refresh.</Text>}
-        </View>
-      ) : null}
-
-      {wallet ? (
-        <View style={styles.portfolioCard}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Positions</Text>
-            <Text style={styles.sectionMeta}>{portfolio?.indexed ? "Finalized index" : "Syncing"}</Text>
-          </View>
-          {portfolio?.indexed ? (
-            <>
-              <MetricRow label="Protection positions" value={String(portfolio.protections.length)} />
-              <MetricRow label="Liquidity positions" value={String(portfolio.liquidity.length)} />
-            </>
-          ) : <Text style={styles.emptyText}>{(portfolioError ? friendlyError(portfolioError) : null) ?? portfolio?.message ?? "Finalized positions are not available from the indexer yet."}</Text>}
-          {portfolio?.indexed ? <Text style={styles.portfolioFoot}>{portfolio.message ?? "Positions reflect finalized state."}</Text> : null}
-        </View>
-      ) : null}
-
-      <Disclosure>Finalized Devnet data. Missing values are never shown as zero.</Disclosure>
-    </>
-  );
 }
 
 function TabButton({ label, icon, selected, onPress }: { label: string; icon: AppIconName; selected: boolean; onPress: () => void }) {
