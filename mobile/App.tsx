@@ -24,7 +24,7 @@ import { buildCommittedQuoteRequest, formatSkyt, getProtectionUnavailableReason,
 import { authorizeDevnetWallet, signAndConfirmDevnetTransaction, type AuthorizedWallet } from "./src/wallet";
 import { C, F } from "./src/theme";
 import { ActionButton, AppIcon, EvidenceTimeline, PrimaryAction, Reveal, ScreenHeader, SectionHeader, StatusPill, Text, type AppIconName } from "./src/ui";
-import { AmbientGlassAura, GlassBackdrop, LiquidGlassSurface, ScreenTransition, TactilePressable } from "./src/liquid-glass";
+import { ScreenTransition, TactilePressable } from "./src/liquid-glass";
 import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
 import { ReferenceAreaMap } from "./src/ReferenceAreaMap";
 import { referenceEvidenceLabel, referenceLocationFor, referencePointFor } from "./src/reference-map";
@@ -305,17 +305,15 @@ export default function App() {
   return (
     <SafeAreaProvider>
     <SafeAreaView style={styles.safe}>
-      <GlassBackdrop>
       <StatusBar barStyle="light-content" backgroundColor={C.canvas} translucent={false} />
-      <LiquidGlassSurface style={styles.headerGlass} contentStyle={styles.header} radius={0} alpha={0.62} blurRadius={16}>
-        <AmbientGlassAura style={styles.headerAura} />
+      <View style={styles.header} accessibilityRole="header">
         <View style={styles.brandMark}><AppIcon name="cloud-drizzle" color={C.green} size={22} /></View>
         <View style={styles.brandCopy}>
           <Text style={styles.brand}>SkyHedge</Text>
           <Text style={styles.brandSub}>Weather protection</Text>
         </View>
         <StatusPill label="Devnet" tone="pending" />
-      </LiquidGlassSurface>
+      </View>
 
       <ScrollView
         ref={scrollRef}
@@ -373,13 +371,12 @@ export default function App() {
         </ScreenTransition>
       </ScrollView>
 
-      <LiquidGlassSurface style={styles.bottomBarGlass} contentStyle={styles.bottomBar} radius={0} alpha={0.68} blurRadius={18} accessibilityRole="tablist" accessibilityLabel="Main navigation">
+      <View style={styles.bottomBar} accessibilityRole="tablist" accessibilityLabel="Main navigation">
         <TabButton label="Explore" icon="map-pin" selected={tab === "catalog"} onPress={() => setTab("catalog")} />
         <TabButton label="Weather" icon="cloud-rain" selected={tab === "weather"} onPress={() => setTab("weather")} />
         <TabButton label="Protect" icon="shield" selected={tab === "protect"} onPress={() => setTab("protect")} />
         <TabButton label="Wallet" icon="credit-card" selected={tab === "wallet"} onPress={() => setTab("wallet")} />
-      </LiquidGlassSurface>
-      </GlassBackdrop>
+      </View>
     </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -532,7 +529,7 @@ function CatalogScreen({ markets, city, status, query, activeArea, hazard, guide
         <Text style={[styles.riskSegmentText, hazard === option.id && styles.riskSegmentTextSelected]}>{option.label}</Text>
       </Pressable>)}
     </View>
-    {hazard ? <LiquidGlassSurface style={styles.outcomeSurface} contentStyle={styles.outcomeSurfaceContent} alpha={0.5} accessibilityLiveRegion="polite">
+    {hazard ? <View style={[styles.outcomeSurface, styles.card, styles.outcomeSurfaceContent]} accessibilityLiveRegion="polite">
       <Text style={styles.sectionTitle}>{hazard === "rainfall" ? "Rainfall evidence" : `${hazardPresentation(hazard).label} research`}</Text>
       <Text style={styles.outcomeSummary}>{hazard === "rainfall" && activeArea === "des-moines"
         ? stationReady
@@ -552,7 +549,7 @@ function CatalogScreen({ markets, city, status, query, activeArea, hazard, guide
       </> : <Text style={styles.hazardBlocked}>Research only · no quote or transaction is available.</Text>}
       {hazard === "rainfall" ? <RainfallHistoryPreview history={rainfallHistory} place={chosenPlace} /> : null}
       {riskChoice?.canReview ? <View style={styles.actionWrap}><PrimaryAction label="See protection status" icon="arrow-right" onPress={onOpenProtect} /></View> : null}
-    </LiquidGlassSurface> : <Text style={styles.chosenPrompt}>Choose one risk to see its evidence and availability.</Text>}
+    </View> : <Text style={styles.chosenPrompt}>Choose one risk to see its evidence and availability.</Text>}
     <ReferenceAreaMap point={referencePointFor(chosenMarket)} location={chosenPlace} evidenceLabel={evidenceLabel} onChangeLocation={() => setPickerOpen(true)} />
   </View>;
 
@@ -764,7 +761,7 @@ function ProtectScreen(props: {
           {!props.quote ? (
             <View style={styles.actionWrap}><ActionButton label={needsWallet ? "Connect Devnet wallet" : "Get NOAA quote in SKYT"} icon={needsWallet ? "credit-card" : "arrow-right"} disabled={!needsWallet && !!props.unavailableReason} busy={props.transactionBusy} onPress={needsWallet ? props.onOpenWallet : props.onRequestQuote} /></View>
           ) : (
-          <Reveal><LiquidGlassSurface style={styles.quoteCard} contentStyle={styles.quoteCardContent} alpha={0.48} accessibilityLabel="NOAA-based quote review">
+          <Reveal><View style={[styles.quoteCard, styles.card, styles.quoteCardContent]} accessibilityLabel="NOAA-based quote review">
             <View style={styles.quoteHead}><AppIcon name="file-text" color={C.purple} size={18} /><Text style={styles.quoteTitle}>NOAA-based quote</Text></View>
             <MetricRow label="Chance of trigger" value={`${(props.quote.probabilityBps / 100).toFixed(2)}%`} />
             <MetricRow label="Premium · total charged" value={`${formatSkyt(props.quote.premium)} SKYT`} />
@@ -773,7 +770,7 @@ function ProtectScreen(props: {
             <Text style={styles.quoteWarning}>The protocol fee is included in the total premium above. This is a Devnet test position, not insurance or a real-money product. Your wallet will show the transaction before it is sent.</Text>
             {props.quotePaymentReason ? <View accessibilityRole="alert" style={styles.blockedNotice}><Text style={styles.blockedTitle}>Not enough SKYT for the premium</Text><Text style={styles.blockedBody}>{props.quotePaymentReason}</Text></View> : null}
             <View style={styles.actionWrap}><ActionButton label="Review in wallet" icon="arrow-right" disabled={!!props.quotePaymentReason || !!props.unavailableReason} busy={props.transactionBusy} onPress={props.onApprove} /></View>
-          </LiquidGlassSurface></Reveal>
+          </View></Reveal>
           )}
           {props.unavailableReason && !needsWallet ? <View accessibilityRole="alert" style={styles.blockedNotice}><AppIcon name="alert-circle" color={C.amber} size={18} /><View style={styles.blockedCopy}><Text style={styles.blockedTitle}>Waiting for market readiness</Text><Text style={styles.blockedBody}>{props.unavailableReason}</Text><Pressable accessibilityRole="button" onPress={props.onRefresh} style={styles.inlineRetry}><Text style={styles.inlineRetryText}>Refresh status</Text></Pressable></View></View> : null}
           {props.quoteError ? <View accessibilityRole="alert" style={styles.actionError}><Text style={styles.blockedTitle}>Quote unavailable</Text><Text style={styles.blockedBody}>{props.quoteError}</Text></View> : null}
@@ -838,7 +835,7 @@ function WalletScreen({
   return (
     <>
       <ScreenHeader eyebrow="Devnet wallet" title="Your account" detail="Connect a compatible Solana wallet on this Android device. Your keys remain in your wallet." />
-      <LiquidGlassSurface style={styles.walletCard} contentStyle={styles.walletCardContent} alpha={0.48} accessibilityLabel="Devnet wallet handoff">
+      <View style={[styles.walletCard, styles.card, styles.walletCardContent]} accessibilityLabel="Devnet wallet handoff">
         {walletError ? <View accessibilityRole="alert" style={styles.walletAlert}><Text style={styles.errorTitle}>Wallet not connected</Text><Text style={styles.errorBody}>{walletError}</Text></View> : null}
         <Text style={styles.walletTitle}>{wallet ? "Wallet connected" : "Connect a Devnet wallet"}</Text>
         <Text style={styles.walletAddress}>{wallet ? shorten(wallet) : "No account shared"}</Text>
@@ -848,7 +845,7 @@ function WalletScreen({
             : <ActionButton label="Connect wallet" icon="credit-card" busy={loading} onPress={onConnect} />}
         </View>
         <Text style={styles.walletHint}>Your wallet asks before sharing its public address. SkyHedge uses it only to read Devnet balances and indexed positions.</Text>
-      </LiquidGlassSurface>
+      </View>
 
       {wallet ? (
         <View style={styles.portfolioCard}>
@@ -936,10 +933,9 @@ function shorten(value: string) {
 const styles = StyleSheet.create({
   fontLoading: { flex: 1, backgroundColor: C.canvas, justifyContent: "center", alignItems: "center" },
   safe: { flex: 1, backgroundColor: C.canvas },
-  headerGlass: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
-  header: { minHeight: 68, position: "relative", overflow: "hidden", flexDirection: "row", alignItems: "center", paddingHorizontal: 20 },
-  headerAura: { position: "absolute", width: 230, height: 140, right: 0, top: 0 },
-  brandMark: { width: 38, height: 38, borderRadius: 12, backgroundColor: C.rainSoft, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" },
+  header: { minHeight: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: 20, backgroundColor: C.canvas, borderBottomWidth: 1, borderBottomColor: C.border },
+  card: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 12 },
+  brandMark: { width: 36, height: 36, borderRadius: 8, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" },
   brandCopy: { marginLeft: 10, flex: 1 },
   brand: { color: C.ink, fontFamily: F.headingBold, fontSize: 18, letterSpacing: -0.4 },
   brandSub: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 12, marginTop: 1 },
@@ -1142,11 +1138,10 @@ const styles = StyleSheet.create({
   emptyTitle: { color: C.ink, fontFamily: F.heading, fontSize: 17, marginBottom: 6 },
   emptyAction: { minHeight: 48, justifyContent: "center", alignSelf: "flex-start", paddingRight: 12 },
   emptyActionText: { color: C.blue, fontFamily: F.bodySemi, fontSize: 13 },
-  bottomBarGlass: { borderTopWidth: 1, borderTopColor: C.border },
-  bottomBar: { minHeight: 78, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10, paddingHorizontal: 8 },
+  bottomBar: { minHeight: 72, backgroundColor: C.canvas, borderTopWidth: 1, borderTopColor: C.border, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10, paddingHorizontal: 8 },
   tabButtonWrap: { flex: 1, minWidth: 0 },
   tabButton: { flex: 1, minWidth: 0, minHeight: 58, alignItems: "center", justifyContent: "center", borderRadius: 14, paddingHorizontal: 2 },
-  tabButtonSelected: { backgroundColor: C.mintSoft },
+  tabButtonSelected: { borderTopWidth: 2, borderTopColor: C.mint, borderRadius: 0 },
   tabLabel: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 12, marginTop: 5 },
   tabLabelSelected: { color: C.green, fontFamily: F.bodySemi },
 });
