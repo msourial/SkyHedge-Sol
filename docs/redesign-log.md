@@ -30,6 +30,17 @@ Why: insurance/fintech buyers trust dense, calm, legible term presentation. Seek
 `npm run check` (tsc --noEmit): clean after every step. `npm run test:mobile`: 35 pass / 0 fail (33 original + 2 new token tests).
 MWA/wallet logic untouched: `connect`, `submitApprovedAction` and `src/wallet.ts` are unchanged.
 
+## Milestone 2 (Oct 12, ~1:10–1:30 AM ET)
+1. **Flat app bar** (`20c32e7`): removed GlassBackdrop, AmbientGlassAura and every LiquidGlassSurface use in App.tsx (header, tab bar, Explore outcome, quote, wallet card). The header and tab bar are now a flat canvas with a 1px rule. Cards use the shared `styles.card` (surface + border, radius 12). The selected tab has a mint top rule instead of a filled pill. `src/liquid-glass.tsx` is kept for ScreenTransition/TactilePressable.
+2. **One disclosure per screen** (`192f645`): new `Disclosure` primitive in `src/ui.tsx`. Weather, Explore, Protect and Wallet each have exactly one. Removed the Weather source note card, the Wallet "finalized reads" card, the Protect SKYT/USD/test disclaimers (merged into one), the inline "no value is estimated" lines and the error-banner footnote. All honesty claims are preserved in the per-screen disclosure.
+3. **Explore restructure** (`2cb9a6d`): the picker is now search, then the Places list (with a Place→Risk→Evidence stepper), then an optional "Describe your plans" guide, then the disclosure. Removed the risk-before-place quick filters and the duplicate example buttons (the same 3 pilots are already in the list). The selected place shows the risk choice inside a raised "risk sheet" container, then the map.
+4. **Weather chart labels** (`116389b`): `formatWeekLabel` ("2026-09-07" becomes "Sep 7") and `formatRainfallBarValue` (explicit "n/a"; one decimal under 10 mm) were added to `src/presentation.ts` with tests. They are used in both the Weather chart and the Explore mini chart. The chart is now in a bordered surface with a "Weekly rainfall · millimetres" header.
+5. **Screens out of App.tsx**: SKIPPED as not low-risk right now. All screens share one ~200-entry StyleSheet and many helpers, so splitting them would be a large mechanical diff right before the deadline.
+
+Checks after every step: `npm run check` is clean. `npm run test:mobile` is 37 pass / 0 fail (2 new chart-label tests). Wallet/MWA code is unchanged.
+
+Screenshots/APK: not produced. The Pixel_7 emulator was booted at 1:11 AM by another workstream, and a USB device (SM02G406197714, likely the Seeker) is attached. Installing a debug build would overwrite `com.skyhedge.mobile` on those devices, so I didn't. react-native-web isn't installed, so web screenshots weren't possible either.
+
 ## Not yet verified
 No on-device or emulator visual check yet.
 
