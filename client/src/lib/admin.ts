@@ -1,3 +1,4 @@
+import { withTimeout } from "@shared/protocol-init";
 import { createAssociatedTokenAccountIdempotentInstruction, createMintToInstruction, getAccount, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
@@ -21,7 +22,7 @@ export function feeVaultPda() { return PublicKey.findProgramAddressSync([feeVaul
 export function isProtocolAdmin(key?: PublicKey | null) { return key?.toBase58() === PROTOCOL_ADMIN; }
 export function explorerTx(signature: string) { return `https://explorer.solana.com/tx/${signature}?cluster=devnet`; }
 
-export async function protocolExists() { return Boolean(await connection.getAccountInfo(protocolPda(), "finalized")); }
+export async function protocolExists() { return Boolean(await withTimeout(connection.getAccountInfo(protocolPda(), "finalized"), 5_000)); }
 
 export type DesMoinesEvidencePackage = {
   /** Only a server-validated NOAA package may be used to build these instructions. */

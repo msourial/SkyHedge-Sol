@@ -8,6 +8,7 @@ import { Card, EmptyState, Pill, SectionLabel, Stat } from "@/components/sky";
 import { AgriculturalAreaMap } from "@/components/sky/agricultural-area-map";
 import { AgriculturalMarketExplorerMap } from "@/components/sky/agricultural-market-explorer-map";
 import { cn } from "@/lib/utils";
+import { canOfferInitialization, isProtocolInitialized } from "@shared/protocol-init";
 import { approveAndConfirm, approveAndConfirmDesMoinesSeed, cancelEmptyDraftMarketTransaction, desMoinesSeedTransactions, explorerTx, initializeProtocolTransaction, isProtocolAdmin, issueSkytTransaction, protocolExists, SKYT_ISSUANCE } from "@/lib/admin";
 import { finalizedSkytMintSupply, finalizedWalletState, PROTOCOL_ADMIN, signAndSend } from "@/lib/solana";
 import { initialSkytMintState } from "../../../shared/mint-issuance";
@@ -230,7 +231,9 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
   const [message, setMessage] = useState<{ tone: "green" | "red"; text: string; signature?: string } | null>(null);
   const busyRef = useRef(false);
   const owner = isProtocolAdmin(wallet.publicKey);
-  const mintSupply = useQuery({ queryKey: ["admin-skyt-finalized-mint-supply"], queryFn: finalizedSkytMintSupply, enabled: owner && initialized === true, retry: false, refetchInterval: 30_000 });
+  const protocolInitialized = isProtocolInitialized(initialized, status?.protocol);
+  const offerInitialization = canOfferInitialization(initialized, status?.protocol);
+  const mintSupply = useQuery({ queryKey: ["admin-skyt-finalized-mint-supply"], queryFn: finalizedSkytMintSupply, enabled: owner && protocolInitialized, retry: false, refetchInterval: 30_000 });
   const mintState = initialSkytMintState(mintSupply.data, mintSupply.isError);
   const quoteTerms = status?.noaaEvidence.package?.quoteTerms;
   const seedPricingReady = status?.noaaEvidence.status === "ready" && isValidImmutableMarketPricingTerms(quoteTerms);
@@ -263,7 +266,7 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
     && (priorDraftExpired || hasKnownInvalidDraftSchedule || hasKnownChangedDraftQuote);
   const seedCommittedTermsReady = Boolean(seedDraftTermsMatch && seedEvidenceReady);
   const seedActionMode = desMoinesSeedActionMode({
-    protocolReady: initialized === true && status?.protocol.status === "ready",
+    protocolReady: protocolInitialized && status?.protocol.status === "ready",
     marketReadStatus: status?.desMoinesMarket.status ?? "unavailable",
     marketState: seedMarketState,
     salesCloseAt: status?.desMoinesMarket.salesCloseAt ?? null,
@@ -356,7 +359,7 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
     finally { busyRef.current = false; setBusy(null); }
   };
   return <section aria-labelledby="owner-console" className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-card)]">
-    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="sky-section-label text-[var(--identity)]">Owner-only Devnet controls</p><h2 id="owner-console" className="sky-display mt-1 text-xl font-semibold">Initialize the real protocol.</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">Each action opens your connected wallet. Nothing is submitted until you approve it; final status is checked against Devnet.</p></div><Pill tone={initialized ? "green" : "amber"}>{initialized ? "Protocol finalized" : initialized === false ? "Initialization required" : "Checking Devnet"}</Pill></div>
+    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="sky-section-label text-[var(--identity)]">Owner-only Devnet controls</p><h2 id="owner-console" className="sky-display mt-1 text-xl font-semibold">Initialize the real protocol.</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">Each action opens your connected wallet. Nothing is submitted until you approve it; final status is checked against Devnet.</p></div><Pill tone={protocolInitialized ? "green" : "amber"}>{protocolInitialized ? "Protocol finalized" : initialized === false ? "Initialization required" : "Checking Devnet"}</Pill></div>
     {seedMarketOpen && <p role="status" className="mt-4 border border-[var(--success)]/40 p-3 text-sm text-[var(--success)]">Des Moines is already Open on finalized Devnet. The Builder will not create a duplicate market.</p>}
     {seedDraftNeedsResume && <p role="status" className="mt-4 border border-[var(--identity)]/40 p-3 text-sm text-[var(--muted-foreground)]">{seedDraftTermsMatch ? "A Draft already exists on finalized Devnet. Its immutable observation dates and quote commitment match current NOAA pricing, so only the missing funding/open steps can resume." : canCancelEmptyDraft ? "The Draft’s immutable schedule or NOAA quote does not match valid current seed terms. No funding or opening transaction is available; use the separate cancel control only if finalized RPC confirms it has no funds or liabilities." : !status?.idl.supportsEmptyDraftCancellation ? "The existing Draft does not match current NOAA terms. Cancellation is disabled until the matching Devnet program upgrade has been verified; no funding or opening transaction is available." : `The existing Draft's immutable observation dates or NOAA quote hash do not match today's current pricing package. No funding or opening transaction is available. Wait for its sales deadline${status?.desMoinesMarket.salesCloseAt ? ` (${new Date(status.desMoinesMarket.salesCloseAt * 1_000).toISOString()} UTC)` : ""}, then request a fresh seed package.`}</p>}
     {priorDraftExpired && seedMarketState === "draft" && <p role="status" className="mt-4 border border-[var(--warning)]/40 p-3 text-sm text-[var(--warning)]">The expired Draft must be explicitly cancelled before a fresh market ID can be created. Cancellation is available only after the Devnet program upgrade is verified and only if finalized RPC confirms every balance and liability is zero.</p>}
@@ -366,15 +369,15 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
         <ShieldCheck className="h-5 w-5 text-[var(--identity)]" aria-hidden />
         <h3 className="mt-3 text-sm font-semibold">1. Initialize protocol</h3>
         <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">Pins the SKYT collateral mint, protocol PDA, fee vault, and separate settlement authority.</p>
-        <button disabled={busy !== null || initialized !== false} className="sky-btn-primary mt-4 min-h-11 w-full" onClick={() => run("initialize")}>
-          {busy === "initialize" ? "Awaiting wallet…" : initialized ? "Protocol initialized" : "Approve initialization"}
+        <button disabled={busy !== null || !offerInitialization} className="sky-btn-primary mt-4 min-h-11 w-full" onClick={() => run("initialize")}>
+          {busy === "initialize" ? "Awaiting wallet…" : protocolInitialized ? "Protocol initialized" : "Approve initialization"}
         </button>
       </Card>
       <Card className="p-4">
         <WalletCards className="h-5 w-5 text-[var(--identity)]" aria-hidden />
         <h3 className="mt-3 text-sm font-semibold">2. Issue Devnet test collateral</h3>
         <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">Mints exactly {(Number(SKYT_ISSUANCE) / 1_000_000).toLocaleString()} SKYT with six decimals to your wallet. {mintState === "already-issued" ? `Finalized mint supply is ${skytDisplay(mintSupply.data ?? "0")} SKYT; this Builder flow will not reissue the initial allocation.` : mintState === "checking" ? "Checking finalized SKYT mint supply before enabling the initial allocation." : mintState === "unavailable" ? "Finalized mint-supply read unavailable; issuance stays locked." : "The initial allocation is available only while finalized mint supply is zero."}</p>
-        <button disabled={busy !== null || initialized !== true || mintState !== "available"} className="sky-btn-primary mt-4 min-h-11 w-full" onClick={() => run("mint")}>
+        <button disabled={busy !== null || !protocolInitialized || mintState !== "available"} className="sky-btn-primary mt-4 min-h-11 w-full" onClick={() => run("mint")}>
           {busy === "mint" ? "Awaiting wallet…" : mintState === "already-issued" ? "Initial allocation already issued" : mintState === "checking" ? "Checking finalized mint supply…" : mintState === "unavailable" ? "Mint-supply check unavailable" : "Approve 50,000 SKYT mint"}
         </button>
         <p className="mt-2 text-[11px] leading-relaxed text-[var(--faint)]">This is a Builder safeguard, not an on-chain mint cap: the configured mint authority can still issue SKYT through another transaction.</p>
@@ -399,12 +402,12 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
                       : "Station history is validated, but complete NOAA QPF or historical quote inputs for the exact future dates are unavailable."
                     : "A validated NOAA station package is not available yet; market creation stays locked."} The Devnet test window is five full UTC days after the 24-hour sales period; historical rainfall is never substituted for future forecast evidence.
         </p>
-        <button disabled={busy !== null || initialized !== true || !seedActionReady} className="sky-btn-primary mt-4 min-h-11 w-full" onClick={() => run("seed")}>
+        <button disabled={busy !== null || !protocolInitialized || !seedActionReady} className="sky-btn-primary mt-4 min-h-11 w-full" onClick={() => run("seed")}>
           {busy === "seed" ? "Awaiting wallet approval…" : seedButtonLabel}
         </button>
         {canCancelEmptyDraft && <>
           <p className="mt-3 text-xs leading-relaxed text-[var(--warning)]">This Draft’s immutable schedule or NOAA quote no longer matches the valid seed terms. You may retire it only if finalized RPC confirms its vault, shares, and liabilities are all zero; the program rechecks this when your wallet approves.</p>
-          <button disabled={busy !== null || initialized !== true} className="sky-btn-secondary mt-2 min-h-11 w-full" onClick={() => run("cancel")}>
+          <button disabled={busy !== null || !protocolInitialized} className="sky-btn-secondary mt-2 min-h-11 w-full" onClick={() => run("cancel")}>
             {busy === "cancel" ? "Awaiting wallet approval…" : "Approve cancel empty Draft"}
           </button>
         </>}
