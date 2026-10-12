@@ -230,3 +230,9 @@ No transaction was approved, signed, or sent.
   - Verified: live CSS has sky-btn-secondary, JS has owner-debug, /api/devnet/status 200, claim-readiness 200 JSON.
   - This went live around 1:38 AM ET, after the steering note asked not to redeploy mid-seed. It doesn't change seed logic, and an already-open page keeps its loaded JS.
 - No transactions signed, no push.
+
+## 2026-10-12 ~01:45 ET: overnight redesign + Canada research (executor)
+- e9df964: ECCC rainfall adapter + tests (server 163 passing).
+- 497d409: Instrument brand system + PayoffProfile (mobile 47 passing, tsc clean).
+- docs/canadian-market-plan.md: Toronto recommended. Needs 3 admin signatures on the Seeker. Nothing created on-chain.
+- Readiness/market-loading code not touched. No push, deploy, signing or install.

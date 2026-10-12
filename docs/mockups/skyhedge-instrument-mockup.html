@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset="utf-8"><title>SkyHedge · Instrument</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--canvas:#0A0E13;--surface:#11161D;--raised:#171D26;--muted-s:#1E2530;--ink:#F2F5F8;--muted:#A3AEBC;--quiet:#7D8896;--border:#252D38;--rain:#5CC8FF;--rain-s:#10283A;--mint:#3DDC97;--gold:#E8B04B;--gold-s:#2E2414}
+*{box-sizing:border-box;margin:0}body{background:#05070A;font-family:Inter,sans-serif;color:var(--ink);display:flex;gap:40px;padding:40px;justify-content:center}
+.phone{width:390px;height:844px;background:var(--canvas);border-radius:44px;border:1px solid #1b222c;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.status{height:44px;display:flex;justify-content:space-between;padding:14px 28px 0;font-size:13px;color:var(--muted);font-weight:600}
+.body{flex:1;padding:12px 20px;overflow:hidden}.cap{font-size:12px;color:var(--quiet)}
+.eyebrow{font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:6px}
+h1{font-family:'Space Grotesk';font-size:28px;line-height:34px;letter-spacing:-.8px}
+.detail{color:var(--muted);font-size:14px;line-height:21px;margin-top:8px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:16px}
+.row{display:flex;justify-content:space-between;align-items:center}.pill{font-size:12px;font-weight:600;border:1px solid;border-radius:999px;padding:6px 10px;display:inline-flex;gap:6px;align-items:center}
+.pill i{width:6px;height:6px;border-radius:3px;background:currentColor}.ok{color:var(--mint)}.pend{color:var(--gold)}
+.fig{font-family:'Space Grotesk';font-size:44px;font-weight:700;letter-spacing:-1.5px;font-variant-numeric:tabular-nums}
+.track{height:10px;border-radius:5px;background:var(--muted-s);position:relative;margin:14px 0 8px;overflow:visible}.zone{position:absolute;top:0;bottom:0;left:50%;right:0;background:var(--gold);border-radius:0 5px 5px 0}.strike{position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+.axis{display:flex;justify-content:space-between;font-size:12px;color:var(--quiet);font-variant-numeric:tabular-nums}.axis b{color:var(--ink);font-weight:600}
+.bars{display:flex;gap:8px;align-items:flex-end;height:120px;margin-top:14px;position:relative}.bars div{flex:1;background:var(--rain);border-radius:3px 3px 0 0;opacity:.85}.bars .lo{background:var(--muted-s)}
+.thr{position:absolute;left:0;right:0;border-top:1px dashed var(--gold)}.thr span{position:absolute;right:0;top:-18px;font-size:11px;color:var(--gold)}
+.steps{display:flex;align-items:center;gap:6px;margin-top:16px;font-size:12px;color:var(--quiet)}.steps .r{flex:1;height:1px;background:var(--border)}.steps .d{color:var(--mint)}
+.kv{display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border);font-size:14px}.kv span:first-child{color:var(--muted)}.kv span:last-child{font-variant-numeric:tabular-nums;font-weight:600}
+.btn{height:52px;border-radius:10px;background:var(--rain);color:#04131F;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;margin-top:16px}
+.btn2{background:transparent;border:1px solid var(--border);color:var(--ink)}
+.input{height:56px;border:1px solid var(--border);border-radius:10px;background:var(--canvas);display:flex;align-items:center;padding:0 14px;font-family:'Space Grotesk';font-size:22px;justify-content:space-between}.input small{font-family:Inter;font-size:12px;color:var(--quiet)}
+.tabs{height:72px;border-top:1px solid var(--border);display:flex;background:var(--surface)}.tabs div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;color:var(--quiet);gap:4px}.tabs .on{color:var(--rain);box-shadow:inset 0 2px 0 var(--rain)}
+.chip{display:inline-block;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;margin:8px 6px 0 0}.chip.on{border-color:var(--rain);color:var(--rain);background:var(--rain-s)}
+.flag{font-size:11px;color:var(--gold);background:var(--gold-s);border-radius:6px;padding:3px 7px;font-weight:600}
+.label{position:absolute;top:-30px;left:0;color:#7D8896;font-size:13px}.wrap{position:relative}
+</style></head><body>
+<div class="wrap"><div class="label">1 · Markets</div><div class="phone"><div class="status"><span>9:41</span><span>Devnet</span></div><div class="body">
+<div class="eyebrow">SkyHedge · Rain options</div><h1>Pick a market</h1><p class="detail">Settled from public weather-station data. Paid on Solana.</p>
+<div><span class="chip on">Toronto · ON</span><span class="chip">Des Moines · IA</span><span class="chip">Vancouver · BC</span></div>
+<div class="card"><div class="row"><div><div class="eyebrow" style="margin:0">Toronto Pearson · ECCC 6158731</div><div style="font-family:'Space Grotesk';font-size:20px;margin-top:4px">7-day rain hedge</div></div><span class="pill ok"><i></i>Open</span></div>
+<div class="bars"><div style="height:40%"></div><div class="lo" style="height:8%"></div><div style="height:62%"></div><div class="lo" style="height:4%"></div><div style="height:30%"></div><div style="height:78%"></div><div class="lo" style="height:12%"></div><div class="thr" style="bottom:55%"><span>strike 25 mm/wk</span></div></div>
+<div class="axis" style="margin-top:6px"><span>Last 7 weeks · weekly mm</span><span>ECCC climate-daily</span></div></div>
+<div class="card"><div class="row"><div><div class="eyebrow" style="margin:0">Des Moines · NOAA USW00014933</div><div style="font-family:'Space Grotesk';font-size:20px;margin-top:4px">5-day rain hedge</div></div><span class="pill pend"><i></i>Opens soon</span></div></div>
+</div><div class="tabs"><div class="on">◎<br>Markets</div><div>▣<br>Protect</div><div>◇<br>Wallet</div></div></div></div>
+
+<div class="wrap"><div class="label">2 · Protect (option ticket)</div><div class="phone"><div class="status"><span>9:41</span><span>Devnet</span></div><div class="body">
+<div class="row"><div class="eyebrow" style="margin:0">Rain hedge · Toronto, ON</div><span class="pill ok"><i></i>Open</span></div>
+<h1 style="margin-top:8px">Toronto is open</h1><p class="detail">Hedge against rain over the next 7 days. You hold 1,000 SKYT.</p>
+<div class="card"><div class="cap">Pays out if Pearson records</div><div style="font-family:'Space Grotesk';font-size:24px;margin-top:4px">≥ 25 mm by Oct 19</div>
+<div class="track"><div class="zone"></div><div class="strike"></div></div><div class="axis"><span>0 mm</span><b>Strike 25 mm</b><span>50 mm</span></div>
+<div class="axis" style="margin-top:8px"><span><span style="display:inline-block;width:10px;height:10px;background:var(--gold);border-radius:2px;vertical-align:-1px"></span> Payout zone</span><span>Implied odds 18%</span></div></div>
+<div style="margin-top:16px" class="cap">Protect</div><div class="input" style="margin-top:6px">100<small>SKYT</small></div>
+<div class="card" style="padding:4px 16px"><div class="kv" style="border:0"><span>Premium</span><span>18.00 SKYT</span></div><div class="kv"><span>Payout if it rains</span><span style="color:var(--gold)">100.00 SKYT</span></div><div class="kv"><span>Settlement</span><span>ECCC · Oct 20</span></div></div>
+<div class="btn">Review in Phantom</div>
+<div class="steps"><span class="d">● Evidence</span><span class="r"></span><span class="d">● Quote</span><span class="r"></span><span>○ Wallet</span><span class="r"></span><span>○ Proof</span></div>
+</div><div class="tabs"><div>◎<br>Markets</div><div class="on">▣<br>Protect</div><div>◇<br>Wallet</div></div></div></div>
+
+<div class="wrap"><div class="label">3 · Position & settlement</div><div class="phone"><div class="status"><span>9:41</span><span>Devnet</span></div><div class="body">
+<div class="eyebrow">Your position</div><h1>Toronto · 25 mm</h1><p class="detail">Settles Oct 20 from the ECCC daily record.</p>
+<div class="card"><div class="cap">Rain so far · 4 of 7 days</div><div class="fig">14.2<span style="font-size:20px;color:var(--muted)"> / 25 mm</span></div>
+<div class="track"><div style="position:absolute;left:0;top:0;bottom:0;width:28.4%;background:var(--rain);border-radius:5px"></div><div class="strike"></div></div>
+<div class="axis"><span>0</span><b>Strike</b><span>50 mm</span></div></div>
+<div class="card" style="padding:4px 16px"><div class="kv" style="border:0"><span>Protected</span><span>100 SKYT</span></div><div class="kv"><span>Premium paid</span><span>18 SKYT</span></div><div class="kv"><span>Status</span><span class="pend">Observing</span></div><div class="kv"><span>Tx</span><span style="color:var(--rain)">4kQz…9fP2 ↗</span></div></div>
+<div class="btn btn2">View evidence package</div>
+<p class="cap" style="margin-top:20px;line-height:18px">Devnet test token. Not insurance. Data: Environment and Climate Change Canada, Open Government Licence – Canada.</p>
+</div><div class="tabs"><div>◎<br>Markets</div><div>▣<br>Protect</div><div class="on">◇<br>Wallet</div></div></div></div>
+</body></html>

@@ -51,3 +51,11 @@ No on-device or emulator visual check yet.
 - Trim the disclaimer copy into one disclosure per screen.
 - Weather chart labels.
 - Screenshots on device.
+
+## 2026-10-12 ~01:45 ET: Instrument revamp (overnight)
+- Skills applied: open-design-frontend-design, ui-ux-pro-max, impeccable-design-polish.
+- Direction is "Instrument": a calm, financial-terminal feel. Graphite canvas, one signal colour (glacier #5CC8FF for rain and primary action), gold #E8B04B only for money/payout, mint only for verified state. Purple and neon-mint CTAs removed.
+- Token radii are now 6/10/14. All App.tsx card radii are unified to 12 (16 to 22 before). Eyebrows are uppercase muted overlines.
+- New `PayoffProfile` (mobile/src/ui.tsx) on Protect shows the strike and the gold payout zone on a 0 to 2× scale.
+- Commit 497d409. tsc clean, mobile tests 47/47.
+- Mockup: docs/mockups/skyhedge-instrument-mockup.{html,png}, 3 screens (Markets, Protect ticket, Position). Proposed next step is to merge Weather into Markets for 3 tabs.
