@@ -150,7 +150,8 @@
   "overrides": {
     "rpc-websockets": {
       "uuid": "11.1.0"
-    }
+    },
+    "shell-quote": "1.11.0"
   },
   "description": "Devnet-only Solana rainfall protection",
   "packageManager": "npm@10.9.0"
