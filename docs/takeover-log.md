@@ -270,3 +270,8 @@ No transaction was approved, signed, or sent.
 - Skipped: "Get test SKYT" (no in-app SKYT faucet exists), Vancouver/Notify me, wallet name "Phantom" (MWA doesn't expose it without touching auth → generic "Review in wallet"), activity list (no data source), screenshots (no react-native-web).
 - Checks: mobile tests 65/65, server 163 passing, `tsc --noEmit` clean.
 - APK: `~/Documents/Codex/apk-backup/SkyHedge-ClockIn-a757214.apk`, SHA-256 `f13592e0ade8061a82b4e016be61e735b1f8106ad7710bca5136eac0b4ac3021`, versionCode 2, same debug cert (fac61745…). Not installed, not pushed.
+
+## 2026-10-12 ~17:25 ET: Protect screen declutter + labelled chips, APK (executor)
+- e5ca97a (on 4e10b3e): "Not ready to price yet" card hidden when reason is existing position/pending outcome (or a finalized tx with a position); replaced by muted "One protection per wallet per window." under You're protected. Feed/other reasons still show. Coverage chips now "50 SKYT / 100 SKYT / 250 SKYT / Max N SKYT" under "Coverage (paid if triggered)"; new "Rain trigger" section shows "Trigger ≥ N mm rain". No wallet/tx/guard logic changed.
+- Tests: mobile 67/67, tsc clean.
+- APK ~/Documents/Codex/apk-backup/SkyHedge-ClockIn-e5ca97a.apk, SHA-256 829aed88045031452dbc541e33eb57d710dc5a6d2a1333dee50979ed21f5544a, API base skyhedge.vercel.app. NOT installed, not pushed.
