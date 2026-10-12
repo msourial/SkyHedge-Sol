@@ -157,6 +157,16 @@ test("Markets is a map-led agricultural index explorer with truthful location-on
   await expect(page.locator('[data-testid^="market-index-option-"]')).toHaveCount(12);
 });
 
+test("Markets gives the selected reference location one enterprise next action", async ({ page }) => {
+  await page.goto("/?tab=markets&city=des-moines");
+
+  const brief = page.getByRole("region", { name: "Selected reference location" });
+  await expect(brief.getByText("Des Moines, Iowa, United States", { exact: true })).toBeVisible();
+  await expect(brief.getByText(/corn, soybeans/i)).toBeVisible();
+  await brief.getByRole("button", { name: "Review protection" }).click();
+  await expect(page).toHaveURL(/tab=protect&city=des-moines/);
+});
+
 test("the explorer uses the twelve catalog reference coordinates and accessible marker controls", async ({ page }) => {
   test.skip(!process.env.MAP_TEST_KEY, "Provide a test-only MapTiler key to exercise vector-map markers.");
   await page.goto("/?tab=markets&city=des-moines");
@@ -216,6 +226,15 @@ test("selecting an agricultural area from the explorer opens Protect and keeps t
 
   await expect(page).toHaveURL(/tab=protect&city=lubbock/);
   await expect(page.getByText("Lubbock, Texas, United States", { exact: true }).first()).toBeVisible();
+});
+
+test("Protect layers finalized verification behind an explicit disclosure", async ({ page }) => {
+  await page.goto("/?tab=protect&city=des-moines");
+
+  const verification = page.getByRole("group", { name: "Verification details" });
+  await verification.getByText("Verification details", { exact: true }).click();
+  await expect(verification.getByText("NOAA evidence", { exact: true })).toBeVisible();
+  await expect(verification.getByText("Collateral vault", { exact: true })).toBeVisible();
 });
 
 test("Leaflet renders the exact reference location and switches markets", async ({ page }) => {

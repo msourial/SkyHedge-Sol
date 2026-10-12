@@ -80,6 +80,27 @@
 .market-explorer__header p:not(.market-explorer__overline) { max-width: 44rem; margin: .75rem 0 0; color: var(--muted-foreground); font-size: 1rem; line-height: 1.55; }
 .market-explorer__overline { margin: 0; color: var(--identity); font-size: .8125rem; font-weight: 600; letter-spacing: 0; }
 .market-explorer__meta { display: flex; align-items: center; gap: .75rem; color: var(--muted-foreground); font-size: .875rem; white-space: nowrap; }
+.sky-page-header { border-bottom: 1px solid var(--border); padding: .25rem 0 1.25rem; }
+.market-selection-brief { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; border-bottom: 1px solid var(--border); padding: 0 0 1.25rem; }
+.market-selection-brief__eyebrow, .protection-brief__eyebrow { margin: 0; color: var(--faint); font-size: .8125rem; font-weight: 600; }
+.market-selection-brief h3 { margin: .35rem 0 0; font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; letter-spacing: -.015em; }
+.market-selection-brief p:not(.market-selection-brief__eyebrow) { margin: .35rem 0 0; color: var(--muted-foreground); font-size: .875rem; line-height: 1.5; }
+.market-selection-brief__action { display: flex; align-items: center; justify-content: flex-end; gap: .75rem; flex-wrap: wrap; }
+.protection-brief { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.5rem; border-bottom: 1px solid var(--border); padding: .25rem 0 1.5rem; }
+.protection-brief__heading h2 { margin: .35rem 0 0; font-size: clamp(1.75rem, 3vw, 2.5rem); line-height: 1.08; }
+.protection-brief__heading > p:not(.protection-brief__eyebrow) { margin: .45rem 0 0; color: var(--muted-foreground); font-size: .9375rem; }
+.protection-brief__facts { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--border); border: 1px solid var(--border); }
+.protection-brief__facts > div { min-width: 0; background: var(--surface-1); padding: .9rem 1rem; }
+.protection-brief__facts dt, .verification-panel dt { color: var(--faint); font-size: .75rem; font-weight: 600; }
+.protection-brief__facts dd { margin: .35rem 0 0; color: var(--foreground); font-size: .875rem; font-weight: 600; overflow-wrap: anywhere; }
+.verification-panel { margin-top: 1.5rem; border-top: 1px solid var(--border); }
+.verification-panel summary { display: flex; min-height: 48px; align-items: center; justify-content: space-between; gap: 1rem; color: var(--foreground); font-size: .875rem; font-weight: 600; list-style: none; }
+.verification-panel summary::-webkit-details-marker { display: none; }
+.verification-panel summary span:last-child { color: var(--faint); font-size: .75rem; font-weight: 500; }
+.verification-panel[open] summary { border-bottom: 1px solid var(--border); }
+.verification-panel dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--border); }
+.verification-panel dl > div { min-width: 0; background: var(--surface-2); padding: .875rem 1rem; }
+.verification-panel dd { margin: .35rem 0 0; color: var(--muted-foreground); font-size: .8125rem; line-height: 1.45; overflow-wrap: anywhere; }
 .market-workspace { position: relative; overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--surface-1); }
 .market-workspace > [aria-label="Agricultural index map"] { border: 0; border-radius: 0; box-shadow: none; }
 .market-workspace > [aria-label="Agricultural index map"] > div { height: clamp(31rem, 67vh, 46rem); }
@@ -145,6 +166,10 @@
   .market-workspace > [aria-label="Agricultural index map"] > div { height: 20rem; min-height: 20rem; }
   .market-location-dock { position: static; width: 100%; max-height: none; margin-top: 1rem; border-radius: 14px; background: var(--surface-1); backdrop-filter: none; }
   .market-location-list { max-height: 22rem; }
+  .market-selection-brief, .protection-brief { align-items: flex-start; flex-direction: column; gap: 1rem; }
+  .market-selection-brief__action { justify-content: flex-start; }
+  .protection-brief { display: flex; }
+  .protection-brief__facts { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .market-map-fallback { padding: 1.5rem; }
   .market-map-fallback__content { padding-left: 1.1rem; }
 }

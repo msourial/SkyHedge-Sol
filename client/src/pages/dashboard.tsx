@@ -142,9 +142,9 @@ export default function DashboardPage() {
   const page = (tab === "markets" || tab === "protect") && hazard !== "rainfall" ? RESEARCH_HAZARD_PAGE_COPY[hazard] : PAGE_COPY[tab];
   const researchHazardView = (tab === "markets" || tab === "protect") && hazard !== "rainfall";
   return <div className="grid min-w-0 gap-7 lg:grid-cols-[68px_minmax(0,1fr)]">
-    <aside className="hidden lg:block"><nav aria-label="Product sections" className="sticky top-24 flex w-[68px] flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-[var(--shadow-card)]">{TABS.map(({ id, label, icon: Icon }, index) => <button key={id} type="button" title={label} aria-label={label} onClick={() => switchTab(id)} className={cn("flex min-h-11 items-center justify-center rounded-lg text-sm font-medium transition-colors", index === TABS.length - 1 && "mt-3 border-t border-[var(--border)] pt-3", tab === id ? "bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]")}><Icon className="h-5 w-5" /><span className="sr-only">{label}</span></button>)}</nav></aside>
+    <aside className="hidden lg:block"><nav aria-label="Product sections" className="sticky top-24 flex w-[68px] flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-[var(--shadow-card)]">{TABS.map(({ id, label, icon: Icon }, index) => <button key={id} type="button" title={label} aria-label={label} aria-current={tab === id ? "page" : undefined} onClick={() => switchTab(id)} className={cn("flex min-h-11 items-center justify-center rounded-lg text-sm font-medium transition-colors", index === TABS.length - 1 && "mt-3 border-t border-[var(--border)] pt-3", tab === id ? "bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]")}><Icon className="h-5 w-5" /><span className="sr-only">{label}</span></button>)}</nav></aside>
     <div className="min-w-0 space-y-6">
-      <header className="border-b border-[var(--border)] pb-5"><Pill tone={tab === "builders" ? "slate" : researchHazardView ? "amber" : "cyan"}>{tab === "builders" ? "Technical workspace" : researchHazardView ? "Research-only hazard" : "NOAA-settled protection"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></header>
+      <header className="sky-page-header"><Pill tone={tab === "builders" ? "slate" : researchHazardView ? "amber" : "cyan"}>{tab === "builders" ? "Technical workspace" : researchHazardView ? "Research-only hazard" : "NOAA-settled protection"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></header>
       {tab === "markets" && <Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} selectedSlug={marketId} status={devnetStatus.data} />}
       {tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") { setQuoteActive(true); setQuoteRequest((count) => count + 1); } }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" && quoteActive ? quoteQuery.error : undefined} />}
       {tab === "liquidity" && <Liquidity />}
@@ -473,6 +473,14 @@ function Markets({ hazard, setHazard, onSelect, selectedSlug, status }: { hazard
 
   if (hazard !== "rainfall") return <section className="space-y-4"><HazardSelector value={hazard} onChange={setHazard} /><ResearchOnlyHazard hazard={hazard} /></section>;
 
+  const selectedMarket = MARKETS.find((market) => market.id === selectedSlug)!;
+  const selectedEvidence = getEvidenceStatus(agriculturalMarketBySlug(selectedSlug)!);
+  const selectedState = selectedSlug === "des-moines" && isOpenDesMoinesMarket(status) && selectedEvidence === "validated"
+    ? { label: "Ready for Devnet test", tone: "green" as const }
+    : selectedSlug === "des-moines"
+      ? { label: "Market not open", tone: "slate" as const }
+      : { label: "Researching NOAA evidence", tone: "amber" as const };
+
   const selectDropdownOption = (index: number) => {
     const option = dropdownOptions[index];
     if (!option) return;
@@ -500,6 +508,15 @@ function Markets({ hazard, setHazard, onSelect, selectedSlug, status }: { hazard
       </div>
       <div className="market-explorer__meta"><span>{results.length} areas</span><Pill tone="amber">Test environment</Pill></div>
     </header>
+
+    <section className="market-selection-brief" aria-label="Selected reference location">
+      <div>
+        <p className="market-selection-brief__eyebrow">Selected reference location</p>
+        <h3>{selectedMarket.location}</h3>
+        <p>{selectedMarket.context} · {selectedMarket.crops.join(", ")}</p>
+      </div>
+      <div className="market-selection-brief__action"><Pill tone={selectedState.tone}>{selectedState.label}</Pill><button type="button" className="sky-btn-primary" onClick={() => onSelect(selectedSlug)}>Review protection</button></div>
+    </section>
 
     <div className="market-workspace">
       <AgriculturalMarketExplorerMap markets={mapMarkets} selectedSlug={selectedSlug} getEvidenceStatus={getEvidenceStatus} onSelect={onSelect} onSelectFromList={() => document.getElementById("market-search")?.focus()} />
@@ -562,6 +579,7 @@ function Protect(props: { hazard: Hazard; setHazard: (value: Hazard) => void; ma
     && committedMarket?.premiumRateBps === props.quote.premiumRateBps);
   const canPurchase = props.valid && quoteMatchesCurrentRequest && Boolean(wallet.publicKey) && Boolean(committedMarket?.address);
   const reason = !evidenceReady ? "A final NOAA station package is not available yet." : !marketReady ? "The Des Moines test market has not been seeded and opened on finalized Devnet yet." : !wallet.publicKey ? "Connect a Devnet Phantom or Solflare wallet to continue." : !props.amountBase || BigInt(props.amountBase) > TESTER_PROTECTION_CAP_BASE ? "Open testers can protect up to 500 SKYT per wallet." : "Request a NOAA-backed quote before approving the Devnet transaction.";
+  const briefState = !evidenceReady ? { label: "Researching NOAA evidence", tone: "amber" as const } : !marketReady ? { label: "Market not open", tone: "slate" as const } : { label: "Ready for Devnet test", tone: "green" as const };
   const approveProtection = async () => {
     if (props.hazard !== "rainfall") return;
     if (!wallet.publicKey || !props.status?.desMoinesMarket.address || !props.amountBase || !props.quote) return;
@@ -577,12 +595,15 @@ function Protect(props: { hazard: Hazard; setHazard: (value: Hazard) => void; ma
   if (props.hazard !== "rainfall") return <section className="space-y-4"><HazardSelector value={props.hazard} onChange={props.setHazard} /><ResearchOnlyHazard hazard={props.hazard} /></section>;
   return <div className="space-y-4">
     <HazardSelector value={props.hazard} onChange={props.setHazard} />
+    <section className="protection-brief" aria-label="Protection brief">
+      <div className="protection-brief__heading"><p className="protection-brief__eyebrow">Protection brief</p><h2 className="sky-display">{market.city} agricultural index</h2><p>{market.location}</p></div>
+      <Pill tone={briefState.tone}>{briefState.label}</Pill>
+      <dl className="protection-brief__facts"><div><dt>Hazard</dt><dd>Rainfall</dd></div><div><dt>{props.windowLocked ? "Observation window" : "Proposed window"}</dt><dd>{props.start} → {props.end}</dd></div><div><dt>{props.windowLocked ? "Trigger" : "Proposed trigger"}</dt><dd>{hasThreshold ? `${props.operator === "gte" ? "At or above" : "At or below"} ${thresholdMm} mm` : "Set a rainfall threshold"}</dd></div><div><dt>Settlement source</dt><dd>NOAA only</dd></div></dl>
+    </section>
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
     <section className="sky-hero-card">
-      <SectionLabel className="text-[var(--identity)]">{market.city} agricultural index</SectionLabel>
-      <p className="mt-1 text-sm text-[var(--muted-foreground)]">{market.location}</p>
-      <div className="mt-5"><AgriculturalAreaMap market={agriculturalMarketBySlug(props.marketId)!} status={evidenceReady ? "validated" : market.evidenceStatus} /></div>
-      <h2 className="sky-display mt-2 text-2xl font-semibold">Measure rainfall, protect crop exposure.</h2>
+      <div><AgriculturalAreaMap market={agriculturalMarketBySlug(props.marketId)!} status={evidenceReady ? "validated" : market.evidenceStatus} /></div>
+      <h3 className="sky-display mt-5 text-2xl font-semibold">Measure rainfall, protect crop exposure.</h3>
       <p className="mt-2 max-w-xl text-sm text-[var(--muted-foreground)]">This index measures cumulative liquid rainfall. {hasThreshold ? `${thresholdMm} mm equals ${millimetersToInches(thresholdMm)} in.` : "Millimetres are canonical; inches are a display conversion."}</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field label="Protection amount (USD preview)"><input className="sky-input" inputMode="decimal" value={props.amount} onChange={(event) => props.setAmount(event.target.value)} /></Field>
@@ -595,6 +616,7 @@ function Protect(props: { hazard: Hazard; setHazard: (value: Hazard) => void; ma
       <div className="mt-6 flex flex-wrap gap-3"><button disabled={!props.valid || props.loading} className="sky-btn-secondary min-h-11 px-4" onClick={props.requestQuote}>{props.loading ? "Pricing from NOAA…" : "Request NOAA quote"}</button><button disabled={!canPurchase || transaction.state === "preparing"} aria-describedby={!canPurchase ? "protection-unavailable-reason" : undefined} className="sky-btn-primary min-h-11 px-4" onClick={() => void approveProtection()}>{transaction.state === "preparing" ? "Awaiting wallet…" : "Approve Devnet protection"}</button></div>
       {!canPurchase && <p id="protection-unavailable-reason" className="mt-3 text-xs text-[var(--muted-foreground)]">{reason}</p>}
       {transaction.state !== "idle" && <p role={transaction.state === "error" ? "alert" : "status"} className={cn("mt-4 border p-3 text-sm", transaction.state === "error" ? "border-[var(--destructive)]/50 text-[var(--destructive-foreground)]" : "border-[var(--success)]/50 text-[var(--success)]")}>{transaction.message}{transaction.signature && <> <a className="underline" href={explorerTx(transaction.signature)} target="_blank" rel="noreferrer">View finalized transaction</a></>}</p>}
+      <details className="verification-panel" aria-label="Verification details"><summary><span>Verification details</span><span>Finalized Devnet checks</span></summary><dl><div><dt>NOAA evidence</dt><dd>{evidenceReady ? "Validated for this finalized market." : "No finalized evidence package is available."}</dd></div><div><dt>Market state</dt><dd>{marketReady ? "Open on finalized Devnet." : "Not open on finalized Devnet."}</dd></div><div><dt>Collateral vault</dt><dd>{committedMarket?.vaultBalance ? `${skytDisplay(committedMarket.vaultBalance)} SKYT` : "Unavailable"}</dd></div><div><dt>Program and IDL</dt><dd>{props.status?.program.executable && props.status.idl.status === "ready" ? "Finalized program and committed IDL available." : "Program or IDL unavailable."}</dd></div></dl></details>
     </section>
     <div className="space-y-5"><OracleSettlementPanel marketAddress={props.marketId === "des-moines" ? props.status?.desMoinesMarket.address ?? null : null} /><QuotePanel quote={props.quote} error={props.error} /></div>
     </div>
