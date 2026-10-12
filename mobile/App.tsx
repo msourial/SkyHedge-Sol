@@ -707,6 +707,14 @@ function ProtectScreen(props: {
           detail={props.marketLocation ? `${props.marketLocation.locality}, ${props.marketLocation.administrativeArea}, ${props.marketLocation.country}` : "Location evidence is not available in this mobile data feed."}
           action={<StatusPill label={isPilot ? (marketOpen ? "Open" : formatOnchainMarketStatus(market?.onchainStatus ?? null)) : "Research"} tone={marketOpen ? "ready" : "pending"} />}
         />
+        <View style={styles.stepperWrap}>
+          <EvidenceTimeline steps={[
+        { label: "Evidence", ready: evidenceReady },
+        { label: "Quote", ready: Boolean(props.quote) },
+        { label: "Wallet", ready: props.transactionBusy },
+        { label: "Proof", ready: Boolean(props.transactionSignature) },
+      ]} />
+        </View>
         <View style={styles.sourceLine}>
           <AppIcon name="database" color={evidenceReady ? C.blue : C.amber} size={17} />
           <Text style={styles.sourceText}>{evidenceReady ? `NOAA station package ready${props.status?.noaaEvidence.package?.stationId ? ` · ${props.status.noaaEvidence.package.stationId}` : ""}` : market?.evidenceStatus === "validated" ? "Pinned NOAA package temporarily unavailable" : "NOAA station validation pending"}</Text>
@@ -775,12 +783,6 @@ function ProtectScreen(props: {
         {props.transactionSignature ? <Reveal><View style={styles.signatureCard}><View style={styles.proofHeading}><AppIcon name="check-circle" color={C.green} size={23} /><Text style={styles.signatureTitle}>Finalized on Solana Devnet</Text></View><Text style={styles.signatureText}>{props.transactionSignature}</Text><ExplorerLink signature={props.transactionSignature} /></View></Reveal> : null}
       </View>
 
-      <EvidenceTimeline steps={[
-        { label: "Evidence", ready: evidenceReady },
-        { label: "Quote", ready: Boolean(props.quote) },
-        { label: "Wallet", ready: props.transactionBusy },
-        { label: "Proof", ready: Boolean(props.transactionSignature) },
-      ]} />
 
       <View style={styles.verificationCard}>
         <Pressable accessibilityRole="button" accessibilityState={{ expanded: verificationOpen }} accessibilityLabel={`Verification details, ${readyChecks} of ${checks.length} checks verified`} onPress={() => setVerificationOpen((open) => !open)} style={styles.verificationButton}>
@@ -840,15 +842,11 @@ function WalletScreen({
         {walletError ? <View accessibilityRole="alert" style={styles.walletAlert}><Text style={styles.errorTitle}>Wallet not connected</Text><Text style={styles.errorBody}>{walletError}</Text></View> : null}
         <Text style={styles.walletTitle}>{wallet ? "Wallet connected" : "Connect a Devnet wallet"}</Text>
         <Text style={styles.walletAddress}>{wallet ? shorten(wallet) : "No account shared"}</Text>
-        {wallet ? (
-          <Pressable accessibilityRole="button" onPress={onDisconnect} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Disconnect</Text>
-          </Pressable>
-        ) : (
-          <Pressable accessibilityRole="button" disabled={loading} onPress={onConnect} style={[styles.primaryButton, loading && styles.disabledButton]}>
-            {loading ? <ActivityIndicator color={C.white} /> : <Text style={styles.primaryButtonText}>Connect wallet</Text>}
-          </Pressable>
-        )}
+        <View style={styles.walletActionWrap}>
+          {wallet
+            ? <ActionButton variant="secondary" label="Disconnect" icon="log-out" onPress={onDisconnect} />
+            : <ActionButton label="Connect wallet" icon="credit-card" busy={loading} onPress={onConnect} />}
+        </View>
         <Text style={styles.walletHint}>Your wallet asks before sharing its public address. SkyHedge uses it only to read Devnet balances and indexed positions.</Text>
       </LiquidGlassSurface>
 
@@ -944,7 +942,7 @@ const styles = StyleSheet.create({
   brandMark: { width: 38, height: 38, borderRadius: 12, backgroundColor: C.rainSoft, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" },
   brandCopy: { marginLeft: 10, flex: 1 },
   brand: { color: C.ink, fontFamily: F.headingBold, fontSize: 18, letterSpacing: -0.4 },
-  brandSub: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 10, marginTop: 1 },
+  brandSub: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 12, marginTop: 1 },
   scrollContent: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 18, paddingTop: 18, paddingBottom: 32 },
   screenLead: { marginBottom: 18 },
   kicker: { color: C.purple, fontFamily: F.bodySemi, fontSize: 12, marginBottom: 5 },
@@ -975,7 +973,7 @@ const styles = StyleSheet.create({
   heroPlace: { color: C.white, fontFamily: F.headingBold, fontSize: 22, marginTop: 6 },
   heroSub: { color: C.muted, fontSize: 12, marginTop: 5 },
   indexBadge: { backgroundColor: C.greenSoft, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 7 },
-  indexBadgeText: { color: C.green, fontFamily: F.bodySemi, fontSize: 11 },
+  indexBadgeText: { color: C.green, fontFamily: F.bodySemi, fontSize: 12 },
   indexBadgeUnavailable: { backgroundColor: C.amberSoft },
   indexBadgeUnavailableText: { color: C.amber },
   rainValueRow: { flexDirection: "row", alignItems: "baseline", marginTop: 18 },
@@ -983,22 +981,22 @@ const styles = StyleSheet.create({
   rainUnit: { color: C.muted, fontSize: 18, marginLeft: 8 },
   rainCaption: { color: C.muted, fontSize: 13, lineHeight: 20, marginTop: 2 },
   windowRow: { borderTopWidth: 1, borderTopColor: C.border, marginTop: 18, paddingTop: 13, flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 8 },
-  windowLabel: { color: C.quiet, fontSize: 11 },
-  windowDates: { color: C.white, fontFamily: F.bodySemi, fontSize: 11 },
+  windowLabel: { color: C.quiet, fontSize: 12 },
+  windowDates: { color: C.white, fontFamily: F.bodySemi, fontSize: 12 },
   sectionHeader: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: 5, marginTop: 23, marginBottom: 11 },
   sectionTitle: { color: C.ink, fontFamily: F.heading, fontSize: 19 },
-  sectionMeta: { color: C.quiet, fontSize: 11 },
+  sectionMeta: { color: C.quiet, fontSize: 12 },
   chartCard: { flexDirection: "row", minHeight: 150, alignItems: "stretch", justifyContent: "space-between", gap: 7, backgroundColor: C.canvas, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.border, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 12 },
   loadingPanel: { minHeight: 110, alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 17, padding: 18, marginBottom: 14 },
   barColumn: { flex: 1, alignItems: "center", justifyContent: "flex-end" },
-  barValue: { color: C.muted, fontSize: 10, marginBottom: 5, fontVariant: ["tabular-nums"] },
+  barValue: { color: C.muted, fontSize: 12, marginBottom: 5, fontVariant: ["tabular-nums"] },
   barTrack: { flex: 1, width: 19, maxHeight: 85, justifyContent: "flex-end", backgroundColor: C.mutedSurface, borderRadius: 8, overflow: "hidden" },
   barFill: { width: "100%", backgroundColor: C.blue, borderRadius: 8 },
   barUnknown: { width: "100%", height: 2, backgroundColor: C.border, marginTop: "auto" },
-  barDate: { color: C.quiet, fontSize: 10, marginTop: 5 },
+  barDate: { color: C.quiet, fontSize: 12, marginTop: 5 },
   emptyText: { color: C.muted, fontSize: 13, lineHeight: 20 },
   noteCard: { backgroundColor: C.canvas, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border, paddingVertical: 17, marginTop: 17 },
-  noteEyebrow: { color: C.blue, fontFamily: F.bodySemi, fontSize: 11, marginBottom: 5 },
+  noteEyebrow: { color: C.blue, fontFamily: F.bodySemi, fontSize: 12, marginBottom: 5 },
   noteTitle: { color: C.ink, fontFamily: F.heading, fontSize: 16 },
   noteBody: { color: C.muted, fontSize: 12, lineHeight: 19, marginTop: 5 },
   secondaryAction: { minHeight: 72, justifyContent: "center", backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 15, paddingHorizontal: 15, paddingVertical: 12, marginTop: 13 },
@@ -1037,10 +1035,10 @@ const styles = StyleSheet.create({
   marketName: { color: C.ink, fontFamily: F.heading, fontSize: 15, lineHeight: 20 },
   marketPlace: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 3 },
   researchPill: { paddingHorizontal: 9, paddingVertical: 6, backgroundColor: C.amberSoft, borderRadius: 20 },
-  researchPillText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 11 },
+  researchPillText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 12 },
   marketContext: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 10, marginLeft: 50 },
-  marketCrops: { color: C.muted, fontFamily: F.bodyMedium, fontSize: 11, marginTop: 8, textTransform: "capitalize" },
-  marketFoot: { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 10, marginTop: 11, color: C.muted, fontSize: 11, lineHeight: 17 },
+  marketCrops: { color: C.muted, fontFamily: F.bodyMedium, fontSize: 12, marginTop: 8, textTransform: "capitalize" },
+  marketFoot: { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 10, marginTop: 11, color: C.muted, fontSize: 12, lineHeight: 17 },
   hazardRail: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 13 },
   hazardChip: { minHeight: 48, paddingHorizontal: 14, justifyContent: "center", borderWidth: 1, borderColor: C.border, borderRadius: 16, backgroundColor: C.surface },
   hazardChipSelected: { borderColor: C.purple, backgroundColor: C.purpleSoft },
@@ -1051,21 +1049,22 @@ const styles = StyleSheet.create({
   miniHistoryTitle: { color: C.ink, fontFamily: F.bodySemi, fontSize: 13, marginBottom: 10 },
   miniChart: { flexDirection: "row", minHeight: 120, justifyContent: "space-between", gap: 6 },
   miniBarTrack: { maxHeight: 72, width: 22 },
-  miniHistoryNote: { color: C.quiet, fontSize: 11, lineHeight: 17, marginTop: 8 },
+  miniHistoryNote: { color: C.quiet, fontSize: 12, lineHeight: 17, marginTop: 8 },
   hazardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 },
   hazardTitle: { color: C.ink, fontFamily: F.heading, fontSize: 17 },
   hazardNote: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 7 },
-  hazardBlocked: { color: C.amber, fontFamily: F.bodySemi, fontSize: 11, marginTop: 9 },
+  hazardBlocked: { color: C.amber, fontFamily: F.bodySemi, fontSize: 12, marginTop: 9 },
   walletCard: { marginTop: 4 },
   walletCardContent: { alignItems: "flex-start", padding: 20 },
   walletOrb: { width: 52, height: 52, borderRadius: 16, backgroundColor: C.purpleSoft, justifyContent: "center", alignItems: "center" },
   walletTitle: { color: C.ink, fontFamily: F.heading, fontSize: 20 },
-  walletAddress: { color: C.muted, fontSize: 12, marginTop: 5, fontVariant: ["tabular-nums"] },
+  walletAddress: { color: C.ink, fontFamily: F.mono, fontSize: 14, marginTop: 6 },
   primaryButton: { minHeight: 52, width: "100%", alignItems: "center", justifyContent: "center", backgroundColor: C.green, borderRadius: 14, marginTop: 18 },
   primaryButtonText: { color: C.actionText, fontFamily: F.bodyBold, fontSize: 14 },
   disabledButton: { opacity: 0.65 },
   secondaryButton: { minHeight: 48, minWidth: 150, alignItems: "center", justifyContent: "center", borderColor: C.border, borderWidth: 1, borderRadius: 13, marginTop: 18 },
   secondaryButtonText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 13 },
+  walletActionWrap: { width: "100%", marginTop: 18 },
   walletHint: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 14 },
   portfolioCard: { backgroundColor: C.canvas, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border, paddingVertical: 14, marginTop: 16 },
   evidenceStep: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 9, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border, paddingVertical: 9 },
@@ -1073,7 +1072,7 @@ const styles = StyleSheet.create({
   evidenceDotReady: { backgroundColor: C.green },
   evidenceDotPending: { backgroundColor: C.amber },
   evidenceStepText: { color: C.ink, fontSize: 12, flex: 1 },
-  evidenceStepState: { fontFamily: F.bodySemi, fontSize: 11 },
+  evidenceStepState: { fontFamily: F.bodySemi, fontSize: 12 },
   readyText: { color: C.green },
   pendingText: { color: C.amber },
   protectCard: { backgroundColor: C.canvas, paddingTop: 4, paddingBottom: 12 },
@@ -1081,20 +1080,21 @@ const styles = StyleSheet.create({
   heroLabelLight: { color: C.purple, fontFamily: F.bodySemi, fontSize: 12 },
   protectPlace: { color: C.ink, fontFamily: F.headingBold, fontSize: 23, lineHeight: 28, marginTop: 4 },
   protectLocation: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  stepperWrap: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, marginBottom: 16 },
   sourceLine: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 },
   sourceText: { color: C.muted, fontSize: 12, lineHeight: 17, flex: 1 },
-  triggerPanel: { backgroundColor: C.surfaceRaised, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border, borderRadius: 14, padding: 16, marginBottom: 20 },
-  triggerLabel: { color: C.muted, fontSize: 11, marginBottom: 3 },
-  triggerValue: { color: C.white, fontFamily: F.heading, fontSize: 17, lineHeight: 22 },
-  triggerWindow: { color: C.muted, fontSize: 11, marginTop: 5 },
+  triggerPanel: { backgroundColor: C.surfaceRaised, borderWidth: 1, borderColor: C.border, borderLeftWidth: 3, borderLeftColor: C.rain, borderRadius: 12, padding: 16, marginBottom: 24 },
+  triggerLabel: { color: C.rain, fontFamily: F.bodySemi, fontSize: 12, letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 6 },
+  triggerValue: { color: C.white, fontFamily: F.headingBold, fontSize: 22, lineHeight: 28, fontVariant: ["tabular-nums"] },
+  triggerWindow: { color: C.muted, fontSize: 12, marginTop: 5 },
   protectBlocked: { color: C.amber, backgroundColor: C.amberSoft, borderRadius: 12, padding: 12, fontSize: 12, lineHeight: 18, marginBottom: 16 },
   amountHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 },
   inputLabel: { color: C.ink, fontFamily: F.bodySemi, fontSize: 13 },
-  amountUnit: { color: C.quiet, fontSize: 11 },
-  amountInput: { minHeight: 52, borderWidth: 1, borderColor: C.border, borderRadius: 13, backgroundColor: C.canvas, color: C.ink, paddingHorizontal: 14, fontFamily: F.heading, fontSize: 20, fontVariant: ["tabular-nums"] },
-  inputHint: { color: C.muted, fontSize: 11, lineHeight: 17, marginTop: 6 },
+  amountUnit: { color: C.quiet, fontSize: 12 },
+  amountInput: { minHeight: 56, borderWidth: 1, borderColor: C.border, borderRadius: 13, backgroundColor: C.canvas, color: C.ink, paddingHorizontal: 14, fontFamily: F.heading, fontSize: 20, fontVariant: ["tabular-nums"] },
+  inputHint: { color: C.muted, fontSize: 12, lineHeight: 17, marginTop: 6 },
   actionWrap: { marginTop: 16 },
-  testDisclosure: { color: C.quiet, fontSize: 11, textAlign: "center", marginTop: 10 },
+  testDisclosure: { color: C.quiet, fontSize: 12, textAlign: "center", marginTop: 10 },
   previewBlocker: { color: C.amber, fontFamily: F.bodyMedium, fontSize: 13, lineHeight: 19, marginTop: 12 },
   modeBack: { minHeight: 48, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 4, paddingRight: 12 },
   modeBackText: { color: C.blue, fontFamily: F.bodySemi, fontSize: 13 },
@@ -1104,11 +1104,11 @@ const styles = StyleSheet.create({
   quoteCardContent: { padding: 13 },
   quoteHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
   quoteTitle: { color: C.ink, fontFamily: F.heading, fontSize: 16 },
-  quoteWarning: { color: C.amber, fontSize: 11, lineHeight: 17, marginTop: 11 },
+  quoteWarning: { color: C.amber, fontSize: 12, lineHeight: 17, marginTop: 11 },
   blockedNotice: { backgroundColor: C.amberSoft, borderRadius: 12, padding: 12, marginTop: 14, flexDirection: "row", alignItems: "flex-start", gap: 10 },
   blockedCopy: { flex: 1 },
   blockedTitle: { color: C.amber, fontFamily: F.bodySemi, fontSize: 12 },
-  blockedBody: { color: C.ink, fontSize: 11, lineHeight: 17, marginTop: 4 },
+  blockedBody: { color: C.ink, fontSize: 12, lineHeight: 17, marginTop: 4 },
   inlineRetry: { minHeight: 44, alignSelf: "flex-start", justifyContent: "center", marginTop: 5, paddingRight: 8 },
   inlineRetryText: { color: C.blue, fontFamily: F.bodySemi, fontSize: 12 },
   actionError: { backgroundColor: C.redSoft, borderColor: C.red, borderWidth: 1, borderRadius: 11, padding: 12, marginTop: 12 },
@@ -1116,24 +1116,24 @@ const styles = StyleSheet.create({
   signatureCard: { backgroundColor: C.greenSoft, borderColor: C.green, borderWidth: 1, borderRadius: 12, padding: 14, marginTop: 16 },
   proofHeading: { flexDirection: "row", alignItems: "center", gap: 9 },
   signatureTitle: { color: C.green, fontFamily: F.heading, fontSize: 15 },
-  signatureText: { color: C.muted, fontSize: 10, lineHeight: 16, marginTop: 8, fontVariant: ["tabular-nums"] },
+  signatureText: { color: C.muted, fontSize: 12, lineHeight: 16, marginTop: 8, fontVariant: ["tabular-nums"] },
   explorerLink: { minHeight: 48, alignSelf: "flex-start", justifyContent: "center", paddingRight: 7 },
   explorerLinkText: { color: C.blue, fontFamily: F.bodySemi, fontSize: 12, textDecorationLine: "underline" },
   verificationCard: { backgroundColor: C.canvas, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border, marginTop: 19 },
   verificationButton: { minHeight: 66, flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 15 },
   verificationText: { flex: 1 },
   verificationTitle: { color: C.ink, fontFamily: F.bodySemi, fontSize: 13 },
-  verificationSummary: { color: C.muted, fontSize: 11, marginTop: 3 },
+  verificationSummary: { color: C.muted, fontSize: 12, marginTop: 3 },
   verificationBody: { paddingHorizontal: 15, paddingBottom: 9 },
   claimReason: { color: C.muted, fontSize: 12, lineHeight: 18 },
   metricRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 10, borderTopWidth: 1, borderTopColor: C.border, paddingVertical: 12 },
   metricLabel: { color: C.muted, fontSize: 12, flex: 1 },
   metricValue: { color: C.ink, fontFamily: F.bodySemi, fontSize: 12, maxWidth: "58%", textAlign: "right", fontVariant: ["tabular-nums"] },
-  portfolioFoot: { color: C.muted, fontSize: 11, lineHeight: 16, marginTop: 4 },
+  portfolioFoot: { color: C.muted, fontSize: 12, lineHeight: 16, marginTop: 4 },
   errorBanner: { backgroundColor: C.redSoft, borderWidth: 1, borderColor: C.red, borderRadius: 15, padding: 14, marginBottom: 18 },
   errorTitle: { color: C.red, fontFamily: F.bodySemi, fontSize: 13 },
   errorBody: { color: C.ink, fontSize: 12, lineHeight: 18, marginTop: 4 },
-  errorFoot: { color: C.muted, fontSize: 11, lineHeight: 16, marginTop: 6 },
+  errorFoot: { color: C.muted, fontSize: 12, lineHeight: 16, marginTop: 6 },
   errorActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 },
   retryButton: { minHeight: 48, justifyContent: "center", paddingHorizontal: 12, borderRadius: 12, backgroundColor: C.surface, borderColor: C.border, borderWidth: 1 },
   retryButtonText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 12 },
@@ -1147,6 +1147,6 @@ const styles = StyleSheet.create({
   tabButtonWrap: { flex: 1, minWidth: 0 },
   tabButton: { flex: 1, minWidth: 0, minHeight: 58, alignItems: "center", justifyContent: "center", borderRadius: 14, paddingHorizontal: 2 },
   tabButtonSelected: { backgroundColor: C.mintSoft },
-  tabLabel: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 11, marginTop: 5 },
+  tabLabel: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 12, marginTop: 5 },
   tabLabelSelected: { color: C.green, fontFamily: F.bodySemi },
 });
