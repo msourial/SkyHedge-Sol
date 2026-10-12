@@ -209,3 +209,24 @@ No transaction was approved, signed, or sent.
   - `/api/mobile?resource=claim-readiness&market=9UUN…JqVJ&wallet=DKA9…FD6y` returns 200 application/json (`state: no_position`).
   - `/api/devnet/status` returns 200 JSON.
 - Not done: no transactions signed, no git push. The production deploy now runs code that is not on GitHub.
+
+## Owner console: cancel button, second redeploy (2026-10-12 01:38 ET)
+- **Root cause of "dimmed/unresponsive":**
+  1. `.sky-btn-secondary` was never defined in client/src/index.css. The live CSS index-Bbk-p-AY.css had 0 matches, so "Approve cancel empty Draft" rendered as plain text.
+  2. The seed button was *intentionally* disabled while market 0 was an expired Draft (label "Cancel expired empty Draft first"), and disabled buttons render at opacity .55.
+  3. The cancel and approve flows read the public Devnet RPC (`getAccountInfo`, `getLatestBlockhash`) with no timeout, so a slow phone RPC could leave the button stuck with no error.
+  - The deployed JS already contained the protocolInitialized fix. Server status had protocol.initialized=true/ready.
+- **88507eb:**
+  - defines `.sky-btn-secondary` (warning-outlined, visible, with a disabled state)
+  - 10 s timeouts on the cancel protocol read and the approve blockhash read, so errors show instead of hanging
+  - an owner-console debug line: wallet adapter, owner, clientInit, serverInit, protocolInitialized, busy, market state, expired, canCancel, seedMode, RPC host
+  - tsc clean, build:site OK, test:server 156, mobile 44/0
+- **Miro cancelled market 0 on-chain.** Live status: market 0 `{"Cancelled":{}}`, nextMarketId 1, NOAA ready, quoteTerms valid.
+  - I ran the shared logic against live status: `marketStateFromStatusJson` gives cancelled, `isValidImmutableMarketPricingTerms` gives true, `desMoinesSeedActionMode` gives **fresh**.
+  - The seed button is enabled with the label "Approve Des Moines seed" (priorDraftExpired is false because the status no longer contains "Draft").
+  - `desMoinesSeedTransactions` treats cancelled as terminal, so it prepares create (id 1), fund 2,000 SKYT, open.
+- **Deploy:** `npx vercel --prod --yes` of 88507eb. The shell was interrupted, but the upload had completed and Vercel finished the build.
+  - https://skyhedge-diirrb672-msourials-projects.vercel.app, Production, Ready, aliased to skyhedge.vercel.app.
+  - Verified: live CSS has sky-btn-secondary, JS has owner-debug, /api/devnet/status 200, claim-readiness 200 JSON.
+  - This went live around 1:38 AM ET, after the steering note asked not to redeploy mid-seed. It doesn't change seed logic, and an already-open page keeps its loaded JS.
+- No transactions signed, no push.
