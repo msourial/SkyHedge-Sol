@@ -22,3 +22,19 @@ export function stationLabel(id: string | null | undefined): string {
   if (/6158731/.test(id)) return "Toronto Pearson";
   return "Official weather station";
 }
+
+/** Short, user-facing title for a failed wallet/transaction step. */
+export function transactionErrorTitle(message: string | null | undefined, walletName = "Your wallet"): string {
+  if (!message) return "That didn't go through — try again";
+  if (/user rejected|declined|cancell?ed|not approved|authorization request failed|auth/i.test(message)) return `${walletName} didn't approve — try again`;
+  if (isNetworkError(message)) return "You're offline — reconnect and try again";
+  if (/insufficient/i.test(message)) return "Not enough SKYT or SOL";
+  if (/finaliz|confirm/i.test(message)) return "Not confirmed on Solana yet — check Explorer or retry";
+  return "That didn't go through — try again";
+}
+
+/** Short, user-facing title for a failed quote. */
+export function quoteErrorTitle(message: string | null | undefined): string {
+  if (isNetworkError(message)) return "Can't get a price offline — retry when connected";
+  return "Couldn't price this coverage — try again";
+}
