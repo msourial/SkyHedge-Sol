@@ -73,3 +73,14 @@ Playwright UI tests were not run.
 | Review the Align draft and make the final submission | Miro |
 | Fill placeholders, push `clock-in-final` to `codex/clock-in-mobile`, optionally fast-forward `main`, and create GitHub prerelease `clock-in-2026-10-12` with the APK and SHA | Grok Bot, after Miro approves |
 | On-chain Devnet market actions (cancel/create/fund/open) | Miro's call; on hold |
+
+## Redesign merge (2026-10-12 01:12 ET)
+- Worktree: `SkyHedge-clock-in-redesign`. Branch `clock-in-submission` was created from `clock-in-redesign` @ 8331042, then `git merge --no-ff clock-in-final` (@ f178561) was run, giving merge commit d44e172.
+- Redesign commits included: 5bd6316, 4a94fcc, 13a534b, 7605984, 20c32e7, 192f645, 2cb9a6d, 116389b, 8331042 (details in docs/redesign-log.md).
+- Conflicts: none. clock-in-final changed only README.md, docs/clock-in-readiness.md and docs/takeover-log.md. The redesign changed only mobile/ and docs/redesign-log.md.
+- Tests on the merged tree:
+  - `mobile: npm run check` is clean.
+  - `mobile: npm run test:mobile` is 37 pass / 0 fail.
+  - `npm run test:server` is 151 passing. It used node_modules symlinked from the main clone, an uncommitted link.
+  - No server/shared/api code differs from clock-in-final.
+- Not done: no push, no APK build or install, no adb device touched. If clock-in-final gets more commits, re-merge them into clock-in-submission.
