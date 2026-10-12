@@ -1,6 +1,24 @@
 import { Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 
 export const DEVNET_RPC_URL = process.env.EXPO_PUBLIC_SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
+/** Direct Solana RPC endpoints, tried in order; none depend on the SkyHedge (Vercel) host. */
+export const DEVNET_RPC_URLS = Array.from(new Set([DEVNET_RPC_URL, "https://api.devnet.solana.com", "https://solana-devnet.api.onfinality.io/public"]));
+
+/** Try each RPC endpoint (each with its own timeout) before giving up. */
+export async function readFinalizedWalletStateAnyRpc(walletAddress: string, deps: { urls?: string[]; read?: (address: string, url: string) => Promise<FinalizedWalletState>; timeoutMs?: number } = {}): Promise<FinalizedWalletState> {
+  const urls = deps.urls ?? DEVNET_RPC_URLS;
+  const read = deps.read ?? ((a: string, url: string) => readFinalizedWalletState(a, new Connection(url, "finalized")));
+  let last: unknown;
+  for (const url of urls) {
+    try {
+      return await new Promise<FinalizedWalletState>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("Devnet RPC timed out")), deps.timeoutMs ?? 6_000);
+        read(walletAddress, url).then((v) => { clearTimeout(timer); resolve(v); }, (e) => { clearTimeout(timer); reject(e); });
+      });
+    } catch (error) { last = error; }
+  }
+  throw last instanceof Error ? last : new Error("All Devnet RPC endpoints failed");
+}
 export const SKYT_MINT = process.env.EXPO_PUBLIC_SKYT_MINT ?? "3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g";
 
 export type FinalizedWalletState = {

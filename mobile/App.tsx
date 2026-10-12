@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AdvisoryResponse, AgriculturalMarket, ClaimReadiness, CityIndex, DevnetStatus, FinalizedWalletState, getJson, NotAvailableYetError, claimReadinessPath, Portfolio, postJson, ProtectionQuote, UnsignedTransaction } from "./src/api";
-import { DEVNET_RPC_URL, readFinalizedWalletState, readWalletStateWithFallback } from "./src/chain";
+import { DEVNET_RPC_URL, readFinalizedWalletState, readFinalizedWalletStateAnyRpc, readWalletStateWithFallback } from "./src/chain";
 import { hazardPresentation, listHazards, type HazardId } from "./src/hazards";
 import { catalogAvailability, formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, latestCompletedNoaaWeek, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets, formatWeekLabel, formatRainfallBarValue } from "./src/presentation";
 import { hedgeBalanceLine, hedgeWindowDays, marketHeadline, optionPremiumLine, triggerPhrase } from "./src/options-copy";
@@ -117,7 +117,7 @@ export default function App() {
 
   const loadWalletData = useCallback(async (address: string) => {
     const [balanceResult, portfolioResult] = await Promise.allSettled([
-      readWalletStateWithFallback(address, { direct: readFinalizedWalletState, server: (a) => getJson<FinalizedWalletState>(`/api/mobile?resource=wallet-balances&wallet=${encodeURIComponent(a)}`) }),
+      readWalletStateWithFallback(address, { timeoutMs: 20_000, direct: (a) => readFinalizedWalletStateAnyRpc(a), server: (a) => getJson<FinalizedWalletState>(`/api/mobile?resource=wallet-balances&wallet=${encodeURIComponent(a)}`) }),
       getJson<Portfolio>(`/api/mobile?resource=portfolio&wallet=${encodeURIComponent(address)}`),
     ]);
     setWalletBalances(balanceResult.status === "fulfilled" ? balanceResult.value : null);

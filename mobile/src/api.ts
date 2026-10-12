@@ -167,8 +167,26 @@ export function claimReadinessPath(market: string, wallet: string): string {
   return `/api/mobile?resource=claim-readiness&market=${encodeURIComponent(market)}&wallet=${encodeURIComponent(wallet)}`;
 }
 
+/** GET with a per-attempt timeout and retries on transport errors only (DNS/UnknownHost, offline, timeout). */
+export async function fetchWithRetry(url: string, init: RequestInit, opts: { attempts?: number; timeoutMs?: number; fetcher?: typeof fetch; delayMs?: number } = {}): Promise<Response> {
+  const attempts = opts.attempts ?? 3; const timeoutMs = opts.timeoutMs ?? 10_000; const f = opts.fetcher ?? fetch;
+  let last: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await new Promise<Response>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("Request timed out")), timeoutMs);
+        f(url, init).then((r) => { clearTimeout(timer); resolve(r); }, (e) => { clearTimeout(timer); reject(e); });
+      });
+    } catch (error) {
+      last = error;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, (opts.delayMs ?? 800) * (i + 1)));
+    }
+  }
+  throw last instanceof Error ? last : new Error("Network request failed");
+}
+
 export async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`, {
+  const response = await fetchWithRetry(`${apiBase}${path}`, {
     headers: { Accept: "application/json" },
   });
   const text = await response.text().catch(() => "");
