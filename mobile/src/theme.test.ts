@@ -19,3 +19,14 @@ describe("Signal Dark theme", () => {
     assert.match(F.mono, /mono/i);
   });
 });
+
+import { type as typeScale, MIN_FONT, MIN_TOUCH, radius } from "./theme.ts";
+describe("Enterprise tokens", () => {
+  it("never sets readable text below the minimum size", () => {
+    for (const style of Object.values(typeScale)) assert.ok(style.fontSize >= MIN_FONT);
+  });
+  it("keeps touch targets and radii in a restrained range", () => {
+    assert.ok(MIN_TOUCH >= 48);
+    assert.ok(radius.lg <= 16);
+  });
+});

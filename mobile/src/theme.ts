@@ -43,3 +43,27 @@ export const F = {
 } as const;
 
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
+
+/** Enterprise type scale: minimum 12sp for any readable text (UI UX Pro Max rule 6). */
+export const type = {
+  display: { fontFamily: F.headingBold, fontSize: 32, lineHeight: 38, letterSpacing: -0.8 },
+  title: { fontFamily: F.headingBold, fontSize: 24, lineHeight: 30, letterSpacing: -0.5 },
+  heading: { fontFamily: F.heading, fontSize: 18, lineHeight: 24 },
+  body: { fontFamily: F.body, fontSize: 15, lineHeight: 22 },
+  label: { fontFamily: F.bodySemi, fontSize: 13, lineHeight: 18 },
+  caption: { fontFamily: F.body, fontSize: 12, lineHeight: 18 },
+  overline: { fontFamily: F.bodySemi, fontSize: 12, lineHeight: 16, letterSpacing: 0.8, textTransform: "uppercase" as const },
+  figure: { fontFamily: F.headingBold, fontSize: 28, lineHeight: 34, fontVariant: ["tabular-nums" as const] },
+} as const;
+
+export const radius = { sm: 8, md: 12, lg: 16, pill: 999 } as const;
+
+/** Elevation is expressed by surface step + hairline, not glow. */
+export const elevation = {
+  flat: { backgroundColor: C.canvas },
+  card: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1 },
+  raised: { backgroundColor: C.surfaceRaised, borderColor: C.border, borderWidth: 1 },
+} as const;
+
+export const MIN_TOUCH = 48;
+export const MIN_FONT = 12;
