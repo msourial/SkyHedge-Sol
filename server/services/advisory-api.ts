@@ -1,6 +1,7 @@
 import type { ApiRequest, ApiResponse } from "./vercel-api.js";
 import type { DevnetStatus } from "./devnet-status.js";
 import { offlineAdvisoryAnswer } from "./advisory-offline.js";
+import { withRecommendation } from "./advisory-recommendation.js";
 import { advisoryRequestSchema, assessProtectionRequest, type ExtractedProtectionIntent } from "./advisory.js";
 
 export function createAdvisoryHandler(dependencies: {
@@ -20,11 +21,12 @@ export function createAdvisoryHandler(dependencies: {
       // A research-only match or a clarification may still be explained when RPC is down.
       // The assessment never marks a contract quote-ready without finalized status.
       const status = await dependencies.readStatus().catch(() => null);
-      return res.status(200).json(assessProtectionRequest(parsed.data.message, intent, status, parsed.data.context));
+      return res.status(200).json(withRecommendation(assessProtectionRequest(parsed.data.message, intent, status, parsed.data.context), status));
     } catch {
       // Missing key, provider error or timeout: answer from the labelled offline guide
       // instead of surfacing a raw configuration or outage error.
-      return res.status(200).json(offlineAdvisoryAnswer(parsed.data.message));
+      const status = await Promise.resolve().then(() => dependencies.readStatus()).catch(() => null);
+      return res.status(200).json(withRecommendation(offlineAdvisoryAnswer(parsed.data.message), status));
     }
   };
 }

@@ -285,3 +285,8 @@ No transaction was approved, signed, or sent.
 - `advisory-api.ts`: any extraction error/timeout → offline answer (200) instead of raw 503 error.
 - Mobile GuidePanel: welcome message, 4 suggested prompts, subtle offline tag; friendly error copy in App.tsx.
 - Tests: advisory 22 passing (mocked fetch provider tests added); mobile tests pass; tsc clean. Not pushed, not deployed, not installed.
+
+## 2026-10-12 19:00 ET — AI guide always ends with a concrete recommendation
+- New `server/services/advisory-recommendation.ts`: builds "Protect Des Moines · ≥ 50 mm rain · 100 SKYT coverage · from ~X SKYT premium + 1% fee" from on-chain devnet status (threshold, window, sales close, premiumRateBps); "live price in wallet review" when status unavailable. Notes Toronto Pearson opens soon. Adds `recommendation` field with `action: open_protect` (clients ignore it today).
+- `advisory-api.ts`: appended to both model and offline answers (offline path now also reads status). Extraction prompt notes unsupported cities.
+- Server-only: needs Vercel redeploy; no APK change. Tests: 175 passing, tsc clean.
