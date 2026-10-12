@@ -19,7 +19,7 @@ Weather decides whether a flight leaves, a crane lifts, a mine haul road stays o
 **SkyHedge is:**
 - **Instant** — quote and buy in under a minute; payout settles automatically from public weather data.
 - **Accessible anywhere** — a phone and a wallet are all you need.
-- **Fractional** — protect $10 or $10,000 of exposure; no minimum policy size.
+- **Fractional** — protect a small slice of exposure or a large one; no minimum policy size.
 
 **Who it's for**
 - **Aviation (lead wedge):** operators, flight schools, and charters losing revenue to weather days.
