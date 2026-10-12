@@ -167,8 +167,10 @@ export function ProtectTicket(props: {
     { ready: !!market?.vaultBalance && /^\d+$/.test(market.vaultBalance) && BigInt(market.vaultBalance) > 0n, label: "Payout vault funded" },
   ];
   const readyCount = checks.filter((c) => c.ready).length;
-  const blocking = props.unavailableReason && !/^Connect your Devnet wallet|finalized SKYT wallet balance/.test(props.unavailableReason) ? props.unavailableReason : null;
   const hasPosition = props.claimReadiness && props.claimReadiness.state !== "no_position";
+  const isExistingPosition = !!props.unavailableReason && /already has|duplicate position|pending outcome/i.test(props.unavailableReason);
+  const blocking = props.unavailableReason && !isExistingPosition && !(hasPosition && props.transactionSignature) && !/^Connect your Devnet wallet|finalized SKYT wallet balance/.test(props.unavailableReason) ? props.unavailableReason : null;
+  const thresholdMm = market?.thresholdMmX100 != null && /^\d+$/.test(String(market.thresholdMmX100)) ? trimMm(Number(market.thresholdMmX100) / 100) : null;
   const youPay = q ? formatSkytFixed(q.premium, 2) : props.quoteBusy ? null : "—";
 
   return <>
@@ -181,14 +183,18 @@ export function ProtectTicket(props: {
       <Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh status</Text></Pressable>
     </View> : null}
 
-    <Text style={s.overline}>Coverage</Text>
+    <Text style={s.overline}>Coverage (paid if triggered)</Text>
     <View style={s.chipRow} accessibilityRole="radiogroup" accessibilityLabel="Coverage amount in SKYT">
       {options.map((o) => {
         const on = o.id === props.coverageId;
         return <Pressable key={o.id} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: !o.enabled }} accessibilityLabel={o.id === "max" ? `Max${o.amountBase ? `, ${formatSkytFixed(o.amountBase, 0)} SKYT` : ", unavailable"}` : `${o.label} SKYT`} disabled={!o.enabled} onPress={() => props.onCoverage(o)} style={[s.chip, on && s.chipOn, !o.enabled && { opacity: 0.4 }]}>
-          <Text style={[s.chipText, on && { color: C.rain }]}>{o.label}</Text>
+          <Text style={[s.chipText, on && { color: C.rain }]}>{o.id === "max" ? (o.amountBase ? `Max ${formatSkytFixed(o.amountBase, 0)} SKYT` : "Max") : `${o.label} SKYT`}</Text>
         </Pressable>;
       })}
+    </View>
+    <Text style={s.overline}>Rain trigger</Text>
+    <View style={s.chipRow} accessible accessibilityLabel={thresholdMm ? `Rain trigger: ${market?.operator === "gt" ? "more than" : market?.operator === "lt" ? "less than" : market?.operator === "lte" ? "at most" : "at least"} ${thresholdMm} millimetres` : "Rain trigger pending"}>
+      <View style={[s.chip, { opacity: 0.9 }]}><Text style={s.chipText}>{thresholdMm ? `Trigger ${market?.operator === "gt" ? ">" : market?.operator === "lt" ? "<" : market?.operator === "lte" ? "≤" : "≥"} ${thresholdMm} mm rain` : "Trigger pending"}</Text></View>
     </View>
 
     <View style={[s.card, { padding: 0, overflow: "hidden" }]} accessibilityLabel="Protection ticket">
@@ -231,7 +237,8 @@ export function ProtectTicket(props: {
     {props.quoteError ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>{quoteErrorTitle(props.quoteError)}</Text><Text style={s.noticeBody}>{friendlyError(props.quoteError)}</Text><Pressable accessibilityRole="button" onPress={props.onRetryQuote} style={s.inlineBtn}><Text style={s.link}>Get a new price</Text></Pressable></View> : null}
     {props.transactionMessage ? <Text accessibilityLiveRegion="polite" style={[s.body, { color: C.rain, marginBottom: 10 }]}>{props.transactionMessage}</Text> : null}
     {props.transactionError ? <View style={[s.notice, { borderColor: C.coral }]} accessibilityRole="alert"><Text style={s.noticeTitle}>{transactionErrorTitle(props.transactionError, props.walletName)}</Text><Text style={s.noticeBody}>{friendlyError(props.transactionError)} Nothing was charged unless Explorer shows a transaction.</Text></View> : null}
-    {props.transactionSignature ? <Reveal><View style={[s.card, { borderColor: C.mint }]}><View style={s.baseline}><AppIcon name="check-circle" color={C.mint} size={20} /><Text style={[s.cardTitleSm, { marginLeft: 8 }]}>You’re protected</Text></View><Text style={s.caption}>Finalized on Solana Devnet · {shortAddress(props.transactionSignature)}</Text><ExplorerButton url={`https://explorer.solana.com/tx/${encodeURIComponent(props.transactionSignature)}?cluster=devnet`} label="View on Explorer" /></View></Reveal> : null}
+    {props.transactionSignature ? <Reveal><View style={[s.card, { borderColor: C.mint }]}><View style={s.baseline}><AppIcon name="check-circle" color={C.mint} size={20} /><Text style={[s.cardTitleSm, { marginLeft: 8 }]}>You’re protected</Text></View><Text style={s.caption}>Finalized on Solana Devnet · {shortAddress(props.transactionSignature)}</Text><ExplorerButton url={`https://explorer.solana.com/tx/${encodeURIComponent(props.transactionSignature)}?cluster=devnet`} label="View on Explorer" /></View><Text style={[s.caption, { marginTop: -4, marginBottom: 8 }]}>One protection per wallet per window.</Text></Reveal> : null}
+    {isExistingPosition && !props.transactionSignature ? <Text style={[s.caption, { marginBottom: 8 }]}>One protection per wallet per window — this wallet is already covered.</Text> : null}
 
     {hasPosition && props.claimReadiness ? <View style={s.card}>
       <Text style={s.overlineIn}>Your position</Text>
