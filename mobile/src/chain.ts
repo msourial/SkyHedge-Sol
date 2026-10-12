@@ -4,10 +4,64 @@ export const DEVNET_RPC_URL = process.env.EXPO_PUBLIC_SOLANA_RPC_URL ?? "https:/
 /** Direct Solana RPC endpoints, tried in order; none depend on the SkyHedge (Vercel) host. */
 export const DEVNET_RPC_URLS = Array.from(new Set([DEVNET_RPC_URL, "https://api.devnet.solana.com", "https://solana-devnet.api.onfinality.io/public"]));
 
+const connections = new Map<string, Connection>();
+/** Shared per-URL connection; web3.js 429 auto-retry disabled so we fail over to the next endpoint quickly. */
+export function devnetConnection(url: string, commitment: "confirmed" | "finalized" = "finalized"): Connection {
+  const key = `${url}|${commitment}`;
+  let c = connections.get(key);
+  if (!c) { c = new Connection(url, { commitment, disableRetryOnRateLimit: true }); connections.set(key, c); }
+  return c;
+}
+
+/** Fetch the latest blockhash context (for minContextSlot) across the same fallback endpoints. */
+export async function getLatestBlockhashContextAnyRpc(urls: string[] = DEVNET_RPC_URLS, timeoutMs = 6_000): Promise<{ slot: number; url: string }> {
+  let last: unknown;
+  for (const url of urls) {
+    try {
+      const { context } = await withTimeout(devnetConnection(url, "confirmed").getLatestBlockhashAndContext("confirmed"), timeoutMs);
+      return { slot: context.slot, url };
+    } catch (error) { last = error; }
+  }
+  throw last instanceof Error ? last : new Error("All Devnet RPC endpoints failed");
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Devnet RPC timed out")), ms);
+    p.then((v) => { clearTimeout(timer); resolve(v); }, (e) => { clearTimeout(timer); reject(e); });
+  });
+}
+
+const BALANCE_CACHE_MS = 15_000;
+const balanceCache = new Map<string, { at: number; value: FinalizedWalletState }>();
+const balanceInFlight = new Map<string, Promise<FinalizedWalletState>>();
+/** Test hook. */
+export function clearWalletStateCache(): void { balanceCache.clear(); balanceInFlight.clear(); }
+
 /** Try each RPC endpoint (each with its own timeout) before giving up. */
-export async function readFinalizedWalletStateAnyRpc(walletAddress: string, deps: { urls?: string[]; read?: (address: string, url: string) => Promise<FinalizedWalletState>; timeoutMs?: number } = {}): Promise<FinalizedWalletState> {
+export function readFinalizedWalletStateAnyRpc(walletAddress: string, deps: { urls?: string[]; read?: (address: string, url: string) => Promise<FinalizedWalletState>; timeoutMs?: number; force?: boolean } = {}): Promise<FinalizedWalletState> {
+  const cacheable = !deps.read;
+  if (cacheable && !deps.force) {
+    const hit = balanceCache.get(walletAddress);
+    if (hit && Date.now() - hit.at < BALANCE_CACHE_MS) return Promise.resolve(hit.value);
+    const pending = balanceInFlight.get(walletAddress);
+    if (pending) return pending;
+  }
+  const run = readAnyRpcUncached(walletAddress, deps).then((value) => {
+    if (cacheable) balanceCache.set(walletAddress, { at: Date.now(), value });
+    return value;
+  });
+  if (cacheable) {
+    balanceInFlight.set(walletAddress, run);
+    const done = () => { if (balanceInFlight.get(walletAddress) === run) balanceInFlight.delete(walletAddress); };
+    run.then(done, done);
+  }
+  return run;
+}
+
+async function readAnyRpcUncached(walletAddress: string, deps: { urls?: string[]; read?: (address: string, url: string) => Promise<FinalizedWalletState>; timeoutMs?: number }): Promise<FinalizedWalletState> {
   const urls = deps.urls ?? DEVNET_RPC_URLS;
-  const read = deps.read ?? ((a: string, url: string) => readFinalizedWalletState(a, new Connection(url, "finalized")));
+  const read = deps.read ?? ((a: string, url: string) => readFinalizedWalletState(a, devnetConnection(url, "finalized")));
   let last: unknown;
   for (const url of urls) {
     try {
@@ -32,7 +86,7 @@ type BalanceConnection = Pick<Connection, "getBalance" | "getParsedTokenAccounts
 
 /** Reads a user's Devnet balances at finalized commitment; no values are estimated or cached as zero. */
 export async function readFinalizedWalletState(walletAddress: string, connection?: BalanceConnection): Promise<FinalizedWalletState> {
-  const rpc = connection ?? new Connection(DEVNET_RPC_URL, "finalized");
+  const rpc = connection ?? devnetConnection(DEVNET_RPC_URL, "finalized");
   const owner = new PublicKey(walletAddress);
   const mint = new PublicKey(SKYT_MINT);
   const [lamports, tokenAccounts, slot] = await Promise.all([

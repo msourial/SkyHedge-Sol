@@ -1,7 +1,8 @@
 import { transact } from "@solana-mobile/mobile-wallet-adapter-protocol-web3js";
 import { PublicKey } from "@solana/web3.js";
 import { Buffer } from "buffer";
-import { Connection, VersionedTransaction } from "@solana/web3.js";
+import { VersionedTransaction } from "@solana/web3.js";
+import { DEVNET_RPC_URLS, devnetConnection, getLatestBlockhashContextAnyRpc } from "./chain";
 
 import { APP_IDENTITY } from "./wallet-identity";
 import { authorizeForSigning, DEVNET_CHAIN } from "./wallet-auth";
@@ -31,9 +32,9 @@ export async function signAndConfirmDevnetTransaction(input: {
   rpcUrl: string;
 }): Promise<string> {
   const transaction = VersionedTransaction.deserialize(Buffer.from(input.transactionBase64, "base64"));
-  const connection = new Connection(input.rpcUrl, "confirmed");
-  const { context } = await connection.getLatestBlockhashAndContext("confirmed");
-  const params = buildSignAndSendParams([transaction], context.slot);
+  const { slot, url } = await getLatestBlockhashContextAnyRpc(Array.from(new Set([input.rpcUrl, ...DEVNET_RPC_URLS])));
+  const connection = devnetConnection(url, "confirmed");
+  const params = buildSignAndSendParams([transaction], slot);
   const signatures = await transact(async (mobileWallet) => {
     const authorization = await authorizeForSigning(mobileWallet, input.wallet.authToken);
     const account = authorization.accounts[0];

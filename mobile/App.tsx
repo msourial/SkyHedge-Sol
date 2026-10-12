@@ -130,9 +130,9 @@ export default function App() {
     return () => { cancelled = true; };
   }, [selectedCity, cities]);
 
-  const loadWalletData = useCallback(async (address: string) => {
+  const loadWalletData = useCallback(async (address: string, force = false) => {
     const [balanceResult, portfolioResult] = await Promise.allSettled([
-      readWalletStateWithFallback(address, { timeoutMs: 20_000, direct: (a) => readFinalizedWalletStateAnyRpc(a), server: (a) => getJson<FinalizedWalletState>(`/api/mobile?resource=wallet-balances&wallet=${encodeURIComponent(a)}`) }),
+      readWalletStateWithFallback(address, { timeoutMs: 20_000, direct: (a) => readFinalizedWalletStateAnyRpc(a, { force }), server: (a) => getJson<FinalizedWalletState>(`/api/mobile?resource=wallet-balances&wallet=${encodeURIComponent(a)}`) }),
       getJson<Portfolio>(`/api/mobile?resource=portfolio&wallet=${encodeURIComponent(address)}`),
     ]);
     setWalletBalances(balanceResult.status === "fulfilled" ? balanceResult.value : null);
@@ -314,7 +314,7 @@ export default function App() {
       setTransactionMessage(null);
       setQuote(null);
       await loadHome();
-      await loadWalletData(wallet);
+      await loadWalletData(wallet, true);
       if (status.desMoinesMarket.address) {
         const readiness = await getJson<ClaimReadiness>(claimReadinessPath(status.desMoinesMarket.address, wallet));
         setClaimReadiness(readiness);

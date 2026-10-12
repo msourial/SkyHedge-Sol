@@ -75,7 +75,7 @@ export function getProtectionUnavailableReason(input: {
   if (!market.observationStart || !market.observationEnd || market.observationEnd <= market.observationStart) return "The market’s immutable observation window is unavailable.";
   if (!market.thresholdMmX100 || !market.operator || market.quoteProbabilityBps === null || market.premiumRateBps === null || !market.quoteInputsHash || /^0+$/.test(market.quoteInputsHash)) return "The market’s committed NOAA pricing terms are incomplete.";
   if (!walletConnected) return "Connect your Devnet wallet before requesting a quote.";
-  if (!input.walletSkytBalanceBase || !/^\d+$/.test(input.walletSkytBalanceBase)) return "A finalized SKYT wallet balance is not available yet.";
+  // Balance is intentionally not required for pricing; the wallet/program enforce funds at review.
   if (!amountBase || !/^\d+$/.test(amountBase) || BigInt(amountBase) <= 0n) return "Enter a valid protection amount greater than zero.";
   if (BigInt(amountBase) > TESTER_LIMIT_BASE_UNITS) return "The Devnet tester limit is 500 SKYT per wallet.";
   return null;
