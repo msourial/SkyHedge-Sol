@@ -23,7 +23,7 @@ import { catalogAvailability, formatOnchainMarketStatus, formatUsdPreview, isMar
 import { buildCommittedQuoteRequest, formatSkyt, getProtectionUnavailableReason, isOnchainMarketOpen, parseSkytAmount } from "./src/protection";
 import { authorizeDevnetWallet, signAndConfirmDevnetTransaction, type AuthorizedWallet } from "./src/wallet";
 import { C, F } from "./src/theme";
-import { ActionButton, AppIcon, EvidenceTimeline, PrimaryAction, Reveal, ScreenHeader, SectionHeader, StatusPill, Text, type AppIconName } from "./src/ui";
+import { ActionButton, Disclosure, AppIcon, EvidenceTimeline, PrimaryAction, Reveal, ScreenHeader, SectionHeader, StatusPill, Text, type AppIconName } from "./src/ui";
 import { ScreenTransition, TactilePressable } from "./src/liquid-glass";
 import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
 import { ReferenceAreaMap } from "./src/ReferenceAreaMap";
@@ -442,9 +442,9 @@ function WeatherScreen({
             <Text style={styles.rainCaption}>
               {city.cumulativeMm == null
                 ? latestWeek
-                  ? `Week of ${latestWeek.week}. Current-window observation unavailable; this past total is not a forecast or a quote.`
-                  : "Observation unavailable from NOAA right now. No value is estimated."
-                : `Observed through ${city.observedThrough ?? "the latest NOAA report"}. This is not a forecast.`}
+                  ? `Week of ${latestWeek.week}. Current-window observation unavailable.`
+                  : "Observation unavailable from NOAA right now."
+                : `Observed through ${city.observedThrough ?? "the latest NOAA report"}.`}
             </Text>
             <View style={styles.windowRow}>
               <Text style={styles.windowLabel}>{latestWeek ? "Current window" : "Observation window"}</Text>
@@ -467,14 +467,8 @@ function WeatherScreen({
             )}
           </View>
 
-          <View style={styles.noteCard}>
-            <Text style={styles.noteEyebrow}>Source note</Text>
-            <Text style={styles.noteTitle}>Observed is not forecast.</Text>
-            <Text style={styles.noteBody}>SkyHedge uses a published NOAA station and observation window. A final payout only follows verified settlement evidence on Solana.</Text>
-          </View>
           <Pressable accessibilityRole="button" accessibilityLabel={`Choose a weather risk for ${city.name}`} onPress={onProtect} style={styles.secondaryAction}>
             <Text style={styles.secondaryActionTitle}>Choose a weather risk for {city.name}</Text>
-            <Text style={styles.secondaryActionBody}>Observed NOAA rainfall is context, not a quote or proof that a market is open.</Text>
           </Pressable>
         </>
       ) : (
@@ -492,6 +486,7 @@ function WeatherScreen({
           </Text>
         </View>
       </View>
+      <Disclosure>Observed NOAA station data, not a forecast, quote, or proof that a market is open. Missing values are never estimated.</Disclosure>
     </>
   );
 }
@@ -555,7 +550,7 @@ function CatalogScreen({ markets, city, status, query, activeArea, hazard, guide
 
   return (
     <>
-      <ScreenHeader title="Choose a place" detail="Search before choosing a risk. A reference point never means automatic coverage." />
+      <ScreenHeader title="Choose a place" detail="Search the researched catalog, then pick a weather risk." />
       <View style={styles.searchWrap}>
         <AppIcon name="search" color={C.blue} size={20} />
         <TextInput
@@ -601,7 +596,7 @@ function CatalogScreen({ markets, city, status, query, activeArea, hazard, guide
           <Text style={styles.marketContext}>{market.agriculturalContext} · {market.crops.join(", ")}</Text>
         </Pressable>;
       }) : pilotAreas.length === 0 ? <View><EmptyState title={query ? "No researched areas match" : "Catalog unavailable"} body={query ? "Try another place, state or province, country, or crop. Search covers only the current research catalog." : "Researched locations appear after the API responds."} />{query ? <Pressable accessibilityRole="button" onPress={() => onQueryChange("")} style={styles.emptyAction}><Text style={styles.emptyActionText}>Clear search</Text></Pressable> : null}</View> : null}
-      <Text style={styles.catalogFootnote}>Research status is not coverage. Wind and snowfall never inherit a rainfall market’s evidence or readiness.</Text>
+      <Disclosure>Research status and map reference points are not coverage. Only the Des Moines rainfall pilot can be quoted on Devnet.</Disclosure>
     </>
   );
 }
@@ -617,8 +612,7 @@ function RainfallHistoryPreview({ history, place }: { history: CityIndex["weekly
         <View style={[styles.barTrack, styles.miniBarTrack]}>{values[index] === null ? <View style={styles.barUnknown} /> : <View style={[styles.barFill, { height: `${rainfallBarPercent(values[index], maxRain) ?? 0}%` }]} />}</View>
         <Text style={styles.barDate}>{week.week.slice(5)}</Text>
       </View>)}
-    </View> : <Text style={styles.hazardNote}>No completed NOAA rainfall history is available for this selected place. No diagram is estimated.</Text>}
-    <Text style={styles.miniHistoryNote}>Past observations are context, not a forecast or a protection quote.</Text>
+    </View> : <Text style={styles.hazardNote}>No completed NOAA rainfall history is available for this selected place.</Text>}
   </View>;
 }
 
@@ -665,7 +659,7 @@ function ProtectScreen(props: {
       <Text style={styles.kicker}>Protection status</Text>
       <Text style={styles.protectPlace}>{title}</Text>
       {location ? <Text style={styles.protectLocation}>{location}</Text> : null}
-      <Text style={styles.protectBlocked}>{detail} No quote, payment, or transaction is prepared for this selection.</Text>
+      <Text style={styles.protectBlocked}>{detail}</Text>
       <ActionButton label="Explore places" icon="map-pin" onPress={props.onExplore} />
     </View>;
   }
@@ -737,14 +731,13 @@ function ProtectScreen(props: {
             placeholder="$100"
             placeholderTextColor={C.muted}
           />
-          <Text style={styles.inputHint}>{usdPreview ? `${usdPreview} is a non-binding protection preview.` : "Enter a positive dollar amount for a non-binding preview."} No USD premium or payout is quoted, and USD checkout is unavailable.</Text>
+          <Text style={styles.inputHint}>{usdPreview ? `${usdPreview} preview` : "Enter a positive dollar amount."}</Text>
           <View style={styles.actionWrap}><ActionButton label="Try on Devnet" icon="arrow-right" onPress={() => props.onAmountModeChange("devnet-test")} /></View>
-          <Text style={styles.testDisclosure}>The Devnet test uses a separate SKYT amount. It is not USD or USDC, and no exchange rate is implied.</Text>
           {!marketOpen || !vaultFunded ? <Text accessibilityRole="alert" style={styles.previewBlocker}>Devnet testing is not ready: the on-chain market is {formatOnchainMarketStatus(market?.onchainStatus ?? null)}{vaultFunded ? "." : " and its test collateral vault is empty."}</Text> : null}
         </> : <>
           <Pressable accessibilityRole="button" accessibilityLabel="Return to USD preview" onPress={() => props.onAmountModeChange("usd-preview")} style={styles.modeBack}><AppIcon name="arrow-left" color={C.blue} size={16} /><Text style={styles.modeBackText}>USD preview</Text></Pressable>
           <Text style={styles.testModeHeading}>Try on Devnet</Text>
-          <Text style={styles.testModeNote}>SKYT is a test token with no real-world value. It is not USDC. Your wallet must approve any test transaction.</Text>
+          <Text style={styles.testModeNote}>Your wallet shows and approves every transaction.</Text>
           <View style={styles.amountHeading}><Text style={styles.inputLabel}>Test protection amount</Text><Text style={styles.amountUnit}>SKYT test tokens</Text></View>
           <TextInput
             accessibilityLabel="Test protection amount in SKYT"
@@ -767,7 +760,7 @@ function ProtectScreen(props: {
             <MetricRow label="Premium · total charged" value={`${formatSkyt(props.quote.premium)} SKYT`} />
             <MetricRow label="Protocol fee" value={`${formatSkyt(props.quote.protocolFee)} SKYT`} />
             <MetricRow label="Inputs hash" value={`${props.quote.inputsHash.slice(0, 12)}…`} />
-            <Text style={styles.quoteWarning}>The protocol fee is included in the total premium above. This is a Devnet test position, not insurance or a real-money product. Your wallet will show the transaction before it is sent.</Text>
+            <Text style={styles.quoteWarning}>Protocol fee is included in the total premium.</Text>
             {props.quotePaymentReason ? <View accessibilityRole="alert" style={styles.blockedNotice}><Text style={styles.blockedTitle}>Not enough SKYT for the premium</Text><Text style={styles.blockedBody}>{props.quotePaymentReason}</Text></View> : null}
             <View style={styles.actionWrap}><ActionButton label="Review in wallet" icon="arrow-right" disabled={!!props.quotePaymentReason || !!props.unavailableReason} busy={props.transactionBusy} onPress={props.onApprove} /></View>
           </View></Reveal>
@@ -804,6 +797,7 @@ function ProtectScreen(props: {
           </>
         ) : <Text style={styles.emptyText}>{props.walletConnected ? props.claimError ?? (props.status?.desMoinesMarket.address ? "Checking this wallet’s finalized position and claim status." : "A claim appears here only after finalized on-chain settlement or DATA_UNAVAILABLE status.") : "Connect your wallet to view a finalized position or claim."}</Text>}
       </View> : null}
+      <Disclosure>Devnet test only: not insurance or a real-money product. USD is a non-binding preview with no checkout; SKYT is a separate test token with no real-world value and no implied exchange rate.</Disclosure>
     </>
   );
 }
@@ -858,7 +852,7 @@ function WalletScreen({
               <MetricRow label="SOL" value={walletBalances.sol.toFixed(4)} />
               <MetricRow label="SKYT · test asset" value={(Number(walletBalances.skytBaseUnits) / 10 ** walletBalances.skytDecimals).toLocaleString()} />
             </>
-          ) : <Text style={styles.emptyText}>Finalized balance read unavailable. No balance is estimated.</Text>}
+          ) : <Text style={styles.emptyText}>Finalized balance read unavailable.</Text>}
         </View>
       ) : null}
 
@@ -878,10 +872,7 @@ function WalletScreen({
         </View>
       ) : null}
 
-      <View style={styles.noteCard}>
-        <Text style={styles.noteTitle}>Finalized reads only</Text>
-        <Text style={styles.noteBody}>Balances are read directly from finalized Devnet. Position counts appear only when finalized position data is indexed; SkyHedge never turns missing data into zero.</Text>
-      </View>
+      <Disclosure>Balances and positions come from finalized Devnet only. Missing data is never shown as zero.</Disclosure>
     </>
   );
 }
@@ -915,7 +906,7 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
       <Text style={styles.errorTitle}>{evidenceMissing ? "NOAA evidence unavailable" : mobileRoutesMissing ? "Mobile API needs an update" : "Can’t reach SkyHedge"}</Text>
       <Text style={styles.errorBody}>{readableMessage}</Text>
       <View style={styles.errorActions}>
-        <Text style={styles.errorFoot}>No weather or market values are estimated.</Text>
+        <View />
         <Pressable accessibilityRole="button" onPress={onRetry} style={styles.retryButton}><Text style={styles.retryButtonText}>Try again</Text></Pressable>
       </View>
     </View>

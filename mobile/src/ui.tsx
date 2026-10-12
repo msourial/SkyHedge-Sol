@@ -56,6 +56,11 @@ export function EvidenceTimeline({ steps }: { steps: Array<{ label: string; read
   </View>;
 }
 
+/** The single per-screen disclosure. Every screen gets at most one. */
+export function Disclosure({ children }: { children: string }) {
+  return <View accessibilityRole="text" style={styles.disclosure}><AppIcon name="info" color={C.quiet} size={16} /><Text style={styles.disclosureText}>{children}</Text></View>;
+}
+
 export function BottomSheet({ children }: { children: React.ReactNode }) {
   return <View style={styles.bottomSheet}>{children}</View>;
 }
@@ -129,5 +134,7 @@ const styles = StyleSheet.create({
   timelineDotReady: { backgroundColor: C.mint },
   timelineText: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 12 },
   timelineTextReady: { color: C.mint },
+  disclosure: { flexDirection: "row", gap: 8, alignItems: "flex-start", borderTopWidth: 1, borderTopColor: C.border, paddingTop: 14, marginTop: 24 },
+  disclosureText: { flex: 1, color: C.quiet, fontFamily: F.body, fontSize: 12, lineHeight: 18 },
   bottomSheet: { backgroundColor: C.surfaceRaised, borderTopColor: C.border, borderTopWidth: StyleSheet.hairlineWidth, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 18 },
 });
