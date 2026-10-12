@@ -111,4 +111,25 @@ describe("mobile read APIs", () => {
     expect(snow).to.include({ metric: "New snowfall accumulation", unit: "in / mm", quoteable: false });
     expect(snow.note).to.include("not snow depth");
   });
+
+  it("serves claim readiness through the combined mobile endpoint as JSON", async () => {
+    const market = "9UUNQPXnrzUEDsra8PMMzByp9J9un1yysGdGuaz9JqVJ";
+    const wallet = "DKA9RkGvaW4isyj5xdiZ2oGVUkD1UL64Ha1BazXZFD6y";
+    const readiness = { state: "not_claimable", reason: "No position", action: null };
+    const record = recorder();
+    let seen: string[] = [];
+    await createMobileApiHandler({ readClaimReadiness: async (m, w) => { seen = [m, w]; return readiness as never; } })(
+      { method: "GET", query: { resource: "claim-readiness", market, wallet } } as never, record.response as never);
+    expect(record.result().statusCode).to.equal(200);
+    expect(record.result().body).to.deep.equal(readiness);
+    expect(seen).to.deep.equal([market, wallet]);
+    expect(record.result().headers.get("Content-Type")).to.include("application/json");
+  });
+
+  it("rejects claim readiness with an invalid wallet", async () => {
+    const record = recorder();
+    await createMobileApiHandler({ readClaimReadiness: async () => { throw new Error("should not read"); } })(
+      { method: "GET", query: { resource: "claim-readiness", market: "x", wallet: "y" } } as never, record.response as never);
+    expect(record.result().statusCode).to.equal(400);
+  });
 });

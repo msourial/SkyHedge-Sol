@@ -2,6 +2,8 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { PublicKey } from "@solana/web3.js";
 import { AGRICULTURAL_MARKETS, calendarMonthlyWindow, weeklyFridayWindow } from "../../shared/agricultural-markets.js";
 import { cityBySlug } from "../../shared/cities.js";
+import { createClaimReadinessHandler, type ApiRequest as ClaimRequest, type ApiResponse as ClaimResponse } from "./vercel-api.js";
+import type { ClaimReadiness } from "./unsigned-tx.js";
 import { allCityIndexStates, cityIndexState, weeklyHistory } from "./weather-index.js";
 
 type ApiRequest = IncomingMessage & { query?: Record<string, unknown> };
@@ -22,6 +24,7 @@ export function createMobileApiHandler(dependencies: {
   readCity?: typeof cityIndexState;
   readHistory?: typeof weeklyHistory;
   now?: () => Date;
+  readClaimReadiness?: (market: string, wallet: string) => Promise<ClaimReadiness>;
 } = {}) {
   const loadCities = dependencies.loadCities ?? allCityIndexStates;
   const resolveCity = dependencies.resolveCity ?? cityBySlug;
@@ -86,6 +89,15 @@ export function createMobileApiHandler(dependencies: {
           liquidity: [],
           message: "Finalized portfolio positions are not indexed on this deployment yet. An empty list is not proof that the wallet has no on-chain positions.",
         });
+      }
+
+      if (resource === "claim-readiness") {
+        const read = dependencies.readClaimReadiness ?? (async (market: string, wallet: string) => {
+          const { UnsignedTransactionBuilder } = await import("./unsigned-tx.js");
+          return new UnsignedTransactionBuilder().readClaimReadiness(market, wallet);
+        });
+        const claimReq = Object.assign(req, { query: { market: queryValue(req, "market"), wallet: queryValue(req, "wallet") } });
+        return createClaimReadinessHandler({ read })(claimReq as unknown as ClaimRequest, res as unknown as ClaimResponse);
       }
 
       return res.status(404).json({ error: "UNKNOWN_MOBILE_RESOURCE", message: "That mobile read resource is not available." });

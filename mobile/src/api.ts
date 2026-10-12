@@ -153,11 +153,28 @@ export type FinalizedWalletState = {
 
 const apiBase = (process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://10.0.2.2:5000").replace(/\/$/, "");
 
+/** Thrown when a deployment answers a JSON route with HTML (e.g. an SPA rewrite). Treat as "not available yet". */
+export class NotAvailableYetError extends Error {
+  constructor() { super("Not available yet on this deployment."); this.name = "NotAvailableYetError"; }
+}
+
+export function isNonJsonReply(contentType: string | null, text: string): boolean {
+  if (contentType && /html/i.test(contentType)) return true;
+  return /^\s*</.test(text);
+}
+
+export function claimReadinessPath(market: string, wallet: string): string {
+  return `/api/mobile?resource=claim-readiness&market=${encodeURIComponent(market)}&wallet=${encodeURIComponent(wallet)}`;
+}
+
 export async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${apiBase}${path}`, {
     headers: { Accept: "application/json" },
   });
-  const body = await response.json().catch(() => null);
+  const text = await response.text().catch(() => "");
+  if (isNonJsonReply(response.headers?.get?.("content-type") ?? null, text)) throw new NotAvailableYetError();
+  let body: any = null;
+  try { body = text ? JSON.parse(text) : null; } catch { body = null; }
   if (!response.ok) {
     if (response.status === 404 && path.startsWith("/api/mobile?resource=")) {
       const resource = new URLSearchParams(path.split("?")[1] ?? "").get("resource");

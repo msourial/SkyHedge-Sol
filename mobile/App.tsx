@@ -16,7 +16,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { AdvisoryResponse, AgriculturalMarket, ClaimReadiness, CityIndex, DevnetStatus, FinalizedWalletState, getJson, Portfolio, postJson, ProtectionQuote, UnsignedTransaction } from "./src/api";
+import { AdvisoryResponse, AgriculturalMarket, ClaimReadiness, CityIndex, DevnetStatus, FinalizedWalletState, getJson, NotAvailableYetError, claimReadinessPath, Portfolio, postJson, ProtectionQuote, UnsignedTransaction } from "./src/api";
 import { DEVNET_RPC_URL, readFinalizedWalletState } from "./src/chain";
 import { hazardPresentation, listHazards, type HazardId } from "./src/hazards";
 import { catalogAvailability, formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, latestCompletedNoaaWeek, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets, formatWeekLabel, formatRainfallBarValue } from "./src/presentation";
@@ -276,7 +276,7 @@ export default function App() {
       await loadHome();
       await loadWalletData(wallet);
       if (status.desMoinesMarket.address) {
-        const readiness = await getJson<ClaimReadiness>(`/api/markets/${encodeURIComponent(status.desMoinesMarket.address)}/positions/${encodeURIComponent(wallet)}/claim-readiness`);
+        const readiness = await getJson<ClaimReadiness>(claimReadinessPath(status.desMoinesMarket.address, wallet));
         setClaimReadiness(readiness);
       }
     } catch (reason) {
@@ -294,9 +294,9 @@ export default function App() {
       return;
     }
     let cancelled = false;
-    getJson<ClaimReadiness>(`/api/markets/${encodeURIComponent(status.desMoinesMarket.address)}/positions/${encodeURIComponent(wallet)}/claim-readiness`)
+    getJson<ClaimReadiness>(claimReadinessPath(status.desMoinesMarket.address, wallet))
       .then((value) => { if (!cancelled) { setClaimReadiness(value); setClaimError(null); } })
-      .catch((reason) => { if (!cancelled) setClaimError(reason instanceof Error ? reason.message : "Claim status is unavailable."); });
+      .catch((reason) => { if (!cancelled) setClaimError(reason instanceof NotAvailableYetError ? "Position status is not available yet." : reason instanceof Error ? reason.message : "Claim status is unavailable."); });
     return () => { cancelled = true; };
   }, [wallet, status?.desMoinesMarket.address]);
 
