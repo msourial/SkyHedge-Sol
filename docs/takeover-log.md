@@ -256,3 +256,9 @@ No transaction was approved, signed, or sent.
 - 07bf5e1: docs/demo-script.md, a 2:30 script + shot list.
 - Tests: mobile 55/55, server 163, tsc clean (mobile + root).
 - APK from 07bf5e1: ~/Documents/Codex/apk-backup/SkyHedge-ClockIn-07bf5e1.apk, 122756437 bytes, SHA-256 2859effdf6e72e592a7d3a06ff6dac55870849cd63bc23e179adcaaa6095a39a. NOT installed. No push, deploy, or signing.
+
+## 2026-10-12 ~12:00 ET: LICENSE, app icon, versionCode 2, APK (executor)
+- 7f4c8db: MIT LICENSE (c) 2026 Amir Sourial.
+- 9385cdc: Instrument icon (graphite #12151A, glacier-blue rain cloud) at mobile/assets/icon.png, adaptive-icon.png (+ background); app.json icon/adaptiveIcon/versionCode 2; native res updated manually (PNG mipmaps, ic_launcher_foreground, mipmap-anydpi-v26 adaptive XML, iconBackground color); build.gradle versionCode 2.
+- Tests: mobile 55/55, tsc clean. aapt: versionCode 2, versionName 0.1.0, adaptive icon resource present.
+- APK ~/Documents/Codex/apk-backup/SkyHedge-ClockIn-9385cdc.apk, 122759261 bytes, SHA-256 45d25191fddea68c9197a9112c42b6544be3bfc820c448b6711c8a7b09edfb9d. Icon PNG ~/Documents/Codex/apk-backup/skyhedge-icon.png. NOT installed; no push/deploy/signing.
