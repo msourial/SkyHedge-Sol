@@ -106,11 +106,43 @@ export function Reveal({ children }: { children: React.ReactNode }) {
   return <Animated.View style={{ opacity }}>{children}</Animated.View>;
 }
 
+
+/**
+ * Payoff profile: the option's shape in one glance. A 0 → 2× threshold rainfall scale,
+ * the payout zone in gold, the strike marked. Pure Views (no SVG dependency).
+ */
+export function PayoffProfile({ thresholdMm, below = false }: { thresholdMm: number; below?: boolean }) {
+  const max = Math.max(thresholdMm * 2, 1);
+  const strikePct = Math.min(100, (thresholdMm / max) * 100);
+  const fmt = (mm: number) => `${Number.isInteger(mm) ? mm : mm.toFixed(1)} mm`;
+  return <View accessible accessibilityLabel={`Pays out if rainfall is ${below ? "below" : "at or above"} ${fmt(thresholdMm)}`} style={styles.payoff}>
+    <View style={styles.payoffTrack}>
+      <View style={[styles.payoffZone, below ? { left: 0, width: `${strikePct}%` } : { left: `${strikePct}%`, right: 0 }]} />
+      <View style={[styles.payoffStrike, { left: `${strikePct}%` }]} />
+    </View>
+    <View style={styles.payoffAxis}>
+      <Text style={styles.payoffTick}>0 mm</Text>
+      <Text style={[styles.payoffTick, styles.payoffStrikeLabel]}>Strike {fmt(thresholdMm)}</Text>
+      <Text style={styles.payoffTick}>{fmt(max)}</Text>
+    </View>
+    <View style={styles.payoffLegend}><View style={styles.payoffSwatch} /><Text style={styles.payoffTick}>{below ? "Payout if it stays dry" : "Payout zone"}</Text></View>
+  </View>;
+}
+
 const styles = StyleSheet.create({
+  payoff: { marginTop: 14, gap: 8 },
+  payoffTrack: { height: 10, borderRadius: 5, backgroundColor: C.mutedSurface, overflow: "hidden" },
+  payoffZone: { position: "absolute", top: 0, bottom: 0, backgroundColor: C.payout },
+  payoffStrike: { position: "absolute", top: -2, bottom: -2, width: 2, marginLeft: -1, backgroundColor: C.ink },
+  payoffAxis: { flexDirection: "row", justifyContent: "space-between" },
+  payoffTick: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 12, fontVariant: ["tabular-nums"] },
+  payoffStrikeLabel: { color: C.ink, fontFamily: F.bodySemi },
+  payoffLegend: { flexDirection: "row", alignItems: "center", gap: 6 },
+  payoffSwatch: { width: 10, height: 10, borderRadius: 2, backgroundColor: C.payout },
   pill: { minHeight: 32, flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 7, borderWidth: 1, borderRadius: 16, paddingHorizontal: 10 },
   dot: { width: 6, height: 6, borderRadius: 3 },
   pillText: { fontFamily: F.bodySemi, fontSize: 12, letterSpacing: 0.3 },
-  action: { minHeight: 52, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", borderRadius: 12, paddingHorizontal: 16, backgroundColor: C.green },
+  action: { minHeight: 52, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", borderRadius: 10, paddingHorizontal: 18, backgroundColor: C.rain },
   actionSecondary: { backgroundColor: "transparent", borderWidth: 1, borderColor: C.border },
   actionTextSecondary: { color: C.ink },
   actionDisabled: { backgroundColor: C.surfaceRaised, borderWidth: 1, borderColor: C.border },
@@ -120,13 +152,13 @@ const styles = StyleSheet.create({
   screenHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 20 },
   screenHeaderCopy: { flex: 1 },
   screenHeaderAction: { paddingTop: 4 },
-  eyebrow: { color: C.rain, fontFamily: F.bodySemi, fontSize: 12, marginBottom: 5 },
+  eyebrow: { color: C.muted, fontFamily: F.bodySemi, fontSize: 12, letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 6 },
   screenTitle: { color: C.ink, fontFamily: F.headingBold, fontSize: 28, lineHeight: 34, letterSpacing: -0.8 },
   screenDetail: { color: C.muted, fontFamily: F.body, fontSize: 14, lineHeight: 21, marginTop: 8 },
   sectionHeader: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: 24, marginBottom: 11 },
   sectionTitle: { color: C.ink, fontFamily: F.heading, fontSize: 19 },
   sectionDetail: { color: C.quiet, fontFamily: F.body, fontSize: 12 },
-  insetSurface: { backgroundColor: C.surface, borderColor: C.border, borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 16 },
+  insetSurface: { backgroundColor: C.surface, borderColor: C.border, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 16 },
   timeline: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 6 },
   timelineRule: { flex: 1, minWidth: 8, height: StyleSheet.hairlineWidth, backgroundColor: C.border },
   timelineStep: { alignItems: "center", gap: 5 },

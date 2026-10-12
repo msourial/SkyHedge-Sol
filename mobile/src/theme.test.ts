@@ -2,15 +2,16 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { C, F } from "./theme.ts";
 
-describe("Signal Dark theme", () => {
+describe("Instrument theme", () => {
   it("exposes the shared semantic weather and status tokens", () => {
-    assert.equal(C.canvas, "#080B14");
-    assert.equal(C.surface, "#111827");
-    assert.equal(C.surfaceRaised, "#182235");
-    assert.equal(C.rain, "#70D6FF");
-    assert.equal(C.mint, "#32E6A1");
-    assert.equal(C.amber, "#F5C66D");
-    assert.equal(C.coral, "#FF8C91");
+    assert.equal(C.canvas, "#0A0E13");
+    assert.equal(C.surface, "#11161D");
+    assert.equal(C.surfaceRaised, "#171D26");
+    assert.equal(C.rain, "#5CC8FF");
+    assert.equal(C.mint, "#3DDC97");
+    assert.equal(C.amber, "#E8B04B");
+    assert.equal(C.payout, "#E8B04B");
+    assert.equal(C.coral, "#F2787D");
   });
 
   it("keeps display, interface, and technical typography roles distinct", () => {

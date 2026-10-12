@@ -1,35 +1,40 @@
-/** SkyHedge's own dark palette, with restrained Solana-inspired accents. */
+/**
+ * "Instrument" brand system: graphite canvas, one signal colour (glacier blue = rain + primary action),
+ * gold reserved for money/payout, mint only for verified state. No purple, no glow.
+ */
 export const C = {
-  canvas: "#080B14",
-  surface: "#111827",
-  surfaceRaised: "#182235",
-  mutedSurface: "#202A3D",
-  ink: "#F6F8FC",
-  muted: "#A7B3C8",
-  quiet: "#7F8CA4",
-  border: "#2A354A",
-  rain: "#70D6FF",
-  rainSoft: "#173A50",
-  mint: "#32E6A1",
-  mintSoft: "#123E34",
-  violet: "#9B8CFF",
-  violetSoft: "#302853",
-  amber: "#F5C66D",
-  amberSoft: "#3C2B1B",
-  coral: "#FF8C91",
+  canvas: "#0A0E13",
+  surface: "#11161D",
+  surfaceRaised: "#171D26",
+  mutedSurface: "#1E2530",
+  ink: "#F2F5F8",
+  muted: "#A3AEBC",
+  quiet: "#7D8896",
+  border: "#252D38",
+  rain: "#5CC8FF",
+  rainSoft: "#10283A",
+  mint: "#3DDC97",
+  mintSoft: "#0F2E24",
+  violet: "#5CC8FF",
+  violetSoft: "#10283A",
+  amber: "#E8B04B",
+  amberSoft: "#2E2414",
+  coral: "#F2787D",
   redSoft: "#3B222D",
-  white: "#F6F8FC",
-  actionText: "#06271C",
+  white: "#F2F5F8",
+  actionText: "#04131F",
   // Existing screen names keep the migration small while all values resolve to semantic tokens.
-  blue: "#70D6FF",
-  blueSoft: "#173A50",
-  green: "#32E6A1",
-  greenSoft: "#123E34",
-  purple: "#9B8CFF",
-  purpleSoft: "#302853",
-  red: "#FF8C91",
-  field: "#302853",
-  fieldText: "#F6F8FC",
+  blue: "#5CC8FF",
+  blueSoft: "#10283A",
+  green: "#5CC8FF",
+  greenSoft: "#10283A",
+  purple: "#A3AEBC",
+  purpleSoft: "#1E2530",
+  red: "#F2787D",
+  field: "#171D26",
+  fieldText: "#F2F5F8",
+  payout: "#E8B04B",
+  payoutSoft: "#2E2414",
 } as const;
 
 export const F = {
@@ -56,7 +61,7 @@ export const type = {
   figure: { fontFamily: F.headingBold, fontSize: 28, lineHeight: 34, fontVariant: ["tabular-nums" as const] },
 } as const;
 
-export const radius = { sm: 8, md: 12, lg: 16, pill: 999 } as const;
+export const radius = { sm: 6, md: 10, lg: 14, pill: 999 } as const;
 
 /** Elevation is expressed by surface step + hairline, not glow. */
 export const elevation = {

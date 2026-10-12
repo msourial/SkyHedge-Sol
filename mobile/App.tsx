@@ -24,7 +24,7 @@ import { hedgeBalanceLine, hedgeWindowDays, marketHeadline, optionPremiumLine, t
 import { buildCommittedQuoteRequest, formatSkyt, getProtectionUnavailableReason, isOnchainMarketOpen, parseSkytAmount } from "./src/protection";
 import { authorizeDevnetWallet, signAndConfirmDevnetTransaction, type AuthorizedWallet } from "./src/wallet";
 import { C, F } from "./src/theme";
-import { ActionButton, Disclosure, AppIcon, EvidenceTimeline, PrimaryAction, Reveal, ScreenHeader, SectionHeader, StatusPill, Text, type AppIconName } from "./src/ui";
+import { ActionButton, Disclosure, PayoffProfile, AppIcon, EvidenceTimeline, PrimaryAction, Reveal, ScreenHeader, SectionHeader, StatusPill, Text, type AppIconName } from "./src/ui";
 import { ScreenTransition, TactilePressable } from "./src/liquid-glass";
 import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
 import { ReferenceAreaMap } from "./src/ReferenceAreaMap";
@@ -711,6 +711,7 @@ function ProtectScreen(props: {
           <View style={styles.triggerPanel}>
             <Text style={styles.triggerLabel}>Pays out</Text>
             <Text style={styles.triggerValue}>{threshold == null ? "Final terms pending" : triggerPhrase(market?.thresholdMmX100, market?.operator).replace(/^if r/, "If r")}</Text>
+            {threshold != null ? <PayoffProfile thresholdMm={threshold} below={market?.operator === "lt" || market?.operator === "lte"} /> : null}
             <Text style={styles.triggerWindow}>NOAA observation · {windowStart} to {windowEnd} UTC</Text>
           </View>
         ) : (
@@ -950,16 +951,16 @@ const styles = StyleSheet.create({
   detailsToggle: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
   detailsToggleText: { color: C.blue, fontFamily: F.bodySemi, fontSize: 13 },
   cityRail: { gap: 8, paddingBottom: 16 },
-  cityChip: { minHeight: 48, paddingHorizontal: 15, justifyContent: "center", borderWidth: 1, borderColor: C.border, borderRadius: 16, backgroundColor: C.surface },
+  cityChip: { minHeight: 48, paddingHorizontal: 15, justifyContent: "center", borderWidth: 1, borderColor: C.border, borderRadius: 12, backgroundColor: C.surface },
   cityChipSelected: { borderColor: C.purple, backgroundColor: C.purpleSoft },
   cityChipText: { color: C.ink, fontFamily: F.bodyMedium, fontSize: 13 },
   cityChipTextSelected: { color: C.white },
-  heroCard: { backgroundColor: C.surface, borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border, padding: 20, overflow: "hidden" },
+  heroCard: { backgroundColor: C.surface, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border, padding: 20, overflow: "hidden" },
   heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   heroLabel: { color: C.blue, fontFamily: F.bodySemi, fontSize: 12 },
   heroPlace: { color: C.white, fontFamily: F.headingBold, fontSize: 22, marginTop: 6 },
   heroSub: { color: C.muted, fontSize: 12, marginTop: 5 },
-  indexBadge: { backgroundColor: C.greenSoft, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 7 },
+  indexBadge: { backgroundColor: C.greenSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7 },
   indexBadgeText: { color: C.green, fontFamily: F.bodySemi, fontSize: 12 },
   indexBadgeUnavailable: { backgroundColor: C.amberSoft },
   indexBadgeUnavailableText: { color: C.amber },
@@ -974,7 +975,7 @@ const styles = StyleSheet.create({
   sectionTitle: { color: C.ink, fontFamily: F.heading, fontSize: 19 },
   sectionMeta: { color: C.quiet, fontSize: 12 },
   chartCard: { flexDirection: "row", minHeight: 170, alignItems: "stretch", justifyContent: "space-between", gap: 4, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 8, paddingTop: 16, paddingBottom: 12 },
-  loadingPanel: { minHeight: 110, alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 17, padding: 18, marginBottom: 14 },
+  loadingPanel: { minHeight: 110, alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 12, padding: 18, marginBottom: 14 },
   barColumn: { flex: 1, alignItems: "center", justifyContent: "flex-end" },
   barValue: { color: C.ink, fontFamily: F.bodySemi, fontSize: 12, marginBottom: 6, fontVariant: ["tabular-nums"] },
   barTrack: { flex: 1, width: 20, maxHeight: 85, justifyContent: "flex-end", backgroundColor: C.mutedSurface, borderRadius: 8, overflow: "hidden" },
@@ -988,7 +989,7 @@ const styles = StyleSheet.create({
   secondaryAction: { minHeight: 72, justifyContent: "center", backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 15, paddingHorizontal: 15, paddingVertical: 12, marginTop: 13 },
   secondaryActionTitle: { color: C.ink, fontFamily: F.bodySemi, fontSize: 13 },
   secondaryActionBody: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
-  releaseCard: { backgroundColor: C.amberSoft, borderRadius: 16, padding: 15, marginTop: 15, flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  releaseCard: { backgroundColor: C.amberSoft, borderRadius: 12, padding: 15, marginTop: 15, flexDirection: "row", alignItems: "flex-start", gap: 10 },
   releaseIcon: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: C.amber, alignItems: "center", justifyContent: "center" },
   releaseIconText: { color: C.amber, fontSize: 13, fontWeight: "700" },
   releaseCopy: { flex: 1 },
@@ -996,7 +997,7 @@ const styles = StyleSheet.create({
   releaseBody: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
   searchWrap: { minHeight: 56, marginBottom: 8, flexDirection: "row", alignItems: "center", gap: 9, paddingHorizontal: 13, borderRadius: 10, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
   selectionPrompt: { color: C.ink, fontFamily: F.heading, fontSize: 18, lineHeight: 24, marginBottom: 12 },
-  riskSheet: { backgroundColor: C.surfaceRaised, borderColor: C.border, borderWidth: 1, borderRadius: 16, padding: 16, marginTop: 8, marginBottom: 16 },
+  riskSheet: { backgroundColor: C.surfaceRaised, borderColor: C.border, borderWidth: 1, borderRadius: 12, padding: 16, marginTop: 8, marginBottom: 16 },
   guideToggle: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border, marginTop: 7 },
   guideToggleText: { flex: 1, color: C.blue, fontFamily: F.bodySemi, fontSize: 14 },
   searchInput: { flex: 1, minHeight: 48, color: C.ink, fontSize: 14, paddingVertical: 8 },
@@ -1011,17 +1012,17 @@ const styles = StyleSheet.create({
   marketMain: { flex: 1 },
   marketName: { color: C.ink, fontFamily: F.heading, fontSize: 15, lineHeight: 20 },
   marketPlace: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 3 },
-  researchPill: { paddingHorizontal: 9, paddingVertical: 6, backgroundColor: C.amberSoft, borderRadius: 20 },
+  researchPill: { paddingHorizontal: 9, paddingVertical: 6, backgroundColor: C.amberSoft, borderRadius: 12 },
   researchPillText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 12 },
   marketContext: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 10, marginLeft: 50 },
   marketCrops: { color: C.muted, fontFamily: F.bodyMedium, fontSize: 12, marginTop: 8, textTransform: "capitalize" },
   marketFoot: { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 10, marginTop: 11, color: C.muted, fontSize: 12, lineHeight: 17 },
   hazardRail: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 13 },
-  hazardChip: { minHeight: 48, paddingHorizontal: 14, justifyContent: "center", borderWidth: 1, borderColor: C.border, borderRadius: 16, backgroundColor: C.surface },
+  hazardChip: { minHeight: 48, paddingHorizontal: 14, justifyContent: "center", borderWidth: 1, borderColor: C.border, borderRadius: 12, backgroundColor: C.surface },
   hazardChipSelected: { borderColor: C.purple, backgroundColor: C.purpleSoft },
   hazardChipText: { color: C.ink, fontFamily: F.bodyMedium, fontSize: 13 },
   hazardChipTextSelected: { color: C.white },
-  hazardCard: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 18, padding: 16, marginBottom: 7 },
+  hazardCard: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 12, padding: 16, marginBottom: 7 },
   miniHistory: { marginTop: 18, paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
   miniHistoryTitle: { color: C.ink, fontFamily: F.bodySemi, fontSize: 13, marginBottom: 10 },
   miniChart: { flexDirection: "row", minHeight: 120, justifyContent: "space-between", gap: 6 },
@@ -1033,7 +1034,7 @@ const styles = StyleSheet.create({
   hazardBlocked: { color: C.amber, fontFamily: F.bodySemi, fontSize: 12, marginTop: 9 },
   walletCard: { marginTop: 4 },
   walletCardContent: { alignItems: "flex-start", padding: 20 },
-  walletOrb: { width: 52, height: 52, borderRadius: 16, backgroundColor: C.purpleSoft, justifyContent: "center", alignItems: "center" },
+  walletOrb: { width: 52, height: 52, borderRadius: 12, backgroundColor: C.purpleSoft, justifyContent: "center", alignItems: "center" },
   walletTitle: { color: C.ink, fontFamily: F.heading, fontSize: 20 },
   walletAddress: { color: C.ink, fontFamily: F.mono, fontSize: 14, marginTop: 6 },
   primaryButton: { minHeight: 52, width: "100%", alignItems: "center", justifyContent: "center", backgroundColor: C.green, borderRadius: 14, marginTop: 18 },
@@ -1116,7 +1117,7 @@ const styles = StyleSheet.create({
   retryButton: { minHeight: 48, justifyContent: "center", paddingHorizontal: 12, borderRadius: 12, backgroundColor: C.surface, borderColor: C.border, borderWidth: 1 },
   retryButtonText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 12 },
   walletAlert: { width: "100%", backgroundColor: C.redSoft, borderColor: C.red, borderWidth: 1, borderRadius: 13, padding: 12, marginBottom: 16 },
-  emptyState: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 18, padding: 18, marginTop: 8 },
+  emptyState: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 12, padding: 18, marginTop: 8 },
   emptyTitle: { color: C.ink, fontFamily: F.heading, fontSize: 17, marginBottom: 6 },
   emptyAction: { minHeight: 48, justifyContent: "center", alignSelf: "flex-start", paddingRight: 12 },
   emptyActionText: { color: C.blue, fontFamily: F.bodySemi, fontSize: 13 },
