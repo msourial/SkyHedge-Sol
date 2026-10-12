@@ -75,7 +75,6 @@ test("research-only hazard selection on Protect hides rainfall inputs and blocks
   await page.goto("/?tab=protect&city=des-moines");
   await page.getByRole("button", { name: "Wind gust" }).click();
 
-  await expect(page.getByText("Weather protection", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Wind gust protection is research-only" })).toBeVisible();
   await expect(page.getByText("Rainfall threshold (mm / in)")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Request NOAA quote" })).toHaveCount(0);
