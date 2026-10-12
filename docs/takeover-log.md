@@ -7,7 +7,8 @@ Source of truth (confirmed by Miro): `codex/clock-in-mobile` on github.com/msour
 
 - Public hackathon page: **Oct 12, 2026, 7:59 PM EDT (23:59 UTC)**.
 - Earlier repo notes (`docs/clock-in-readiness.md`) say the registered Align draft showed **Oct 12, 2026, 7:59 AM EDT (11:59 UTC)**.
-- Owner: Miro, to confirm the live countdown in the Align account. Treat 7:59 AM as the working deadline until confirmed.
+- Owner: Miro, to confirm the live countdown in the Align account. Earlier this log treated 7:59 AM as the working deadline until confirmed.
+- **Confirmed Oct 12 01:10 ET by Miro: the deadline is 7:59 PM EDT (23:59 UTC) today (about 18h48m away). This is the working deadline.**
 
 ## Timeline
 
@@ -66,7 +67,7 @@ Playwright UI tests were not run.
 
 | Item | Owner |
 | --- | --- |
-| Confirm the live Align deadline countdown (7:59 AM vs PM EDT) | Miro |
+| ~~Confirm the live Align deadline countdown~~ Done 01:10 ET: 7:59 PM EDT | Miro |
 | Install and smoke-test the new APK (`b46c2eb6…`) on the Seeker | Miro |
 | Physical Mobile Wallet Adapter test (authorize/sign, or record the exact blocker) | Miro |
 | Record a narrated demo video of 3 minutes or less and upload it publicly | Miro |
@@ -114,3 +115,44 @@ Reported symptom (Seeker, wallet connected): 100 SKYT, then Get quote, showed "W
 3. Refresh the app. The backend auto-selects id 1, and the status should read Open with a 2,000 SKYT vault.
 
 Timing: the seed schedule's sales close is 2026-10-13 01:18 EDT, so the fresh market sells through the 7:59 PM deadline.
+## Functional check, Oct 12 01:10–01:19 ET (physical Seeker SM02G406197714)
+
+All app results are from the physical Seeker over USB. A Pixel_7 emulator was booted as a fallback but was not used for any result. The phone's clock and logcat show 13:xx, which is the phone's own time zone, about 12 h ahead of ET.
+APK: `SkyHedge-ClockIn-e00f28e.apk` (SHA `b46c2eb6…`), installed with `adb install -r` over the existing same-debug-key package. No uninstall and no data loss.
+Wallets installed: Phantom (`app.phantom` 26.32.0), Solflare, Seed Vault. MWA intents open Phantom by default.
+Screenshots, logcat, and the `snap.sh` helper: `~/Documents/Codex/functional-check-2026-10-12/`.
+
+| Flow | Result | Evidence |
+| --- | --- | --- |
+| Launch | Works: cold start 189 ms, "Choose a place" screen, no crash | 01-launch.png |
+| Explore / map / place discovery | Works: 14 areas, Des Moines detail, dark keyless map renders | 01, 02-des-moines.png |
+| Rainfall evidence + NOAA weekly history | Works: 6 completed weeks (08-31 to 10-05). Week 10-05 shows 0 mm (possibly NOAA lag) | 03, 05-rainfall-scroll2.png |
+| Weather tab | Works: last completed week, 12-week pattern | 10-weather.png |
+| Protect up to signing | Partial, as designed: USD preview, then "Try on Devnet" asks for a SKYT amount; quote disabled with "Des Moines market is not open" (market is Draft with empty vault, 4/6 checks) | 06, 09-try-devnet.png |
+| Wallet connect (MWA) | **Works** after Phantom Testnet Mode was enabled. Wallet `DKA9R…ZFD6y` connected; finalized balances 5.6861 SOL and 350,000 SKYT (slot 510155896). Attempt 1 at 13:13:37: `SolanaMobileWalletAdapterModule: Failed to invoke authorize … java.util.concurrent.CancellationException` because Phantom showed "GitHub.com is trying to use testnet, but you are not in testnet mode" | 13, 14-mwa-result, 17-wallet-connected.png, logcat-seeker*.txt |
+| Portfolio / Positions | Partial: "Index pending" (API `source: not-indexed`) | 17 |
+| Your position (Protect, after connect) | **Broken**: "SkyHedge returned an unreadable API response". `GET /api/markets/9UUNQPX…JqVJ/positions/<wallet>/claim-readiness` returns 200 `text/html` (SPA fallback); the Vercel function is not served in production | 16-after-retry.png |
+
+No transaction was approved, signed, or sent.
+
+### Backend (curl, skyhedge.vercel.app)
+| Endpoint | Result |
+| --- | --- |
+| `/api/health` | 200 JSON, devnet, program `5hGLEG1t…PWx` |
+| `/api/mobile?resource=cities` | 200 JSON (1.3 s) |
+| `/api/mobile?resource=city&slug=des-moines` | 200 JSON with `weeklyHistoryMm` (2.9 s); `cumulativeMm` null for the current window |
+| `/api/mobile?resource=agricultural-markets` | 200 JSON |
+| `/api/mobile?resource=portfolio&wallet=…` | 200 JSON not-indexed (400 `INVALID_WALLET` without a wallet) |
+| `/api/devnet/status` | 200 JSON (4.9 s, slow) |
+| `/api/quotes` POST `{}` | 400 `INVALID_PROTECTION_PARAMETERS` (expected) |
+| `/api/markets/des-moines/evidence-package` | 200 JSON |
+| `/api/markets/<addr>/positions/<wallet>/claim-readiness` | **200 text/html: not deployed** |
+| `/api/advisory` GET | 200 text/html (SPA fallback; may be POST-only or not deployed) |
+
+### Findings and fixes, ranked by submission impact
+1. **claim-readiness not deployed in production.** It breaks "Your position" after connect, which is visible in any demo. Fix options: route it through `/api/mobile?resource=claim-readiness` (the pattern already used to stay under the Vercel function limit), or have the app treat `text/html` as "not available" instead of an error. Then redeploy. 11 non-test API files plus cron may be at the Hobby function cap.
+2. **Connected wallet holds all 350,000 SKYT,** so it is likely the admin/mint wallet. Use a separate non-admin tester wallet for the demo, as the submission brief requires.
+3. **MWA identity points to GitHub.** `mobile/src/wallet.ts` uses `APP_IDENTITY = { name: "SkyHedge", uri: "https://github.com/msourial/SkyHedge-Sol", icon: "favicon.ico" }`, so Phantom shows "GitHub.com". The icon resolves to a 404. Polish fix: `uri: "https://skyhedge.vercel.app"` with an icon path that exists there.
+4. **Testnet Mode is required in Phantom.** Mention this in the demo, README, and tester notes.
+5. **Market is Draft with an empty vault,** so a quote or purchase cannot be shown. Admin cancel/create/fund/open is on hold (Miro's call). Otherwise demo the honest blocker.
+6. Minor: week 10-05 shows 0 mm; `/api/devnet/status` takes about 5 s.
