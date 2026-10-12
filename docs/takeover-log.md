@@ -156,3 +156,34 @@ No transaction was approved, signed, or sent.
 4. **Testnet Mode is required in Phantom.** Mention this in the demo, README, and tester notes.
 5. **Market is Draft with an empty vault,** so a quote or purchase cannot be shown. Admin cancel/create/fund/open is on hold (Miro's call). Otherwise demo the honest blocker.
 6. Minor: week 10-05 shows 0 mm; `/api/devnet/status` takes about 5 s.
+
+## Post-functional-check fixes (2026-10-12 01:21 ET, branch clock-in-submission)
+- **Merge:** `clock-in-final` (8226e89) merged as 6c57d9b. The only conflict was docs/takeover-log.md, where both sides appended sections. I kept both: Redesign merge, Protect investigation, Functional check.
+- **d9116eb, claim readiness:**
+  - Live `GET /api/markets/<m>/positions/<w>/claim-readiness` returns 200 text/html (SPA rewrite, so the function is not served). `/api/mobile?resource=cities` returns JSON correctly.
+  - Added `resource=claim-readiness` to `server/services/mobile-api.ts`. It reuses `createClaimReadinessHandler` and `UnsignedTransactionBuilder.readClaimReadiness` (lazy import).
+  - Mobile now calls `claimReadinessPath()`.
+  - `getJson` detects HTML/non-JSON replies and throws `NotAvailableYetError`, which the UI shows as "Position status is not available yet."
+  - Tests: 2 server, 2 mobile.
+  - **Needs a Vercel redeploy to take effect.**
+- **Advisory:** `GET /api/advisory` returns 200 text/html, and `POST` returns 405 with no JSON body. The function is very likely not deployed either (same deploy issue), so the in-app guide will fail until a redeploy. Not changed.
+- **7c1622e, MWA identity:** the identity moved to `mobile/src/wallet-identity.ts` and now reads name SkyHedge, uri https://skyhedge.vercel.app, icon `favicon.svg`. curl gives 200 image/svg+xml. favicon.ico/png and icon.png return the HTML fallback, so they're unusable. Test added. MWA calls are unchanged.
+- **5d09dae, README:** tester note to turn on Phantom Testnet Mode (Devnet).
+- **95f3713, Protect reframed as an option:**
+  - New `mobile/src/options-copy.ts`, with 4 tests, provides:
+    - an "Des Moines is open / Hedge against rain over the next N days" headline (N from the observation window)
+    - "New Des Moines protection opens soon" when closed
+    - "You have X SKYT to hedge with", from finalized wallet balances
+    - the quote as "Pay P SKYT, get up to Payout SKYT if rainfall reaches T mm or more", plus a "Payout if triggered" row
+  - "Waiting for market readiness" was replaced by human copy; the technical checks remain under Verification details.
+  - The honesty Disclosure is kept. Quote, approve and claim handlers are unchanged.
+- **Tests after all fixes:**
+  - `mobile npm run check` is clean.
+  - `test:mobile` is 44 pass / 0 fail.
+  - `test:server` is 153 passing.
+- **How it deploys (read-only check, nothing deployed):**
+  - The main clone has `.vercel/project.json` linked to Vercel project "skyhedge" (prj_aeB0aFEA53G9VclC08OAdYERQsn3).
+  - No global `vercel` binary is installed, but a Vercel CLI config dir exists (~/Library/Application Support/com.vercel.cli), so it was previously used via npx.
+  - GitHub shows zero deployments for msourial/SkyHedge-Sol, so the site appears to be CLI-deployed (`npx vercel --prod` from the linked clone), not git-push auto-deploy.
+  - vercel.json has no git settings. CI is `.github/workflows/ci.yml` only.
+  - Production branch: unknown; confirm in the Vercel dashboard.
