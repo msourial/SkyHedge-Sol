@@ -518,6 +518,7 @@ function CatalogScreen({ markets, city, status, query, activeArea, hazard, guide
       detail={activeArea === "toronto" ? "Outdoor-event rainfall · research only" : activeArea === "saskatoon" ? "Prairie dry-spell · research only" : chosenMarket?.agriculturalContext}
       action={<Pressable accessibilityRole="button" accessibilityLabel="Change selected place" onPress={() => setPickerOpen(true)} style={styles.changePlace}><Text style={styles.changePlaceText}>Change</Text></Pressable>}
     />
+    <View style={styles.riskSheet} accessibilityLabel="Risk sheet">
     <Text style={styles.selectionPrompt}>Which weather risk matters here?</Text>
     <View style={styles.riskSegments} accessibilityRole="tablist" accessibilityLabel="Weather risk for the selected place">
       {listHazards().map((option) => <Pressable key={option.id} accessibilityRole="tab" accessibilityState={{ selected: hazard === option.id }} accessibilityLabel={option.label} onPress={() => onSelectHazard(option.id)} style={[styles.riskSegment, hazard === option.id && styles.riskSegmentSelected]}>
@@ -545,6 +546,7 @@ function CatalogScreen({ markets, city, status, query, activeArea, hazard, guide
       {hazard === "rainfall" ? <RainfallHistoryPreview history={rainfallHistory} place={chosenPlace} /> : null}
       {riskChoice?.canReview ? <View style={styles.actionWrap}><PrimaryAction label="See protection status" icon="arrow-right" onPress={onOpenProtect} /></View> : null}
     </View> : <Text style={styles.chosenPrompt}>Choose one risk to see its evidence and availability.</Text>}
+    </View>
     <ReferenceAreaMap point={referencePointFor(chosenMarket)} location={chosenPlace} evidenceLabel={evidenceLabel} onChangeLocation={() => setPickerOpen(true)} />
   </View>;
 
@@ -564,19 +566,7 @@ function CatalogScreen({ markets, city, status, query, activeArea, hazard, guide
         />
         {query.length ? <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => onQueryChange("")} style={styles.clearSearch}><AppIcon name="x" size={20} /></Pressable> : null}
       </View>
-      <Text style={styles.filterLabel}>Choose a weather risk</Text>
-      <View style={styles.quickFilters} accessibilityRole="tablist" accessibilityLabel="Weather risk choices">
-        {listHazards().map((option) => <Pressable key={option.id} accessibilityRole="tab" accessibilityState={{ selected: hazard === option.id }} accessibilityLabel={`Choose ${option.label} before selecting a place`} onPress={() => onSelectHazard(option.id)} style={[styles.quickFilter, hazard === option.id && styles.quickFilterSelected]}>
-          <Text style={[styles.quickFilterText, hazard === option.id && styles.quickFilterTextSelected]}>{option.label}{option.id === "rainfall" ? "" : " · Research"}</Text>
-        </Pressable>)}
-      </View>
-      {!query.trim() ? <View style={styles.exampleRow}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Explore Toronto, Ontario, Canada for an outdoor event; research only" onPress={() => chooseArea("toronto")} style={styles.exampleButton}><Text style={styles.exampleText}>Event · Toronto</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Explore Saskatoon, Saskatchewan, Canada for a dry-spell pilot; research only" onPress={() => chooseArea("saskatoon")} style={styles.exampleButton}><Text style={styles.exampleText}>Farm · Saskatoon</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Explore Des Moines, Iowa, United States for a farm; rainfall pilot" onPress={() => chooseArea("des-moines")} style={styles.exampleButton}><Text style={styles.exampleText}>Farm · Des Moines</Text></Pressable>
-      </View> : null}
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: guideOpen }} accessibilityLabel="Ask SkyHedge guide about a place and weather risk" onPress={() => setGuideOpen((open) => !open)} style={styles.guideToggle}><AppIcon name="message-circle" color={C.blue} size={20} /><Text style={styles.guideToggleText}>Describe your plans instead</Text><AppIcon name={guideOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={18} /></Pressable>
-      {guideOpen ? <GuidePanel turns={guideTurns} busy={guideBusy} onSend={onAskGuide} onViewMatch={onViewGuideMatch} /> : null}
+      <EvidenceTimeline steps={[{ label: "Place", ready: false }, { label: "Risk", ready: false }, { label: "Evidence", ready: false }]} />
       <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Places</Text><Text style={styles.sectionMeta}>{markets.length} crop areas · 2 Canadian pilots</Text></View>
       <Text style={styles.resultMeta} accessibilityLiveRegion="polite">{markets.length === 0 ? "Catalog unavailable" : `${matchingMarkets.length + pilotAreas.length} matching ${(matchingMarkets.length + pilotAreas.length) === 1 ? "area" : "areas"}`}</Text>
       {pilotAreas.map((area) => <Pressable key={area.slug} accessibilityRole="button" accessibilityLabel={`${area.location}. ${area.context}. Select place and choose a weather risk.`} accessibilityState={{ selected: activeArea === area.slug }} onPress={() => chooseArea(area.slug)} style={[styles.marketCard, activeArea === area.slug && styles.marketCardSelected]}>
@@ -596,6 +586,8 @@ function CatalogScreen({ markets, city, status, query, activeArea, hazard, guide
           <Text style={styles.marketContext}>{market.agriculturalContext} · {market.crops.join(", ")}</Text>
         </Pressable>;
       }) : pilotAreas.length === 0 ? <View><EmptyState title={query ? "No researched areas match" : "Catalog unavailable"} body={query ? "Try another place, state or province, country, or crop. Search covers only the current research catalog." : "Researched locations appear after the API responds."} />{query ? <Pressable accessibilityRole="button" onPress={() => onQueryChange("")} style={styles.emptyAction}><Text style={styles.emptyActionText}>Clear search</Text></Pressable> : null}</View> : null}
+      <Pressable accessibilityRole="button" accessibilityState={{ expanded: guideOpen }} accessibilityLabel="Ask SkyHedge guide about a place and weather risk" onPress={() => setGuideOpen((open) => !open)} style={styles.guideToggle}><AppIcon name="message-circle" color={C.blue} size={20} /><Text style={styles.guideToggleText}>Describe your plans instead</Text><AppIcon name={guideOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={18} /></Pressable>
+      {guideOpen ? <GuidePanel turns={guideTurns} busy={guideBusy} onSend={onAskGuide} onViewMatch={onViewGuideMatch} /> : null}
       <Disclosure>Research status and map reference points are not coverage. Only the Des Moines rainfall pilot can be quoted on Devnet.</Disclosure>
     </>
   );
@@ -943,7 +935,7 @@ const styles = StyleSheet.create({
   riskSegmentSelected: { borderBottomWidth: 2, borderBottomColor: C.green },
   riskSegmentText: { color: C.muted, fontFamily: F.bodyMedium, fontSize: 13, textAlign: "center" },
   riskSegmentTextSelected: { color: C.ink, fontFamily: F.bodySemi },
-  outcomeSurface: { marginTop: 20 },
+  outcomeSurface: { marginTop: 16 },
   outcomeSurfaceContent: { padding: 16 },
   outcomeSummary: { color: C.muted, fontFamily: F.body, fontSize: 14, lineHeight: 21, marginTop: 10, marginBottom: 14 },
   outcomeFacts: { marginTop: 8 },
@@ -983,7 +975,6 @@ const styles = StyleSheet.create({
   barDate: { color: C.quiet, fontSize: 12, marginTop: 5 },
   emptyText: { color: C.muted, fontSize: 13, lineHeight: 20 },
   noteCard: { backgroundColor: C.canvas, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border, paddingVertical: 17, marginTop: 17 },
-  noteEyebrow: { color: C.blue, fontFamily: F.bodySemi, fontSize: 12, marginBottom: 5 },
   noteTitle: { color: C.ink, fontFamily: F.heading, fontSize: 16 },
   noteBody: { color: C.muted, fontSize: 12, lineHeight: 19, marginTop: 5 },
   secondaryAction: { minHeight: 72, justifyContent: "center", backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 15, paddingHorizontal: 15, paddingVertical: 12, marginTop: 13 },
@@ -995,20 +986,11 @@ const styles = StyleSheet.create({
   releaseCopy: { flex: 1 },
   releaseTitle: { color: C.ink, fontFamily: F.bodySemi, fontSize: 13 },
   releaseBody: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
-  searchWrap: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 9, paddingHorizontal: 13, borderRadius: 10, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
-  filterLabel: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 12, marginTop: 18, marginBottom: 8 },
-  quickFilters: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  quickFilter: { minHeight: 44, justifyContent: "center", paddingHorizontal: 12, borderRadius: 22, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface },
-  quickFilterSelected: { borderColor: C.rain, backgroundColor: C.rainSoft },
-  quickFilterText: { color: C.muted, fontFamily: F.bodyMedium, fontSize: 12 },
-  quickFilterTextSelected: { color: C.ink, fontFamily: F.bodySemi },
-  exampleRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12, marginBottom: 18 },
-  exampleButton: { flexGrow: 1, minWidth: 100, minHeight: 48, justifyContent: "center", alignItems: "center", paddingHorizontal: 10, borderWidth: 1, borderColor: C.border, borderRadius: 9, backgroundColor: C.surface },
-  exampleText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 12, textAlign: "center" },
-  selectionPrompt: { color: C.ink, fontFamily: F.bodySemi, fontSize: 15, lineHeight: 22, marginTop: 25, marginBottom: 10 },
+  searchWrap: { minHeight: 56, marginBottom: 8, flexDirection: "row", alignItems: "center", gap: 9, paddingHorizontal: 13, borderRadius: 10, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
+  selectionPrompt: { color: C.ink, fontFamily: F.heading, fontSize: 18, lineHeight: 24, marginBottom: 12 },
+  riskSheet: { backgroundColor: C.surfaceRaised, borderColor: C.border, borderWidth: 1, borderRadius: 16, padding: 16, marginTop: 8, marginBottom: 16 },
   guideToggle: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border, marginTop: 7 },
   guideToggleText: { flex: 1, color: C.blue, fontFamily: F.bodySemi, fontSize: 14 },
-  catalogFootnote: { color: C.muted, fontFamily: F.body, fontSize: 12, lineHeight: 19, marginTop: 20 },
   searchInput: { flex: 1, minHeight: 48, color: C.ink, fontSize: 14, paddingVertical: 8 },
   clearSearch: { minWidth: 48, minHeight: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   resultMeta: { color: C.muted, fontSize: 12, marginTop: 8, marginBottom: 11 },
@@ -1081,7 +1063,6 @@ const styles = StyleSheet.create({
   amountInput: { minHeight: 56, borderWidth: 1, borderColor: C.border, borderRadius: 13, backgroundColor: C.canvas, color: C.ink, paddingHorizontal: 14, fontFamily: F.heading, fontSize: 20, fontVariant: ["tabular-nums"] },
   inputHint: { color: C.muted, fontSize: 12, lineHeight: 17, marginTop: 6 },
   actionWrap: { marginTop: 16 },
-  testDisclosure: { color: C.quiet, fontSize: 12, textAlign: "center", marginTop: 10 },
   previewBlocker: { color: C.amber, fontFamily: F.bodyMedium, fontSize: 13, lineHeight: 19, marginTop: 12 },
   modeBack: { minHeight: 48, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 4, paddingRight: 12 },
   modeBackText: { color: C.blue, fontFamily: F.bodySemi, fontSize: 13 },
@@ -1120,7 +1101,6 @@ const styles = StyleSheet.create({
   errorBanner: { backgroundColor: C.redSoft, borderWidth: 1, borderColor: C.red, borderRadius: 15, padding: 14, marginBottom: 18 },
   errorTitle: { color: C.red, fontFamily: F.bodySemi, fontSize: 13 },
   errorBody: { color: C.ink, fontSize: 12, lineHeight: 18, marginTop: 4 },
-  errorFoot: { color: C.muted, fontSize: 12, lineHeight: 16, marginTop: 6 },
   errorActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 },
   retryButton: { minHeight: 48, justifyContent: "center", paddingHorizontal: 12, borderRadius: 12, backgroundColor: C.surface, borderColor: C.border, borderWidth: 1 },
   retryButtonText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 12 },
