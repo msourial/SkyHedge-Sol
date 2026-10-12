@@ -21,6 +21,9 @@ test.beforeEach(async ({ page }) => {
   await page.route("https://*.tile.openstreetmap.org/**", async (route) => {
     await route.fulfill({ status: 200, contentType: "image/png", body: transparentTile });
   });
+  await page.route("https://tile.openstreetmap.org/**", async (route) => {
+    await route.fulfill({ status: 200, contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#e9f0ee"/></svg>' });
+  });
 });
 
 test("search shows exact locations and matches locality, state, country, crop, and accents", async ({ page }) => {
@@ -50,8 +53,8 @@ test("wind gust and snowfall are research-only in Markets and never request quot
 
   await page.getByRole("button", { name: "Wind gust" }).click();
   await expect(page.getByRole("heading", { name: "Wind gust protection is research-only" })).toBeVisible();
-  await expect(page.getByText("Research-only hazard", { exact: true })).toBeVisible();
-  await expect(page.getByText("NOAA-settled protection", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Research only", { exact: true })).toBeVisible();
+  await expect(page.getByText("NOAA settlement", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Researching NOAA evidence", { exact: true })).toBeVisible();
   await expect(page.getByText("Highest daily peak gust", { exact: false })).toBeVisible();
   await expect(page.getByText(/mph.*km\/h/)).toBeVisible();
@@ -59,8 +62,8 @@ test("wind gust and snowfall are research-only in Markets and never request quot
 
   await page.getByRole("button", { name: "Snowfall" }).click();
   await expect(page.getByRole("heading", { name: "Snowfall protection is research-only" })).toBeVisible();
-  await expect(page.getByText("Research-only hazard", { exact: true })).toBeVisible();
-  await expect(page.getByText("NOAA-settled protection", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Research only", { exact: true })).toBeVisible();
+  await expect(page.getByText("NOAA settlement", { exact: true })).toHaveCount(0);
   await expect(page.getByText("New snowfall accumulated during the observation window", { exact: true })).toBeVisible();
   await expect(page.getByText(/not snow depth/i)).toBeVisible();
   await expect(page.getByText(/inches.*millimetres/i)).toBeVisible();
@@ -75,7 +78,7 @@ test("research-only hazard selection on Protect hides rainfall inputs and blocks
   await page.goto("/?tab=protect&city=des-moines");
   await page.getByRole("button", { name: "Wind gust" }).click();
 
-  await expect(page.getByText("Weather protection", { exact: true })).toBeVisible();
+  await expect(page.getByText("Parametric weather protection", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Wind gust protection is research-only" })).toBeVisible();
   await expect(page.getByText("Rainfall threshold (mm / in)")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Request NOAA quote" })).toHaveCount(0);
@@ -143,20 +146,18 @@ test("selecting a search result opens the matching market and updates the URL", 
 });
 
 test("Markets is a map-led agricultural index explorer with truthful location-only data", async ({ page }) => {
-  test.skip(Boolean(process.env.MAP_TEST_KEY), "This fallback scenario runs without a configured map key.");
   await page.goto("/?tab=markets&city=des-moines");
 
   await expect(page.getByRole("region", { name: "Agricultural index map" })).toBeVisible();
+  await expect(page.getByTestId("market-explorer-map")).toHaveAttribute("data-map-state", "ready");
   await expect(page.getByText("Index reference locations", { exact: true })).toBeVisible();
   await expect(page.getByText("Winnipeg, Manitoba, Canada", { exact: true })).toBeVisible();
-  await expect(page.getByText("Map provider not configured", { exact: true })).toBeVisible();
   await expect(page.getByText(/active stations|station count|live station/i)).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /Lubbock, Texas, United States/ })).toBeVisible();
+  await expect(page.getByTestId("market-index-option-lubbock")).toBeVisible();
   await expect(page.locator('[data-testid^="market-index-option-"]')).toHaveCount(12);
 });
 
 test("the explorer uses the twelve catalog reference coordinates and accessible marker controls", async ({ page }) => {
-  test.skip(!process.env.MAP_TEST_KEY, "Provide a test-only MapTiler key to exercise vector-map markers.");
   await page.goto("/?tab=markets&city=des-moines");
   const map = page.getByTestId("market-explorer-map");
   await expect(map).toHaveAttribute("data-map-state", "ready");
@@ -183,7 +184,6 @@ test("the explorer uses the twelve catalog reference coordinates and accessible 
 });
 
 test("MapLibre reports repeated map tile failures and offers a retry", async ({ page }) => {
-  test.skip(!process.env.MAP_TEST_KEY, "This map-tile failure scenario requires the test-only map key.");
   await page.unroute("https://api.maptiler.com/maps/**");
   await page.route("https://api.maptiler.com/maps/**", async (route) => {
     if (route.request().url().includes("/style.json")) {
@@ -191,10 +191,7 @@ test("MapLibre reports repeated map tile failures and offers a retry", async ({ 
         version: 8,
         name: "Failing tile test map",
         sources: { mock: { type: "vector", tiles: ["https://api.maptiler.com/maps/test-tiles/{z}/{x}/{y}.pbf"], minzoom: 0, maxzoom: 5 } },
-        layers: [
-          { id: "background", type: "background", paint: { "background-color": "#101a28" } },
-          { id: "mock-lines", type: "line", source: "mock", "source-layer": "boundaries", paint: { "line-color": "#334155", "line-width": 1 } },
-        ],
+        layers: [{ id: "mock-lines", type: "line", source: "mock", "source-layer": "boundaries", paint: { "line-color": "#334155", "line-width": 1 } }],
       }) });
       return;
     }
@@ -219,11 +216,13 @@ test("selecting an agricultural area from the explorer opens Protect and keeps t
 test("Leaflet renders the exact reference location and switches markets", async ({ page }) => {
   await page.goto("/?tab=protect&city=lubbock");
   const lubbockMap = page.getByTestId("area-map-lubbock");
+  await lubbockMap.scrollIntoViewIfNeeded();
   await expect(lubbockMap).toHaveAttribute("data-map-state", "ready");
   await expect(lubbockMap.getByText("Lubbock, Texas, United States", { exact: true }).last()).toBeVisible();
 
   await page.goto("/?tab=protect&city=ludhiana");
   const ludhianaMap = page.getByTestId("area-map-ludhiana");
+  await ludhianaMap.scrollIntoViewIfNeeded();
   await expect(ludhianaMap).toHaveAttribute("data-map-state", "ready");
   await expect(ludhianaMap.getByText("Ludhiana, Punjab, India", { exact: true }).last()).toBeVisible();
 });
@@ -235,6 +234,7 @@ test("map tile failures expose a truthful fallback and retry", async ({ page }) 
   await page.route("https://*.tile.openstreetmap.org/**", (route) => route.abort());
   await page.goto("/?tab=protect&city=lubbock");
   const map = page.getByTestId("area-map-lubbock");
+  await map.scrollIntoViewIfNeeded();
   await expect(map).toHaveAttribute("data-map-state", "unavailable");
   await expect(map.getByRole("alert")).toContainText("Map unavailable");
   await expect(map.getByRole("button", { name: "Retry" })).toBeVisible();

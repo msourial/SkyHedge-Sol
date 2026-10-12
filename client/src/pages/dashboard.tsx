@@ -102,7 +102,11 @@ export default function DashboardPage() {
     && devnetStatus.data.desMoinesMarket.quoteInputsHash?.toLowerCase() === quoteQuery.data.inputsHash.toLowerCase()
     ? quoteQuery.data
     : undefined;
-  const switchTab = (next: Tab, selectedMarket: MarketId = marketId) => { setTab(next); window.history.replaceState(null, "", `/?tab=${next}&city=${selectedMarket}`); };
+  const switchTab = (next: Tab, selectedMarket: MarketId = marketId) => {
+    setTab(next);
+    const url = `/?tab=${next}&city=${selectedMarket}`;
+    if (`${window.location.pathname}${window.location.search}` !== url) window.history.pushState(null, "", url);
+  };
   const selectMarket = (id: MarketId) => {
     setMarketId(id);
     setQuoteActive(false);
@@ -132,6 +136,16 @@ export default function DashboardPage() {
   }, [tab]);
 
   useEffect(() => {
+    const syncFromHistory = () => {
+      const current = new URLSearchParams(window.location.search);
+      setTab(validTab(current.get("tab")));
+      setMarketId(validMarket(current.get("city")));
+    };
+    window.addEventListener("popstate", syncFromHistory);
+    return () => window.removeEventListener("popstate", syncFromHistory);
+  }, []);
+
+  useEffect(() => {
     if (!moreOpen) return;
     document.querySelector<HTMLButtonElement>('[aria-label="Close more menu"]')?.focus();
     const closeOnEscape = (event: globalThis.KeyboardEvent) => { if (event.key === "Escape") setMoreOpen(false); };
@@ -141,10 +155,10 @@ export default function DashboardPage() {
 
   const page = (tab === "markets" || tab === "protect") && hazard !== "rainfall" ? RESEARCH_HAZARD_PAGE_COPY[hazard] : PAGE_COPY[tab];
   const researchHazardView = (tab === "markets" || tab === "protect") && hazard !== "rainfall";
-  return <div className="grid min-w-0 gap-7 lg:grid-cols-[224px_minmax(0,1fr)]">
-    <aside className="hidden lg:block"><nav aria-label="Product sections" className="sticky top-24 flex flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-[var(--shadow-card)]">{TABS.map(({ id, label, icon: Icon }, index) => <button key={id} onClick={() => switchTab(id)} className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors", index === TABS.length - 1 && "mt-3 border-t border-[var(--border)] pt-3", tab === id ? "bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]")}><Icon className="h-5 w-5" />{label}</button>)}</nav></aside>
+  return <div className="grid min-w-0 gap-8 lg:grid-cols-[220px_minmax(0,1fr)] xl:gap-10">
+    <aside className="hidden lg:block"><nav aria-label="Product sections" className="sky-sidebar sticky top-24 flex flex-col gap-1"><p className="mb-1 px-3 py-2 text-xs font-semibold text-white/55">Protection workspace</p>{TABS.map(({ id, label, icon: Icon }, index) => <button key={id} aria-current={tab === id ? "page" : undefined} onClick={() => switchTab(id)} className={cn("relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors", index === TABS.length - 1 && "mt-3 border-t border-white/10 pt-4", tab === id ? "bg-white text-[#123443] shadow-sm" : "text-white/70 hover:bg-white/10 hover:text-white")}><Icon className="h-[18px] w-[18px]" />{label}</button>)}</nav></aside>
     <div className="min-w-0 space-y-6">
-      <header className="border-b border-[var(--border)] pb-5"><Pill tone={tab === "builders" ? "slate" : researchHazardView ? "amber" : "cyan"}>{tab === "builders" ? "Technical workspace" : researchHazardView ? "Research-only hazard" : "NOAA-settled protection"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></header>
+      <header className="sky-page-header flex flex-col gap-4 border-b border-[var(--border)] sm:flex-row sm:items-end sm:justify-between"><div><h1 className="max-w-4xl text-[2rem] font-semibold leading-[1.1] tracking-[-0.035em] sm:text-[2.5rem]">{page.title}</h1><p className="mt-3 max-w-3xl text-base leading-relaxed text-[var(--muted-foreground)]">{page.description}</p></div><Pill tone={tab === "builders" ? "slate" : researchHazardView ? "amber" : "cyan"} className="self-start sm:self-auto">{tab === "builders" ? "Technical workspace" : researchHazardView ? "Research only" : "NOAA settlement"}</Pill></header>
       {tab === "markets" && <Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} selectedSlug={marketId} status={devnetStatus.data} />}
       {tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") { setQuoteActive(true); setQuoteRequest((count) => count + 1); } }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" && quoteActive ? quoteQuery.error : undefined} />}
       {tab === "liquidity" && <Liquidity />}
@@ -152,11 +166,11 @@ export default function DashboardPage() {
       {tab === "evidence" && <Evidence />}
       {tab === "builders" && <div className="space-y-6"><OwnerConsole status={devnetStatus.data} /><BuilderProof /></div>}
     </div>
-    <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[var(--border)] bg-[var(--surface-1)] px-1 pb-[env(safe-area-inset-bottom)] lg:hidden">
-      {TABS.filter(({ id }) => ["markets", "protect", "portfolio", "evidence"].includes(id)).map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { setMoreOpen(false); switchTab(id); }} className={cn("flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] font-medium", tab === id ? "text-[var(--identity)]" : "text-[var(--muted-foreground)]")}><Icon className="h-5 w-5" />{label}</button>)}
+    <nav aria-label="Mobile navigation" className="sky-mobile-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[var(--border)] bg-[var(--surface-1)]/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+      {TABS.filter(({ id }) => ["markets", "protect", "portfolio", "evidence"].includes(id)).map(({ id, label, icon: Icon }) => <button key={id} aria-current={tab === id ? "page" : undefined} onClick={() => { setMoreOpen(false); switchTab(id); }} className={cn("flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] font-medium transition-colors", tab === id ? "bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "text-[var(--muted-foreground)]")}><Icon className="h-5 w-5" />{label}</button>)}
       <button type="button" aria-expanded={moreOpen} onClick={() => setMoreOpen((value) => !value)} className={cn("flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] font-medium", moreOpen || tab === "liquidity" || tab === "builders" ? "text-[var(--identity)]" : "text-[var(--muted-foreground)]")}><Menu className="h-5 w-5" />More</button>
     </nav>
-    {moreOpen && <div className="fixed inset-0 z-50 bg-black/30 lg:hidden" onClick={() => setMoreOpen(false)}><section role="dialog" aria-modal="true" aria-label="More sections" className="absolute inset-x-3 bottom-[calc(76px+env(safe-area-inset-bottom))] rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-3 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="mb-2 flex items-center justify-between"><h2 className="text-base font-semibold">More</h2><button type="button" className="flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-[var(--surface-2)]" onClick={() => setMoreOpen(false)} aria-label="Close more menu"><X className="h-5 w-5" /></button></div>{TABS.filter(({ id }) => id === "liquidity" || id === "builders").map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { setMoreOpen(false); switchTab(id); }} className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium hover:bg-[var(--surface-2)]"><Icon className="h-5 w-5" />{label}</button>)}</section></div>}
+    {moreOpen && <div className="fixed inset-0 z-50 bg-black/45 lg:hidden" onClick={() => setMoreOpen(false)}><section role="dialog" aria-modal="true" aria-label="More sections" className="absolute inset-x-3 bottom-[calc(76px+env(safe-area-inset-bottom))] rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-3 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="mb-2 flex items-center justify-between"><h2 className="text-base font-semibold">More</h2><button type="button" className="flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-[var(--surface-2)]" onClick={() => setMoreOpen(false)} aria-label="Close more menu"><X className="h-5 w-5" /></button></div>{TABS.filter(({ id }) => id === "liquidity" || id === "builders").map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { setMoreOpen(false); switchTab(id); }} className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium hover:bg-[var(--surface-2)]"><Icon className="h-5 w-5" />{label}</button>)}</section></div>}
   </div>;
 }
 
@@ -419,15 +433,11 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
 function DeploymentNotice() { return <div role="status" className="flex gap-3 border border-[var(--warning)]/50 bg-[var(--warning-dim)] p-4 text-sm text-[var(--muted-foreground)]"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warning)]" /><p><strong className="text-[var(--foreground)]">Chain data unavailable.</strong> The Devnet program has not yet published an executable account, or this deployment has no API service. Markets, positions, and settlement evidence remain unavailable rather than simulated.</p></div>; }
 
 function HazardSelector({ value, onChange }: { value: Hazard; onChange: (value: Hazard) => void }) {
-  const options: Array<{ id: Hazard; label: string; state: string }> = [
-    { id: "rainfall", label: "Rainfall", state: "Existing pilot" },
-    { id: "wind_gust", label: "Wind gust", state: "Researching" },
-    { id: "snowfall", label: "Snowfall", state: "Researching" },
-  ];
-  return <div role="group" aria-label="Protection type" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-    {options.map((option) => <button key={option.id} type="button" aria-pressed={value === option.id} onClick={() => onChange(option.id)} className={cn("flex min-h-12 items-center justify-between gap-2 rounded-xl border px-4 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]", value === option.id ? "border-[var(--identity)] bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "border-[var(--border)] bg-[var(--surface-1)] text-[var(--muted-foreground)] hover:border-[var(--identity)] hover:text-[var(--foreground)]")}>
-      <span className="font-semibold">{option.label}</span><span className="text-xs">{option.state}</span>
-    </button>)}
+  return <div role="group" aria-label="Protection type" className="sky-product-switcher flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-3 sm:flex-row sm:items-center sm:justify-between">
+    <button type="button" aria-pressed={value === "rainfall"} onClick={() => onChange("rainfall")} className={cn("flex min-h-12 items-center gap-3 rounded-lg px-4 text-left transition-colors", value === "rainfall" ? "bg-[var(--identity-deep)] text-white shadow-sm" : "bg-[var(--identity-dim)] text-[var(--identity-deep)] hover:bg-[var(--surface-2)]")}>
+      <Droplets className="h-5 w-5 shrink-0" aria-hidden="true" /><span><span className="block font-semibold">Rainfall protection</span><span className={cn("block text-xs", value === "rainfall" ? "text-white/70" : "text-[var(--muted-foreground)]")}>Live Devnet pilot</span></span>
+    </button>
+    <div className="flex flex-wrap items-center gap-2 sm:justify-end"><span className="mr-1 text-xs font-medium text-[var(--faint)]">In research</span>{([{"id":"wind_gust","label":"Wind gust"},{"id":"snowfall","label":"Snowfall"}] as const).map((option) => <button key={option.id} type="button" aria-pressed={value === option.id} onClick={() => onChange(option.id)} className={cn("min-h-11 rounded-lg border px-3 text-sm font-medium transition-colors", value === option.id ? "border-[var(--warning)] bg-[var(--warning-dim)] text-[var(--warning)]" : "border-[var(--border)] bg-transparent text-[var(--muted-foreground)] hover:border-[var(--identity)] hover:text-[var(--foreground)]")}>{option.label}</button>)}</div>
   </div>;
 }
 
@@ -492,19 +502,24 @@ function Markets({ hazard, setHazard, onSelect, selectedSlug, status }: { hazard
 
   return <section className="space-y-4" aria-labelledby="markets-heading">
     <HazardSelector value={hazard} onChange={setHazard} />
-    <header className="flex flex-wrap items-end justify-between gap-4">
+    <header className="flex flex-wrap items-end justify-between gap-4 pt-2">
       <div>
-        <SectionLabel>Agricultural rainfall indexes</SectionLabel>
-        <h2 id="markets-heading" className="sky-display mt-1 text-2xl font-semibold">Explore crop-risk reference areas</h2>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--muted-foreground)]">Browse the catalog by location, crop, or region. Map markers are index reference points—not weather stations or insured boundaries.</p>
+        <h2 id="markets-heading" className="sky-display text-2xl font-semibold">Choose a rainfall index</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">Find a crop region by location or commodity. Every pin is a reference point—not a weather station or insured boundary.</p>
       </div>
       <Pill tone="amber">USD preview only</Pill>
     </header>
 
-    <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-      <AgriculturalMarketExplorerMap markets={mapMarkets} selectedSlug={selectedSlug} getEvidenceStatus={getEvidenceStatus} onSelect={onSelect} />
+    <div className="sky-metric-strip" aria-label="Catalog summary">
+      <div><span className="text-xs font-medium text-[var(--muted-foreground)]">Researched areas</span><strong className="mt-1 block text-xl font-semibold tabular-nums">12</strong></div>
+      <div><span className="text-xs font-medium text-[var(--muted-foreground)]">NOAA validated</span><strong className="mt-1 block text-xl font-semibold tabular-nums text-[var(--success)]">{MARKETS.filter((market) => getEvidenceStatus(agriculturalMarketBySlug(market.id)!) === "validated").length}</strong></div>
+      <div><span className="text-xs font-medium text-[var(--muted-foreground)]">Settlement source</span><strong className="mt-1 block text-base font-semibold">NOAA only</strong></div>
+    </div>
 
-      <aside className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-4 shadow-[var(--shadow-card)]" aria-label="Agricultural index locations">
+    <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="order-2 min-w-0 xl:order-1"><AgriculturalMarketExplorerMap markets={mapMarkets} selectedSlug={selectedSlug} getEvidenceStatus={getEvidenceStatus} onSelect={onSelect} /></div>
+
+      <aside className="sky-market-panel order-1 min-w-0 p-4 xl:order-2" aria-label="Agricultural index locations">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h3 className="text-base font-semibold">Index reference locations</h3>
@@ -520,7 +535,7 @@ function Markets({ hazard, setHazard, onSelect, selectedSlug, status }: { hazard
             <input id="market-search" type="search" role="combobox" aria-autocomplete="list" aria-expanded={dropdownOpen} aria-controls="market-search-options" aria-activedescendant={activeOption >= 0 ? `market-search-option-${activeOption}` : undefined} className="sky-input min-h-11 w-full pl-11 pr-12" value={query} onFocus={() => setDropdownOpen(true)} onKeyDown={onSearchKeyDown} onChange={(event) => { setQuery(event.target.value); setShowAll(false); setDropdownOpen(true); setActiveOption(-1); }} placeholder="Search area, country, region, or crop" autoComplete="off" />
             {query && <button type="button" onClick={() => { setQuery(""); setShowAll(false); setDropdownOpen(true); setActiveOption(-1); }} className="absolute right-1 top-1/2 inline-flex min-h-10 min-w-10 -translate-y-1/2 items-center justify-center text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]" aria-label="Clear market search"><X className="h-4 w-4" aria-hidden="true" /></button>}
           </div>
-          {dropdownOpen && <div id="market-search-options" role="listbox" aria-label="Available regions and matching areas" className="absolute inset-x-0 z-20 mt-2 max-h-[min(60vh,32rem)] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-xl">
+          {dropdownOpen && <div id="market-search-options" role="listbox" aria-label="Available regions and matching areas" className="fixed inset-x-3 bottom-[calc(76px+env(safe-area-inset-bottom))] z-50 max-h-[min(60dvh,32rem)] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-2xl sm:absolute sm:inset-x-0 sm:bottom-auto sm:z-20 sm:mt-2">
             <p className="px-3 pb-2 pt-1 text-xs font-semibold text-[var(--faint)]">Available regions</p>
             {MARKET_REGIONS.map((region, index) => <button key={region} id={`market-search-option-${index}`} role="option" aria-selected={activeOption === index} type="button" className={cn("flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm transition-colors", activeOption === index ? "bg-[var(--identity-dim)] text-[var(--identity)]" : "text-[var(--foreground)] hover:bg-[var(--surface-2)]")} onMouseEnter={() => setActiveOption(index)} onClick={() => selectDropdownOption(index)}><Globe2 className="h-4 w-4 shrink-0" aria-hidden="true" /><span>{region}</span></button>)}
             <div className="my-2 border-t border-[var(--border)]" />
@@ -530,7 +545,7 @@ function Markets({ hazard, setHazard, onSelect, selectedSlug, status }: { hazard
           <p role="status" className="mt-2 text-xs text-[var(--muted-foreground)]">{showingAllCatalog ? "All researched catalog areas are shown." : `${results.length} researched ${results.length === 1 ? "area" : "areas"} found.`}</p>
         </div>
 
-        {results.length === 0 ? <EmptyState icon={<Search className="h-7 w-7" />} title="No catalog matches" hint="An unlisted place is not yet a validated index." cta={<button type="button" className="sky-btn-primary mt-3 min-h-11 px-4" onClick={() => { setQuery(""); setShowAll(true); }}>Show all researched areas</button>} /> : <div className="mt-3 max-h-[30rem] space-y-2 overflow-y-auto pr-1" aria-label="Matching agricultural locations">
+        {results.length === 0 ? <EmptyState icon={<Search className="h-7 w-7" />} title="No catalog matches" hint="An unlisted place is not yet a validated index." cta={<button type="button" className="sky-btn-primary mt-3 min-h-11 px-4" onClick={() => { setQuery(""); setShowAll(true); }}>Show all researched areas</button>} /> : <div className="mt-3 space-y-2 xl:max-h-[30rem] xl:overflow-y-auto xl:pr-1" aria-label="Matching agricultural locations">
           {results.map((market) => {
             const evidence = getEvidenceStatus(agriculturalMarketBySlug(market.id)!);
             const evidenceLabel = evidence === "validated" ? "NOAA station validated" : evidence === "DATA_UNAVAILABLE" ? "Data unavailable" : "Researching evidence";
@@ -582,22 +597,22 @@ function Protect(props: { hazard: Hazard; setHazard: (value: Hazard) => void; ma
     <section className="sky-hero-card">
       <SectionLabel className="text-[var(--identity)]">{market.city} agricultural index</SectionLabel>
       <p className="mt-1 text-sm text-[var(--muted-foreground)]">{market.location}</p>
-      <div className="mt-5"><AgriculturalAreaMap market={agriculturalMarketBySlug(props.marketId)!} status={evidenceReady ? "validated" : market.evidenceStatus} /></div>
-      <h2 className="sky-display mt-2 text-2xl font-semibold">Measure rainfall, protect crop exposure.</h2>
-      <p className="mt-2 max-w-xl text-sm text-[var(--muted-foreground)]">This index measures cumulative liquid rainfall. {hasThreshold ? `${thresholdMm} mm equals ${millimetersToInches(thresholdMm)} in.` : "Millimetres are canonical; inches are a display conversion."}</p>
+      <h2 className="sky-display mt-5 text-2xl font-semibold">Measure rainfall, protect crop exposure.</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">Set the amount and rainfall conditions you want to test. {hasThreshold ? `${thresholdMm} mm equals ${millimetersToInches(thresholdMm)} in.` : "Millimetres are canonical; inches are a display conversion."}</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field label="Protection amount (USD preview)"><input className="sky-input" inputMode="decimal" value={props.amount} onChange={(event) => props.setAmount(event.target.value)} /></Field>
         <Field label="Rainfall threshold (mm / in)"><input className="sky-input" inputMode="decimal" aria-describedby="threshold-unit-help" value={props.threshold} disabled={props.windowLocked} onChange={(event) => props.setThreshold(event.target.value)} /><p id="threshold-unit-help" aria-live="polite" className="mt-2 text-xs leading-relaxed text-[var(--muted-foreground)]">{hasThreshold ? `${thresholdMm} mm = ${millimetersToInches(thresholdMm)} in. ${props.windowLocked ? "This seeded market value is immutable." : "Enter millimetres; inches are display-only."}` : "Enter millimetres; inches are displayed here for reference."}</p></Field>
         <Field label="Risk direction"><select className="sky-input" value={props.operator} disabled={props.windowLocked} onChange={(event) => props.setOperator(event.target.value as "gte" | "lte")}><option value="gte">Rainfall at or above threshold</option><option value="lte">Rainfall at or below threshold</option></select></Field>
-        <div className="grid grid-cols-2 gap-3"><Field label="Window start"><input className="sky-input" type="date" value={props.start} disabled={props.windowLocked} onChange={(event) => props.setStart(event.target.value)} /></Field><Field label="Window end"><input className="sky-input" type="date" value={props.end} disabled={props.windowLocked} onChange={(event) => props.setEnd(event.target.value)} /></Field></div>
+        <div className="grid gap-3 min-[430px]:grid-cols-2"><Field label="Window start"><input className="sky-input" type="date" value={props.start} disabled={props.windowLocked} onChange={(event) => props.setStart(event.target.value)} /></Field><Field label="Window end"><input className="sky-input" type="date" value={props.end} disabled={props.windowLocked} onChange={(event) => props.setEnd(event.target.value)} /></Field></div>
       </div>
       {props.windowLocked && <p role="status" className="mt-3 text-xs leading-relaxed text-[var(--muted-foreground)]">Dates are committed on-chain for this market and cannot be changed. Sales close {props.salesCloseAt ? new Date(props.salesCloseAt * 1_000).toLocaleString() : "at the recorded on-chain deadline"}.</p>}
       {!marketReady || !evidenceReady ? <div role="alert" className="mt-4 border-l-2 border-[var(--warning)] bg-[var(--warning-dim)] p-4 text-sm leading-relaxed text-[var(--muted-foreground)]"><strong className="text-[var(--warning)]">Protection action unavailable.</strong> {reason}</div> : <p className="mt-4 text-sm text-[var(--success)]">Des Moines is open for capped Devnet testing. SKYT and test positions have no real-world value.</p>}
-      <div className="mt-6 flex flex-wrap gap-3"><button disabled={!props.valid || props.loading} className="sky-btn-secondary min-h-11 px-4" onClick={props.requestQuote}>{props.loading ? "Pricing from NOAA…" : "Request NOAA quote"}</button><button disabled={!canPurchase || transaction.state === "preparing"} aria-describedby={!canPurchase ? "protection-unavailable-reason" : undefined} className="sky-btn-primary min-h-11 px-4" onClick={() => void approveProtection()}>{transaction.state === "preparing" ? "Awaiting wallet…" : "Approve Devnet protection"}</button></div>
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row"><button disabled={!props.valid || props.loading} className="sky-btn-secondary w-full sm:w-auto" onClick={props.requestQuote}>{props.loading ? "Pricing from NOAA…" : "Request NOAA quote"}</button><button disabled={!canPurchase || transaction.state === "preparing"} aria-describedby={!canPurchase ? "protection-unavailable-reason" : undefined} className="sky-btn-primary w-full sm:w-auto" onClick={() => void approveProtection()}>{transaction.state === "preparing" ? "Awaiting wallet…" : "Approve Devnet protection"}</button></div>
       {!canPurchase && <p id="protection-unavailable-reason" className="mt-3 text-xs text-[var(--muted-foreground)]">{reason}</p>}
       {transaction.state !== "idle" && <p role={transaction.state === "error" ? "alert" : "status"} className={cn("mt-4 border p-3 text-sm", transaction.state === "error" ? "border-[var(--destructive)]/50 text-[var(--destructive-foreground)]" : "border-[var(--success)]/50 text-[var(--success)]")}>{transaction.message}{transaction.signature && <> <a className="underline" href={explorerTx(transaction.signature)} target="_blank" rel="noreferrer">View finalized transaction</a></>}</p>}
+      <div className="mt-7 border-t border-[var(--border)] pt-5"><div className="mb-3 flex items-center justify-between gap-3"><div><h3 className="text-sm font-semibold">Reference location</h3><p className="mt-1 text-xs text-[var(--muted-foreground)]">Geographic context only—not an insured boundary.</p></div><MapPin className="h-5 w-5 text-[var(--identity)]" aria-hidden="true" /></div><AgriculturalAreaMap market={agriculturalMarketBySlug(props.marketId)!} status={evidenceReady ? "validated" : market.evidenceStatus} variant="compact" /></div>
     </section>
-    <div className="space-y-5"><OracleSettlementPanel marketAddress={props.marketId === "des-moines" ? props.status?.desMoinesMarket.address ?? null : null} /><QuotePanel quote={props.quote} error={props.error} /></div>
+    <div className="space-y-5 xl:sticky xl:top-24 xl:self-start"><QuotePanel quote={props.quote} error={props.error} location={market.location} amount={props.amount} threshold={props.threshold} operator={props.operator} start={props.start} end={props.end} evidenceReady={evidenceReady} /><OracleSettlementPanel marketAddress={props.marketId === "des-moines" ? props.status?.desMoinesMarket.address ?? null : null} /></div>
     </div>
   </div>;
 }
@@ -660,7 +675,18 @@ function OracleSettlementPanel({ marketAddress }: { marketAddress: string | null
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) { return <label><span className="sky-label">{label}</span>{children}</label>; }
-function QuotePanel({ quote, error }: { quote?: Quote; error: unknown }) { if (error) return <Card className="border-[var(--destructive)]/50"><Pill tone="red">DATA_UNAVAILABLE</Pill><h2 className="sky-display mt-4 text-lg">No quote was created.</h2><p role="alert" className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">{apiUnavailable(error) ? "NOAA or pricing evidence is unavailable in this deployment. SkyHedge never substitutes generated weather data." : error instanceof Error ? error.message : "The protection request could not be priced."}</p></Card>; if (!quote) return <Card><Pill tone="magenta">Approval required</Pill><h2 className="sky-display mt-4 text-lg">Quote evidence will appear here.</h2><p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">The premium is derived from 70% historical probability and 30% NOAA forecast probability, with a 15% risk loading and 1% protocol fee.</p></Card>; return <Card className="border-[var(--identity)]/50"><Pill tone="cyan">Quote ready</Pill><h2 className="sky-display mt-4 text-lg">{skytDisplay(quote.premium)}</h2><p className="text-sm text-[var(--muted-foreground)]">Premium before explicit transaction approval</p><div className="mt-5 grid grid-cols-2 gap-2"><Stat label="Probability" value={`${(quote.probabilityBps / 100).toFixed(2)}%`} accent="cyan" /><Stat label="Premium rate" value={`${(quote.premiumRateBps / 100).toFixed(2)}%`} /><Stat label="Protocol fee" value={skytDisplay(quote.protocolFee)} /><Stat label="Model" value={quote.modelVersion} /></div><p className="sky-mono mt-4 break-all text-[10px] leading-relaxed text-[var(--faint)]">Methodology hash: {quote.inputsHash}</p><button disabled className="sky-btn-primary mt-5 min-h-11 w-full">Connect wallet to approve</button></Card>; }
+function QuotePanel({ quote, error, location, amount, threshold, operator, start, end, evidenceReady }: { quote?: Quote; error: unknown; location: string; amount: string; threshold: string; operator: "gte" | "lte"; start: string; end: string; evidenceReady: boolean }) {
+  return <Card className="sky-summary-card overflow-hidden p-0">
+    <div className="border-b border-white/10 bg-[#123443] p-5 text-white"><div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">Protection summary</h2><ShieldCheck className="h-5 w-5 text-[#82d2ed]" aria-hidden="true" /></div><p className="mt-1 text-sm text-white/65">{location}</p></div>
+    <dl className="divide-y divide-[var(--border)] px-5">
+      <div className="flex items-center justify-between gap-4 py-3"><dt className="text-sm text-[var(--muted-foreground)]">Protection amount</dt><dd className="font-semibold">${amount || "—"} preview</dd></div>
+      <div className="flex items-center justify-between gap-4 py-3"><dt className="text-sm text-[var(--muted-foreground)]">Rainfall trigger</dt><dd className="text-right font-semibold">{threshold || "—"} mm {operator === "gte" ? "or more" : "or less"}</dd></div>
+      <div className="flex items-center justify-between gap-4 py-3"><dt className="text-sm text-[var(--muted-foreground)]">Observation window</dt><dd className="text-right text-sm font-medium">{start} – {end}</dd></div>
+      <div className="flex items-center justify-between gap-4 py-3"><dt className="text-sm text-[var(--muted-foreground)]">NOAA evidence</dt><dd><Pill tone={evidenceReady ? "green" : "amber"}>{evidenceReady ? "Validated" : "Pending"}</Pill></dd></div>
+    </dl>
+    <div className="p-5">{error ? <><Pill tone="red">DATA_UNAVAILABLE</Pill><p role="alert" className="mt-3 text-sm leading-relaxed text-[var(--muted-foreground)]">{apiUnavailable(error) ? "NOAA or pricing evidence is unavailable in this deployment. SkyHedge never substitutes generated weather data." : error instanceof Error ? error.message : "The protection request could not be priced."}</p></> : quote ? <><div className="flex items-end justify-between gap-3"><div><p className="text-sm text-[var(--muted-foreground)]">Preview premium</p><p className="mt-1 text-2xl font-semibold">{skytDisplay(quote.premium)}</p></div><Pill tone="cyan">Quote ready</Pill></div><div className="mt-4 grid grid-cols-2 gap-2"><Stat label="Probability" value={`${(quote.probabilityBps / 100).toFixed(2)}%`} accent="cyan" /><Stat label="Premium rate" value={`${(quote.premiumRateBps / 100).toFixed(2)}%`} /><Stat label="Protocol fee" value={skytDisplay(quote.protocolFee)} /><Stat label="Model" value={quote.modelVersion} /></div><p className="sky-mono mt-4 break-all text-[10px] leading-relaxed text-[var(--faint)]">Methodology hash: {quote.inputsHash}</p></> : <><p className="text-sm font-semibold">Premium not calculated yet</p><p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">Request a quote to calculate the NOAA-backed premium. Nothing is submitted without your approval.</p></>}</div>
+  </Card>;
+}
 
 function Liquidity() { return <div className="grid gap-5 lg:grid-cols-[1fr_340px]"><Card><SectionLabel>Liquidity safeguards</SectionLabel><h2 className="sky-display text-xl">Collateral is available only before lock.</h2><div className="mt-5 grid gap-3 sm:grid-cols-2"><Guardrail title="Tester cap" text="A seeded test market can accept at most 10,000 SKYT total liquidity. SKYT has no real-world value." /><Guardrail title="Pre-lock only" text="LP funding and withdrawals are permitted only while the market is open." /><Guardrail title="Reserved exposure" text="Withdrawals cannot reduce collateral below protection already reserved." /><Guardrail title="Final accounting" text="The 1% protocol fee transfers after the claim deadline; residual funds redeem pro rata." /></div></Card><Card><Pill tone="amber">Gates not satisfied</Pill><h2 className="sky-display mt-4 text-lg">Liquidity actions unavailable</h2><p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">No finalized market has a verified program, published IDL, initialized protocol, validated NOAA evidence, and seeded collateral. The interface will not manufacture a funding or withdrawal transaction before those gates pass.</p><button disabled aria-describedby="liquidity-unavailable-reason" className="sky-btn-primary mt-5 min-h-11 w-full">Prepare liquidity unavailable</button><p id="liquidity-unavailable-reason" className="sr-only">Liquidity is unavailable until all finalized Devnet protocol and market gates pass.</p></Card></div>; }
 function Guardrail({ title, text }: { title: string; text: string }) { return <div className="border-l-2 border-[var(--violet)] bg-[var(--surface-2)] p-4"><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">{text}</p></div>; }

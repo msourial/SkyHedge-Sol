@@ -27,6 +27,7 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname, "client"),
   envDir: path.resolve(import.meta.dirname),
+  optimizeDeps: { exclude: ["maplibre-gl"] },
   build: {
     // Sites serves the SPA directly from dist. The standard production build
     // remains unchanged so the Express server can continue to serve dist/public.

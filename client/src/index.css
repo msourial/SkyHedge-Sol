@@ -3,17 +3,17 @@
 @tailwind utilities;
 
 :root { color-scheme: light;
-  --background: #f5f7f4; --surface-1: #fff; --surface-2: #edf3f1; --foreground: #102a3a;
-  --muted-foreground: #536673; --faint: #71818b; --border: #d8e1de; --identity: #0878b9;
-  --identity-deep: #05679f; --identity-dim: #e7f3fa; --signal: #0878b9; --signal-dim: #e7f3fa;
-  --violet: #43697f; --success: #287a55; --success-dim: #e7f4ed; --warning: #a16207;
+  --background: #f5f7f4; --surface-1: #fff; --surface-2: #edf3f1; --surface-raised: #fff; --foreground: #102a3a;
+  --muted-foreground: #536673; --faint: #6f8089; --border: #d8e1de; --identity: #0878b9;
+  --identity-deep: #05679f; --identity-dim: #e8f4fa; --success: #287a55; --success-dim: #e7f4ed; --warning: #a16207;
   --warning-dim: #fff7df; --destructive: #b42318; --destructive-dim: #fff0ee;
   --destructive-foreground: #8f1d14; --ring: #0878b9;
   --font-display: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --radius-card: 12px; --radius-control: 10px;
-  --shadow-card: 0 1px 2px rgba(16,42,58,.04), 0 8px 24px rgba(16,42,58,.045);
+  --radius-card: 14px; --radius-control: 10px;
+  --shadow-sm: 0 1px 2px rgba(16,42,58,.05), 0 4px 14px rgba(16,42,58,.03);
+  --shadow-card: 0 10px 30px rgba(16,42,58,.07);
 }
 
 :root[data-ui-mode="builder"] { color-scheme: dark;
@@ -37,16 +37,18 @@
 }
 
 @layer components {
-  .sky-card { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-1); padding: 1.25rem; box-shadow: var(--shadow-card); transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
-  .sky-card-hover:hover { border-color: color-mix(in srgb, var(--identity) 45%, var(--border)); box-shadow: 0 10px 28px rgba(16,42,58,.08); transform: translateY(-1px); }
+  .sky-card { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-1); padding: 1.25rem; box-shadow: var(--shadow-sm); transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease; }
+  .sky-card-hover:hover { border-color: color-mix(in srgb, var(--identity) 38%, var(--border)); background: color-mix(in srgb, var(--identity-dim) 32%, var(--surface-1)); }
   .sky-hero-card { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-1); padding: 1.5rem; box-shadow: var(--shadow-card); }
-  .sky-btn-primary, .sky-btn-success, .sky-btn-ghost { min-height: 44px; border-radius: var(--radius-control); padding: .68rem 1.1rem; font-family: var(--font-body); font-size: .9375rem; font-weight: 600; line-height: 1.25; transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease; }
+  .sky-btn-primary, .sky-btn-secondary, .sky-btn-success, .sky-btn-ghost { min-height: 44px; border-radius: var(--radius-control); padding: .68rem 1.1rem; font-family: var(--font-body); font-size: .9375rem; font-weight: 600; line-height: 1.25; transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease; }
   .sky-btn-primary { border: 1px solid var(--identity); background: var(--identity); color: #fff; }
-  .sky-btn-primary:hover:not(:disabled) { border-color: var(--identity-deep); background: var(--identity-deep); }
+  .sky-btn-primary:hover:not(:disabled) { border-color: var(--identity-deep); background: var(--identity-deep); box-shadow: 0 6px 16px rgba(8,120,185,.2); }
+  .sky-btn-secondary { border: 1px solid color-mix(in srgb, var(--identity) 35%, var(--border)); background: var(--identity-dim); color: var(--identity-deep); }
+  .sky-btn-secondary:hover:not(:disabled) { border-color: var(--identity); background: color-mix(in srgb, var(--identity-dim) 70%, var(--surface-1)); }
   .sky-btn-success { border: 1px solid var(--success); background: var(--success); color: #fff; }
   .sky-btn-ghost { border: 1px solid var(--border); background: var(--surface-1); color: var(--foreground); }
   .sky-btn-ghost:hover:not(:disabled) { border-color: var(--identity); color: var(--identity); }
-  .sky-btn-primary:disabled, .sky-btn-success:disabled, .sky-btn-ghost:disabled { cursor: not-allowed; opacity: .55; }
+  .sky-btn-primary:disabled, .sky-btn-secondary:disabled, .sky-btn-success:disabled, .sky-btn-ghost:disabled { cursor: not-allowed; opacity: .55; }
   .sky-input { width: 100%; min-height: 46px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-1); color: var(--foreground); padding: .7rem .85rem; font-family: var(--font-body); font-size: 1rem; line-height: 1.35; transition: border-color 160ms ease, box-shadow 160ms ease; }
   .sky-input:focus { border-color: var(--identity); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--identity) 18%, transparent); }
   .sky-input::placeholder { color: var(--faint); }
@@ -67,24 +69,36 @@
   @keyframes sky-shimmer { to { background-position: -200% 0; } }
 }
 
+.sky-app-header { padding-top: env(safe-area-inset-top); background: #0c2938; color: #f7fbfc; box-shadow: 0 1px 0 rgba(255,255,255,.08), 0 8px 24px rgba(16,42,58,.12); }
+.sky-brand-mark { background: #f7fbfc; color: #0878b9; box-shadow: inset 0 0 0 1px rgba(255,255,255,.45); }
+.sky-sidebar { border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-card); background: #123443; padding: .625rem; box-shadow: 0 16px 36px rgba(16,42,58,.14); }
+.sky-page-header { padding-bottom: 1.5rem; }
+.sky-product-switcher { box-shadow: 0 1px 2px rgba(16,42,58,.04); }
+.sky-summary-card { box-shadow: 0 14px 34px rgba(16,42,58,.09); }
+.sky-metric-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-1); box-shadow: var(--shadow-sm); }
+.sky-metric-strip > div { min-width: 0; padding: 1rem 1.125rem; }
+.sky-metric-strip > div + div { border-left: 1px solid var(--border); }
+.sky-market-panel { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-1); box-shadow: var(--shadow-card); }
+.sky-mobile-nav { box-shadow: 0 -8px 24px rgba(16,42,58,.08); }
+
 .sky-leaflet-map { z-index: 0; background: var(--surface-2); font-family: var(--font-body); }
 .sky-leaflet-map .leaflet-control-zoom a { border-color: #d7dfdc; background: rgba(255,255,255,.96); color: #102a3a; }
 .sky-leaflet-map .leaflet-control-zoom a:hover, .sky-leaflet-map .leaflet-control-zoom a:focus-visible { background: #0878b9; color: #fff; }
 .sky-leaflet-map .leaflet-control-attribution { background: rgba(255,255,255,.9); color: #536673; font-size: 10px; }
 .sky-leaflet-map .leaflet-control-attribution a { color: #0878b9; }
 .sky-maplibre-map .maplibregl-canvas { outline: none; }
-.sky-maplibre-map .maplibregl-ctrl-group { overflow: hidden; border: 1px solid rgba(148,163,184,.5); border-radius: 10px; background: rgba(10,20,33,.9); box-shadow: 0 8px 20px rgba(0,0,0,.22); }
+.sky-maplibre-map .maplibregl-ctrl-group { overflow: hidden; border: 1px solid rgba(215,224,221,.9); border-radius: 10px; background: rgba(255,255,255,.94); box-shadow: 0 2px 8px rgba(16,44,58,.12); }
 .sky-maplibre-map .maplibregl-ctrl-group button { width: 44px; height: 44px; background-color: transparent; }
-.sky-maplibre-map .maplibregl-ctrl-group button:hover { background-color: rgba(103,232,249,.12); }
-.sky-maplibre-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
+.sky-maplibre-map .maplibregl-ctrl-group button:hover { background-color: rgba(8,121,166,.1); }
 .sky-maplibre-map .maplibregl-ctrl-attrib { border-radius: 6px 0 0; background: rgba(7,14,24,.78); color: #d5e0eb; font-size: 10px; }
 .sky-maplibre-map .maplibregl-ctrl-attrib a { color: #67e8f9; }
+.sky-maplibre-map .maplibregl-ctrl-attrib-button { min-width: 44px; min-height: 44px; }
 .sky-index-marker { position: relative; display: block; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
-.sky-index-marker::before { position: absolute; inset: 15px; border: 2px solid #f8fafc; border-radius: 50%; background: #27d6de; box-shadow: 0 0 10px 3px rgba(39,214,222,.72); content: ""; }
+.sky-index-marker::before { position: absolute; inset: 14px; border: 3px solid #fff; border-radius: 50%; background: #0879a6; box-shadow: 0 1px 4px rgba(16,44,58,.35); content: ""; }
 .sky-index-marker::after { position: absolute; inset: 5px; border: 1px solid #fbbf24; border-radius: 50%; opacity: .9; content: ""; }
 .sky-index-marker[data-evidence-status="validated"]::after { border-color: #86efac; }
 .sky-index-marker[data-evidence-status="data-unavailable"]::after { border-color: #fca5a5; }
-.sky-index-marker[data-selected="true"]::before { inset: 12px; border-width: 3px; box-shadow: 0 0 0 4px rgba(34,211,238,.18), 0 0 16px 6px rgba(39,214,222,.82); }
+.sky-index-marker[data-selected="true"]::before { inset: 11px; border-width: 4px; box-shadow: 0 0 0 3px rgba(8,121,166,.22), 0 2px 6px rgba(16,44,58,.35); }
 .sky-index-marker:hover::before, .sky-index-marker:focus-visible::before { inset: 12px; }
 .sky-index-marker:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .sky-wallet-button.wallet-adapter-button, .wallet-adapter-button-trigger { min-height: 44px; height: 44px; border-radius: var(--radius-control); background: var(--identity) !important; color: #fff; font-family: var(--font-body); font-size: .875rem; font-weight: 600; padding: 0 1rem; }
@@ -101,6 +115,12 @@
 ::-webkit-scrollbar-thumb { border-radius: 4px; background: var(--border); }
 
 @media (max-width: 1023px) { body { padding-bottom: calc(74px + env(safe-area-inset-bottom)); } }
+@media (max-width: 639px) {
+  .sky-page-header { padding-bottom: 1.125rem; }
+  .sky-metric-strip { grid-template-columns: 1fr; }
+  .sky-metric-strip > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: .75rem 1rem; }
+  .sky-metric-strip > div + div { border-left: 0; border-top: 1px solid var(--border); }
+}
 @media (max-width: 419px) {
   .sky-wallet-button.wallet-adapter-button { max-width: 9.25rem; padding: 0 .75rem; }
   .sky-card, .sky-hero-card { padding: 1rem; }

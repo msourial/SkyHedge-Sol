@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Map as MapLibreMap, Marker } from "maplibre-gl";
-import { AlertTriangle, LoaderCircle, MapPin, RefreshCw } from "lucide-react";
+import type { Map as MapLibreMap, Marker, StyleSpecification } from "maplibre-gl";
+import { AlertTriangle, LoaderCircle, RefreshCw } from "lucide-react";
 import type { AgriculturalMarket } from "../../../../shared/agricultural-markets";
 import { agriculturalMarketLocation } from "../../../../shared/agricultural-markets";
 
@@ -17,7 +17,20 @@ interface AgriculturalMarketExplorerMapProps {
 }
 
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY?.trim() ?? "";
-const MAP_STYLE_URL = `https://api.maptiler.com/maps/dataviz-v4-dark/style.json?key=${encodeURIComponent(MAPTILER_KEY)}`;
+const MAP_STYLE: string | StyleSpecification = MAPTILER_KEY
+  ? `https://api.maptiler.com/maps/hybrid/style.json?key=${encodeURIComponent(MAPTILER_KEY)}`
+  : {
+      version: 8,
+      sources: {
+        openStreetMap: {
+          type: "raster",
+          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+          tileSize: 256,
+          attribution: "© OpenStreetMap contributors",
+        },
+      },
+      layers: [{ id: "openStreetMap", type: "raster", source: "openStreetMap" }],
+    };
 
 function validCoordinates(market: AgriculturalMarket) {
   return Number.isFinite(market.latitude) && Number.isFinite(market.longitude)
@@ -38,14 +51,13 @@ export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEviden
   const [phase, setPhase] = useState<MapPhase>("idle");
   const [attempt, setAttempt] = useState(0);
   const [loaded, setLoaded] = useState(false);
-  const configured = Boolean(MAPTILER_KEY);
   const mappableMarkets = useMemo(() => markets.filter(validCoordinates), [markets]);
 
   onSelectRef.current = onSelect;
 
   useEffect(() => {
     const element = containerRef.current;
-    if (!element || nearViewport || !configured) return;
+    if (!element || nearViewport) return;
     if (!("IntersectionObserver" in window)) {
       setNearViewport(true);
       return;
@@ -58,13 +70,9 @@ export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEviden
     }, { rootMargin: "300px" });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [configured, nearViewport]);
+  }, [nearViewport]);
 
   useEffect(() => {
-    if (!configured) {
-      setPhase("unavailable");
-      return;
-    }
     if (!nearViewport) { setPhase("idle"); return; }
     if (!containerRef.current) { setPhase("unavailable"); return; }
 
@@ -80,7 +88,7 @@ export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEviden
       maplibreRef.current = maplibre;
       const map = new maplibre.Map({
         container: containerRef.current,
-        style: MAP_STYLE_URL,
+        style: MAP_STYLE,
         center: [-20, 4],
         zoom: 1,
         minZoom: 1,
@@ -115,7 +123,7 @@ export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEviden
       mapRef.current = null;
       maplibreRef.current = null;
     };
-  }, [attempt, configured, nearViewport]);
+  }, [attempt, nearViewport]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -166,44 +174,35 @@ export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEviden
     setPhase("loading");
     setAttempt((current) => current + 1);
   }, []);
-  const fallback = !configured || phase === "unavailable";
+  const fallback = phase === "unavailable";
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-700 bg-[#111c2b] shadow-xl" aria-label="Agricultural index map">
-      <div className="relative h-[min(70vh,48rem)] min-h-[25rem] w-full bg-[#101a28] sm:min-h-[32rem]" data-testid="market-explorer-map" data-map-state={configured ? phase : "unconfigured"}>
-        {configured && <div ref={containerRef} className="sky-maplibre-map absolute inset-0" aria-label="Interactive map of catalog index reference locations" />}
-        {!configured && (
-          <div className="absolute inset-0 flex items-center justify-center px-6 py-10 text-center">
-            <div className="max-w-lg">
-              <MapPin className="mx-auto h-8 w-8 text-cyan-300" aria-hidden="true" />
-              <h2 className="mt-3 text-lg font-semibold text-slate-100">Map provider not configured</h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-300">Add a domain-restricted MapTiler key to display the interactive map. The index locations and evidence states remain available in the list.</p>
-            </div>
-          </div>
-        )}
-        {configured && !fallback && phase !== "ready" && (
-          <div className={`absolute inset-x-4 z-[2] mx-auto max-w-lg rounded-xl border border-slate-600 bg-slate-950/90 p-4 text-center text-slate-100 shadow-lg ${phase === "slow" ? "bottom-4" : "top-1/2 -translate-y-1/2"}`} role="status" aria-live="polite">
-            {phase === "idle" || phase === "loading" ? <LoaderCircle className="mx-auto h-6 w-6 animate-spin text-cyan-300" aria-hidden="true" /> : <AlertTriangle className="mx-auto h-6 w-6 text-amber-300" aria-hidden="true" />}
+    <section className="sky-market-panel overflow-hidden" aria-label="Agricultural index map">
+      <div className="relative h-[18rem] w-full bg-[var(--surface-2)] sm:h-[24rem] xl:h-[34rem]" data-testid="market-explorer-map" data-map-state={phase}>
+        <div ref={containerRef} className="sky-maplibre-map absolute inset-0" aria-label="Interactive map of catalog index reference locations" />
+        {!fallback && phase !== "ready" && (
+          <div className={`absolute inset-x-4 z-[2] mx-auto max-w-lg rounded-xl border border-[var(--border)] bg-[var(--surface-1)]/95 p-4 text-center text-[var(--foreground)] shadow-lg ${phase === "slow" ? "bottom-4" : "top-1/2 -translate-y-1/2"}`} role="status" aria-live="polite">
+            {phase === "idle" || phase === "loading" ? <LoaderCircle className="mx-auto h-6 w-6 animate-spin text-[var(--identity)]" aria-hidden="true" /> : <AlertTriangle className="mx-auto h-6 w-6 text-[var(--warning)]" aria-hidden="true" />}
             <p className="mt-2 text-sm font-semibold">{phase === "slow" ? "Map is taking longer than expected" : "Loading index reference locations"}</p>
             {phase === "slow" && <button type="button" onClick={retry} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-500 px-4 text-sm hover:border-cyan-300"><RefreshCw className="h-4 w-4" aria-hidden="true" />Retry map</button>}
           </div>
         )}
-        {configured && fallback && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#101a28] px-6 py-10 text-center" role="alert">
+        {fallback && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[var(--surface-2)] px-6 py-10 text-center" role="alert">
             <div className="max-w-lg">
-              <AlertTriangle className="mx-auto h-7 w-7 text-amber-300" aria-hidden="true" />
-              <h2 className="mt-3 text-lg font-semibold text-slate-100">Map unavailable</h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-300">Map tiles could not be loaded. The catalog list below still shows exact reference locations and evidence status; it does not indicate station coverage.</p>
-              <button type="button" onClick={retry} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-500 px-4 text-sm text-slate-100 hover:border-cyan-300"><RefreshCw className="h-4 w-4" aria-hidden="true" />Retry map</button>
+              <AlertTriangle className="mx-auto h-7 w-7 text-[var(--warning)]" aria-hidden="true" />
+              <h2 className="mt-3 text-lg font-semibold text-[var(--foreground)]">Map unavailable</h2>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">Map tiles could not be loaded. The catalog list still shows exact reference locations and evidence status; it does not indicate station coverage.</p>
+              <button type="button" onClick={retry} className="sky-btn-ghost mt-3 inline-flex items-center gap-2"><RefreshCw className="h-4 w-4" aria-hidden="true" />Retry map</button>
             </div>
           </div>
         )}
-        <div className="pointer-events-none absolute bottom-3 left-3 z-[1] rounded-lg border border-slate-600/70 bg-slate-950/85 px-3 py-2 text-xs text-slate-100 shadow-lg">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,.85)]" aria-hidden="true" />
+        <div className="pointer-events-none absolute bottom-3 left-3 z-[1] rounded-lg bg-slate-950/85 px-3 py-2 text-xs text-slate-100 shadow-lg">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-sky-400" aria-hidden="true" />
           <span className="ml-2">Index reference locations only</span>
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-700 bg-[#172334] px-4 py-3 text-xs text-slate-300">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] bg-[var(--surface-1)] px-4 py-3 text-xs text-[var(--muted-foreground)]">
         <span>Each marker identifies a reference point, not an insured boundary or weather station.</span>
         <span>NOAA is the sole settlement source.</span>
       </div>

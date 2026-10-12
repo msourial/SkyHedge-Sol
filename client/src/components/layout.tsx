@@ -16,7 +16,7 @@ function DevnetTesterNotice() {
 
 function NetworkPill() {
   const network = import.meta.env.VITE_SOLANA_RPC_URL?.includes("8899") ? "Localnet" : "Devnet";
-  return <span className="hidden items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-1)] px-3 py-1.5 text-xs font-semibold text-[var(--muted-foreground)] sm:flex"><span className={cn("h-2 w-2 rounded-full", network === "Localnet" ? "bg-[var(--identity)]" : "bg-[var(--warning)]")} />{network}</span>;
+  return <span className="hidden items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/85 sm:flex"><span className={cn("h-2 w-2 rounded-full", network === "Localnet" ? "bg-sky-300" : "bg-amber-300")} />{network}</span>;
 }
 
 const PROGRAM_ID = import.meta.env.VITE_SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
@@ -33,14 +33,14 @@ function TechnicalFooter() {
 export default function Layout() {
   return <div className="flex min-h-screen flex-col bg-[var(--background)] text-[var(--foreground)]">
     <a href="#main-content" className="sr-only z-[100] rounded-lg bg-[var(--identity)] px-4 py-3 text-white focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to main content</a>
-    <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--surface-1)]/95 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-[92rem] items-center justify-between gap-3 px-4 sm:px-6">
-        <NavLink to="/" className="flex min-w-0 shrink items-center gap-2.5" aria-label="SkyHedge home"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--identity)] text-white"><CloudRain className="h-5 w-5" /></span><span className="min-w-0 leading-tight"><span className="block text-base font-semibold tracking-tight">SkyHedge</span><span className="hidden text-xs text-[var(--muted-foreground)] sm:block">Weather protection</span></span></NavLink>
+    <header className="sky-app-header sticky top-0 z-30">
+      <div className="mx-auto flex h-[4.5rem] max-w-[92rem] items-center justify-between gap-3 px-4 sm:px-6">
+        <NavLink to="/" className="flex min-h-11 min-w-0 shrink items-center gap-3" aria-label="SkyHedge home"><span className="sky-brand-mark flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"><CloudRain className="h-5 w-5" /></span><span className="min-w-0 leading-tight"><span className="block text-base font-semibold tracking-tight">SkyHedge</span><span className="hidden text-xs text-white/60 sm:block">Parametric weather protection</span></span></NavLink>
         <div className="flex items-center gap-2"><NetworkPill /><WalletButton /></div>
       </div>
     </header>
     <DevnetTesterNotice />
-    <main id="main-content" className="mx-auto w-full max-w-[92rem] flex-1 px-4 py-5 sm:px-6 sm:py-7"><Outlet /></main>
+    <main id="main-content" className="mx-auto w-full max-w-[92rem] flex-1 px-4 py-6 sm:px-6 sm:py-8"><Outlet /></main>
     <footer className="border-t border-[var(--border)] bg-[var(--surface-1)] py-2"><TechnicalFooter /></footer>
   </div>;
 }
