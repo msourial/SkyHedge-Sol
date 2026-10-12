@@ -278,3 +278,10 @@ No transaction was approved, signed, or sent.
 
 ## 2026-10-12 ~17:35 ET: judge-ready README (executor)
 - Rewrote README.md: proof tx link, features (coverage chips, rain trigger, Markets hero, Toronto Opens soon, MWA/Phantom, one position per wallet per window), install via Releases + build with EXPO_PUBLIC_API_BASE_URL, stack, layout, tests (67), MIT. Pushed normally.
+
+## 2026-10-12 17:40 ET — AI guide: OpenRouter primary + labelled offline fallback
+- `server/services/advisory.ts`: provider order OpenRouter (`OPENROUTER_API_KEY`, default model `anthropic/claude-sonnet-5.5`, override `OPENROUTER_MODEL`) → Anthropic (`ANTHROPIC_API_KEY`) → offline. Same intent schema/safety rules; model only extracts intent.
+- `server/services/advisory-offline.ts` (new): deterministic keyword answers (live Des Moines, Toronto "Opens soon", Saskatoon not live, payouts 50/100/250/Max SKYT, rain trigger, 1% fee, NOAA settlement). No quotes/prices/contracts/transactions; tagged `mode: "offline"` / "Guide answers (offline mode)".
+- `advisory-api.ts`: any extraction error/timeout → offline answer (200) instead of raw 503 error.
+- Mobile GuidePanel: welcome message, 4 suggested prompts, subtle offline tag; friendly error copy in App.tsx.
+- Tests: advisory 22 passing (mocked fetch provider tests added); mobile tests pass; tsc clean. Not pushed, not deployed, not installed.

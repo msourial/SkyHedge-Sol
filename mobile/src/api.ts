@@ -103,6 +103,9 @@ export type AdvisoryResponse = {
   quote: null;
   transaction: null;
   explicitApprovalRequired: true;
+  /** Present when the server answered from deterministic offline guide text. */
+  mode?: "offline";
+  modeLabel?: string;
 };
 
 export type UnsignedTransaction = {

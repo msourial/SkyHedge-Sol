@@ -210,7 +210,7 @@ export default function App() {
       if (result.quote !== null || result.transaction !== null || result.explicitApprovalRequired !== true) throw new Error("The guide returned an unsupported transaction or quote state.");
       setGuideTurns((turns) => turns.map((turn) => turn.id === id ? { ...turn, result } : turn));
     } catch (reason) {
-      setGuideTurns((turns) => turns.map((turn) => turn.id === id ? { ...turn, error: reason instanceof Error ? reason.message : "The guide is unavailable. No quote or transaction was prepared." } : turn));
+      setGuideTurns((turns) => turns.map((turn) => turn.id === id ? { ...turn, error: "The guide can't answer right now. You can still browse Markets and Protect; no quote or transaction was prepared." } : turn));
     } finally {
       setGuideBusy(false);
     }

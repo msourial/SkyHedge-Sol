@@ -9,7 +9,9 @@ export type GuideTurn = { id: number; customer: string; result: AdvisoryResponse
 
 const prompts = [
   "I farm near Saskatoon and worry about too little rain.",
-  "I'm planning a Toronto event and worry about rain.",
+  "My flight out of Des Moines might get weathered out.",
+  "How does a payout work?",
+  "What does coverage cost?",
 ] as const;
 
 export function GuidePanel({ turns, busy, onSend, onViewMatch }: {
@@ -34,6 +36,10 @@ export function GuidePanel({ turns, busy, onSend, onViewMatch }: {
         <Text style={styles.subtitle}>Check existing protection and research areas. The guide cannot create a contract or move funds.</Text>
       </View>
     </View>
+    {turns.length === 0 ? <View style={styles.reply}>
+      <Text style={styles.turnLabel}>SkyHedge guide</Text>
+      <Text style={styles.replyText}>Hi! Tell me what weather could disrupt your plans, a harvest, a trip or an event, and I'll show you where SkyHedge can protect it. Or tap a question below to get started.</Text>
+    </View> : null}
     {turns.length === 0 ? <View style={styles.promptList}>
       {prompts.map((prompt) => <Pressable key={prompt} accessibilityRole="button" accessibilityLabel={`Ask guide: ${prompt}`} onPress={() => onSend(prompt)} disabled={busy} style={styles.prompt}><Text style={styles.promptText}>{prompt}</Text><AppIcon name="arrow-up-right" color={C.blue} size={18} /></Pressable>)}
     </View> : null}
@@ -42,6 +48,7 @@ export function GuidePanel({ turns, busy, onSend, onViewMatch }: {
       <Text style={styles.turnCustomer}>{turn.customer}</Text>
       {turn.result ? <View style={styles.reply} accessibilityLiveRegion="polite">
         <Text style={styles.turnLabel}>SkyHedge guide · advisory only</Text>
+        {turn.result.mode === "offline" ? <Text style={styles.modeLabel}>{turn.result.modeLabel ?? "Guide answers (offline mode)"}</Text> : null}
         <Text style={styles.replyText}>{turn.result.message}</Text>
         {turn.result.match ? <View style={styles.match}>
           <Text style={styles.matchPlace}>{turn.result.match.location}</Text>
@@ -56,7 +63,7 @@ export function GuidePanel({ turns, busy, onSend, onViewMatch }: {
           <Text style={styles.explanationText}>{turn.result.payoutExplanation}</Text>
         </View> : null}
         {guideActionLabel(turn.result) ? <Pressable accessibilityRole="button" accessibilityLabel={`${guideActionLabel(turn.result)} for ${turn.result.match?.location}`} onPress={() => onViewMatch(turn.result!)} style={styles.reviewButton}><Text style={styles.reviewText}>{guideActionLabel(turn.result)}</Text><AppIcon name="arrow-right" color={C.actionText} size={18} /></Pressable> : null}
-      </View> : turn.error ? <Text accessibilityRole="alert" style={styles.blocker}>{turn.error}</Text> : <View style={styles.waitRow}><ActivityIndicator size="small" color={C.blue} /><Text style={styles.waitText}>Checking your request against current contracts…</Text></View>}
+      </View> : turn.error ? <Text accessibilityRole="alert" style={styles.waitText}>{turn.error}</Text> : <View style={styles.waitRow}><ActivityIndicator size="small" color={C.blue} /><Text style={styles.waitText}>Checking your request against current contracts…</Text></View>}
     </View>)}
     <View style={styles.composer}>
       <TextInput
@@ -72,7 +79,7 @@ export function GuidePanel({ turns, busy, onSend, onViewMatch }: {
       />
       <Pressable accessibilityRole="button" accessibilityLabel="Send request to SkyHedge guide" accessibilityState={{ disabled: busy || !draft.trim() }} disabled={busy || !draft.trim()} onPress={send} style={[styles.send, (busy || !draft.trim()) && styles.sendDisabled]}><AppIcon name="arrow-up" color={C.actionText} size={20} /></Pressable>
     </View>
-    <Text style={styles.footnote}>Your description is sent to Anthropic to identify your request; avoid personal details. Devnet SKYT has no real-world value. AI is advisory; any transaction needs separate wallet approval.</Text>
+    <Text style={styles.footnote}>Your description may be sent to an AI provider to identify your request; avoid personal details. Devnet SKYT has no real-world value. AI is advisory; any transaction needs separate wallet approval.</Text>
   </View>;
 }
 
@@ -87,6 +94,7 @@ const styles = StyleSheet.create({
   prompt: { minHeight: 48, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 8 },
   promptText: { flex: 1, color: C.ink, fontFamily: F.bodyMedium, fontSize: 14, lineHeight: 21 },
   turn: { gap: 8, borderTopWidth: 1, borderColor: C.border, paddingTop: 14 },
+  modeLabel: { color: C.quiet, fontFamily: F.body, fontSize: 11, fontStyle: "italic" },
   turnLabel: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 12 },
   turnCustomer: { color: C.ink, fontFamily: F.bodyMedium, fontSize: 15, lineHeight: 22 },
   reply: { backgroundColor: C.surfaceRaised, borderRadius: 12, padding: 12, gap: 9 },

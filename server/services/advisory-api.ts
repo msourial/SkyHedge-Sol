@@ -1,6 +1,7 @@
 import type { ApiRequest, ApiResponse } from "./vercel-api.js";
 import type { DevnetStatus } from "./devnet-status.js";
-import { AdvisoryUnavailableError, advisoryRequestSchema, assessProtectionRequest, type ExtractedProtectionIntent } from "./advisory.js";
+import { offlineAdvisoryAnswer } from "./advisory-offline.js";
+import { advisoryRequestSchema, assessProtectionRequest, type ExtractedProtectionIntent } from "./advisory.js";
 
 export function createAdvisoryHandler(dependencies: {
   extract: (message: string, context?: Partial<ExtractedProtectionIntent>) => Promise<ExtractedProtectionIntent>;
@@ -20,9 +21,10 @@ export function createAdvisoryHandler(dependencies: {
       // The assessment never marks a contract quote-ready without finalized status.
       const status = await dependencies.readStatus().catch(() => null);
       return res.status(200).json(assessProtectionRequest(parsed.data.message, intent, status, parsed.data.context));
-    } catch (error) {
-      if (error instanceof AdvisoryUnavailableError) return res.status(503).json({ error: "ADVISORY_UNAVAILABLE", message: error.message });
-      return res.status(503).json({ error: "ADVISORY_UNAVAILABLE", message: "The guide could not verify current contract state. No quote or transaction has been prepared." });
+    } catch {
+      // Missing key, provider error or timeout: answer from the labelled offline guide
+      // instead of surfacing a raw configuration or outage error.
+      return res.status(200).json(offlineAdvisoryAnswer(parsed.data.message));
     }
   };
 }

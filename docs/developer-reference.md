@@ -73,7 +73,8 @@ Environment:
 | `SKYHEDGE_PROGRAM_ID` | Deployed Devnet program ID `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` |
 | `SKYHEDGE_DEVNET_CANCEL_EMPTY_DRAFT_READY` | Fail-closed release gate for empty-Draft recovery. The Devnet instruction and matching IDL have been verified; Vercel Production is currently enabled. |
 | `SETTLEMENT_AUTHORITY_KEYPAIR` | Optional path to the settlement authority keypair (`anchor/keys/settlement-authority.json`); settlement worker stays disabled when absent |
-| `ANTHROPIC_API_KEY` | Server-side AI guide extraction. Without it, `/api/advisory` returns unavailable; no fallback intent or transaction is invented. Optional `ANTHROPIC_MODEL` overrides the pinned default `claude-sonnet-5-5`. |
+| `OPENROUTER_API_KEY` | Primary server-side AI guide extraction via OpenRouter (`sk-or-v1-...`). Optional `OPENROUTER_MODEL` overrides the default `anthropic/claude-sonnet-5.5`. |
+| `ANTHROPIC_API_KEY` | Secondary AI guide provider, used if OpenRouter is unset or fails. With no provider, or on any provider error/timeout (12 s), `/api/advisory` returns deterministic keyword answers tagged `mode: "offline"` ("Guide answers (offline mode)") with no quote, contract or transaction. Optional `ANTHROPIC_MODEL` overrides the pinned default `claude-sonnet-5-5`. |
 | `SKYT_MINT` | Mint address for the six-decimal SKYT test token; defaults to the committed Devnet mint for status reads |
 | `VITE_MAP_PROVIDER` | Defaults to `maptiler`; keeps future map providers isolated behind one component |
 | `VITE_MAPTILER_KEY` | Browser-visible MapTiler key for premium Hybrid/Basic maps |
@@ -126,7 +127,7 @@ npm run skyt:seed                        # create city markets
 | `GET /api/weather/:city/forecast` | NOAA forecast for a window |
 | `GET /api/weatherxm/:city/latest` | Supplemental WeatherXM Agent API status; uses the free health endpoint and reports that live observations are x402-paid and not settlement eligible |
 | `POST /api/quotes` | Premium quote (city, window, threshold, operator, amount) |
-| `POST /api/advisory` | Advisory-only natural-language intent (`message`, optional previous `context`). Matches only researched locations and finalized contract state; never returns a quote or transaction. Requires the server-side Anthropic configuration. |
+| `POST /api/advisory` | Advisory-only natural-language intent (`message`, optional previous `context`). Matches only researched locations and finalized contract state; never returns a quote or transaction. Uses OpenRouter, then Anthropic, then the labelled offline guide. |
 | `GET /api/portfolio/:wallet` | Indexer-backed positions (never simulated) |
 | `POST /api/transactions/unsigned` | Build a base64 VersionedTransaction (`approved: true` required) |
 | `GET /api/settlement/evidence` | Settlement evidence ledger |
