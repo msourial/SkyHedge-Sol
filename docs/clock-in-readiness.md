@@ -20,9 +20,22 @@ Event requirements were reviewed at [solanamobile.radiant.nexus](https://solanam
 
 ## Important dates
 
-- The live registered Align draft shows **October 12, 2026 at 7:59 a.m. EDT** (11:59 a.m. UTC); [Solana Mobile's announcement](https://solanamobile.com/blog/clock-in-the-solana-mobile-hackathon) still says October 8. Submit before the live account deadline rather than assuming either source has been reconciled.
+- **Submission deadline: October 12, 2026 at 7:59 p.m. EDT (23:59 UTC)**, per the public hackathon page as checked on October 12. An earlier note recorded the registered Align draft as showing 7:59 a.m. EDT (11:59 UTC); confirm the live account countdown and submit as early as possible. Solana Mobile's announcement still says October 8.
 - Winners announced in early November, according to the [Solana Mobile announcement](https://solanamobile.com/blog/clock-in-the-solana-mobile-hackathon).
 - Only one submission per contestant, either solo or on a team.
+
+## Final submission status (October 12, 2026)
+
+| Item | State |
+| --- | --- |
+| Source | Branch `codex/clock-in-mobile` at `e00f28e` (fast-forward of `main` `bf23c8a`, 11 commits, no conflicts). Final submitted commit: `<<FINAL_COMMIT_SHA>>` |
+| Checks at `e00f28e` | 33/33 mobile tests, 151 server tests, mobile and root TypeScript all pass |
+| Android APK | Release APK built locally from `e00f28e`, debug-signed (test distribution only). Public link: `<<NEW_APK_RELEASE_URL>>` — SHA-256: `<<NEW_APK_SHA256>>` |
+| Seeker smoke test of new APK | `<<SEEKER_SMOKE_TEST_RESULT>>` |
+| Physical wallet (MWA) test | `<<WALLET_TEST_RESULT: authorize / sign / finalized signature or exact blocker>>` |
+| Demo video (max 3 min) | `<<DEMO_VIDEO_URL>>` |
+| Pitch deck | [PDF](clock-in-pitch.pdf), [PPTX](clock-in-pitch.pptx) |
+| Devnet market | Des Moines market 0 remains an expired Draft with an empty vault unless updated here: `<<MARKET_STATUS>>` |
 
 ## Product guardrails for the demo
 
