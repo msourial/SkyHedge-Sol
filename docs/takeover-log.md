@@ -244,3 +244,8 @@ No transaction was approved, signed, or sent.
 - Tests: mobile 53/53, server 163, tsc clean (mobile + root).
 - APK: mobile/android/app/build/outputs/apk/release/app-release.apk (+ ~/Documents/Codex/apk-backup/SkyHedge-ClockIn-a2f785c.apk), 122,753,929 bytes, SHA-256 9bfa0479a55140989eb71482387180b9954574271419ab32319f018ee2dd03a6. Debug-signed, NOT installed.
 - Still depends on Vercel: market status, quotes, and evidence. If the phone's DNS keeps failing, the app now shows a clear offline state; fix by switching network or DNS (e.g. Private DNS off or dns.google).
+
+## 2026-10-12 ~10:05 ET: wallet signing fix (executor)
+- Root cause: logcat `Declining sol_mwa_reauthorize: dApp identity is not verified` from Phantom. signAndConfirm used legacy reauthorize().
+- Fix b09675f: authorize({chain: solana:devnet, auth_token}) with fresh-authorize fallback; connect uses chain instead of cluster. Tests 55/55, tsc clean.
+- APK ~/Documents/Codex/apk-backup/SkyHedge-ClockIn-b09675f.apk, SHA-256 acc04dd7d5fb5ae29cdf058b94fa1c37fd7acda26dfb3d84b0b84914067947df. NOT installed.
