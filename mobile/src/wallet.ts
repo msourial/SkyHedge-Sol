@@ -5,6 +5,7 @@ import { Connection, VersionedTransaction } from "@solana/web3.js";
 
 import { APP_IDENTITY } from "./wallet-identity";
 import { authorizeForSigning, DEVNET_CHAIN } from "./wallet-auth";
+import { buildSignAndSendParams } from "./wallet-send";
 
 export type AuthorizedWallet = { address: string; authToken: string };
 
@@ -30,6 +31,9 @@ export async function signAndConfirmDevnetTransaction(input: {
   rpcUrl: string;
 }): Promise<string> {
   const transaction = VersionedTransaction.deserialize(Buffer.from(input.transactionBase64, "base64"));
+  const connection = new Connection(input.rpcUrl, "confirmed");
+  const { context } = await connection.getLatestBlockhashAndContext("confirmed");
+  const params = buildSignAndSendParams([transaction], context.slot);
   const signatures = await transact(async (mobileWallet) => {
     const authorization = await authorizeForSigning(mobileWallet, input.wallet.authToken);
     const account = authorization.accounts[0];
@@ -37,11 +41,10 @@ export async function signAndConfirmDevnetTransaction(input: {
     const accountBytes = "publicKey" in account ? account.publicKey : Buffer.from(account.address, "base64");
     const address = new PublicKey(accountBytes).toBase58();
     if (address !== input.wallet.address) throw new Error("The active wallet changed. Reconnect before approving this transaction.");
-    return mobileWallet.signAndSendTransactions({ transactions: [transaction], commitment: "finalized" });
+    return mobileWallet.signAndSendTransactions(params);
   });
   const signature = signatures[0];
   if (!signature) throw new Error("The wallet did not return a transaction signature.");
-  const connection = new Connection(input.rpcUrl, "finalized");
   const confirmation = await connection.confirmTransaction(signature, "finalized");
   if (confirmation.value.err) throw new Error("The transaction was submitted but failed during finalized confirmation.");
   return signature;
