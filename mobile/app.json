@@ -5,13 +5,19 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "skyhedge",
-    "plugins": ["@maplibre/maplibre-react-native"],
+    "plugins": [
+      "@maplibre/maplibre-react-native"
+    ],
     "android": {
       "package": "com.skyhedge.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#0B0D16"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundImage": "./assets/adaptive-icon-background.png",
+        "backgroundColor": "#12151A"
       },
-      "permissions": []
-    }
+      "permissions": [],
+      "versionCode": 2
+    },
+    "icon": "./assets/icon.png"
   }
 }
