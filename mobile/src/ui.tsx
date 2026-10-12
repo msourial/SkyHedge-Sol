@@ -60,7 +60,8 @@ export function BottomSheet({ children }: { children: React.ReactNode }) {
   return <View style={styles.bottomSheet}>{children}</View>;
 }
 
-export function ActionButton({ label, onPress, disabled = false, busy = false, icon }: {
+export function ActionButton({ label, onPress, disabled = false, busy = false, icon, variant = "primary" }: {
+  variant?: "primary" | "secondary";
   label: string;
   onPress: () => void;
   disabled?: boolean;
@@ -75,10 +76,10 @@ export function ActionButton({ label, onPress, disabled = false, busy = false, i
       disabled={disabled || busy}
       onPress={onPress}
       android_ripple={{ color: C.greenSoft }}
-      style={({ pressed }) => [styles.action, disabled && styles.actionDisabled, pressed && !disabled && styles.actionPressed]}
+      style={({ pressed }) => [styles.action, variant === "secondary" && styles.actionSecondary, disabled && styles.actionDisabled, pressed && !disabled && styles.actionPressed]}
     >
-      {icon ? <AppIcon name={icon} color={disabled ? C.quiet : C.actionText} size={19} /> : null}
-      <Text style={[styles.actionText, disabled && styles.actionTextDisabled]}>{busy ? "Working…" : label}</Text>
+      {icon ? <AppIcon name={icon} color={disabled ? C.quiet : variant === "secondary" ? C.ink : C.actionText} size={19} /> : null}
+      <Text style={[styles.actionText, variant === "secondary" && styles.actionTextSecondary, disabled && styles.actionTextDisabled]}>{busy ? "Working…" : label}</Text>
     </TactilePressable>
   );
 }
@@ -103,8 +104,10 @@ export function Reveal({ children }: { children: React.ReactNode }) {
 const styles = StyleSheet.create({
   pill: { minHeight: 32, flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 7, borderWidth: 1, borderRadius: 16, paddingHorizontal: 10 },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  pillText: { fontFamily: F.bodySemi, fontSize: 11 },
-  action: { minHeight: 52, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", borderRadius: 14, paddingHorizontal: 16, backgroundColor: C.green },
+  pillText: { fontFamily: F.bodySemi, fontSize: 12, letterSpacing: 0.3 },
+  action: { minHeight: 52, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", borderRadius: 12, paddingHorizontal: 16, backgroundColor: C.green },
+  actionSecondary: { backgroundColor: "transparent", borderWidth: 1, borderColor: C.border },
+  actionTextSecondary: { color: C.ink },
   actionDisabled: { backgroundColor: C.surfaceRaised, borderWidth: 1, borderColor: C.border },
   actionPressed: { opacity: 0.84 },
   actionText: { color: C.actionText, fontFamily: F.bodyBold, fontSize: 15 },
@@ -117,14 +120,14 @@ const styles = StyleSheet.create({
   screenDetail: { color: C.muted, fontFamily: F.body, fontSize: 14, lineHeight: 21, marginTop: 8 },
   sectionHeader: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: 24, marginBottom: 11 },
   sectionTitle: { color: C.ink, fontFamily: F.heading, fontSize: 19 },
-  sectionDetail: { color: C.quiet, fontFamily: F.body, fontSize: 11 },
+  sectionDetail: { color: C.quiet, fontFamily: F.body, fontSize: 12 },
   insetSurface: { backgroundColor: C.surface, borderColor: C.border, borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 16 },
   timeline: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 6 },
   timelineRule: { flex: 1, minWidth: 8, height: StyleSheet.hairlineWidth, backgroundColor: C.border },
   timelineStep: { alignItems: "center", gap: 5 },
   timelineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.quiet },
   timelineDotReady: { backgroundColor: C.mint },
-  timelineText: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 11 },
+  timelineText: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 12 },
   timelineTextReady: { color: C.mint },
   bottomSheet: { backgroundColor: C.surfaceRaised, borderTopColor: C.border, borderTopWidth: StyleSheet.hairlineWidth, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 18 },
 });
