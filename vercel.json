@@ -3,12 +3,24 @@
   "buildCommand": "npm run build:site",
   "outputDirectory": "dist",
   "functions": {
-    "api/cron/settlement.ts": { "maxDuration": 300 }
+    "api/cron/settlement.ts": {
+      "maxDuration": 300
+    }
   },
   "crons": [
-    { "path": "/api/cron/settlement", "schedule": "0 3 * * *" }
+    {
+      "path": "/api/cron/settlement",
+      "schedule": "0 3 * * *"
+    }
   ],
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/markets/:market/positions/:wallet/claim-readiness",
+      "destination": "/api/mobile?resource=claim-readiness&market=:market&wallet=:wallet"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
