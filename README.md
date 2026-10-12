@@ -1,36 +1,40 @@
-# SkyHedge — weather protection you can buy from your phone
+# SkyHedge: weather protection you buy from your phone
 
-> **Parametric weather protection on Solana Mobile.** Pick a place and a weather risk, see a NOAA-priced quote, approve it in your wallet, and get paid automatically on-chain when the weather data says the trigger was hit. No claims adjuster, no paperwork.
+> **Parametric weather protection on Solana, built for the Seeker.** Pick a place and a weather risk, see a quote priced from NOAA data, approve it in your wallet, and get paid on-chain automatically when the weather data shows the trigger was hit. No claims adjuster, no paperwork.
 >
 > Solana Mobile **Clock In** hackathon entry · native React Native Android app (not a PWA) · Solana Devnet · Mobile Wallet Adapter.
 
 | | |
 |---|---|
-| APK | GitHub release on this repo (debug-signed Devnet build; SHA-256 listed in the release notes and in [docs/takeover-log.md](docs/takeover-log.md)) |
-| Demo video | `<<DEMO_VIDEO_URL>>` · script: [docs/demo-script.md](docs/demo-script.md) |
+| Repo (submission branch) | [msourial/SkyHedge-Sol @ clock-in-submission](https://github.com/msourial/SkyHedge-Sol/tree/clock-in-submission) |
+| APK | See [Releases](https://github.com/msourial/SkyHedge-Sol/releases) (debug-signed Devnet build; SHA-256 in the release notes and [docs/takeover-log.md](docs/takeover-log.md)) |
+| Hackathon | [Solana Mobile Clock In](https://solanamobile.radiant.nexus/) · submitted on Align |
+| Demo | `<<DEMO_VIDEO_URL>>` · script: [docs/demo-script.md](docs/demo-script.md) |
 | Pitch deck | [docs/clock-in-pitch.pdf](docs/clock-in-pitch.pdf) |
 | Program (Devnet) | `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` |
-| Test token | `SKYT` `3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g` (no value) |
+| Test token | `SKYT` mint `3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g` (Devnet, no value) |
+
+**On-chain proof:** a real `OpenPosition` purchase from the Seeker through Phantom, finalized on Devnet:
+[`5TjACP1S…7qsPWycH`](https://explorer.solana.com/tx/5TjACP1ScQxXRP4GNpA5zXqxAHK2iCNvcETPx1z7rJ4qXPjMWXZ6qXgngHjrPGv9sVL1h6nGULmzwCiu7qsPWycH?cluster=devnet)
 
 ## Why
 
-Weather decides whether a flight leaves, a crane lifts, a mine haul road stays open, a wedding stays outdoors, or a harvest pays. Traditional weather cover is slow, paperwork-heavy, sold in big minimum sizes, and out of reach for most small operators.
+Weather decides whether a flight leaves, a crane lifts, a haul road stays open, an outdoor wedding happens, or a harvest pays. Traditional weather cover is slow, paperwork-heavy, sold in large minimum sizes, and out of reach for most small operators. SkyHedge is **instant** (quote and buy in under a minute), **accessible** (a phone and a wallet are enough), and **fractional** (no minimum policy size).
 
-**SkyHedge is:**
-- **Instant** — quote and buy in under a minute; payout settles automatically from public weather data.
-- **Accessible anywhere** — a phone and a wallet are all you need.
-- **Fractional** — protect a small slice of exposure or a large one; no minimum policy size.
-
-**Who it's for**
-- **Aviation (lead wedge):** operators, flight schools, and charters losing revenue to weather days.
-- **Construction:** pours, lifts, and crews idled by rain and wind.
-- **Mining:** haul-road and site shutdowns.
-- **Events & weddings:** outdoor dates that rain can ruin.
+- **Aviation (lead wedge):** operators, flight schools and charters that lose revenue on weather days.
 - **Agriculture (the heart of the story):** the farmer whose season depends on rainfall they can't control.
+- Also: construction, mining, and events and weddings.
 
-The live Devnet market today is **cumulative rainfall in Des Moines, Iowa**. Wind and snow triggers for aviation are on the roadmap and are shown as research-only in the app.
+**Business model:** a **1% protocol fee** on every purchase, included in the quoted premium and shown on the ticket. SkyHedge is pre-launch, so no traction numbers are claimed.
 
-**Business model:** a **1% protocol fee** on every protection purchase, included in the quoted premium and shown on the ticket.
+## Key features
+
+- **Protect flow:** choose coverage of **50 / 100 / 250 / Max SKYT** (paid if triggered). A labelled **Rain trigger** row shows the threshold in mm. The quote appears as an option ticket listing what you pay, what you get, the trigger, the window, the chance and the fee. Then tap **Review in wallet**.
+- **Markets:** a hero card with **live NOAA rainfall** and a **7-week chart**. **Des Moines, Iowa** (cumulative rainfall) is live. **Toronto** shows as **"Opens soon"** and its Environment Canada adapter is already in the codebase.
+- **Phantom via Mobile Wallet Adapter on Devnet:** the server builds the transaction unsigned, and the user approves it in their wallet. Nothing is signed without the user.
+- **On-chain positions** through the Anchor program, **one per wallet per market window**. After purchase the app shows "You're protected" with the finalized status and an **Explorer link**.
+- **Settlement:** the final observation is normalized, hashed and committed on-chain. If the trigger is hit, the buyer claims the fixed payout. If source data is unavailable after a 7-day grace period, the market resolves `DATA_UNAVAILABLE` and premiums are refundable. SkyHedge never makes up weather values.
+- **Built for mobile networks:** API reads retry with timeouts. Balances are read directly from Solana RPC with a fallback to a second Devnet endpoint (genesis-hash checked). Friendly errors and an offline state with Retry replace endless spinners.
 
 ## How it works
 
@@ -40,32 +44,15 @@ Pick place + risk  →  NOAA / Environment Canada data  →  quote (premium, pay
       →  final observation hashed on-chain  →  automatic payout or premium refund
 ```
 
-1. **Markets** — browse researched locations and weather risks; see rainfall history.
-2. **Protect** — enter an amount; the server prices it from ten analogous NOAA windows plus a forecast signal, with a 15% risk load and the 1% fee. The quote appears as an **option ticket**: what you pay, what you get, trigger, window, chance, fee.
-3. **Wallet** — the transaction is built server-side, unsigned, and approved in Phantom, Solflare, or the Seeker wallet through **Mobile Wallet Adapter**. Nothing is signed without the user.
-4. **Settlement** — a final NOAA observation is normalized, hashed, and committed on-chain. If the trigger is hit, the buyer claims the fixed payout; if source data is unavailable after a 7-day grace period, the market resolves `DATA_UNAVAILABLE` and premiums are refundable. SkyHedge never makes up weather values.
+Pricing uses ten analogous NOAA windows plus a forecast signal, a 15% risk load and the 1% fee. Markets come from a per-market counter, and city, station and provider are stored as hashes, so **adding Toronto needs no program change** (see [docs/canadian-market-plan.md](docs/canadian-market-plan.md)).
 
-**Data sources**
-- **NOAA** (US): Climate Data Online final daily observations.
-- **Environment and Climate Change Canada** (Canada): daily climate API ([`server/services/eccc.ts`](server/services/eccc.ts), tested) — Toronto Pearson, Vancouver, Montréal stations.
+## Install
 
-## Canada: Toronto opens soon
+**APK:** download it from [Releases](https://github.com/msourial/SkyHedge-Sol/releases). A release for build `e5ca97a` is coming. Install with `adb install SkyHedge-ClockIn.apk` or sideload it on the Seeker.
 
-Markets are created from a per-market counter, and city, station, and data provider are stored as hashes, so **adding Toronto needs no program change**. The app shows Toronto as **"Opens soon"**, and the ECCC adapter is already in the codebase. Plan: [docs/canadian-market-plan.md](docs/canadian-market-plan.md).
+**Wallet setup:** in Phantom, open Settings → Developer Settings, turn on **Testnet Mode**, and set Solana to **Devnet**. You need Devnet SOL for fees and SKYT for premiums.
 
-## Architecture
-
-```
-mobile/    Expo / React Native Android app (Markets · Protect · Wallet), MWA, direct Solana RPC reads
-server/    Express API: quote engine, NOAA + ECCC providers, evidence builder, unsigned-tx builder, settlement runner
-anchor/    Anchor program skyhedge_protection (markets, vaults, positions, settlement, claims)
-client/    Web companion / operator console (React + Vite), deployed at skyhedge.vercel.app
-shared/    IDL, methodology, optional Postgres schema
-```
-
-Reliability on mobile: API reads retry with timeouts; wallet balances read straight from Solana RPC across two Devnet endpoints (genesis-hash checked); an offline state with Retry replaces endless loading.
-
-## Build & run
+**Build from source:**
 
 ```bash
 npm install
@@ -75,18 +62,42 @@ npm run test:server    # server tests
 cd mobile
 npm install
 npm run check          # typecheck (mobile)
-npm run test:mobile    # mobile tests
-npx expo prebuild --platform android
-cd android && ./gradlew assembleRelease   # → app/build/outputs/apk/release/app-release.apk
+npm run test:mobile    # mobile tests (67 passing)
+EXPO_PUBLIC_API_BASE_URL=https://skyhedge.vercel.app npx expo prebuild --platform android
+cd android && EXPO_PUBLIC_API_BASE_URL=https://skyhedge.vercel.app ./gradlew assembleRelease
+# → android/app/build/outputs/apk/release/app-release.apk
 ```
 
-**Testing on a phone:** in Phantom, open Settings → Developer Settings, turn on **Testnet Mode**, and set Solana to **Devnet**. You need Devnet SOL for fees and SKYT for premiums.
+`EXPO_PUBLIC_API_BASE_URL` is baked in at build time and falls back to `https://skyhedge.vercel.app`. `EXPO_PUBLIC_SKYT_MINT` can override the SKYT mint. For the full developer reference (env vars, localnet, Devnet activation, API, security posture), see [docs/developer-reference.md](docs/developer-reference.md).
 
-**Current tests:** 55 mobile, 163 server, typecheck clean (mobile + root).
+## Tech stack
 
-Full developer reference (env vars, localnet, Devnet activation, API, security posture): [docs/developer-reference.md](docs/developer-reference.md).
+- **Mobile:** Expo / React Native (Android), `@solana-mobile/mobile-wallet-adapter-protocol-web3js`, `@solana/web3.js`
+- **Chain:** Anchor program `skyhedge_protection` on Solana Devnet, SPL token SKYT
+- **Server:** Node / Express (TypeScript): quote engine, NOAA and ECCC providers, evidence builder, unsigned-transaction builder, settlement runner. Deployed on Vercel.
+- **Web:** React + Vite operator console
+
+## Repo layout
+
+```
+mobile/    Expo / React Native Android app (Markets · Protect · Wallet), MWA, direct Solana RPC reads
+server/    Express API: quote engine, NOAA + ECCC providers, evidence, unsigned-tx builder, settlement
+anchor/    Anchor program skyhedge_protection (markets, vaults, positions, settlement, claims)
+client/    Web companion / operator console (React + Vite), skyhedge.vercel.app
+shared/    IDL, methodology, optional Postgres schema
+docs/      demo script, pitch deck, submission draft, plans, takeover log
+```
+
+## Tests
+
+- `cd mobile && npm run test:mobile`: **67 passing** (wallet auth and send, ticket, chain fallback, network resilience, option copy, and more)
+- `npm run test:server`: server suite (quote engine, NOAA/ECCC providers, settlement)
+- `npm run check`: typecheck clean for both root and mobile
 
 ## Status & honesty
 
-- Devnet only. SKYT is a test token. This is not insurance and not a regulated product.
-- No traction numbers are claimed here. SkyHedge is pre-launch.
+Devnet only. SKYT is a test token. This is not insurance and not a regulated product. No traction numbers are claimed.
+
+## License
+
+[MIT](LICENSE)

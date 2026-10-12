@@ -275,3 +275,6 @@ No transaction was approved, signed, or sent.
 - e5ca97a (on 4e10b3e): "Not ready to price yet" card hidden when reason is existing position/pending outcome (or a finalized tx with a position); replaced by muted "One protection per wallet per window." under You're protected. Feed/other reasons still show. Coverage chips now "50 SKYT / 100 SKYT / 250 SKYT / Max N SKYT" under "Coverage (paid if triggered)"; new "Rain trigger" section shows "Trigger ≥ N mm rain". No wallet/tx/guard logic changed.
 - Tests: mobile 67/67, tsc clean.
 - APK ~/Documents/Codex/apk-backup/SkyHedge-ClockIn-e5ca97a.apk, SHA-256 829aed88045031452dbc541e33eb57d710dc5a6d2a1333dee50979ed21f5544a, API base skyhedge.vercel.app. NOT installed, not pushed.
+
+## 2026-10-12 ~17:35 ET: judge-ready README (executor)
+- Rewrote README.md: proof tx link, features (coverage chips, rain trigger, Markets hero, Toronto Opens soon, MWA/Phantom, one position per wallet per window), install via Releases + build with EXPO_PUBLIC_API_BASE_URL, stack, layout, tests (67), MIT. Pushed normally.
