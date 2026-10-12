@@ -187,3 +187,25 @@ No transaction was approved, signed, or sent.
   - GitHub shows zero deployments for msourial/SkyHedge-Sol, so the site appears to be CLI-deployed (`npx vercel --prod` from the linked clone), not git-push auto-deploy.
   - vercel.json has no git settings. CI is `.github/workflows/ci.yml` only.
   - Production branch: unknown; confirm in the Vercel dashboard.
+
+## Owner console fix + production redeploy (2026-10-12 01:30 ET, approved by Miro)
+- **52987de:**
+  - New `shared/protocol-init.ts` with `isProtocolInitialized` (client RPC check OR server `protocol.initialized && status=ready`), `canOfferInitialization` (client false AND server not initialized) and `withTimeout`.
+  - `protocolExists()` now times out after 5 s.
+  - OwnerConsole's mint, seed, cancel, pill and mint-supply gates use `protocolInitialized`.
+  - "Approve initialization" stays disabled whenever the server reports initialized.
+  - 3 new server tests.
+- **Checks:**
+  - root `tsc` is clean.
+  - `npm run build:site` passes.
+  - `test:server` is 156 passing.
+  - `mobile check` is clean and `test:mobile` is 44/0.
+- **Deploy:**
+  - Copied `.vercel/` from the main clone (gitignored, not committed).
+  - `npx vercel whoami` gives msourial. Then `npx vercel --prod --yes` from the worktree at 52987de.
+  - Deployment https://skyhedge-ba9jr3eaa-msourials-projects.vercel.app, target production, Ready, aliased to https://skyhedge.vercel.app.
+  - This ships the claim-readiness/mobile endpoint and MWA identity commits too.
+- **Verification:**
+  - `/api/mobile?resource=claim-readiness&market=9UUN…JqVJ&wallet=DKA9…FD6y` returns 200 application/json (`state: no_position`).
+  - `/api/devnet/status` returns 200 JSON.
+- Not done: no transactions signed, no git push. The production deploy now runs code that is not on GitHub.
