@@ -46,7 +46,9 @@
   .sky-btn-success { border: 1px solid var(--success); background: var(--success); color: #fff; }
   .sky-btn-ghost { border: 1px solid var(--border); background: var(--surface-1); color: var(--foreground); }
   .sky-btn-ghost:hover:not(:disabled) { border-color: var(--identity); color: var(--identity); }
-  .sky-btn-primary:disabled, .sky-btn-success:disabled, .sky-btn-ghost:disabled { cursor: not-allowed; opacity: .55; }
+  .sky-btn-secondary { min-height: 44px; border-radius: var(--radius-control); padding: .68rem 1.1rem; font-family: var(--font-body); font-size: .9375rem; font-weight: 600; line-height: 1.25; border: 1px solid var(--warning); background: var(--surface-1); color: var(--foreground); }
+  .sky-btn-secondary:hover:not(:disabled) { background: color-mix(in srgb, var(--warning) 14%, var(--surface-1)); }
+  .sky-btn-primary:disabled, .sky-btn-success:disabled, .sky-btn-ghost:disabled, .sky-btn-secondary:disabled { cursor: not-allowed; opacity: .55; }
   .sky-input { width: 100%; min-height: 46px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-1); color: var(--foreground); padding: .7rem .85rem; font-family: var(--font-body); font-size: 1rem; line-height: 1.35; transition: border-color 160ms ease, box-shadow 160ms ease; }
   .sky-input:focus { border-color: var(--identity); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--identity) 18%, transparent); }
   .sky-input::placeholder { color: var(--faint); }

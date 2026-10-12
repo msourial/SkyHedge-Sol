@@ -292,7 +292,7 @@ export async function cancelEmptyDraftMarketTransaction(
     throw new Error("The finalized Draft market or vault address does not match its PDA.");
   }
 
-  const protocolInfo = await connection.getAccountInfo(protocol, "finalized");
+  const protocolInfo = await withTimeout(connection.getAccountInfo(protocol, "finalized"), 10_000, "Devnet protocol read");
   if (!protocolInfo || !protocolInfo.owner.equals(program) || protocolInfo.data.length < PROTOCOL_CONFIG_LAYOUT.minimumLength
     || !protocolInfo.data.subarray(PROTOCOL_CONFIG_LAYOUT.admin, PROTOCOL_CONFIG_LAYOUT.admin + 32).equals(admin.toBuffer())
     || !protocolInfo.data.subarray(PROTOCOL_CONFIG_LAYOUT.collateralMint, PROTOCOL_CONFIG_LAYOUT.collateralMint + 32).equals(mint.toBuffer())
@@ -363,7 +363,7 @@ export function issueSkytTransaction(admin: PublicKey) {
 
 export async function approveAndConfirm(transaction: Transaction, wallet: WalletContextState) {
   if (!wallet.publicKey || !wallet.sendTransaction) throw new Error("Connect a wallet that supports Devnet transactions.");
-  const latest = await connection.getLatestBlockhash("finalized");
+  const latest = await withTimeout(connection.getLatestBlockhash("finalized"), 10_000, "Devnet blockhash read");
   transaction.feePayer = wallet.publicKey;
   transaction.recentBlockhash = latest.blockhash;
   const signature = await wallet.sendTransaction(transaction, connection, { preflightCommitment: "confirmed", maxRetries: 3 });

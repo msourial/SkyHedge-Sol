@@ -10,7 +10,7 @@ import { AgriculturalMarketExplorerMap } from "@/components/sky/agricultural-mar
 import { cn } from "@/lib/utils";
 import { canOfferInitialization, isProtocolInitialized } from "@shared/protocol-init";
 import { approveAndConfirm, approveAndConfirmDesMoinesSeed, cancelEmptyDraftMarketTransaction, desMoinesSeedTransactions, explorerTx, initializeProtocolTransaction, isProtocolAdmin, issueSkytTransaction, protocolExists, SKYT_ISSUANCE } from "@/lib/admin";
-import { finalizedSkytMintSupply, finalizedWalletState, PROTOCOL_ADMIN, signAndSend } from "@/lib/solana";
+import { finalizedSkytMintSupply, finalizedWalletState, PROTOCOL_ADMIN, RPC_URL, signAndSend } from "@/lib/solana";
 import { initialSkytMintState } from "../../../shared/mint-issuance";
 import { isValidImmutableMarketPricingTerms } from "../../../shared/market-pricing";
 import { desMoinesSeedActionMode, isValidDesMoinesSeedSchedule, marketStateFromStatusJson, nextDesMoinesBuilderMilestone, seedTermsMatch } from "../../../shared/des-moines-seed-plan";
@@ -411,6 +411,7 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
             {busy === "cancel" ? "Awaiting wallet approval…" : "Approve cancel empty Draft"}
           </button>
         </>}
+        <p data-testid="owner-debug" className="mt-3 break-all font-mono text-[11px] text-[var(--muted-foreground)]">debug · wallet={wallet.wallet?.adapter.name ?? "none"} owner={String(owner)} clientInit={String(initialized)} serverInit={String(status?.protocol.initialized)}/{status?.protocol.status ?? "?"} protocolInitialized={String(protocolInitialized)} busy={busy ?? "none"} market={seedMarketState} expired={String(priorDraftExpired)} canCancel={String(canCancelEmptyDraft)} seedMode={seedActionMode} rpc={RPC_URL.replace(/^https?:\/\//, "").split("/")[0]}</p>
         <p className="mt-2 text-[11px] leading-relaxed text-[var(--warning)]">No default 20% probability or substitute data will be committed. A new market is created only when exact-window pricing terms and their input hash are produced.</p>
       </Card>
     </div>
