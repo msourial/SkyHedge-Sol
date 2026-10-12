@@ -249,3 +249,10 @@ No transaction was approved, signed, or sent.
 - Root cause: logcat `Declining sol_mwa_reauthorize: dApp identity is not verified` from Phantom. signAndConfirm used legacy reauthorize().
 - Fix b09675f: authorize({chain: solana:devnet, auth_token}) with fresh-authorize fallback; connect uses chain instead of cluster. Tests 55/55, tsc clean.
 - APK ~/Documents/Codex/apk-backup/SkyHedge-ClockIn-b09675f.apk, SHA-256 acc04dd7d5fb5ae29cdf058b94fa1c37fd7acda26dfb3d84b0b84914067947df. NOT installed.
+
+## 2026-10-12 ~10:20 ET: option ticket, judge README, demo script, APK (executor)
+- d646df5: Protect quote is now an option ticket: You pay / Payout if triggered hero (gold only for money), a terms table (trigger, window, chance, fee included, total), a short quote ref instead of the inputs hash, and one Review-in-wallet CTA. Wallet flow untouched.
+- f292095: judge-facing README (pitch, audiences, 1% fee, how it works, NOAA + ECCC, Toronto opens soon, architecture, build/test). The old README moved to docs/developer-reference.md. No traction numbers.
+- 07bf5e1: docs/demo-script.md, a 2:30 script + shot list.
+- Tests: mobile 55/55, server 163, tsc clean (mobile + root).
+- APK from 07bf5e1: ~/Documents/Codex/apk-backup/SkyHedge-ClockIn-07bf5e1.apk, 122756437 bytes, SHA-256 2859effdf6e72e592a7d3a06ff6dac55870849cd63bc23e179adcaaa6095a39a. NOT installed. No push, deploy, or signing.
