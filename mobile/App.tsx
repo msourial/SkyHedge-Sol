@@ -762,15 +762,25 @@ function ProtectScreen(props: {
           {!props.quote ? (
             <View style={styles.actionWrap}><ActionButton label={needsWallet ? "Connect Devnet wallet" : "Price my rain option"} icon={needsWallet ? "credit-card" : "arrow-right"} disabled={!needsWallet && !!props.unavailableReason} busy={props.transactionBusy} onPress={needsWallet ? props.onOpenWallet : props.onRequestQuote} /></View>
           ) : (
-          <Reveal><View style={[styles.quoteCard, styles.card, styles.quoteCardContent]} accessibilityLabel="NOAA-based quote review">
-            <View style={styles.quoteHead}><AppIcon name="file-text" color={C.rain} size={18} /><Text style={styles.quoteTitle}>Your rain option</Text></View>
+          <Reveal><View style={[styles.quoteCard, styles.ticket]} accessibilityLabel="Rain option ticket">
+            <View style={styles.ticketHead}>
+              <View><Text style={styles.ticketEyebrow}>Option ticket · NOAA priced</Text><Text style={styles.quoteTitle}>Rain option · {placeName}</Text></View>
+              <StatusPill label="Quoted" tone="ready" />
+            </View>
+            <View style={styles.ticketHero}>
+              <View style={styles.ticketHeroCell}><Text style={styles.ticketHeroLabel}>You pay</Text><Text style={styles.ticketHeroMoney}>{formatSkyt(props.quote.premium)}</Text><Text style={styles.ticketHeroUnit}>SKYT premium</Text></View>
+              <View style={styles.ticketDivider} />
+              <View style={styles.ticketHeroCell}><Text style={styles.ticketHeroLabel}>Payout if triggered</Text><Text style={styles.ticketHeroMoney}>{formatSkyt(props.quote.protectedAmount)}</Text><Text style={styles.ticketHeroUnit}>SKYT, paid automatically</Text></View>
+            </View>
             <Text style={styles.optionLine}>{optionPremiumLine(props.quote.premium, props.quote.protectedAmount, market?.thresholdMmX100, market?.operator)}</Text>
-            <MetricRow label="Payout if triggered" value={`${formatSkyt(props.quote.protectedAmount)} SKYT`} />
-            <MetricRow label="Chance of trigger" value={`${(props.quote.probabilityBps / 100).toFixed(2)}%`} />
-            <MetricRow label="Premium · total charged" value={`${formatSkyt(props.quote.premium)} SKYT`} />
-            <MetricRow label="Protocol fee" value={`${formatSkyt(props.quote.protocolFee)} SKYT`} />
-            <MetricRow label="Inputs hash" value={`${props.quote.inputsHash.slice(0, 12)}…`} />
-            <Text style={styles.quoteWarning}>Protocol fee is included in the total premium.</Text>
+            <View style={styles.ticketTable}>
+              <MetricRow label="Trigger" value={threshold == null ? "Final terms pending" : triggerPhrase(market?.thresholdMmX100, market?.operator).replace(/^if r/, "R")} />
+              <MetricRow label="Observation window" value={windowStart && windowEnd ? `${windowStart} → ${windowEnd}` : "Pending"} />
+              <MetricRow label="Chance of trigger" value={`${(props.quote.probabilityBps / 100).toFixed(2)}%`} />
+              <MetricRow label="Protocol fee (included)" value={`${formatSkyt(props.quote.protocolFee)} SKYT`} />
+              <MetricRow label="Total charged" value={`${formatSkyt(props.quote.premium)} SKYT`} />
+            </View>
+            <Text style={styles.ticketFoot}>Settles on NOAA final observations · quote {props.quote.inputsHash.slice(0, 8)}</Text>
             {props.quotePaymentReason ? <View accessibilityRole="alert" style={styles.blockedNotice}><Text style={styles.blockedTitle}>Not enough SKYT for the premium</Text><Text style={styles.blockedBody}>{props.quotePaymentReason}</Text></View> : null}
             <View style={styles.actionWrap}><ActionButton label="Review in wallet" icon="arrow-right" disabled={!!props.quotePaymentReason || !!props.unavailableReason} busy={props.transactionBusy} onPress={props.onApprove} /></View>
           </View></Reveal>
@@ -1090,6 +1100,17 @@ const styles = StyleSheet.create({
   testModeHeading: { color: C.ink, fontFamily: F.heading, fontSize: 18, marginBottom: 5 },
   testModeNote: { color: C.muted, fontSize: 12, lineHeight: 19, marginBottom: 16 },
   quoteCard: { marginTop: 16 },
+  ticket: { backgroundColor: C.surfaceRaised, borderColor: C.border, borderWidth: 1, borderRadius: 12, padding: 16 },
+  ticketHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 10 },
+  ticketEyebrow: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 11, letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 },
+  ticketHero: { flexDirection: "row", marginTop: 16, borderRadius: 12, backgroundColor: C.canvas, borderWidth: 1, borderColor: C.border, paddingVertical: 14 },
+  ticketHeroCell: { flex: 1, paddingHorizontal: 14 },
+  ticketDivider: { width: 1, backgroundColor: C.border },
+  ticketHeroLabel: { color: C.muted, fontFamily: F.bodySemi, fontSize: 12 },
+  ticketHeroMoney: { color: C.payout, fontFamily: F.headingBold, fontSize: 26, lineHeight: 32, marginTop: 4, fontVariant: ["tabular-nums"] },
+  ticketHeroUnit: { color: C.quiet, fontSize: 11 },
+  ticketTable: { marginTop: 2 },
+  ticketFoot: { color: C.quiet, fontSize: 11, marginTop: 10 },
   quoteCardContent: { padding: 13 },
   quoteHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
   quoteTitle: { color: C.ink, fontFamily: F.heading, fontSize: 16 },
