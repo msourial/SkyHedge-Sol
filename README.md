@@ -1,5 +1,12 @@
 # SkyHedge
 
+> **Solana Mobile "Clock In" hackathon entry (Mobile category).** Native React Native Android client in [`mobile/`](mobile/README.md) using Solana Mobile Wallet Adapter against the SkyHedge Devnet program.
+> - APK: `<<NEW_APK_RELEASE_URL>>` (SHA-256 `<<NEW_APK_SHA256>>`, debug-signed Devnet build)
+> - Demo video: `<<DEMO_VIDEO_URL>>`
+> - Pitch: [docs/clock-in-pitch.pdf](docs/clock-in-pitch.pdf) · Status: [docs/clock-in-readiness.md](docs/clock-in-readiness.md)
+> - Wallet test on physical device: `<<WALLET_TEST_RESULT>>`
+> - Submission deadline: October 12, 2026, 7:59 p.m. EDT (23:59 UTC)
+
 Devnet Solana software for **fixed-payout cumulative-rainfall protection markets**. Buyers pay a premium for a fixed payout if a station's cumulative rainfall crosses a threshold; liquidity providers earn those premiums. Settlement uses one normalized **NOAA final observation**; unavailable source data resolves `DATA_UNAVAILABLE` — the system never synthesizes weather values.
 
 `Weather risk → protection contract → Solana → deterministic NOAA settlement → payout`
