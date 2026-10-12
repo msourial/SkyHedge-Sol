@@ -24,6 +24,7 @@ export function createMobileApiHandler(dependencies: {
   readCity?: typeof cityIndexState;
   readHistory?: typeof weeklyHistory;
   now?: () => Date;
+  readWalletState?: (wallet: string) => Promise<unknown>;
   readClaimReadiness?: (market: string, wallet: string) => Promise<ClaimReadiness>;
 } = {}) {
   const loadCities = dependencies.loadCities ?? allCityIndexStates;
@@ -89,6 +90,23 @@ export function createMobileApiHandler(dependencies: {
           liquidity: [],
           message: "Finalized portfolio positions are not indexed on this deployment yet. An empty list is not proof that the wallet has no on-chain positions.",
         });
+      }
+
+      if (resource === "wallet-balances") {
+        const wallet = queryValue(req, "wallet");
+        let canonicalWallet: string;
+        try {
+          if (!wallet) throw new Error("Missing wallet");
+          canonicalWallet = new PublicKey(wallet).toBase58();
+        } catch {
+          return res.status(400).json({ error: "INVALID_WALLET", message: "A valid Solana wallet address is required." });
+        }
+        const read = dependencies.readWalletState ?? (async (address: string) => {
+          const { readFinalizedWalletState } = await import("../../mobile/src/chain.js");
+          return readFinalizedWalletState(address);
+        });
+        res.setHeader("Cache-Control", "no-store");
+        return res.status(200).json(await read(canonicalWallet));
       }
 
       if (resource === "claim-readiness") {

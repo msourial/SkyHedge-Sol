@@ -36,3 +36,21 @@ export async function readFinalizedWalletState(walletAddress: string, connection
     slot,
   };
 }
+
+/** Direct finalized RPC read with a timeout, falling back to the SkyHedge server read (avoids phone-side public RPC limits). */
+export async function readWalletStateWithFallback(
+  walletAddress: string,
+  deps: { direct: (address: string) => Promise<FinalizedWalletState>; server: (address: string) => Promise<FinalizedWalletState>; timeoutMs?: number },
+): Promise<FinalizedWalletState> {
+  const timeoutMs = deps.timeoutMs ?? 8_000;
+  try {
+    return await new Promise<FinalizedWalletState>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("Devnet RPC timed out")), timeoutMs);
+      deps.direct(walletAddress).then((value) => { clearTimeout(timer); resolve(value); }, (error) => { clearTimeout(timer); reject(error); });
+    });
+  } catch {
+    const state = await deps.server(walletAddress);
+    if (!state || typeof state.skytBaseUnits !== "string" || !/^\d+$/.test(state.skytBaseUnits)) throw new Error("Finalized SKYT balance is unavailable.");
+    return state;
+  }
+}

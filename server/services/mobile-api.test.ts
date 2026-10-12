@@ -132,4 +132,22 @@ describe("mobile read APIs", () => {
       { method: "GET", query: { resource: "claim-readiness", market: "x", wallet: "y" } } as never, record.response as never);
     expect(record.result().statusCode).to.equal(400);
   });
+
+  it("serves finalized wallet balances from the server RPC", async () => {
+    const wallet = "DKA9RkGvaW4isyj5xdiZ2oGVUkD1UL64Ha1BazXZFD6y";
+    const state = { sol: 1, skytBaseUnits: "500000000", skytDecimals: 6, slot: 9 };
+    const record = recorder();
+    await createMobileApiHandler({ readWalletState: async (w) => { expect(w).to.equal(wallet); return state; } })(
+      { method: "GET", query: { resource: "wallet-balances", wallet } } as never, record.response as never);
+    expect(record.result().statusCode).to.equal(200);
+    expect(record.result().body).to.deep.equal(state);
+    expect(record.result().headers.get("Cache-Control")).to.equal("no-store");
+  });
+
+  it("returns 503 rather than zero when the server balance read fails", async () => {
+    const record = recorder();
+    await createMobileApiHandler({ readWalletState: async () => { throw new Error("rpc down"); } })(
+      { method: "GET", query: { resource: "wallet-balances", wallet: "DKA9RkGvaW4isyj5xdiZ2oGVUkD1UL64Ha1BazXZFD6y" } } as never, record.response as never);
+    expect(record.result().statusCode).to.equal(503);
+  });
 });
