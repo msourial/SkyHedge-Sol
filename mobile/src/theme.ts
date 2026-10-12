@@ -42,8 +42,8 @@ export const F = {
   bodyMedium: "Inter_500Medium",
   bodySemi: "Inter_600SemiBold",
   bodyBold: "Inter_700Bold",
-  heading: "SpaceGrotesk_600SemiBold",
-  headingBold: "SpaceGrotesk_700Bold",
+  heading: "Inter_600SemiBold",
+  headingBold: "Inter_700Bold",
   mono: "monospace",
 } as const;
 

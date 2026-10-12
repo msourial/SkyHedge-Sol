@@ -15,7 +15,7 @@ describe("Instrument theme", () => {
   });
 
   it("keeps display, interface, and technical typography roles distinct", () => {
-    assert.match(F.heading, /SpaceGrotesk/);
+    assert.match(F.heading, /Inter/); // single family; weight carries hierarchy
     assert.match(F.body, /Inter/);
     assert.match(F.mono, /mono/i);
   });

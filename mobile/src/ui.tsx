@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import Feather from "@expo/vector-icons/Feather";
-import { AccessibilityInfo, Animated, StyleSheet, Text as NativeText, type TextProps, View, type ViewProps } from "react-native";
+import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text as NativeText, type TextProps, View, type ViewProps } from "react-native";
 import { C, F } from "./theme";
 import { TactilePressable } from "./liquid-glass";
 
@@ -15,7 +15,7 @@ export function AppIcon({ name, color = C.muted, size = 20 }: { name: AppIconNam
 }
 
 export function StatusPill({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "ready" | "pending" | "error" }) {
-  const color = tone === "ready" ? C.green : tone === "pending" ? C.amber : tone === "error" ? C.red : C.purple;
+  const color = tone === "ready" ? C.green : tone === "pending" ? C.amber : tone === "error" ? C.red : C.muted;
   return (
     <View style={[styles.pill, { borderColor: color }]} accessible accessibilityLabel={label}>
       <View style={[styles.dot, { backgroundColor: color }]} />
@@ -58,7 +58,11 @@ export function EvidenceTimeline({ steps }: { steps: Array<{ label: string; read
 
 /** The single per-screen disclosure. Every screen gets at most one. */
 export function Disclosure({ children }: { children: string }) {
-  return <View accessibilityRole="text" style={styles.disclosure}><AppIcon name="info" color={C.quiet} size={16} /><Text style={styles.disclosureText}>{children}</Text></View>;
+  const [open, setOpen] = React.useState(false);
+  return <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={children} onPress={() => setOpen((v) => !v)} style={styles.disclosure}>
+    <AppIcon name="info" color={C.quiet} size={16} />
+    <Text numberOfLines={open ? undefined : 1} style={styles.disclosureText}>{children}</Text>
+  </Pressable>;
 }
 
 export function BottomSheet({ children }: { children: React.ReactNode }) {

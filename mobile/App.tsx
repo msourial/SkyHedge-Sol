@@ -3,7 +3,6 @@ import "./src/polyfills";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFonts } from "expo-font";
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
-import { SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold } from "@expo-google-fonts/space-grotesk";
 import {
   ActivityIndicator,
   Linking,
@@ -25,6 +24,7 @@ import { buildCommittedQuoteRequest, formatSkyt, getProtectionUnavailableReason,
 import { authorizeDevnetWallet, signAndConfirmDevnetTransaction, type AuthorizedWallet } from "./src/wallet";
 import { C, F } from "./src/theme";
 import { ActionButton, Disclosure, PayoffProfile, AppIcon, EvidenceTimeline, PrimaryAction, Reveal, ScreenHeader, SectionHeader, StatusPill, Text, type AppIconName } from "./src/ui";
+import { friendlyError, isNetworkError, stationLabel } from "./src/friendly-errors";
 import { ScreenTransition, TactilePressable } from "./src/liquid-glass";
 import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
 import { ReferenceAreaMap } from "./src/ReferenceAreaMap";
@@ -37,7 +37,7 @@ const CITY_ORDER = ["des-moines", "chicago", "new-york", "miami"];
 
 export default function App() {
   const scrollRef = useRef<ScrollView>(null);
-  const [fontsLoaded, fontError] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold });
+  const [fontsLoaded, fontError] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, });
   const [tab, setTab] = useState<Tab>("catalog");
   const [cities, setCities] = useState<CityIndex[]>([]);
   const [catalog, setCatalog] = useState<AgriculturalMarket[]>([]);
@@ -324,7 +324,8 @@ export default function App() {
         <ScreenTransition transitionKey={tab}>
         {error ? <ErrorBanner message={error} onRetry={() => { void retryData(); }} /> : null}
         {homeLoading && cities.length === 0 && catalog.length === 0 ? <View style={styles.loadingPanel}><ActivityIndicator color={C.blue} /><Text style={styles.emptyText}>Loading finalized weather, market catalog, and Devnet readiness…</Text></View> : null}
-        {tab === "weather" ? (
+        {tab === "catalog" ? <CatalogScreen markets={catalog} city={city} status={status} query={marketQuery} activeArea={hasChosenArea ? selectedCity : null} hazard={selectedHazard} guideTurns={guideTurns} guideBusy={guideBusy} onAskGuide={(message) => { void askGuide(message); }} onQueryChange={setMarketQuery} onSelectArea={(slug) => { changeCity(slug); setMarketQuery(""); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} onSelectHazard={(risk) => { setSelectedHazard(risk); setQuote(null); setQuoteError(null); setTransactionSignature(null); setTransactionMessage(null); setTransactionError(null); }} onOpenProtect={() => setTab("protect")} onViewGuideMatch={(result) => { if (!result.match) return; changeCity(result.match.slug); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} /> : null}
+        {tab === "catalog" ? (
           <WeatherScreen
             cities={cities}
             city={city}
@@ -334,10 +335,9 @@ export default function App() {
             history={orderedHistory}
             marketReady={marketReady}
             onCityChange={changeCity}
-            onProtect={() => setTab("catalog")}
+            onProtect={() => setTab("protect")}
           />
         ) : null}
-        {tab === "catalog" ? <CatalogScreen markets={catalog} city={city} status={status} query={marketQuery} activeArea={hasChosenArea ? selectedCity : null} hazard={selectedHazard} guideTurns={guideTurns} guideBusy={guideBusy} onAskGuide={(message) => { void askGuide(message); }} onQueryChange={setMarketQuery} onSelectArea={(slug) => { changeCity(slug); setMarketQuery(""); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} onSelectHazard={(risk) => { setSelectedHazard(risk); setQuote(null); setQuoteError(null); setTransactionSignature(null); setTransactionMessage(null); setTransactionError(null); }} onOpenProtect={() => setTab("protect")} onViewGuideMatch={(result) => { if (!result.match) return; changeCity(result.match.slug); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} /> : null}
         {tab === "protect" ? (
           <ProtectScreen
             status={status} selectedCity={selectedCity} selectedHazard={selectedHazard} marketLocation={marketLocation} amountMode={amountMode} usdPreviewAmount={usdPreviewAmount} amount={protectionAmount}
@@ -356,6 +356,8 @@ export default function App() {
             onRefresh={() => { void refresh(); }}
             onOpenWallet={() => setTab("wallet")}
             onExplore={() => setTab("catalog")}
+            offline={!status && (isNetworkError(error) || isNetworkError(walletError) || isNetworkError(portfolioError))}
+            onRetry={() => { void retryData(); }}
           />
         ) : null}
         {tab === "wallet" ? (
@@ -374,8 +376,7 @@ export default function App() {
       </ScrollView>
 
       <View style={styles.bottomBar} accessibilityRole="tablist" accessibilityLabel="Main navigation">
-        <TabButton label="Explore" icon="map-pin" selected={tab === "catalog"} onPress={() => setTab("catalog")} />
-        <TabButton label="Weather" icon="cloud-rain" selected={tab === "weather"} onPress={() => setTab("weather")} />
+        <TabButton label="Markets" icon="map-pin" selected={tab === "catalog" || tab === "weather"} onPress={() => setTab("catalog")} />
         <TabButton label="Protect" icon="shield" selected={tab === "protect"} onPress={() => setTab("protect")} />
         <TabButton label="Wallet" icon="credit-card" selected={tab === "wallet"} onPress={() => setTab("wallet")} />
       </View>
@@ -488,7 +489,7 @@ function WeatherScreen({
           </Text>
         </View>
       </View>
-      <Disclosure>Observed NOAA station data, not a forecast, quote, or proof that a market is open. Missing values are never estimated.</Disclosure>
+      <Disclosure>Observed station data, not a forecast. Missing values are never estimated.</Disclosure>
     </>
   );
 }
@@ -500,7 +501,7 @@ function CatalogScreen({ markets, city, status, query, activeArea, hazard, guide
   const matchingMarkets = useMemo(() => searchAgriculturalMarkets(markets, query), [markets, query]);
   const pilotAreas = [
     { slug: "saskatoon", location: "Saskatoon, Saskatchewan, Canada", context: "Farm dry-spell pilot · NOAA research in progress" },
-    { slug: "toronto", location: "Toronto, Ontario, Canada", context: "Outdoor-event rain pilot · NOAA research in progress" },
+    { slug: "toronto", location: "Toronto, Ontario, Canada", context: "Rain hedge · Toronto Pearson · Environment Canada data" },
   ].filter((area) => !query.trim() || `${area.location} ${area.context}`.toLowerCase().includes(query.trim().toLowerCase()));
   const chosenMarket = markets.find((market) => market.slug === activeArea);
   const chosenPlace = referenceLocationFor(activeArea, chosenMarket);
@@ -517,7 +518,7 @@ function CatalogScreen({ markets, city, status, query, activeArea, hazard, guide
     <ScreenHeader
       eyebrow="Selected place"
       title={chosenPlace}
-      detail={activeArea === "toronto" ? "Outdoor-event rainfall · research only" : activeArea === "saskatoon" ? "Prairie dry-spell · research only" : chosenMarket?.agriculturalContext}
+      detail={activeArea === "toronto" ? "Rain hedge · opens soon on Devnet (Environment Canada data)" : activeArea === "saskatoon" ? "Prairie dry-spell · research only" : chosenMarket?.agriculturalContext}
       action={<Pressable accessibilityRole="button" accessibilityLabel="Change selected place" onPress={() => setPickerOpen(true)} style={styles.changePlace}><Text style={styles.changePlaceText}>Change</Text></Pressable>}
     />
     <View style={styles.riskSheet} accessibilityLabel="Risk sheet">
@@ -540,7 +541,7 @@ function CatalogScreen({ markets, city, status, query, activeArea, hazard, guide
           <AppIcon name={detailsOpen ? "chevron-up" : "chevron-down"} color={C.blue} size={18} />
         </Pressable>
         {detailsOpen ? <View style={styles.outcomeFacts}>
-          <MetricRow label="NOAA station" value={stationReady ? status?.noaaEvidence.package?.stationId ?? "Validated station" : "Not validated"} />
+          <MetricRow label="NOAA station" value={stationReady ? stationLabel(status?.noaaEvidence.package?.stationId) : "Not validated"} />
           <MetricRow label="Contract trigger" value={status?.desMoinesMarket.thresholdMmX100 ? `${Number(status.desMoinesMarket.thresholdMmX100) / 100} mm cumulative liquid rain` : "No finalized trigger"} />
           <MetricRow label="On-chain market" value={`${marketState}${collateralReady ? " · collateral funded" : " · vault empty"}`} />
         </View> : null}
@@ -569,10 +570,10 @@ function CatalogScreen({ markets, city, status, query, activeArea, hazard, guide
         {query.length ? <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => onQueryChange("")} style={styles.clearSearch}><AppIcon name="x" size={20} /></Pressable> : null}
       </View>
       <EvidenceTimeline steps={[{ label: "Place", ready: false }, { label: "Risk", ready: false }, { label: "Evidence", ready: false }]} />
-      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Places</Text><Text style={styles.sectionMeta}>{markets.length} crop areas · 2 Canadian pilots</Text></View>
+      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Places</Text><Text style={styles.sectionMeta}>Des Moines live · Toronto opens soon</Text></View>
       <Text style={styles.resultMeta} accessibilityLiveRegion="polite">{markets.length === 0 ? "Catalog unavailable" : `${matchingMarkets.length + pilotAreas.length} matching ${(matchingMarkets.length + pilotAreas.length) === 1 ? "area" : "areas"}`}</Text>
       {pilotAreas.map((area) => <Pressable key={area.slug} accessibilityRole="button" accessibilityLabel={`${area.location}. ${area.context}. Select place and choose a weather risk.`} accessibilityState={{ selected: activeArea === area.slug }} onPress={() => chooseArea(area.slug)} style={[styles.marketCard, activeArea === area.slug && styles.marketCardSelected]}>
-        <View style={styles.marketTop}><View style={styles.marketPin}><AppIcon name="map-pin" color={C.blue} size={19} /></View><View style={styles.marketMain}><Text style={styles.marketName}>{area.location}</Text><Text style={styles.marketPlace}>{area.context}</Text></View><StatusPill label="Researching" tone="pending" /></View>
+        <View style={styles.marketTop}><View style={styles.marketPin}><AppIcon name="map-pin" color={C.blue} size={19} /></View><View style={styles.marketMain}><Text style={styles.marketName}>{area.location}</Text><Text style={styles.marketPlace}>{area.context}</Text></View><StatusPill label={area.slug === "toronto" ? "Opens soon" : "Researching"} tone="pending" /></View>
       </Pressable>)}
       {matchingMarkets.length ? matchingMarkets.map((market) => {
         const availability = catalogAvailability(market, status);
@@ -590,7 +591,7 @@ function CatalogScreen({ markets, city, status, query, activeArea, hazard, guide
       }) : pilotAreas.length === 0 ? <View><EmptyState title={query ? "No researched areas match" : "Catalog unavailable"} body={query ? "Try another place, state or province, country, or crop. Search covers only the current research catalog." : "Researched locations appear after the API responds."} />{query ? <Pressable accessibilityRole="button" onPress={() => onQueryChange("")} style={styles.emptyAction}><Text style={styles.emptyActionText}>Clear search</Text></Pressable> : null}</View> : null}
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: guideOpen }} accessibilityLabel="Ask SkyHedge guide about a place and weather risk" onPress={() => setGuideOpen((open) => !open)} style={styles.guideToggle}><AppIcon name="message-circle" color={C.blue} size={20} /><Text style={styles.guideToggleText}>Describe your plans instead</Text><AppIcon name={guideOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={18} /></Pressable>
       {guideOpen ? <GuidePanel turns={guideTurns} busy={guideBusy} onSend={onAskGuide} onViewMatch={onViewGuideMatch} /> : null}
-      <Disclosure>Research status and map reference points are not coverage. Only the Des Moines rainfall pilot can be quoted on Devnet.</Disclosure>
+      <Disclosure>Only Des Moines can be quoted today. Toronto opens soon.</Disclosure>
     </>
   );
 }
@@ -640,6 +641,8 @@ function ProtectScreen(props: {
   onRefresh: () => void;
   onOpenWallet: () => void;
   onExplore: () => void;
+  offline?: boolean;
+  onRetry?: () => void;
 }) {
   const [verificationOpen, setVerificationOpen] = useState(false);
   if (props.selectedHazard !== "rainfall" || props.selectedCity !== "des-moines") {
@@ -686,6 +689,12 @@ function ProtectScreen(props: {
       <Text style={[styles.evidenceStepState, ready ? styles.readyText : styles.pendingText]}>{ready ? "Verified" : "Pending"}</Text>
     </View>
   );
+  if (props.offline) return <View style={[styles.emptyState]} accessibilityRole="alert">
+    <AppIcon name="wifi-off" color={C.amber} size={22} />
+    <Text style={[styles.emptyTitle, { marginTop: 10 }]}>Can’t reach SkyHedge</Text>
+    <Text style={styles.emptyText}>This phone can’t resolve the SkyHedge service right now, so live market status can’t load. Check Wi‑Fi or mobile data, then retry.</Text>
+    <View style={{ marginTop: 16 }}><ActionButton label="Retry" icon="refresh-cw" onPress={props.onRetry ?? props.onRefresh} /></View>
+  </View>;
   return (
     <>
       <View style={styles.protectCard}>
@@ -705,7 +714,7 @@ function ProtectScreen(props: {
         </View>
         <View style={styles.sourceLine}>
           <AppIcon name="database" color={evidenceReady ? C.blue : C.amber} size={17} />
-          <Text style={styles.sourceText}>{evidenceReady ? `NOAA station package ready${props.status?.noaaEvidence.package?.stationId ? ` · ${props.status.noaaEvidence.package.stationId}` : ""}` : market?.evidenceStatus === "validated" ? "Pinned NOAA package temporarily unavailable" : "NOAA station validation pending"}</Text>
+          <Text style={styles.sourceText}>{evidenceReady ? `Evidence ready · ${stationLabel(props.status?.noaaEvidence.package?.stationId)}` : market?.evidenceStatus === "validated" ? "Pinned NOAA package temporarily unavailable" : "NOAA station validation pending"}</Text>
         </View>
         {isPilot && market?.observationStart && market?.observationEnd ? (
           <View style={styles.triggerPanel}>
@@ -767,17 +776,17 @@ function ProtectScreen(props: {
           </View></Reveal>
           )}
           {props.unavailableReason && !needsWallet ? <View accessibilityRole="alert" style={styles.blockedNotice}><AppIcon name="alert-circle" color={C.amber} size={18} /><View style={styles.blockedCopy}><Text style={styles.blockedTitle}>{marketOpen && vaultFunded ? "Not ready to price yet" : headline.title}</Text><Text style={styles.blockedBody}>{marketOpen && vaultFunded ? props.unavailableReason : "The current Des Moines window has closed. Check back shortly; details are under Verification."}</Text><Pressable accessibilityRole="button" onPress={props.onRefresh} style={styles.inlineRetry}><Text style={styles.inlineRetryText}>Refresh status</Text></Pressable></View></View> : null}
-          {props.quoteError ? <View accessibilityRole="alert" style={styles.actionError}><Text style={styles.blockedTitle}>Quote unavailable</Text><Text style={styles.blockedBody}>{props.quoteError}</Text></View> : null}
+          {props.quoteError ? <View accessibilityRole="alert" style={styles.actionError}><Text style={styles.blockedTitle}>Quote unavailable</Text><Text style={styles.blockedBody}>{friendlyError(props.quoteError)}</Text></View> : null}
         </>}
         {props.transactionMessage ? <Text accessibilityLiveRegion="polite" style={styles.actionProgress}>{props.transactionMessage}</Text> : null}
-        {props.transactionError ? <View accessibilityRole="alert" style={styles.actionError}><Text style={styles.blockedTitle}>Transaction not finalized</Text><Text style={styles.blockedBody}>{props.transactionError}</Text></View> : null}
+        {props.transactionError ? <View accessibilityRole="alert" style={styles.actionError}><Text style={styles.blockedTitle}>Transaction not finalized</Text><Text style={styles.blockedBody}>{friendlyError(props.transactionError)}</Text></View> : null}
         {props.transactionSignature ? <Reveal><View style={styles.signatureCard}><View style={styles.proofHeading}><AppIcon name="check-circle" color={C.green} size={23} /><Text style={styles.signatureTitle}>Finalized on Solana Devnet</Text></View><Text style={styles.signatureText}>{props.transactionSignature}</Text><ExplorerLink signature={props.transactionSignature} /></View></Reveal> : null}
       </View>
 
 
       <View style={styles.verificationCard}>
         <Pressable accessibilityRole="button" accessibilityState={{ expanded: verificationOpen }} accessibilityLabel={`Verification details, ${readyChecks} of ${checks.length} checks verified`} onPress={() => setVerificationOpen((open) => !open)} style={styles.verificationButton}>
-          <AppIcon name="shield" color={C.purple} size={20} />
+          <AppIcon name="shield" color={C.rain} size={20} />
           <View style={styles.verificationText}><Text style={styles.verificationTitle}>Verification details</Text><Text style={styles.verificationSummary}>{readyChecks} of {checks.length} Devnet checks verified</Text></View>
           <AppIcon name={verificationOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={20} />
         </Pressable>
@@ -796,9 +805,9 @@ function ProtectScreen(props: {
             {props.claimReadiness.state === "claimable" ? <View style={styles.actionWrap}><ActionButton label={props.claimReadiness.action === "claim_payout" ? "Review payout claim" : "Review premium refund"} icon="arrow-right" busy={props.transactionBusy} onPress={props.onClaim} /></View> : null}
             {props.claimReadiness.resolutionSignature ? <ExplorerLink signature={props.claimReadiness.resolutionSignature} label="Open finalized settlement proof" /> : null}
           </>
-        ) : <Text style={styles.emptyText}>{props.walletConnected ? props.claimError ?? (props.status?.desMoinesMarket.address ? "Checking this wallet’s finalized position and claim status." : "A claim appears here only after finalized on-chain settlement or DATA_UNAVAILABLE status.") : "Connect your wallet to view a finalized position or claim."}</Text>}
+        ) : <Text style={styles.emptyText}>{props.walletConnected ? (props.claimError ? friendlyError(props.claimError) : null) ?? (props.status?.desMoinesMarket.address ? "Checking this wallet’s finalized position and claim status." : "A claim appears here only after finalized on-chain settlement or DATA_UNAVAILABLE status.") : "Connect your wallet to view a finalized position or claim."}</Text>}
       </View> : null}
-      <Disclosure>Devnet test only: not insurance or a real-money product. USD is a non-binding preview with no checkout; SKYT is a separate test token with no real-world value and no implied exchange rate.</Disclosure>
+      <Disclosure>Devnet test only. Not insurance. SKYT is a test token with no value; USD is a preview.</Disclosure>
     </>
   );
 }
@@ -831,7 +840,7 @@ function WalletScreen({
     <>
       <ScreenHeader eyebrow="Devnet wallet" title="Your account" detail="Connect a compatible Solana wallet on this Android device. Your keys remain in your wallet." />
       <View style={[styles.walletCard, styles.card, styles.walletCardContent]} accessibilityLabel="Devnet wallet handoff">
-        {walletError ? <View accessibilityRole="alert" style={styles.walletAlert}><Text style={styles.errorTitle}>Wallet not connected</Text><Text style={styles.errorBody}>{walletError}</Text></View> : null}
+        {walletError ? <View accessibilityRole="alert" style={styles.walletAlert}><Text style={styles.errorTitle}>Wallet not connected</Text><Text style={styles.errorBody}>{friendlyError(walletError)}</Text></View> : null}
         <Text style={styles.walletTitle}>{wallet ? "Wallet connected" : "Connect a Devnet wallet"}</Text>
         <Text style={styles.walletAddress}>{wallet ? shorten(wallet) : "No account shared"}</Text>
         <View style={styles.walletActionWrap}>
@@ -845,15 +854,15 @@ function WalletScreen({
       {wallet ? (
         <View style={styles.portfolioCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Finalized Devnet balances</Text>
-            <Text style={styles.sectionMeta}>{walletBalances ? `Slot ${walletBalances.slot}` : "Live RPC"}</Text>
+            <Text style={styles.sectionTitle}>Balances</Text>
+            <Text style={styles.sectionMeta}>{walletBalances ? "Devnet · finalized" : "Syncing"}</Text>
           </View>
           {walletBalances ? (
             <>
               <MetricRow label="SOL" value={walletBalances.sol.toFixed(4)} />
               <MetricRow label="SKYT · test asset" value={(Number(walletBalances.skytBaseUnits) / 10 ** walletBalances.skytDecimals).toLocaleString()} />
             </>
-          ) : <Text style={styles.emptyText}>Finalized balance read unavailable.</Text>}
+          ) : <Text style={styles.emptyText}>Balances will appear once the network responds. Pull down to refresh.</Text>}
         </View>
       ) : null}
 
@@ -861,19 +870,19 @@ function WalletScreen({
         <View style={styles.portfolioCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Positions</Text>
-            <Text style={styles.sectionMeta}>{portfolio?.indexed ? "Finalized index" : "Index pending"}</Text>
+            <Text style={styles.sectionMeta}>{portfolio?.indexed ? "Finalized index" : "Syncing"}</Text>
           </View>
           {portfolio?.indexed ? (
             <>
               <MetricRow label="Protection positions" value={String(portfolio.protections.length)} />
               <MetricRow label="Liquidity positions" value={String(portfolio.liquidity.length)} />
             </>
-          ) : <Text style={styles.emptyText}>{portfolioError ?? portfolio?.message ?? "Finalized positions are not available from the indexer yet."}</Text>}
+          ) : <Text style={styles.emptyText}>{(portfolioError ? friendlyError(portfolioError) : null) ?? portfolio?.message ?? "Finalized positions are not available from the indexer yet."}</Text>}
           {portfolio?.indexed ? <Text style={styles.portfolioFoot}>{portfolio.message ?? "Positions reflect finalized state."}</Text> : null}
         </View>
       ) : null}
 
-      <Disclosure>Balances and positions come from finalized Devnet only. Missing data is never shown as zero.</Disclosure>
+      <Disclosure>Finalized Devnet data. Missing values are never shown as zero.</Disclosure>
     </>
   );
 }
@@ -905,7 +914,7 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
   return (
     <View accessibilityRole="alert" style={styles.errorBanner}>
       <Text style={styles.errorTitle}>{evidenceMissing ? "NOAA evidence unavailable" : mobileRoutesMissing ? "Mobile API needs an update" : "Can’t reach SkyHedge"}</Text>
-      <Text style={styles.errorBody}>{readableMessage}</Text>
+      <Text style={styles.errorBody}>{friendlyError(readableMessage)}</Text>
       <View style={styles.errorActions}>
         <View />
         <Pressable accessibilityRole="button" onPress={onRetry} style={styles.retryButton}><Text style={styles.retryButtonText}>Try again</Text></Pressable>
@@ -933,7 +942,7 @@ const styles = StyleSheet.create({
   brandSub: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 12, marginTop: 1 },
   scrollContent: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 18, paddingTop: 18, paddingBottom: 32 },
   screenLead: { marginBottom: 18 },
-  kicker: { color: C.purple, fontFamily: F.bodySemi, fontSize: 12, marginBottom: 5 },
+  kicker: { color: C.muted, fontFamily: F.bodySemi, fontSize: 12, marginBottom: 5 },
   title: { color: C.ink, fontFamily: F.headingBold, fontSize: 27, lineHeight: 33, letterSpacing: -0.8 },
   intro: { color: C.muted, fontSize: 14, lineHeight: 21, marginTop: 8, marginBottom: 22 },
   changePlace: { minWidth: 60, minHeight: 48, alignItems: "flex-end", justifyContent: "center" },
@@ -952,7 +961,7 @@ const styles = StyleSheet.create({
   detailsToggleText: { color: C.blue, fontFamily: F.bodySemi, fontSize: 13 },
   cityRail: { gap: 8, paddingBottom: 16 },
   cityChip: { minHeight: 48, paddingHorizontal: 15, justifyContent: "center", borderWidth: 1, borderColor: C.border, borderRadius: 12, backgroundColor: C.surface },
-  cityChipSelected: { borderColor: C.purple, backgroundColor: C.purpleSoft },
+  cityChipSelected: { borderColor: C.rain, backgroundColor: C.rainSoft },
   cityChipText: { color: C.ink, fontFamily: F.bodyMedium, fontSize: 13 },
   cityChipTextSelected: { color: C.white },
   heroCard: { backgroundColor: C.surface, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border, padding: 20, overflow: "hidden" },
@@ -1019,7 +1028,7 @@ const styles = StyleSheet.create({
   marketFoot: { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 10, marginTop: 11, color: C.muted, fontSize: 12, lineHeight: 17 },
   hazardRail: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 13 },
   hazardChip: { minHeight: 48, paddingHorizontal: 14, justifyContent: "center", borderWidth: 1, borderColor: C.border, borderRadius: 12, backgroundColor: C.surface },
-  hazardChipSelected: { borderColor: C.purple, backgroundColor: C.purpleSoft },
+  hazardChipSelected: { borderColor: C.rain, backgroundColor: C.rainSoft },
   hazardChipText: { color: C.ink, fontFamily: F.bodyMedium, fontSize: 13 },
   hazardChipTextSelected: { color: C.white },
   hazardCard: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 12, padding: 16, marginBottom: 7 },
@@ -1034,7 +1043,7 @@ const styles = StyleSheet.create({
   hazardBlocked: { color: C.amber, fontFamily: F.bodySemi, fontSize: 12, marginTop: 9 },
   walletCard: { marginTop: 4 },
   walletCardContent: { alignItems: "flex-start", padding: 20 },
-  walletOrb: { width: 52, height: 52, borderRadius: 12, backgroundColor: C.purpleSoft, justifyContent: "center", alignItems: "center" },
+  walletOrb: { width: 52, height: 52, borderRadius: 12, backgroundColor: C.rainSoft, justifyContent: "center", alignItems: "center" },
   walletTitle: { color: C.ink, fontFamily: F.heading, fontSize: 20 },
   walletAddress: { color: C.ink, fontFamily: F.mono, fontSize: 14, marginTop: 6 },
   primaryButton: { minHeight: 52, width: "100%", alignItems: "center", justifyContent: "center", backgroundColor: C.green, borderRadius: 14, marginTop: 18 },
@@ -1055,7 +1064,7 @@ const styles = StyleSheet.create({
   pendingText: { color: C.amber },
   protectCard: { backgroundColor: C.canvas, paddingTop: 4, paddingBottom: 12 },
   protectHeader: { flexDirection: "row", gap: 10, alignItems: "flex-start", marginBottom: 14 },
-  heroLabelLight: { color: C.purple, fontFamily: F.bodySemi, fontSize: 12 },
+  heroLabelLight: { color: C.muted, fontFamily: F.bodySemi, fontSize: 12 },
   protectPlace: { color: C.ink, fontFamily: F.headingBold, fontSize: 23, lineHeight: 28, marginTop: 4 },
   protectLocation: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
   stepperWrap: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, marginBottom: 16 },
