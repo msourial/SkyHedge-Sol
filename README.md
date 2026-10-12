@@ -5,6 +5,7 @@
 > - Demo video: `<<DEMO_VIDEO_URL>>`
 > - Pitch: [docs/clock-in-pitch.pdf](docs/clock-in-pitch.pdf) · Status: [docs/clock-in-readiness.md](docs/clock-in-readiness.md)
 > - Wallet test on physical device: `<<WALLET_TEST_RESULT>>`
+> - **Tester note:** before connecting, open Phantom → Settings → Developer Settings and turn on **Testnet Mode**, with Solana set to **Devnet**. SkyHedge runs only on Solana Devnet, and Phantom on mainnet will not show the Devnet SKYT balance or transactions.
 > - Submission deadline: October 12, 2026, 7:59 p.m. EDT (23:59 UTC)
 
 Devnet Solana software for **fixed-payout cumulative-rainfall protection markets**. Buyers pay a premium for a fixed payout if a station's cumulative rainfall crosses a threshold; liquidity providers earn those premiums. Settlement uses one normalized **NOAA final observation**; unavailable source data resolves `DATA_UNAVAILABLE` — the system never synthesizes weather values.
