@@ -8,7 +8,7 @@ SkyHedge is a calm, credible climate-protection service for agricultural custome
 
 ## Design direction
 
-`[PLAN:@DESIGN|type=climate_insurance_application] palette=warm_light accent=sky_blue typography=IBM_Plex_Sans display=same_as_body layout=sidebar_and_content mood=professional_minimal density=balanced exclude=neon,glow,grid,cyberpunk,uppercase_heavy,decorative_gradients responsive=mobile_first`
+`[PLAN:@DESIGN|type=climate_insurance_application] palette=signal_dark accent=rain_blue typography=IBM_Plex_Sans display=same_as_body layout=compact_rail_and_map_workspace mood=professional_minimal density=balanced exclude=neon,glow,grid,cyberpunk,uppercase_heavy,decorative_gradients responsive=mobile_first`
 
 ## Typography
 
@@ -21,19 +21,19 @@ SkyHedge is a calm, credible climate-protection service for agricultural custome
 
 | Token | Value | Use |
 | --- | --- | --- |
-| Background | `#F5F7F4` | Warm cloud-white page canvas |
-| Surface | `#FFFFFF` | Elevated panels and cards |
-| Surface muted | `#EDF3F1` | Quiet supporting areas |
-| Foreground | `#102A3A` | Primary text |
-| Muted | `#536673` | Secondary text |
-| Border | `#D8E1DE` | Dividers and controls |
-| Primary | `#0878B9` | Main actions and selected navigation |
-| Primary hover | `#05679F` | Interactive hover |
-| Success | `#287A55` | Validated and finalized states |
-| Warning | `#A16207` | Pending evidence and test notices |
-| Error | `#B42318` | Failed and unavailable states |
+| Background | `#080B14` | Dark application canvas |
+| Surface | `#111827` | Elevated panels and cards |
+| Surface muted | `#182235` | Quiet supporting areas |
+| Foreground | `#F6F8FC` | Primary text |
+| Muted | `#A7B3C8` | Secondary text |
+| Border | `#2A354A` | Dividers and controls |
+| Primary | `#70D6FF` | Rain data, actions, and selected navigation |
+| Primary hover | `#B6EBFF` | Interactive hover |
+| Success | `#32E6A1` | Validated and finalized states |
+| Warning | `#F5C66D` | Pending evidence and test notices |
+| Error | `#FF8C91` | Failed and unavailable states |
 
-Cards use 12px corners, a one-pixel border, and a very subtle elevation. Avoid ornamental gradients and shadows. Page content should use generous white space and a readable maximum width.
+Cards use 12px corners, a one-pixel border, and restrained elevation. Ambient blue/violet color is limited to app chrome, selected state, and map context; it is never a substitute for hierarchy.
 
 ## Builder theme
 
@@ -41,7 +41,7 @@ Builder mode uses a restrained dark navy canvas (`#081521`) with raised surfaces
 
 ## Navigation and responsive behavior
 
-- Desktop (1024px and wider): stable left rail with Markets, Protect, Liquidity, Portfolio, Evidence, and a separated Builder entry.
+- Desktop (1024px and wider): compact icon rail with Markets, Protect, Liquidity, Portfolio, Evidence, and a separated Builder entry; map-led catalog uses a floating searchable location list.
 - Mobile and tablet: compact header and fixed bottom navigation for Markets, Protect, Portfolio, Evidence, and More. The More drawer contains Liquidity and Builder mode.
 - All interactive targets are at least 44×44px. Respect safe-area insets and 200% zoom. Never require horizontal page scrolling.
 - Preserve `tab` and `city` URL state.
@@ -49,7 +49,7 @@ Builder mode uses a restrained dark navy canvas (`#081521`) with raised surfaces
 ## Components
 
 - Page headers: direct title and one concise explanatory sentence. Avoid decorative eyebrows.
-- Panels: white customer surfaces or navy Builder surfaces; consistent 12px radius and 20–24px padding.
+- Panels: dark customer surfaces or navy Builder surfaces; consistent 12px radius and 20–24px padding.
 - Status chips: sentence case with semantic color and subtle tint. Never use color alone.
 - Forms: persistent sentence-case labels, 16px controls, inline help/errors, explicit units, and full-width mobile actions.
 - Maps: compact context panels secondary to the form; reference point only, never an insured boundary.

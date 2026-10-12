@@ -2,20 +2,22 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from "react-native";
 import { Camera, Map, ViewAnnotation } from "@maplibre/maplibre-react-native";
 import { C, F } from "./theme";
-import { AppIcon, Text } from "./ui";
+import { AppIcon, BottomSheet, Text } from "./ui";
 import { openStreetMapUrl, referenceMapStyle, type ReferencePoint } from "./reference-map";
 
 type MapState = "loading" | "ready" | "unavailable";
 
-export function ReferenceAreaMap({ point, location, evidenceLabel }: { point: ReferencePoint | null; location: string; evidenceLabel: string }) {
+export function ReferenceAreaMap({ point, location, evidenceLabel, onChangeLocation }: { point: ReferencePoint | null; location: string; evidenceLabel: string; onChangeLocation?: () => void }) {
   const mapStyle = referenceMapStyle(process.env.EXPO_PUBLIC_MAPTILER_KEY);
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<MapState>("loading");
   const [linkError, setLinkError] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     setState("loading");
     setLinkError(false);
+    setDetailsOpen(false);
   }, [point?.slug, attempt]);
 
   useEffect(() => {
@@ -60,24 +62,27 @@ export function ReferenceAreaMap({ point, location, evidenceLabel }: { point: Re
       </View> : null}
       <View style={styles.mapLabel}><Text style={styles.mapLabelText}>Reference point only</Text></View>
     </View>
-    <View style={styles.details}>
-      <View style={styles.placeRow}>
-        <Text style={styles.place}>{location}</Text>
-        <Text style={styles.evidence}>{evidenceLabel}</Text>
-      </View>
-      <Text style={styles.note}>{point ? `${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)} · ` : ""}Not an insured boundary or a NOAA station marker.</Text>
-      <Text style={styles.note}>WeatherXM is context only—not used for settlement.</Text>
-      <View style={styles.actions}>
-        {state === "unavailable" && point ? <Pressable accessibilityRole="button" accessibilityLabel="Retry map loading" onPress={() => setAttempt((value) => value + 1)} style={styles.action}><Text style={styles.actionText}>Retry map</Text></Pressable> : null}
-        {point ? <Pressable accessibilityRole="link" accessibilityLabel={`Open larger map for ${point.location}`} onPress={openLarger} style={styles.action}><Text style={styles.actionText}>Open larger map</Text><AppIcon name="arrow-up-right" color={C.blue} size={16} /></Pressable> : null}
-      </View>
-      {linkError ? <Text accessibilityRole="alert" style={styles.linkError}>The larger map could not open. The exact location is shown above.</Text> : null}
-      {showMap ? <View style={styles.attribution}>
-        <Pressable accessibilityRole="link" accessibilityLabel={`${mapStyle.provider === "maptiler" ? "MapTiler" : "OpenFreeMap"} attribution`} onPress={() => { void Linking.openURL(mapStyle.provider === "maptiler" ? "https://www.maptiler.com/" : "https://openfreemap.org/"); }}><Text style={styles.attributionText}>© {mapStyle.provider === "maptiler" ? "MapTiler" : "OpenFreeMap"}</Text></Pressable>
-        {mapStyle.provider === "openfreemap" ? <Pressable accessibilityRole="link" accessibilityLabel="OpenMapTiles attribution" onPress={() => { void Linking.openURL("https://www.openmaptiles.org/"); }}><Text style={styles.attributionText}>© OpenMapTiles</Text></Pressable> : null}
-        <Pressable accessibilityRole="link" accessibilityLabel="OpenStreetMap attribution" onPress={() => { void Linking.openURL("https://www.openstreetmap.org/copyright"); }}><Text style={styles.attributionText}>© OpenStreetMap contributors</Text></Pressable>
+    <BottomSheet>
+      <Pressable accessibilityRole="button" accessibilityState={{ expanded: detailsOpen }} accessibilityLabel={`Reference location details for ${location}`} onPress={() => setDetailsOpen((open) => !open)} style={styles.sheetToggle}>
+        <View style={styles.sheetCopy}><Text style={styles.place}>{location}</Text><Text style={styles.sheetSummary}>Reference point only · {evidenceLabel}</Text></View>
+        <AppIcon name={detailsOpen ? "chevron-down" : "chevron-up"} color={C.blue} size={20} />
+      </Pressable>
+      {detailsOpen ? <View style={styles.details}>
+        <Text style={styles.note}>{point ? `${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)} · ` : ""}Not an insured boundary or a NOAA station marker.</Text>
+        <Text style={styles.note}>WeatherXM is context only—not used for settlement.</Text>
+        <View style={styles.actions}>
+          {state === "unavailable" && point ? <Pressable accessibilityRole="button" accessibilityLabel="Retry map loading" onPress={() => setAttempt((value) => value + 1)} style={styles.action}><Text style={styles.actionText}>Retry map</Text></Pressable> : null}
+          {onChangeLocation ? <Pressable accessibilityRole="button" accessibilityLabel="Choose another reference location" onPress={onChangeLocation} style={styles.action}><Text style={styles.actionText}>Change location</Text></Pressable> : null}
+          {point ? <Pressable accessibilityRole="link" accessibilityLabel={`Open larger map for ${point.location}`} onPress={openLarger} style={styles.action}><Text style={styles.actionText}>Open larger map</Text><AppIcon name="arrow-up-right" color={C.blue} size={16} /></Pressable> : null}
+        </View>
+        {linkError ? <Text accessibilityRole="alert" style={styles.linkError}>The larger map could not open. The exact location is shown above.</Text> : null}
+        {showMap ? <View style={styles.attribution}>
+          <Pressable accessibilityRole="link" accessibilityLabel={`${mapStyle.provider === "maptiler" ? "MapTiler" : "OpenFreeMap"} attribution`} onPress={() => { void Linking.openURL(mapStyle.provider === "maptiler" ? "https://www.maptiler.com/" : "https://openfreemap.org/"); }}><Text style={styles.attributionText}>© {mapStyle.provider === "maptiler" ? "MapTiler" : "OpenFreeMap"}</Text></Pressable>
+          {mapStyle.provider === "openfreemap" ? <Pressable accessibilityRole="link" accessibilityLabel="OpenMapTiles attribution" onPress={() => { void Linking.openURL("https://www.openmaptiles.org/"); }}><Text style={styles.attributionText}>© OpenMapTiles</Text></Pressable> : null}
+          <Pressable accessibilityRole="link" accessibilityLabel="OpenStreetMap attribution" onPress={() => { void Linking.openURL("https://www.openstreetmap.org/copyright"); }}><Text style={styles.attributionText}>© OpenStreetMap contributors</Text></Pressable>
+        </View> : null}
       </View> : null}
-    </View>
+    </BottomSheet>
   </View>;
 }
 
@@ -95,10 +100,11 @@ const styles = StyleSheet.create({
   mapLabelText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 11 },
   marker: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.canvas, borderColor: C.green, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   markerCore: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.green },
-  details: { paddingHorizontal: 14, paddingVertical: 12 },
-  placeRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 10 },
+  sheetToggle: { minHeight: 52, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  sheetCopy: { flex: 1 },
+  details: { paddingTop: 4 },
   place: { flex: 1, color: C.ink, fontFamily: F.bodySemi, fontSize: 14, lineHeight: 20 },
-  evidence: { maxWidth: "40%", color: C.amber, fontFamily: F.bodyMedium, fontSize: 11, lineHeight: 16, textAlign: "right" },
+  sheetSummary: { color: C.muted, fontFamily: F.bodyMedium, fontSize: 11, lineHeight: 17, marginTop: 3 },
   note: { color: C.muted, fontFamily: F.body, fontSize: 12, lineHeight: 18, marginTop: 5 },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 4 },
   action: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 5, paddingRight: 10 },

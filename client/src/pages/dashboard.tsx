@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Activity, AlertTriangle, Code2, Database, Droplets, ExternalLink, FileCheck2, Globe2, MapPin, Menu, Search, ShieldCheck, ShieldPlus, WalletCards, X } from "lucide-react";
+import { Activity, AlertTriangle, CloudRain, Code2, Database, Droplets, ExternalLink, FileCheck2, Globe2, MapPin, Menu, Search, ShieldCheck, ShieldPlus, Snowflake, WalletCards, Wind, X } from "lucide-react";
 import type { ClaimReadiness, DevnetStatus, EvidenceRow, HealthResponse, Portfolio, Quote, UnsignedTx } from "@/lib/types";
 import { api, apiUnavailable, mm, skytDisplay } from "@/lib/api";
 import { Card, EmptyState, Pill, SectionLabel, Stat } from "@/components/sky";
@@ -141,8 +141,8 @@ export default function DashboardPage() {
 
   const page = (tab === "markets" || tab === "protect") && hazard !== "rainfall" ? RESEARCH_HAZARD_PAGE_COPY[hazard] : PAGE_COPY[tab];
   const researchHazardView = (tab === "markets" || tab === "protect") && hazard !== "rainfall";
-  return <div className="grid min-w-0 gap-7 lg:grid-cols-[224px_minmax(0,1fr)]">
-    <aside className="hidden lg:block"><nav aria-label="Product sections" className="sticky top-24 flex flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-[var(--shadow-card)]">{TABS.map(({ id, label, icon: Icon }, index) => <button key={id} onClick={() => switchTab(id)} className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors", index === TABS.length - 1 && "mt-3 border-t border-[var(--border)] pt-3", tab === id ? "bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]")}><Icon className="h-5 w-5" />{label}</button>)}</nav></aside>
+  return <div className="grid min-w-0 gap-7 lg:grid-cols-[68px_minmax(0,1fr)]">
+    <aside className="hidden lg:block"><nav aria-label="Product sections" className="sticky top-24 flex w-[68px] flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-[var(--shadow-card)]">{TABS.map(({ id, label, icon: Icon }, index) => <button key={id} type="button" title={label} aria-label={label} onClick={() => switchTab(id)} className={cn("flex min-h-11 items-center justify-center rounded-lg text-sm font-medium transition-colors", index === TABS.length - 1 && "mt-3 border-t border-[var(--border)] pt-3", tab === id ? "bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]")}><Icon className="h-5 w-5" /><span className="sr-only">{label}</span></button>)}</nav></aside>
     <div className="min-w-0 space-y-6">
       <header className="border-b border-[var(--border)] pb-5"><Pill tone={tab === "builders" ? "slate" : researchHazardView ? "amber" : "cyan"}>{tab === "builders" ? "Technical workspace" : researchHazardView ? "Research-only hazard" : "NOAA-settled protection"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></header>
       {tab === "markets" && <Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} selectedSlug={marketId} status={devnetStatus.data} />}
@@ -419,15 +419,15 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
 function DeploymentNotice() { return <div role="status" className="flex gap-3 border border-[var(--warning)]/50 bg-[var(--warning-dim)] p-4 text-sm text-[var(--muted-foreground)]"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warning)]" /><p><strong className="text-[var(--foreground)]">Chain data unavailable.</strong> The Devnet program has not yet published an executable account, or this deployment has no API service. Markets, positions, and settlement evidence remain unavailable rather than simulated.</p></div>; }
 
 function HazardSelector({ value, onChange }: { value: Hazard; onChange: (value: Hazard) => void }) {
-  const options: Array<{ id: Hazard; label: string; state: string }> = [
-    { id: "rainfall", label: "Rainfall", state: "Existing pilot" },
-    { id: "wind_gust", label: "Wind gust", state: "Researching" },
-    { id: "snowfall", label: "Snowfall", state: "Researching" },
+  const options = [
+    { id: "rainfall" as const, label: "Rainfall", state: "Existing pilot", icon: CloudRain },
+    { id: "wind_gust" as const, label: "Wind gust", state: "Researching", icon: Wind },
+    { id: "snowfall" as const, label: "Snowfall", state: "Researching", icon: Snowflake },
   ];
-  return <div role="group" aria-label="Protection type" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-    {options.map((option) => <button key={option.id} type="button" aria-pressed={value === option.id} onClick={() => onChange(option.id)} className={cn("flex min-h-12 items-center justify-between gap-2 rounded-xl border px-4 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]", value === option.id ? "border-[var(--identity)] bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "border-[var(--border)] bg-[var(--surface-1)] text-[var(--muted-foreground)] hover:border-[var(--identity)] hover:text-[var(--foreground)]")}>
-      <span className="font-semibold">{option.label}</span><span className="text-xs">{option.state}</span>
-    </button>)}
+  return <div role="group" aria-label="Protection type" className="hazard-switcher">
+    {options.map((option) => { const Icon = option.icon; return <button key={option.id} type="button" aria-pressed={value === option.id} onClick={() => onChange(option.id)} className="hazard-switcher__option">
+      <Icon className="h-4 w-4" aria-hidden="true" /><span className="font-semibold">{option.label}</span><span className="hazard-switcher__state">{option.state}</span>
+    </button>; })}
   </div>;
 }
 
@@ -490,25 +490,25 @@ function Markets({ hazard, setHazard, onSelect, selectedSlug, status }: { hazard
     if (event.key === "Enter" && dropdownOpen && activeOption >= 0) { event.preventDefault(); selectDropdownOption(activeOption); }
   };
 
-  return <section className="space-y-4" aria-labelledby="markets-heading">
+  return <section className="market-explorer" aria-labelledby="markets-heading">
     <HazardSelector value={hazard} onChange={setHazard} />
-    <header className="flex flex-wrap items-end justify-between gap-4">
+    <header className="market-explorer__header">
       <div>
-        <SectionLabel>Agricultural rainfall indexes</SectionLabel>
-        <h2 id="markets-heading" className="sky-display mt-1 text-2xl font-semibold">Explore crop-risk reference areas</h2>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--muted-foreground)]">Browse the catalog by location, crop, or region. Map markers are index reference points—not weather stations or insured boundaries.</p>
+        <p className="market-explorer__overline">Climate risk explorer</p>
+        <h2 id="markets-heading" className="sky-display">Find a rainfall reference area</h2>
+        <p>Search by place, crop, or region. A pin is a reference point—not coverage or a weather station.</p>
       </div>
-      <Pill tone="amber">USD preview only</Pill>
+      <div className="market-explorer__meta"><span>{results.length} areas</span><Pill tone="amber">Test environment</Pill></div>
     </header>
 
-    <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-      <AgriculturalMarketExplorerMap markets={mapMarkets} selectedSlug={selectedSlug} getEvidenceStatus={getEvidenceStatus} onSelect={onSelect} />
+    <div className="market-workspace">
+      <AgriculturalMarketExplorerMap markets={mapMarkets} selectedSlug={selectedSlug} getEvidenceStatus={getEvidenceStatus} onSelect={onSelect} onSelectFromList={() => document.getElementById("market-search")?.focus()} />
 
-      <aside className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-4 shadow-[var(--shadow-card)]" aria-label="Agricultural index locations">
+      <aside className="market-location-dock" aria-label="Agricultural index locations">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-semibold">Index reference locations</h3>
-            <p className="mt-1 text-xs text-[var(--muted-foreground)]">{results.length} catalog {results.length === 1 ? "area" : "areas"}</p>
+            <h3>Reference locations</h3>
+            <p>{results.length} catalog {results.length === 1 ? "area" : "areas"}</p>
           </div>
           <MapPin className="h-5 w-5 shrink-0 text-[var(--identity)]" aria-hidden="true" />
         </div>
@@ -530,18 +530,17 @@ function Markets({ hazard, setHazard, onSelect, selectedSlug, status }: { hazard
           <p role="status" className="mt-2 text-xs text-[var(--muted-foreground)]">{showingAllCatalog ? "All researched catalog areas are shown." : `${results.length} researched ${results.length === 1 ? "area" : "areas"} found.`}</p>
         </div>
 
-        {results.length === 0 ? <EmptyState icon={<Search className="h-7 w-7" />} title="No catalog matches" hint="An unlisted place is not yet a validated index." cta={<button type="button" className="sky-btn-primary mt-3 min-h-11 px-4" onClick={() => { setQuery(""); setShowAll(true); }}>Show all researched areas</button>} /> : <div className="mt-3 max-h-[30rem] space-y-2 overflow-y-auto pr-1" aria-label="Matching agricultural locations">
+        {results.length === 0 ? <EmptyState icon={<Search className="h-7 w-7" />} title="No catalog matches" hint="An unlisted place is not yet a validated index." cta={<button type="button" className="sky-btn-primary mt-3 min-h-11 px-4" onClick={() => { setQuery(""); setShowAll(true); }}>Show all researched areas</button>} /> : <div className="market-location-list" aria-label="Matching agricultural locations">
           {results.map((market) => {
             const evidence = getEvidenceStatus(agriculturalMarketBySlug(market.id)!);
-            const evidenceLabel = evidence === "validated" ? "NOAA station validated" : evidence === "DATA_UNAVAILABLE" ? "Data unavailable" : "Researching evidence";
-            return <button key={market.id} type="button" data-testid={`market-index-option-${market.id}`} data-latitude={agriculturalMarketBySlug(market.id)!.latitude} data-longitude={agriculturalMarketBySlug(market.id)!.longitude} aria-label={`${market.location}; ${evidenceLabel}`} aria-pressed={selectedSlug === market.id} onClick={() => onSelect(market.id)} className={cn("w-full rounded-xl border p-3 text-left transition-colors hover:border-[var(--identity)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]", selectedSlug === market.id ? "border-[var(--identity)] bg-[var(--identity-dim)]" : "border-[var(--border)] bg-[var(--surface-1)]")}>
-              <span className="flex items-start justify-between gap-3"><span className="min-w-0"><span className="block font-semibold leading-snug">{market.city}</span><span className="mt-1 block break-words text-xs leading-relaxed text-[var(--muted-foreground)]">{market.location}</span></span><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--identity)]" aria-hidden="true" /></span>
-              <span className="mt-2 block text-xs text-[var(--faint)]">{market.region} · {market.crops.join(", ")}</span>
-              <span className="mt-2 flex items-center gap-2 text-xs text-[var(--muted-foreground)]"><span className={cn("h-2 w-2 shrink-0 rounded-full", evidence === "validated" ? "bg-[var(--success)]" : evidence === "DATA_UNAVAILABLE" ? "bg-[var(--destructive)]" : "bg-[var(--warning)]")} aria-hidden="true" />{evidenceLabel}</span>
+            const activePilot = market.id === "des-moines" && isOpenDesMoinesMarket(status) && evidence === "validated";
+            const availability = activePilot ? { label: "Active pilot", tone: "green" as const } : market.id === "des-moines" ? { label: "Unavailable", tone: "slate" as const } : { label: "Researching", tone: "amber" as const };
+            return <button key={market.id} type="button" data-testid={`market-index-option-${market.id}`} data-latitude={agriculturalMarketBySlug(market.id)!.latitude} data-longitude={agriculturalMarketBySlug(market.id)!.longitude} aria-label={`${market.location}; ${availability.label}`} aria-pressed={selectedSlug === market.id} onClick={() => onSelect(market.id)} className={cn("market-location-row", selectedSlug === market.id && "market-location-row--selected")}>
+              <span className="flex items-start justify-between gap-3"><span className="min-w-0"><span className="block font-semibold leading-snug">{market.location}</span><span className="mt-1 block break-words text-xs leading-relaxed text-[var(--muted-foreground)]">{market.context} · {market.crops.join(", ")}</span></span><Pill tone={availability.tone}>{availability.label}</Pill></span>
             </button>;
           })}
         </div>}
-        <p className="mt-3 border-t border-[var(--border)] pt-3 text-xs leading-relaxed text-[var(--muted-foreground)]">Selecting an area opens its protection details. A map pin is not proof of weather-station coverage.</p>
+        <p className="market-location-dock__note">Choose a location to view its protection details. Station and settlement evidence remain secondary.</p>
       </aside>
     </div>
   </section>;

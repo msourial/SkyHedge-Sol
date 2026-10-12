@@ -14,6 +14,7 @@ interface AgriculturalMarketExplorerMapProps {
   selectedSlug: string;
   getEvidenceStatus?: (market: AgriculturalMarket) => MarketEvidenceStatus;
   onSelect: (slug: AgriculturalMarket["slug"]) => void;
+  onSelectFromList?: () => void;
 }
 
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY?.trim() ?? "";
@@ -28,7 +29,7 @@ function defaultEvidenceStatus(market: AgriculturalMarket): MarketEvidenceStatus
   return market.evidenceStatus;
 }
 
-export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEvidenceStatus = defaultEvidenceStatus, onSelect }: AgriculturalMarketExplorerMapProps) {
+export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEvidenceStatus = defaultEvidenceStatus, onSelect, onSelectFromList }: AgriculturalMarketExplorerMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const maplibreRef = useRef<typeof import("maplibre-gl") | null>(null);
@@ -40,6 +41,7 @@ export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEviden
   const [loaded, setLoaded] = useState(false);
   const configured = Boolean(MAPTILER_KEY);
   const mappableMarkets = useMemo(() => markets.filter(validCoordinates), [markets]);
+  const selectedMarket = mappableMarkets.find((market) => market.slug === selectedSlug) ?? mappableMarkets[0];
 
   onSelectRef.current = onSelect;
 
@@ -176,8 +178,11 @@ export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEviden
           <div className="absolute inset-0 flex items-center justify-center px-6 py-10 text-center">
             <div className="max-w-lg">
               <MapPin className="mx-auto h-8 w-8 text-cyan-300" aria-hidden="true" />
-              <h2 className="mt-3 text-lg font-semibold text-slate-100">Map provider not configured</h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-300">Add a domain-restricted MapTiler key to display the interactive map. The index locations and evidence states remain available in the list.</p>
+              <p className="text-xs font-semibold uppercase tracking-[.16em] text-cyan-200">Selected reference</p>
+              <h2 className="mt-2 text-xl font-semibold text-slate-100">{selectedMarket ? agriculturalMarketLocation(selectedMarket) : "Choose a catalog location"}</h2>
+              {selectedMarket && <p className="mt-2 text-sm text-slate-300">{selectedMarket.latitude.toFixed(4)}°, {selectedMarket.longitude.toFixed(4)}°</p>}
+              <p className="mt-4 text-sm leading-relaxed text-slate-300">Interactive map tiles are not configured for this local preview. You can still search the catalog and inspect every exact reference location.</p>
+              {onSelectFromList && <button type="button" onClick={onSelectFromList} className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-slate-500 px-4 text-sm font-medium text-slate-100 hover:border-cyan-300">Select a region from the list</button>}
             </div>
           </div>
         )}
@@ -194,7 +199,7 @@ export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEviden
               <AlertTriangle className="mx-auto h-7 w-7 text-amber-300" aria-hidden="true" />
               <h2 className="mt-3 text-lg font-semibold text-slate-100">Map unavailable</h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-300">Map tiles could not be loaded. The catalog list below still shows exact reference locations and evidence status; it does not indicate station coverage.</p>
-              <button type="button" onClick={retry} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-500 px-4 text-sm text-slate-100 hover:border-cyan-300"><RefreshCw className="h-4 w-4" aria-hidden="true" />Retry map</button>
+              <div className="mt-3 flex flex-wrap justify-center gap-2"><button type="button" onClick={retry} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-500 px-4 text-sm text-slate-100 hover:border-cyan-300"><RefreshCw className="h-4 w-4" aria-hidden="true" />Retry map</button>{onSelectFromList && <button type="button" onClick={onSelectFromList} className="inline-flex min-h-11 items-center rounded-lg border border-slate-500 px-4 text-sm text-slate-100 hover:border-cyan-300">Select a region from the list</button>}</div>
             </div>
           </div>
         )}

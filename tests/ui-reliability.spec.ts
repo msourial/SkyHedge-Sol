@@ -147,11 +147,14 @@ test("Markets is a map-led agricultural index explorer with truthful location-on
   await page.goto("/?tab=markets&city=des-moines");
 
   await expect(page.getByRole("region", { name: "Agricultural index map" })).toBeVisible();
-  await expect(page.getByText("Index reference locations", { exact: true })).toBeVisible();
+  await expect(page.getByText("Reference locations", { exact: true })).toBeVisible();
   await expect(page.getByText("Winnipeg, Manitoba, Canada", { exact: true })).toBeVisible();
-  await expect(page.getByText("Map provider not configured", { exact: true })).toBeVisible();
+  await expect(page.getByText("Interactive map tiles are not configured for this local preview.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Select a region from the list" })).toBeVisible();
   await expect(page.getByText(/active stations|station count|live station/i)).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Lubbock, Texas, United States/ })).toBeVisible();
+  await expect(page.getByTestId("market-index-option-des-moines").getByText("Unavailable", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("market-index-option-fresno").getByText("Researching", { exact: true })).toBeVisible();
   await expect(page.locator('[data-testid^="market-index-option-"]')).toHaveCount(12);
 });
 

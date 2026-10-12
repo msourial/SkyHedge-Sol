@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { AgriculturalMarket, CityIndex, DevnetStatus } from "./api";
-import { formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, latestCompletedNoaaWeek, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets } from "./presentation.ts";
+import { catalogAvailability, formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, latestCompletedNoaaWeek, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets } from "./presentation.ts";
 
 const markets: AgriculturalMarket[] = [
   {
@@ -121,6 +121,12 @@ describe("mobile presentation behavior", () => {
       ...readyStatus,
       desMoinesMarket: { ...readyStatus.desMoinesMarket, evidenceStatus: "researching_evidence" },
     }), false);
+  });
+
+  it("uses one truthful, scannable availability state for every location row", () => {
+    assert.deepEqual(catalogAvailability(markets[0], readyStatus), { label: "Active pilot", tone: "ready" });
+    assert.deepEqual(catalogAvailability(markets[0], { ...readyStatus, desMoinesMarket: { ...readyStatus.desMoinesMarket, vaultBalance: "0" } }), { label: "Unavailable", tone: "neutral" });
+    assert.deepEqual(catalogAvailability(markets[1], readyStatus), { label: "Researching", tone: "pending" });
   });
 
   it("marks a funded market ready when finalized Anchor status uses an uppercase Open key", () => {

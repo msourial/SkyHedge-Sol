@@ -96,3 +96,11 @@ export function isMarketReadyForCity(citySlug: string, status: DevnetStatus | nu
     && status.noaaEvidence.settlementSource === "NOAA"
     && !!status.noaaEvidence.package?.stationId;
 }
+
+/** Compact status for catalog rows; detailed evidence remains in the selected place view. */
+export function catalogAvailability(market: AgriculturalMarket, status: DevnetStatus | null): { label: string; tone: "ready" | "pending" | "neutral" } {
+  if (market.slug !== "des-moines") return { label: "Researching", tone: "pending" };
+  return isMarketReadyForCity(market.slug, status)
+    ? { label: "Active pilot", tone: "ready" }
+    : { label: "Unavailable", tone: "neutral" };
+}
