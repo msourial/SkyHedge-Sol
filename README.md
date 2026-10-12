@@ -1,154 +1,92 @@
-# SkyHedge
+# SkyHedge — weather protection you can buy from your phone
 
-> **Solana Mobile "Clock In" hackathon entry (Mobile category).** Native React Native Android client in [`mobile/`](mobile/README.md) using Solana Mobile Wallet Adapter against the SkyHedge Devnet program.
-> - APK: `<<NEW_APK_RELEASE_URL>>` (SHA-256 `<<NEW_APK_SHA256>>`, debug-signed Devnet build)
-> - Demo video: `<<DEMO_VIDEO_URL>>`
-> - Pitch: [docs/clock-in-pitch.pdf](docs/clock-in-pitch.pdf) · Status: [docs/clock-in-readiness.md](docs/clock-in-readiness.md)
-> - Wallet test on physical device: `<<WALLET_TEST_RESULT>>`
-> - **Tester note:** before connecting, open Phantom → Settings → Developer Settings and turn on **Testnet Mode**, with Solana set to **Devnet**. SkyHedge runs only on Solana Devnet, and Phantom on mainnet will not show the Devnet SKYT balance or transactions.
-> - Submission deadline: October 12, 2026, 7:59 p.m. EDT (23:59 UTC)
+> **Parametric weather protection on Solana Mobile.** Pick a place and a weather risk, see a NOAA-priced quote, approve it in your wallet, and get paid automatically on-chain when the weather data says the trigger was hit. No claims adjuster, no paperwork.
+>
+> Solana Mobile **Clock In** hackathon entry · native React Native Android app (not a PWA) · Solana Devnet · Mobile Wallet Adapter.
 
-Devnet Solana software for **fixed-payout cumulative-rainfall protection markets**. Buyers pay a premium for a fixed payout if a station's cumulative rainfall crosses a threshold; liquidity providers earn those premiums. Settlement uses one normalized **NOAA final observation**; unavailable source data resolves `DATA_UNAVAILABLE` — the system never synthesizes weather values.
+| | |
+|---|---|
+| APK | GitHub release on this repo (debug-signed Devnet build; SHA-256 listed in the release notes and in [docs/takeover-log.md](docs/takeover-log.md)) |
+| Demo video | `<<DEMO_VIDEO_URL>>` · script: [docs/demo-script.md](docs/demo-script.md) |
+| Pitch deck | [docs/clock-in-pitch.pdf](docs/clock-in-pitch.pdf) |
+| Program (Devnet) | `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` |
+| Test token | `SKYT` `3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g` (no value) |
 
-`Weather risk → protection contract → Solana → deterministic NOAA settlement → payout`
+## Why
 
-## V1 boundaries
+Weather decides whether a flight leaves, a crane lifts, a mine haul road stays open, a wedding stays outdoors, or a harvest pays. Traditional weather cover is slow, paperwork-heavy, sold in big minimum sizes, and out of reach for most small operators.
 
-- Catalog: 12 researched agricultural rainfall areas. Des Moines is the first Devnet activation target; the other areas remain research-gated. Wind gust and snowfall are research-only and have no quote or transaction path.
-- Collateral: six-decimal `SKYT` Devnet SPL test token (`3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g`).
-- Capacity per market: 10,000 SKYT liquidity, 8,000 SKYT exposure, 500 SKYT per wallet.
-- Pricing: ten analogous NOAA windows plus a 30%-weighted NOAA forecast signal; expected payout, 15% risk loading, and a 1% protocol fee.
-- Settlement: NOAA is the sole final source; its source hash is committed on chain. If final NOAA data is unavailable after a 7-day grace window, the market enters `DATA_UNAVAILABLE` and buyers can reclaim premiums.
-- AI advisory is advisory-only: it returns structured parameters and requires explicit user approval before an unsigned transaction can be prepared.
+**SkyHedge is:**
+- **Instant** — quote and buy in under a minute; payout settles automatically from public weather data.
+- **Accessible anywhere** — a phone and a wallet are all you need.
+- **Fractional** — protect $10 or $10,000 of exposure; no minimum policy size.
 
-SkyHedge is not an options exchange, futures market, staking product, multi-chain app, or automated trading system.
+**Who it's for**
+- **Aviation (lead wedge):** operators, flight schools, and charters losing revenue to weather days.
+- **Construction:** pours, lifts, and crews idled by rain and wind.
+- **Mining:** haul-road and site shutdowns.
+- **Events & weddings:** outdoor dates that rain can ruin.
+- **Agriculture (the heart of the story):** the farmer whose season depends on rainfall they can't control.
+
+The live Devnet market today is **cumulative rainfall in Des Moines, Iowa**. Wind and snow triggers for aviation are on the roadmap and are shown as research-only in the app.
+
+**Business model:** a **1% protocol fee** on every protection purchase, included in the quoted premium and shown on the ticket.
+
+## How it works
+
+```
+Pick place + risk  →  NOAA / Environment Canada data  →  quote (premium, payout, chance)
+      →  approve in wallet (MWA)  →  Anchor program on Devnet holds premium + vault
+      →  final observation hashed on-chain  →  automatic payout or premium refund
+```
+
+1. **Markets** — browse researched locations and weather risks; see rainfall history.
+2. **Protect** — enter an amount; the server prices it from ten analogous NOAA windows plus a forecast signal, with a 15% risk load and the 1% fee. The quote appears as an **option ticket**: what you pay, what you get, trigger, window, chance, fee.
+3. **Wallet** — the transaction is built server-side, unsigned, and approved in Phantom, Solflare, or the Seeker wallet through **Mobile Wallet Adapter**. Nothing is signed without the user.
+4. **Settlement** — a final NOAA observation is normalized, hashed, and committed on-chain. If the trigger is hit, the buyer claims the fixed payout; if source data is unavailable after a 7-day grace period, the market resolves `DATA_UNAVAILABLE` and premiums are refundable. SkyHedge never makes up weather values.
+
+**Data sources**
+- **NOAA** (US): Climate Data Online final daily observations.
+- **Environment and Climate Change Canada** (Canada): daily climate API ([`server/services/eccc.ts`](server/services/eccc.ts), tested) — Toronto Pearson, Vancouver, Montréal stations.
+
+## Canada: Toronto opens soon
+
+Markets are created from a per-market counter, and city, station, and data provider are stored as hashes, so **adding Toronto needs no program change**. The app shows Toronto as **"Opens soon"**, and the ECCC adapter is already in the codebase. Plan: [docs/canadian-market-plan.md](docs/canadian-market-plan.md).
 
 ## Architecture
 
-For the product-level operating model, audience split, first activation market, and demo flow, read [How SkyHedge Should Work](docs/how-skyhedge-should-work.md).
-
 ```
-client/            React + Vite SPA (wallet-adapter, sign & send of unsigned txs)
-server/            Express API + services; PostgreSQL is optional for Devnet V1
-  services/noaa.ts           NOAA CDO rainfall provider
-  services/consensus.ts      NOAA-only deterministic evidence builder
-  services/quote-engine.ts   pricing (analogous windows + forecast)
-  services/solana-indexer.ts optional finalized-state indexer (30s sweep)
-  services/devnet-status.ts  direct finalized-RPC status reads
-  services/unsigned-tx.ts    base64 VersionedTransaction builder (6 actions)
-  services/settlement.ts     SettlementRunner (60s sweep, deadline + consensus)
-shared/            optional Neon Postgres schema, IDL, methodology-v1.json
-anchor/            Anchor program (skyhedge_protection) + 9 integration tests
-scripts/           deploy/seed/status tooling
-design-system/     OLED dark theme spec (MASTER.md + page specs)
+mobile/    Expo / React Native Android app (Markets · Protect · Wallet), MWA, direct Solana RPC reads
+server/    Express API: quote engine, NOAA + ECCC providers, evidence builder, unsigned-tx builder, settlement runner
+anchor/    Anchor program skyhedge_protection (markets, vaults, positions, settlement, claims)
+client/    Web companion / operator console (React + Vite), deployed at skyhedge.vercel.app
+shared/    IDL, methodology, optional Postgres schema
 ```
 
-The Android-first React Native app for the Clock In mobile hackathon lives in [mobile/](mobile/README.md). It uses the SkyHedge API and Solana Mobile Wallet Adapter; it does not wrap the web app.
+Reliability on mobile: API reads retry with timeouts; wallet balances read straight from Solana RPC across two Devnet endpoints (genesis-hash checked); an offline state with Retry replaces endless loading.
 
-Trust model: the server builds unsigned `VersionedTransaction`s and the wallet signs them offline; nothing is simulated. Positions shown in the portfolio reflect only finalized Solana state captured by the indexer.
+## Build & run
 
-## Prerequisites
-
-- Node 22+, npm
-- solana-cli 2.x, anchor-cli 0.30, Rust `nightly-2024-08-01`
-- WeatherXM Agent API access is optional and supplemental. SkyHedge uses only its free health endpoint by default; live WeatherXM weather endpoints require x402 payment and are never used for settlement.
-- A browser-visible MapTiler key (`VITE_MAPTILER_KEY`) for premium map tiles. Restrict it by domain before production use. Without a key, the app shows a truthful location fallback.
-- Phantom or Solflare wallet set to Devnet
-
-## Setup
-
-```sh
+```bash
 npm install
-cp .env.example .env   # fill in the values below
-npm run db:push        # optional: apply shared/schema.ts to Neon when using the read model
+npm run check          # typecheck (root)
+npm run test:server    # server tests
+
+cd mobile
+npm install
+npm run check          # typecheck (mobile)
+npm run test:mobile    # mobile tests
+npx expo prebuild --platform android
+cd android && ./gradlew assembleRelease   # → app/build/outputs/apk/release/app-release.apk
 ```
 
-Environment:
+**Testing on a phone:** in Phantom, open Settings → Developer Settings, turn on **Testnet Mode**, and set Solana to **Devnet**. You need Devnet SOL for fees and SKYT for premiums.
 
-| Variable | Purpose |
-| --- | --- |
-| `DATABASE_URL` | Optional Neon Postgres connection string for analytics/read-model persistence |
-| `NOAA_TOKEN` | NOAA Climate Data Online token (historical observations + forecast) |
-| `SOLANA_RPC_URL` | Default `https://api.devnet.solana.com` |
-| `SKYHEDGE_PROGRAM_ID` | Deployed Devnet program ID `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` |
-| `SKYHEDGE_DEVNET_CANCEL_EMPTY_DRAFT_READY` | Fail-closed release gate for empty-Draft recovery. The Devnet instruction and matching IDL have been verified; Vercel Production is currently enabled. |
-| `SETTLEMENT_AUTHORITY_KEYPAIR` | Optional path to the settlement authority keypair (`anchor/keys/settlement-authority.json`); settlement worker stays disabled when absent |
-| `ANTHROPIC_API_KEY` | Server-side AI guide extraction. Without it, `/api/advisory` returns unavailable; no fallback intent or transaction is invented. Optional `ANTHROPIC_MODEL` overrides the pinned default `claude-sonnet-5-5`. |
-| `SKYT_MINT` | Mint address for the six-decimal SKYT test token; defaults to the committed Devnet mint for status reads |
-| `VITE_MAP_PROVIDER` | Defaults to `maptiler`; keeps future map providers isolated behind one component |
-| `VITE_MAPTILER_KEY` | Browser-visible MapTiler key for premium Hybrid/Basic maps |
-| `VITE_MAPTILER_SHARE_BASE_URL` | Optional public larger-map base URL; falls back to OpenStreetMap when unset |
-| `WEATHERXM_AGENT_BASE_URL` | Optional override for the WeatherXM Agent API base URL; defaults to `https://agent.weatherxm.com` |
+**Current tests:** 55 mobile, 163 server, typecheck clean (mobile + root).
 
-If NOAA is unreachable or its token is missing, the API returns `DATA_UNAVAILABLE` (HTTP 503). It never creates fallback weather observations. MapTiler configuration affects only visual map tiles, not settlement.
+Full developer reference (env vars, localnet, Devnet activation, API, security posture): [docs/developer-reference.md](docs/developer-reference.md).
 
-## Run
+## Status & honesty
 
-```sh
-npm run dev        # API + Vite SPA on :5000
-npm run build      # production build (vite + esbuild)
-npm run check      # tsc --noEmit
-npm run test:server
-```
-
-## Localnet (end-to-end, no faucet needed)
-
-```sh
-npm run solana:build       # RUSTUP_TOOLCHAIN=nightly-2024-08-01 anchor build
-npm run solana:test-local  # 9/9 integration tests (skip build)
-npm run skyt:demo          # ONE COMMAND: boots validator, deploys, mints SKYT,
-                           # initializes protocol, seeds+funds+opens 3 city markets,
-                           # opens a 500 SKYT protection, runs the indexer, prints
-                           # the DB portfolio. Idempotent — safe to re-run.
-npm run skyt:status        # inspect on-chain protocol/markets
-```
-
-The demo leaves its localnet rows in Neon (markets/protections are not network-scoped). To keep the DB devnet-only before a real deploy: `TRUNCATE chain_events, markets, liquidity_positions, protection_positions, settlement_observations, indexed_slots;`
-
-## Devnet activation
-
-```sh
-npm run skyt:airdrop -- <wallet> 2 12 4   # retry loop until balance >= 4 SOL
-npm run skyt:init                        # initialize protocol (admin wallet)
-npm run skyt:seed                        # create city markets
-```
-
-**Current Devnet state (verified 2026-09-29):** the program is executable, the protocol is initialized, and the six-decimal SKYT mint has a finalized supply of 350,000 SKYT. The committed 22-instruction IDL matches the deployed program; the empty-Draft cancellation instruction is verified and its admin-only Builder gate is enabled in Vercel Production. Des Moines market ID 0 remains an expired `Draft` with zero vault balance and stale immutable NOAA pricing terms. Do not fund or open it. The admin wallet must first approve its cancellation; then create, fund with 2,000 SKYT, and open a fresh market ID using the current exact-window NOAA quote package. NOAA seed/pricing inputs are not future settlement observations. Production health currently reports NOAA configured but the settlement signer and cron authentication are missing, so automated oracle settlement is not ready. The program-upgrade keypair (`anchor/target/deploy/skyhedge_protection-keypair.json`) and settlement-authority keypair are gitignored; keep both private.
-
-## API surface
-
-| Endpoint | Purpose |
-| --- | --- |
-| `GET /api/health` | Program ID, network, settlement source |
-| `GET /api/devnet/status` | Direct finalized-RPC status for program, IDL, protocol PDA, SKYT mint, fee vault, and Des Moines market |
-| `GET /api/markets` | Indexed markets (falls back to seed catalog while empty) |
-| `GET /api/weather/:city` `?start&end` | NOAA evidence for a window |
-| `GET /api/weather/:city/forecast` | NOAA forecast for a window |
-| `GET /api/weatherxm/:city/latest` | Supplemental WeatherXM Agent API status; uses the free health endpoint and reports that live observations are x402-paid and not settlement eligible |
-| `POST /api/quotes` | Premium quote (city, window, threshold, operator, amount) |
-| `POST /api/advisory` | Advisory-only natural-language intent (`message`, optional previous `context`). Matches only researched locations and finalized contract state; never returns a quote or transaction. Requires the server-side Anthropic configuration. |
-| `GET /api/portfolio/:wallet` | Indexer-backed positions (never simulated) |
-| `POST /api/transactions/unsigned` | Build a base64 VersionedTransaction (`approved: true` required) |
-| `GET /api/settlement/evidence` | Settlement evidence ledger |
-| `GET /api/markets/:id/evidence` | Evidence for one market |
-| `POST /api/indexer/reconcile` | Trigger an indexer sweep |
-| `POST /api/settlement/run` | Trigger a settlement scan |
-
-Unsigned actions: `fund_pool`, `withdraw_liquidity`, `open_position`, `claim_payout`, `claim_premium_refund`, `redeem_closed_liquidity`. All amounts are in SKYT base units (6 decimals).
-
-## Settlement rule (locked)
-
-`shared/methodology-v1.json` pins the settlement rule. NOAA is the sole final source; its normalized cumulative-rainfall observation is committed with a source hash. Source failure → `DATA_UNAVAILABLE` after the on-chain deadline; never synthesize a value.
-
-## Security posture
-
-- All on-chain authority transitions use propose/accept rotation; market creation is admin-gated (`has_one = admin`); settlement observations require the settlement authority signature.
-- Server builds transactions; wallets sign offline; the UI shows description + program ID before signing.
-- Weather/quotes endpoints are rate-limited (30 req / 60s / IP) to protect provider quotas.
-- No secrets in version control: `.env` and keypairs are gitignored.
-
-## Known limits
-
-- Devnet faucet airdrops are often rate-limited (429); retry later or use faucet.solana.com.
-- Settlement requires `NOAA_TOKEN`; without it, markets stay pending and honest `DATA_UNAVAILABLE` paths apply.
-- `seed-markets.ts` uses a fixed 2,000 bps quote probability per city; real quote-engine seeding needs `NOAA_TOKEN`.
+- Devnet only. SKYT is a test token. This is not insurance and not a regulated product.
+- No traction numbers are claimed here. SkyHedge is pre-launch.
