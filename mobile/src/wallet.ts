@@ -3,11 +3,7 @@ import { PublicKey } from "@solana/web3.js";
 import { Buffer } from "buffer";
 import { Connection, VersionedTransaction } from "@solana/web3.js";
 
-const APP_IDENTITY = {
-  name: "SkyHedge",
-  uri: "https://github.com/msourial/SkyHedge-Sol",
-  icon: "favicon.ico",
-};
+import { APP_IDENTITY } from "./wallet-identity";
 
 export type AuthorizedWallet = { address: string; authToken: string };
 
