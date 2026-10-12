@@ -19,7 +19,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AdvisoryResponse, AgriculturalMarket, ClaimReadiness, CityIndex, DevnetStatus, FinalizedWalletState, getJson, Portfolio, postJson, ProtectionQuote, UnsignedTransaction } from "./src/api";
 import { DEVNET_RPC_URL, readFinalizedWalletState } from "./src/chain";
 import { hazardPresentation, listHazards, type HazardId } from "./src/hazards";
-import { catalogAvailability, formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, latestCompletedNoaaWeek, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets } from "./src/presentation";
+import { catalogAvailability, formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, latestCompletedNoaaWeek, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets, formatWeekLabel, formatRainfallBarValue } from "./src/presentation";
 import { buildCommittedQuoteRequest, formatSkyt, getProtectionUnavailableReason, isOnchainMarketOpen, parseSkytAmount } from "./src/protection";
 import { authorizeDevnetWallet, signAndConfirmDevnetTransaction, type AuthorizedWallet } from "./src/wallet";
 import { C, F } from "./src/theme";
@@ -452,15 +452,15 @@ function WeatherScreen({
             </View>
           </View>
 
-          <SectionHeader title="The recent pattern" detail="Completed weeks · mm" />
+          <SectionHeader title="Weekly rainfall" detail="Completed weeks · millimetres" />
           <View style={styles.chartCard} accessible accessibilityLabel={`NOAA completed weekly rainfall history, in millimetres. ${history.map((week) => `${week.week}: ${week.mm == null ? "unavailable" : `${week.mm.toFixed(1)} millimetres`}`).join("; ") || "No history available."}`}>
             {history.length ? history.map((week) => (
               <View key={week.week} style={styles.barColumn}>
-                <Text style={styles.barValue}>{week.mm == null ? "—" : week.mm.toFixed(0)}</Text>
+                <Text style={styles.barValue}>{formatRainfallBarValue(week.mm)}</Text>
                 <View style={styles.barTrack}>
                 {week.mm == null ? <View style={styles.barUnknown} /> : <View style={[styles.barFill, { height: `${rainfallBarPercent(week.mm, maxRain) ?? 0}%` }]} />}
                 </View>
-                <Text style={styles.barDate}>{week.week.slice(5)}</Text>
+                <Text style={styles.barDate}>{formatWeekLabel(week.week)}</Text>
               </View>
             )) : (
               <Text style={styles.emptyText}>Historical observations are not available yet. The chart stays blank until NOAA provides them.</Text>
@@ -600,9 +600,9 @@ function RainfallHistoryPreview({ history, place }: { history: CityIndex["weekly
     <Text style={styles.miniHistoryTitle}>Recent completed weeks · NOAA</Text>
     {history?.length ? <View style={styles.miniChart} accessible accessibilityLabel={`Observed NOAA weekly rainfall for ${place}: ${history.map((week, index) => `${week.week}, ${values[index] === null ? "unavailable" : `${values[index]?.toFixed(1)} millimetres`}`).join("; ")}`}>
       {history.map((week, index) => <View key={week.week} style={styles.barColumn}>
-        <Text style={styles.barValue}>{values[index] === null ? "—" : values[index]?.toFixed(0)}</Text>
+        <Text style={styles.barValue}>{formatRainfallBarValue(values[index])}</Text>
         <View style={[styles.barTrack, styles.miniBarTrack]}>{values[index] === null ? <View style={styles.barUnknown} /> : <View style={[styles.barFill, { height: `${rainfallBarPercent(values[index], maxRain) ?? 0}%` }]} />}</View>
-        <Text style={styles.barDate}>{week.week.slice(5)}</Text>
+        <Text style={styles.barDate}>{formatWeekLabel(week.week)}</Text>
       </View>)}
     </View> : <Text style={styles.hazardNote}>No completed NOAA rainfall history is available for this selected place.</Text>}
   </View>;
@@ -965,14 +965,14 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: 5, marginTop: 23, marginBottom: 11 },
   sectionTitle: { color: C.ink, fontFamily: F.heading, fontSize: 19 },
   sectionMeta: { color: C.quiet, fontSize: 12 },
-  chartCard: { flexDirection: "row", minHeight: 150, alignItems: "stretch", justifyContent: "space-between", gap: 7, backgroundColor: C.canvas, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.border, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 12 },
+  chartCard: { flexDirection: "row", minHeight: 170, alignItems: "stretch", justifyContent: "space-between", gap: 4, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 8, paddingTop: 16, paddingBottom: 12 },
   loadingPanel: { minHeight: 110, alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 17, padding: 18, marginBottom: 14 },
   barColumn: { flex: 1, alignItems: "center", justifyContent: "flex-end" },
-  barValue: { color: C.muted, fontSize: 12, marginBottom: 5, fontVariant: ["tabular-nums"] },
-  barTrack: { flex: 1, width: 19, maxHeight: 85, justifyContent: "flex-end", backgroundColor: C.mutedSurface, borderRadius: 8, overflow: "hidden" },
-  barFill: { width: "100%", backgroundColor: C.blue, borderRadius: 8 },
+  barValue: { color: C.ink, fontFamily: F.bodySemi, fontSize: 12, marginBottom: 6, fontVariant: ["tabular-nums"] },
+  barTrack: { flex: 1, width: 20, maxHeight: 85, justifyContent: "flex-end", backgroundColor: C.mutedSurface, borderRadius: 8, overflow: "hidden" },
+  barFill: { width: "100%", backgroundColor: C.blue, borderRadius: 4 },
   barUnknown: { width: "100%", height: 2, backgroundColor: C.border, marginTop: "auto" },
-  barDate: { color: C.quiet, fontSize: 12, marginTop: 5 },
+  barDate: { color: C.muted, fontFamily: F.bodyMedium, fontSize: 12, marginTop: 6, textAlign: "center" },
   emptyText: { color: C.muted, fontSize: 13, lineHeight: 20 },
   noteCard: { backgroundColor: C.canvas, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border, paddingVertical: 17, marginTop: 17 },
   noteTitle: { color: C.ink, fontFamily: F.heading, fontSize: 16 },

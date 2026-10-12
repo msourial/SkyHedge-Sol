@@ -143,3 +143,16 @@ describe("mobile presentation behavior", () => {
     assert.equal(formatOnchainMarketStatus(null), "Unavailable");
   });
 });
+
+import { formatRainfallBarValue, formatWeekLabel } from "./presentation.ts";
+describe("chart labels", () => {
+  it("formats ISO weeks as short month-day", () => {
+    assert.equal(formatWeekLabel("2026-09-07"), "Sep 7");
+    assert.equal(formatWeekLabel("week-1"), "week-1");
+  });
+  it("labels missing rainfall explicitly and keeps small values precise", () => {
+    assert.equal(formatRainfallBarValue(null), "n/a");
+    assert.equal(formatRainfallBarValue(4.25), "4.3");
+    assert.equal(formatRainfallBarValue(23.4), "23");
+  });
+});

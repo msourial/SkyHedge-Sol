@@ -104,3 +104,17 @@ export function catalogAvailability(market: AgriculturalMarket, status: DevnetSt
     ? { label: "Active pilot", tone: "ready" }
     : { label: "Unavailable", tone: "neutral" };
 }
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "2026-09-07" -> "Sep 7"; falls back to the raw value when not an ISO date. */
+export function formatWeekLabel(week: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(week);
+  if (!match) return week;
+  const month = MONTHS[Number(match[2]) - 1];
+  return month ? `${month} ${Number(match[3])}` : week;
+}
+
+/** Bar value label with unit; unavailable weeks read "n/a" instead of a bare dash. */
+export function formatRainfallBarValue(mm: number | null | undefined): string {
+  return mm == null || !Number.isFinite(mm) ? "n/a" : `${mm.toFixed(mm < 10 ? 1 : 0)}`;
+}
