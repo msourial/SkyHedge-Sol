@@ -20,6 +20,7 @@ import { AdvisoryResponse, AgriculturalMarket, ClaimReadiness, CityIndex, Devnet
 import { DEVNET_RPC_URL, readFinalizedWalletState } from "./src/chain";
 import { hazardPresentation, listHazards, type HazardId } from "./src/hazards";
 import { catalogAvailability, formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, latestCompletedNoaaWeek, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets, formatWeekLabel, formatRainfallBarValue } from "./src/presentation";
+import { hedgeBalanceLine, hedgeWindowDays, marketHeadline, optionPremiumLine, triggerPhrase } from "./src/options-copy";
 import { buildCommittedQuoteRequest, formatSkyt, getProtectionUnavailableReason, isOnchainMarketOpen, parseSkytAmount } from "./src/protection";
 import { authorizeDevnetWallet, signAndConfirmDevnetTransaction, type AuthorizedWallet } from "./src/wallet";
 import { C, F } from "./src/theme";
@@ -345,6 +346,7 @@ export default function App() {
             claimReadiness={claimReadiness} claimError={claimError} transactionBusy={transactionBusy}
             transactionMessage={transactionMessage} transactionError={transactionError} transactionSignature={transactionSignature}
             walletConnected={!!wallet}
+            walletSkytBase={walletBalances ? String(walletBalances.skytBaseUnits) : null}
             onAmountModeChange={changeAmountMode}
             onUsdPreviewChange={(value) => { if (/^\d{0,9}(?:\.\d{0,2})?$/.test(value)) setUsdPreviewAmount(value); }}
             onAmountChange={(value) => { setProtectionAmount(value); setQuote(null); setQuoteError(null); }}
@@ -628,6 +630,7 @@ function ProtectScreen(props: {
   transactionError: string | null;
   transactionSignature: string | null;
   walletConnected: boolean;
+  walletSkytBase: string | null;
   onAmountModeChange: (mode: AmountMode) => void;
   onUsdPreviewChange: (value: string) => void;
   onAmountChange: (value: string) => void;
@@ -671,8 +674,10 @@ function ProtectScreen(props: {
     { ready: evidenceReady, label: "NOAA station package pinned" },
     { ready: !!market?.vaultBalance && /^\d+$/.test(market.vaultBalance) && BigInt(market.vaultBalance) > 0n, label: "SKYT vault funded" },
   ];
-  const readyChecks = checks.filter((check) => check.ready).length;
   const vaultFunded = checks[5].ready;
+  const placeName = props.marketLocation?.locality ?? "Des Moines";
+  const headline = marketHeadline({ place: placeName, open: marketOpen && vaultFunded, days: hedgeWindowDays(market?.observationStart, market?.observationEnd) });
+  const readyChecks = checks.filter((check) => check.ready).length;
   const needsWallet = props.unavailableReason?.startsWith("Connect your Devnet wallet");
   const stage = (ready: boolean, label: string) => (
     <View key={label} style={styles.evidenceStep}>
@@ -685,9 +690,9 @@ function ProtectScreen(props: {
     <>
       <View style={styles.protectCard}>
         <ScreenHeader
-          eyebrow="Rainfall protection"
-          title={props.marketLocation?.name ?? props.marketLocation?.locality ?? (isPilot ? "Des Moines crop belt" : props.selectedCity)}
-          detail={props.marketLocation ? `${props.marketLocation.locality}, ${props.marketLocation.administrativeArea}, ${props.marketLocation.country}` : "Location evidence is not available in this mobile data feed."}
+          eyebrow={props.marketLocation ? `Rain hedge · ${props.marketLocation.locality}, ${props.marketLocation.administrativeArea}` : "Rain hedge"}
+          title={headline.title}
+          detail={headline.detail}
           action={<StatusPill label={isPilot ? (marketOpen ? "Open" : formatOnchainMarketStatus(market?.onchainStatus ?? null)) : "Research"} tone={marketOpen ? "ready" : "pending"} />}
         />
         <View style={styles.stepperWrap}>
@@ -704,13 +709,14 @@ function ProtectScreen(props: {
         </View>
         {isPilot && market?.observationStart && market?.observationEnd ? (
           <View style={styles.triggerPanel}>
-            <Text style={styles.triggerLabel}>Protection trigger</Text>
-            <Text style={styles.triggerValue}>{threshold == null ? "Final terms pending" : `Rainfall ${market?.operator === "lt" || market?.operator === "lte" ? "at or below" : "at or above"} ${threshold.toFixed(2)} mm`}</Text>
+            <Text style={styles.triggerLabel}>Pays out</Text>
+            <Text style={styles.triggerValue}>{threshold == null ? "Final terms pending" : triggerPhrase(market?.thresholdMmX100, market?.operator).replace(/^if r/, "If r")}</Text>
             <Text style={styles.triggerWindow}>NOAA observation · {windowStart} to {windowEnd} UTC</Text>
           </View>
         ) : (
           <Text style={styles.protectBlocked}>Only Des Moines is eligible for the Devnet pilot. Other catalog locations remain research-only; selecting them cannot produce a quote or transaction.</Text>
         )}
+        <View style={styles.hedgeBalance} accessibilityLiveRegion="polite"><AppIcon name="credit-card" color={C.mint} size={18} /><Text style={styles.hedgeBalanceText}>{hedgeBalanceLine(props.walletSkytBase, props.walletConnected)}</Text></View>
         {props.amountMode === "usd-preview" ? <>
           <View style={styles.amountHeading}><Text style={styles.inputLabel}>Protection amount · USD preview</Text></View>
           <TextInput
@@ -725,12 +731,12 @@ function ProtectScreen(props: {
           />
           <Text style={styles.inputHint}>{usdPreview ? `${usdPreview} preview` : "Enter a positive dollar amount."}</Text>
           <View style={styles.actionWrap}><ActionButton label="Try on Devnet" icon="arrow-right" onPress={() => props.onAmountModeChange("devnet-test")} /></View>
-          {!marketOpen || !vaultFunded ? <Text accessibilityRole="alert" style={styles.previewBlocker}>Devnet testing is not ready: the on-chain market is {formatOnchainMarketStatus(market?.onchainStatus ?? null)}{vaultFunded ? "." : " and its test collateral vault is empty."}</Text> : null}
+          {!marketOpen || !vaultFunded ? <Text accessibilityRole="alert" style={styles.previewBlocker}>{headline.title}. You can still preview amounts in USD.</Text> : null}
         </> : <>
           <Pressable accessibilityRole="button" accessibilityLabel="Return to USD preview" onPress={() => props.onAmountModeChange("usd-preview")} style={styles.modeBack}><AppIcon name="arrow-left" color={C.blue} size={16} /><Text style={styles.modeBackText}>USD preview</Text></Pressable>
           <Text style={styles.testModeHeading}>Try on Devnet</Text>
           <Text style={styles.testModeNote}>Your wallet shows and approves every transaction.</Text>
-          <View style={styles.amountHeading}><Text style={styles.inputLabel}>Test protection amount</Text><Text style={styles.amountUnit}>SKYT test tokens</Text></View>
+          <View style={styles.amountHeading}><Text style={styles.inputLabel}>How much to protect</Text><Text style={styles.amountUnit}>SKYT test tokens</Text></View>
           <TextInput
             accessibilityLabel="Test protection amount in SKYT"
             accessibilityHint="Maximum 500 SKYT per wallet. This amount is separate from the USD preview."
@@ -744,10 +750,12 @@ function ProtectScreen(props: {
           />
           <Text style={styles.inputHint}>{props.amountBase ? `${formatSkyt(props.amountBase)} SKYT · maximum 500 SKYT per wallet` : "Enter a positive test amount up to 500 SKYT, with up to six decimal places."}</Text>
           {!props.quote ? (
-            <View style={styles.actionWrap}><ActionButton label={needsWallet ? "Connect Devnet wallet" : "Get NOAA quote in SKYT"} icon={needsWallet ? "credit-card" : "arrow-right"} disabled={!needsWallet && !!props.unavailableReason} busy={props.transactionBusy} onPress={needsWallet ? props.onOpenWallet : props.onRequestQuote} /></View>
+            <View style={styles.actionWrap}><ActionButton label={needsWallet ? "Connect Devnet wallet" : "Price my rain option"} icon={needsWallet ? "credit-card" : "arrow-right"} disabled={!needsWallet && !!props.unavailableReason} busy={props.transactionBusy} onPress={needsWallet ? props.onOpenWallet : props.onRequestQuote} /></View>
           ) : (
           <Reveal><View style={[styles.quoteCard, styles.card, styles.quoteCardContent]} accessibilityLabel="NOAA-based quote review">
-            <View style={styles.quoteHead}><AppIcon name="file-text" color={C.purple} size={18} /><Text style={styles.quoteTitle}>NOAA-based quote</Text></View>
+            <View style={styles.quoteHead}><AppIcon name="file-text" color={C.rain} size={18} /><Text style={styles.quoteTitle}>Your rain option</Text></View>
+            <Text style={styles.optionLine}>{optionPremiumLine(props.quote.premium, props.quote.protectedAmount, market?.thresholdMmX100, market?.operator)}</Text>
+            <MetricRow label="Payout if triggered" value={`${formatSkyt(props.quote.protectedAmount)} SKYT`} />
             <MetricRow label="Chance of trigger" value={`${(props.quote.probabilityBps / 100).toFixed(2)}%`} />
             <MetricRow label="Premium · total charged" value={`${formatSkyt(props.quote.premium)} SKYT`} />
             <MetricRow label="Protocol fee" value={`${formatSkyt(props.quote.protocolFee)} SKYT`} />
@@ -757,7 +765,7 @@ function ProtectScreen(props: {
             <View style={styles.actionWrap}><ActionButton label="Review in wallet" icon="arrow-right" disabled={!!props.quotePaymentReason || !!props.unavailableReason} busy={props.transactionBusy} onPress={props.onApprove} /></View>
           </View></Reveal>
           )}
-          {props.unavailableReason && !needsWallet ? <View accessibilityRole="alert" style={styles.blockedNotice}><AppIcon name="alert-circle" color={C.amber} size={18} /><View style={styles.blockedCopy}><Text style={styles.blockedTitle}>Waiting for market readiness</Text><Text style={styles.blockedBody}>{props.unavailableReason}</Text><Pressable accessibilityRole="button" onPress={props.onRefresh} style={styles.inlineRetry}><Text style={styles.inlineRetryText}>Refresh status</Text></Pressable></View></View> : null}
+          {props.unavailableReason && !needsWallet ? <View accessibilityRole="alert" style={styles.blockedNotice}><AppIcon name="alert-circle" color={C.amber} size={18} /><View style={styles.blockedCopy}><Text style={styles.blockedTitle}>{marketOpen && vaultFunded ? "Not ready to price yet" : headline.title}</Text><Text style={styles.blockedBody}>{marketOpen && vaultFunded ? props.unavailableReason : "The current Des Moines window has closed. Check back shortly; details are under Verification."}</Text><Pressable accessibilityRole="button" onPress={props.onRefresh} style={styles.inlineRetry}><Text style={styles.inlineRetryText}>Refresh status</Text></Pressable></View></View> : null}
           {props.quoteError ? <View accessibilityRole="alert" style={styles.actionError}><Text style={styles.blockedTitle}>Quote unavailable</Text><Text style={styles.blockedBody}>{props.quoteError}</Text></View> : null}
         </>}
         {props.transactionMessage ? <Text accessibilityLiveRegion="polite" style={styles.actionProgress}>{props.transactionMessage}</Text> : null}
@@ -1057,6 +1065,9 @@ const styles = StyleSheet.create({
   triggerValue: { color: C.white, fontFamily: F.headingBold, fontSize: 22, lineHeight: 28, fontVariant: ["tabular-nums"] },
   triggerWindow: { color: C.muted, fontSize: 12, marginTop: 5 },
   protectBlocked: { color: C.amber, backgroundColor: C.amberSoft, borderRadius: 12, padding: 12, fontSize: 12, lineHeight: 18, marginBottom: 16 },
+  hedgeBalance: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48, backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, marginBottom: 20 },
+  hedgeBalanceText: { flex: 1, color: C.ink, fontFamily: F.bodySemi, fontSize: 15, lineHeight: 22 },
+  optionLine: { color: C.ink, fontFamily: F.heading, fontSize: 18, lineHeight: 25, marginVertical: 10 },
   amountHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 },
   inputLabel: { color: C.ink, fontFamily: F.bodySemi, fontSize: 13 },
   amountUnit: { color: C.quiet, fontSize: 12 },
