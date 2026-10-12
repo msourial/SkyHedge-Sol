@@ -175,14 +175,15 @@ export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEviden
       <div className="relative h-[min(70vh,48rem)] min-h-[25rem] w-full bg-[#101a28] sm:min-h-[32rem]" data-testid="market-explorer-map" data-map-state={configured ? phase : "unconfigured"}>
         {configured && <div ref={containerRef} className="sky-maplibre-map absolute inset-0" aria-label="Interactive map of catalog index reference locations" />}
         {!configured && (
-          <div className="absolute inset-0 flex items-center justify-center px-6 py-10 text-center">
-            <div className="max-w-lg">
-              <MapPin className="mx-auto h-8 w-8 text-cyan-300" aria-hidden="true" />
-              <p className="text-xs font-semibold uppercase tracking-[.16em] text-cyan-200">Selected reference</p>
-              <h2 className="mt-2 text-xl font-semibold text-slate-100">{selectedMarket ? agriculturalMarketLocation(selectedMarket) : "Choose a catalog location"}</h2>
-              {selectedMarket && <p className="mt-2 text-sm text-slate-300">{selectedMarket.latitude.toFixed(4)}°, {selectedMarket.longitude.toFixed(4)}°</p>}
-              <p className="mt-4 text-sm leading-relaxed text-slate-300">Interactive map tiles are not configured for this local preview. You can still search the catalog and inspect every exact reference location.</p>
-              {onSelectFromList && <button type="button" onClick={onSelectFromList} className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-slate-500 px-4 text-sm font-medium text-slate-100 hover:border-cyan-300">Select a region from the list</button>}
+          <div className="market-map-fallback absolute inset-0">
+            <div className="market-map-fallback__content">
+              <div className="market-map-fallback__icon"><MapPin className="h-6 w-6" aria-hidden="true" /></div>
+              <p className="market-map-fallback__eyebrow">Reference location</p>
+              <h2>{selectedMarket ? agriculturalMarketLocation(selectedMarket) : "Choose a catalog location"}</h2>
+              {selectedMarket && <p className="market-map-fallback__coordinates">{selectedMarket.latitude.toFixed(4)}°, {selectedMarket.longitude.toFixed(4)}°</p>}
+              <p className="market-map-fallback__copy">Interactive map tiles are not configured for this local preview. You can still search the catalog and inspect every exact reference location.</p>
+              <p className="market-map-fallback__note">Reference point only — not an insured boundary or validated station.</p>
+              {onSelectFromList && <button type="button" onClick={onSelectFromList} className="market-map-fallback__action">Select a region from the list</button>}
             </div>
           </div>
         )}

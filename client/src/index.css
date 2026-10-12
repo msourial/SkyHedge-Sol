@@ -78,7 +78,7 @@
 .market-explorer__header { display: flex; align-items: end; justify-content: space-between; gap: 1.5rem; border-bottom: 1px solid var(--border); padding: .5rem 0 1.5rem; }
 .market-explorer__header h2 { margin: .375rem 0 0; font-size: clamp(2rem, 4vw, 3.25rem); line-height: 1.03; }
 .market-explorer__header p:not(.market-explorer__overline) { max-width: 44rem; margin: .75rem 0 0; color: var(--muted-foreground); font-size: 1rem; line-height: 1.55; }
-.market-explorer__overline { margin: 0; color: var(--identity); font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.market-explorer__overline { margin: 0; color: var(--identity); font-size: .8125rem; font-weight: 600; letter-spacing: 0; }
 .market-explorer__meta { display: flex; align-items: center; gap: .75rem; color: var(--muted-foreground); font-size: .875rem; white-space: nowrap; }
 .market-workspace { position: relative; overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--surface-1); }
 .market-workspace > [aria-label="Agricultural index map"] { border: 0; border-radius: 0; box-shadow: none; }
@@ -91,6 +91,16 @@
 .market-location-row:hover, .market-location-row--selected { color: var(--identity-deep); }
 .market-location-row--selected { margin-left: -.5rem; width: calc(100% + 1rem); border-radius: 8px; padding-right: .75rem; padding-left: .75rem; background: color-mix(in srgb, var(--identity-dim) 78%, transparent); }
 .market-location-dock__note { margin: .75rem 0 0; color: var(--faint); font-size: .75rem; line-height: 1.45; }
+.market-map-fallback { display: grid; place-items: center; padding: 2rem; background: radial-gradient(circle at 72% 22%, color-mix(in srgb, var(--identity) 16%, transparent), transparent 31rem), linear-gradient(145deg, #0c1523, #101a28); }
+.market-map-fallback__content { width: min(100%, 34rem); border-left: 1px solid color-mix(in srgb, var(--identity) 55%, var(--border)); padding-left: 1.5rem; text-align: left; }
+.market-map-fallback__icon { display: grid; width: 2.75rem; height: 2.75rem; place-items: center; border: 1px solid color-mix(in srgb, var(--identity) 42%, var(--border)); border-radius: 50%; color: var(--identity); }
+.market-map-fallback__eyebrow { margin: 1.25rem 0 0; color: var(--identity); font-size: .8125rem; font-weight: 600; }
+.market-map-fallback h2 { margin: .4rem 0 0; color: var(--foreground); font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.1; }
+.market-map-fallback__coordinates { margin: .65rem 0 0; color: var(--muted-foreground); font-family: var(--font-mono); font-size: .8125rem; }
+.market-map-fallback__copy { max-width: 32rem; margin: 1.35rem 0 0; color: var(--muted-foreground); font-size: .9375rem; line-height: 1.6; }
+.market-map-fallback__note { margin: .85rem 0 0; color: var(--faint); font-size: .8125rem; line-height: 1.5; }
+.market-map-fallback__action { min-height: 44px; margin-top: 1.5rem; border: 1px solid color-mix(in srgb, var(--identity) 58%, var(--border)); border-radius: var(--radius-control); background: color-mix(in srgb, var(--surface-1) 84%, transparent); padding: .65rem 1rem; color: var(--foreground); font-size: .9375rem; font-weight: 600; transition: border-color 160ms ease, background-color 160ms ease; }
+.market-map-fallback__action:hover { border-color: var(--identity); background: var(--identity-dim); }
 
 .sky-leaflet-map { z-index: 0; background: var(--surface-2); font-family: var(--font-body); }
 .sky-leaflet-map .leaflet-control-zoom a { border-color: #d7dfdc; background: rgba(255,255,255,.96); color: #102a3a; }
@@ -135,6 +145,8 @@
   .market-workspace > [aria-label="Agricultural index map"] > div { height: 20rem; min-height: 20rem; }
   .market-location-dock { position: static; width: 100%; max-height: none; margin-top: 1rem; border-radius: 14px; background: var(--surface-1); backdrop-filter: none; }
   .market-location-list { max-height: 22rem; }
+  .market-map-fallback { padding: 1.5rem; }
+  .market-map-fallback__content { padding-left: 1.1rem; }
 }
 @media (max-width: 419px) {
   .sky-wallet-button.wallet-adapter-button { max-width: 9.25rem; padding: 0 .75rem; }
