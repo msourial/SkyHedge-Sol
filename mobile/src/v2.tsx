@@ -57,6 +57,7 @@ export function MarketsScreen(props: {
   const history = (city?.weeklyHistoryMm ?? []).slice(-7);
   const values = history.map((w) => (w.mm != null && Number.isFinite(w.mm) && w.mm >= 0 ? w.mm : null));
   const scale = Math.max(1, thresholdMm ?? 0, ...values.map((v) => v ?? 0)) * 1.1;
+  const lastKnown = values.reduce<number>((acc, v, i) => (v != null ? i : acc), -1);
   const CHART_H = 96;
   const per100 = props.indicativeQuote ? premiumPer100(props.indicativeQuote.premium, props.indicativeQuote.protectedAmount) : null;
   const countdown = salesCountdown(market?.salesCloseAt, props.nowSeconds);
@@ -101,7 +102,7 @@ export function MarketsScreen(props: {
             {Array.from({ length: 40 }).map((_, i) => <View key={i} style={s.dash} />)}
           </View> : null}
           {values.map((v, i) => <View key={history[i].week} style={s.barCol}>
-            {v == null ? <View style={s.barUnknown} /> : <View style={[s.bar, i === values.length - 1 && s.barCurrent, { height: Math.max(2, (v / scale) * CHART_H) }]} />}
+            {v == null ? <View style={s.barUnknown} /> : <View style={[s.bar, i === lastKnown && s.barCurrent, { height: Math.max(2, (v / scale) * CHART_H) }]} />}
           </View>)}
         </View>
         <View style={s.between}><Text style={s.caption}>{history.length} weeks · NOAA</Text>{thresholdMm != null ? <Text style={[s.caption, { color: C.payout }]}>– – trigger</Text> : null}</View>
@@ -359,9 +360,9 @@ const s = StyleSheet.create({
   chipText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 15, fontVariant: TAB },
   chart: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginTop: 16, marginBottom: 6 },
   barCol: { flex: 1, justifyContent: "flex-end", height: "100%" },
-  bar: { backgroundColor: C.mutedSurface, borderRadius: 3 },
-  barCurrent: { backgroundColor: C.rain },
-  barUnknown: { height: 2, backgroundColor: C.border },
+  bar: { backgroundColor: C.rain, opacity: 0.45, borderRadius: 3 },
+  barCurrent: { backgroundColor: C.rain, opacity: 1 },
+  barUnknown: { height: 2, backgroundColor: C.muted },
   strike: { position: "absolute", left: 0, right: 0, height: 1, flexDirection: "row", justifyContent: "space-between", overflow: "hidden", zIndex: 2 },
   dash: { width: 4, height: 1, backgroundColor: C.payout },
   split: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: C.border },
