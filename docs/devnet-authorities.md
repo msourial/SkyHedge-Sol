@@ -22,3 +22,10 @@ This is a public-key-only record. It contains no recovery phrases, private keys,
 The settlement private key is stored locally in an ignored file. It must be rotated before any use beyond this Devnet build, and never committed or pasted into chat.
 
 The protocol admin is a wallet public key, distinct from the current program-upgrade signer. The owner must approve market cancellation, creation, opening and closing through the admin wallet; no service or deployer key can substitute for those approvals. On chain, `fund_pool` is open to any liquidity-provider wallet; for Devnet activation the admin wallet seeds the first liquidity itself.
+
+## Devnet funding target (decided 2026-10-13)
+
+- **Target:** 10,000 SKYT of liquidity per market, which fills the per-market `max_liquidity` cap of 10,000 set in `scripts/seed-markets.ts`. That is up from today's 2,000 SKYT seed.
+- **Initial liquidity provider:** Miro (the owner), depositing through `fund_pool` from his own wallet. Any wallet can fund before sales close, so this needs no admin step. It still needs his wallet approval, because each deposit is a real Devnet transaction.
+- **Why:** `open_position` only sells coverage while the vault plus incoming premium covers all reserved payouts. A 10,000 SKYT vault lets the market sell its full 8,000 SKYT exposure cap, with room to spare. That's 16 buyers at the 500 SKYT per-wallet maximum.
+- **Status:** this is a target only. No funding transaction has been sent. SKYT is a valueless Devnet test token.
