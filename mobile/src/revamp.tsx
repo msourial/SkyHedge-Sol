@@ -137,9 +137,9 @@ export function MarketDetail(props: { market: CatalogMarket; onBack: () => void;
     </GlassCard>
     {soon ? <Pressable accessibilityRole="button" accessibilityState={{ checked: props.notified }} onPress={props.onNotify} style={[g.notify, props.notified && g.notifyOn]}>
       <AppIcon name={props.notified ? "check" : "bell"} color={props.notified ? C.amber : "#1A1205"} size={18} />
-      <Text style={[g.notifyText, props.notified && { color: C.amber }]}>{props.notified ? "We’ll remind you on this phone" : "Notify me when it opens"}</Text>
+      <Text style={[g.notifyText, props.notified && { color: C.amber }]}>{props.notified ? "Interest saved on this phone" : "Notify me when it opens"}</Text>
     </Pressable> : null}
-    {soon && props.notified ? <Text style={[g.caption, { textAlign: "center", marginTop: 6 }]}>Saved on this device only — nothing was sent anywhere.</Text> : null}
+    {soon && props.notified ? <Text style={[g.caption, { textAlign: "center", marginTop: 6 }]}>Kept in the app on this device only. No notification is scheduled yet and nothing was sent.</Text> : null}
     <Pressable accessibilityRole="button" onPress={props.onExploreLive} style={g.secondary}><View style={[g.tagDot, { backgroundColor: C.mint }]} /><Text style={g.secondaryText}>Explore Des Moines (live)</Text></Pressable>
     <Text style={[g.caption, { textAlign: "center", marginTop: 8 }]}>{soon ? "Concept preview · not yet open" : "Concept market · not tradable"}</Text>
   </>;
@@ -175,7 +175,7 @@ export function Receipt(props: { title: string; amountLabel: string | null; fact
 
 const g = StyleSheet.create({
   card: { backgroundColor: "rgba(17,22,29,0.78)", borderColor: "rgba(94,200,255,0.14)", borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 12, overflow: "hidden" },
-  tag: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, minHeight: 26, alignSelf: "flex-start" },
+  tag: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, minHeight: 26, alignSelf: "center" },
   tagDot: { width: 7, height: 7, borderRadius: 4 },
   tagText: { fontFamily: F.bodySemi, fontSize: 12 },
   gauge: { width: 44, borderRadius: 14, borderWidth: 1, borderColor: C.border, backgroundColor: "#0B0F14", overflow: "hidden", justifyContent: "flex-end" },

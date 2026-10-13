@@ -79,10 +79,8 @@ export function MarketsScreen(props: {
   const open = (m: CatalogMarket) => { if (m.status === "live") props.onProtect(); else props.onOpenMarket?.(m); };
 
   return <>
-    <View style={s.between}>
-      <View><Text style={s.eyebrowCaps}>SkyHedge</Text><Text accessibilityRole="header" style={s.h1}>Rain markets</Text></View>
-      <View style={s.devnetTag}><Text style={s.devnetTagText}>Devnet · test token</Text></View>
-    </View>
+    <Text accessibilityRole="header" style={s.h1}>Rain markets</Text>
+    <Text style={s.caption}>Devnet · test token · settled from public weather-station data</Text>
 
     <View style={s.search}>
       <AppIcon name="search" color={C.muted} size={18} />
@@ -172,12 +170,15 @@ export function MarketsScreen(props: {
 /** Bar that grows from zero on mount (micro-animation for the weekly chart). */
 function GrowBar({ height, delay, style }: { height: number; delay: number; style: any }) {
   const reduced = useReducedMotion();
-  const h = useRef(new Animated.Value(reduced ? height : 0)).current;
+  const grow = useRef(new Animated.Value(reduced ? 1 : 0)).current;
   useEffect(() => {
-    if (reduced) { h.setValue(height); return; }
-    Animated.timing(h, { toValue: height, duration: 700, delay, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
-  }, [height, delay, reduced, h]);
-  return <Animated.View style={[style, { height: h }]} />;
+    if (reduced) { grow.setValue(1); return; }
+    grow.setValue(0);
+    const a = Animated.timing(grow, { toValue: 1, duration: 700, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true });
+    a.start();
+    return () => a.stop();
+  }, [height, delay, reduced, grow]);
+  return <Animated.View style={[style, { height, transformOrigin: "bottom", transform: [{ scaleY: grow }] }]} />;
 }
 
 /* ───────────────────────────── Protect ───────────────────────────── */
