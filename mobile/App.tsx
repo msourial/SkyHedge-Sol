@@ -503,7 +503,7 @@ export default function App() {
         if (!wallet) return <StickyCta label="Connect wallet to protect" busy={loading} onPress={() => { void connect(); }} />;
         const quoteReady = !!quote && quote.protectedAmount === amountBase;
         return <StickyCta
-          label={`Review in ${WALLET_NAME === "Your wallet" ? "wallet" : WALLET_NAME}`}
+          label={`Step 3 · Review in ${WALLET_NAME === "Your wallet" ? "wallet" : WALLET_NAME}`}
           hint={quoteBusy ? "Getting a live NOAA price…" : null}
           disabled={!quoteReady || !!quotePaymentReason || !!protectionUnavailableReason || quoteBusy}
           busy={transactionBusy}

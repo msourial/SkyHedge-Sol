@@ -9,6 +9,7 @@ import type { CityIndex, ClaimReadiness, DevnetStatus, FinalizedWalletState, Por
 import { C, F, MIN_TOUCH } from "./theme";
 import { ActionButton, AppIcon, Disclosure, Reveal, Text } from "./ui";
 import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } from "./friendly-errors";
+import { dealSentence, payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
 import { formatOnchainMarketStatus, formatWeekLabel } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
 import { balanceCheck, coverageOptions, formatSkytFixed, premiumFeeLine, premiumPer100, returnMultiple, salesCountdown, shortAddress, shortUtcDate, trimMm, triggerSentence, type CoverageOption } from "./ticket";
@@ -84,7 +85,8 @@ export function MarketsScreen(props: {
   const open = (m: CatalogMarket) => { if (m.status === "live") props.onProtect(); else props.onOpenMarket?.(m); };
 
   return <>
-    <ScreenTop title="Markets" lead="Pick a city. Choose the peril inside the market." />
+    <StepBar step={1} />
+    <ScreenTop title="Where are your plans?" lead="Pick a city, then choose what to protect against inside it." />
 
     <View style={s.search}>
       <AppIcon name="search" color={C.muted} size={18} />
@@ -246,11 +248,14 @@ export function ProtectTicket(props: {
   const isExistingPosition = !!props.unavailableReason && /already has|duplicate position|pending outcome/i.test(props.unavailableReason);
   const blocking = props.unavailableReason && !isExistingPosition && !(hasPosition && props.transactionSignature) && !/^Connect your Devnet wallet|finalized SKYT wallet balance/.test(props.unavailableReason) ? props.unavailableReason : null;
   const thresholdMm = market?.thresholdMmX100 != null && /^\d+$/.test(String(market.thresholdMmX100)) ? trimMm(Number(market.thresholdMmX100) / 100) : null;
+  const stage = payoutStage(props.claimReadiness);
+  const deal = dealSentence({ place: "Des Moines", premiumBase: q?.premium, payoutBase: q ? props.amountBase : null, thresholdMmX100: market?.thresholdMmX100, operator: market?.operator, start: market?.observationStart, end: market?.observationEnd });
   const youPay = q ? formatSkytFixed(q.premium, 2) : props.quoteBusy ? null : "—";
 
   return <>
     <ScreenTop onBack={props.onBackToMarkets} eyebrow={`NOAA · ${station}`} title="Des Moines, IA" />
     <PerilSelector value="rain" available={["rain"]} />
+    {stage ? <PayoutStatusCard stage={stage} /> : <StepBar step={props.walletConnected && q ? 3 : 2} />}
 
     {!live ? <View style={[s.notice, { marginTop: 8 }]} accessibilityRole="alert">
       <Text style={s.noticeTitle}>This window isn’t selling right now</Text>
@@ -263,11 +268,11 @@ export function ProtectTicket(props: {
     <FactRows rows={[
       { k: "Window", v: market?.observationStart && market?.observationEnd ? `${shortUtcDate(market.observationStart)} – ${shortUtcDate(market.observationEnd - 1)}` : "—" },
       { k: "Trigger", v: thresholdMm ? `${market?.operator === "gt" ? ">" : market?.operator === "lt" ? "<" : market?.operator === "lte" ? "≤" : "≥"} ${thresholdMm} mm cumulative` : "Pending", tone: "gold" },
-      { k: "Settlement", v: "Automatic · parametric" },
-      { k: "On-chain checks", v: `${readyCount === checks.length ? "✓ " : ""}${readyCount} of ${checks.length} passed`, tone: readyCount === checks.length ? "mint" : "gold" },
+      { k: "Payout", v: "Automatic · from official NOAA data" },
+      { k: "Ready checks", v: `${readyCount === checks.length ? "✓ " : ""}${readyCount} of ${checks.length} passed`, tone: readyCount === checks.length ? "mint" : "gold" },
     ]} />
 
-    <Text style={s.overline}>Coverage (paid if triggered)</Text>
+    <Text style={s.overline}>How much do you want back if it rains?</Text>
     <View style={s.chipRow} accessibilityRole="radiogroup" accessibilityLabel="Coverage amount in SKYT">
       {options.map((o) => {
         const on = o.id === props.coverageId;
@@ -276,7 +281,7 @@ export function ProtectTicket(props: {
         </Pressable>;
       })}
     </View>
-    <Text style={s.overline}>Trigger · Rain</Text>
+    <Text style={s.overline}>Rain limit</Text>
     <View style={s.chipRow} accessible accessibilityLabel={thresholdMm ? `Rain trigger: ${market?.operator === "gt" ? "more than" : market?.operator === "lt" ? "less than" : market?.operator === "lte" ? "at most" : "at least"} ${thresholdMm} millimetres` : "Rain trigger pending"}>
       <View style={[s.chip, { opacity: 0.9 }]}><Text style={s.chipText}>{thresholdMm ? `Trigger ${market?.operator === "gt" ? ">" : market?.operator === "lt" ? "<" : market?.operator === "lte" ? "≤" : "≥"} ${thresholdMm} mm rain` : "Trigger pending"}</Text></View>
     </View>
@@ -295,10 +300,11 @@ export function ProtectTicket(props: {
         </View>
       </View>
       <View style={{ padding: 16 }}>
-        <Text style={s.body}>{sentence ?? "Trigger terms will appear once the market is finalized."}</Text>
+        {deal ? <Text style={[s.body, { fontFamily: F.bodySemi }]} accessibilityLiveRegion="polite">{deal}</Text> : <Text style={s.body}>{sentence ?? "Terms will appear once the market is finalized."}</Text>}
+        {deal ? <Text style={[s.caption, { marginTop: 6 }]}>If it stays drier, there's no payout. If the official data never arrives, you get what you paid back.</Text> : null}
         <View style={{ marginTop: 6 }}>
-          <Row label="Chance of trigger" value={q ? `${(q.probabilityBps / 100).toFixed(1)}%` : "—"} />
-          <Row label="Return if triggered" value={q ? returnMultiple(q.premium, q.protectedAmount) ?? "—" : "—"} gold />
+          <Row label="Chance it rains that much" value={q ? `${(q.probabilityBps / 100).toFixed(1)}%` : "—"} />
+          <Row label="Payout vs. price" value={q ? returnMultiple(q.premium, q.protectedAmount) ?? "—" : "—"} gold />
           <Row label="Premium + 1% fee" value={q ? premiumFeeLine(q.premium, q.protocolFee) ?? `${formatSkytFixed(q.premium)}` : "—"} />
           <Row label="Settles" value={endDate ? `After ${endDate} · NOAA final` : "NOAA final data"} />
         </View>
@@ -374,6 +380,27 @@ export function ProtectTicket(props: {
 }
 
 /** Sticky bottom CTA used by Protect. */
+function StepBar({ step }: { step: FlowStep }) {
+  return <View style={{ marginTop: 4, marginBottom: 8 }} accessible accessibilityLabel={stepLabel(step)}>
+    <Text style={s.stepLabel}>{stepLabel(step)}</Text>
+    <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>{[1, 2, 3].map((n) => <View key={n} style={[s.stepDot, n <= step && { backgroundColor: C.rain }]} />)}</View>
+  </View>;
+}
+
+function PayoutStatusCard({ stage }: { stage: NonNullable<ReturnType<typeof payoutStage>> }) {
+  const col = stage.tone === "mint" ? C.mint : stage.tone === "amber" ? C.amber : stage.tone === "rain" ? C.rain : C.muted;
+  const steps = stage.key === "refund" || stage.key === "refunded" ? ["Protected", "Rain window ended", "Weather data unavailable", "Refund"] : [...PAYOUT_STEPS];
+  return <View style={[s.card, { borderColor: col + "66" }]} accessibilityLiveRegion="polite" accessible accessibilityLabel={`Your protection: ${stage.title}. ${stage.body}`}>
+    <Text style={s.stepLabel}>Your protection</Text>
+    <Text style={[s.statusTitle, { color: col }]}>{stage.title}</Text>
+    {steps.map((label, i) => <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8 }}>
+      <View style={[s.stepNode, i < stage.done && { backgroundColor: col, borderColor: col }]} />
+      <Text style={[s.body, i >= stage.done && { color: C.quiet }]}>{label}</Text>
+    </View>)}
+    <Text style={[s.caption, { marginTop: 10 }]}>{stage.body}</Text>
+  </View>;
+}
+
 export function StickyCta(props: { label: string; onPress: () => void; disabled?: boolean; busy?: boolean; hint?: string | null }) {
   return <View style={s.sticky}>
     {props.hint ? <Text style={[s.caption, { textAlign: "center", marginBottom: 6 }]}>{props.hint}</Text> : null}
@@ -440,6 +467,10 @@ export function WalletV2(props: {
 }
 
 const s = StyleSheet.create({
+  stepLabel: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase" },
+  stepDot: { flex: 1, height: 4, borderRadius: 2, backgroundColor: C.border },
+  stepNode: { width: 12, height: 12, borderRadius: 6, borderWidth: 1, borderColor: C.border },
+  statusTitle: { fontFamily: F.headingBold, fontSize: 22, lineHeight: 28, marginTop: 4 },
   eyebrowCaps: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase" },
   devnetTag: { borderWidth: 1, borderColor: C.amber + "66", backgroundColor: C.amberSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
   devnetTagText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 11 },

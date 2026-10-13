@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
+import { ONBOARDING_STEPS, TEST_TOKEN_NOTE } from "./consumer-flow";
 import { Animated, Easing, Linking, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { C, F, MIN_TOUCH } from "./theme";
@@ -103,21 +104,22 @@ export function Landing(props: { onConnect: () => void; onBrowse: () => void; bu
   const concepts = MARKETS.filter((m) => m.status === "concept").length;
   return <Animated.View style={{ opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }] }}>
     <ScreenTop brand />
-    <Text style={g.hero}>Weather protection{"\n"}<Text style={{ color: C.rain, textShadowColor: "rgba(94,200,255,0.5)", textShadowRadius: 16 }}>that pays itself.</Text></Text>
-    <Text style={g.heroLead}>Pick a covered window. If verified station data shows your peril hit the trigger, your payout settles automatically. No claims forms.</Text>
+    <Text style={g.hero}>Get paid when the{"\n"}<Text style={{ color: C.rain, textShadowColor: "rgba(94,200,255,0.5)", textShadowRadius: 16 }}>weather ruins your plans.</Text></Text>
+    <Text style={g.heroLead}>Pick a city and the dates you care about. If official weather data shows it rained past the limit, money lands in your wallet automatically. No forms, no calls.</Text>
     <GlassCard style={{ marginTop: 18 }}>
-      <View style={g.marketLine}><View style={[g.tagDot, { backgroundColor: C.mint }]} /><Text style={g.marketName}>Des Moines, IA</Text><StatusTag status={props.live ? "live" : "soon"} label={props.live ? "Live" : "Not selling now"} /></View>
-      <View style={g.marketLine}><View style={[g.tagDot, { backgroundColor: C.amber }]} /><Text style={g.marketName}>Toronto Pearson</Text><StatusTag status="soon" /></View>
-      <Text style={g.caption}>+{MARKETS.filter((m) => m.status === "ready").length} ready to open · {concepts} concept markets across {GROUP_ORDER.length} regions</Text>
+      <Text style={g.overline}>How it works</Text>
+      {ONBOARDING_STEPS.map((st) => <View key={st.n} style={g.how}>
+        <View style={g.howN}><Text style={g.howNText}>{st.n}</Text></View><View style={{ flex: 1 }}><Text style={g.body}>{st.title}</Text><Text style={g.caption}>{st.body}</Text></View>
+      </View>)}
+    </GlassCard>
+    <GlassCard>
+      <View style={g.marketLine}><View style={[g.tagDot, { backgroundColor: C.mint }]} /><Text style={g.marketName}>Des Moines, IA</Text><StatusTag status={props.live ? "live" : "soon"} label={props.live ? "Open now" : "Not selling now"} /></View>
+      <Text style={g.caption}>{MARKETS.filter((m) => m.status === "ready").length} more cities opening soon · {concepts} preview cities across {GROUP_ORDER.length} regions</Text>
     </GlassCard>
     <RadarMap scope="region" onScope={() => props.onBrowse()} focusCode="DSM" highlight={new Set()} onSelect={() => props.onBrowse()} />
-    <View style={g.steps}>
-      {[["01", "Pick a city", "Covered market", C.rain], ["02", "Pick a peril", "Rain live · more soon", C.amber], ["03", "Auto payout", "Settles on-chain", C.mint]].map(([n, t, d, col]) => <GlassCard key={n} style={g.step}>
-        <Text style={[g.stepN, { color: col }]}>{n}</Text><Text style={g.stepT}>{t}</Text><Text style={g.caption}>{d}</Text>
-      </GlassCard>)}
-    </View>
-    <View style={{ marginTop: 18 }}><ActionButton label="Connect wallet" icon="credit-card" busy={props.busy} onPress={props.onConnect} /></View>
-    <Pressable accessibilityRole="button" onPress={props.onBrowse} style={g.linkBtn}><Text style={g.link}>Browse markets first →</Text></Pressable>
+    <View accessibilityRole="text" style={g.testNote}><AppIcon name="info" color={C.amber} size={16} /><Text style={g.testNoteText}>{TEST_TOKEN_NOTE}</Text></View>
+    <View style={{ marginTop: 18 }}><ActionButton label="Get started · connect wallet" icon="credit-card" busy={props.busy} onPress={props.onConnect} /></View>
+    <Pressable accessibilityRole="button" onPress={props.onBrowse} style={g.linkBtn}><Text style={g.link}>Look around first →</Text></Pressable>
   </Animated.View>;
 }
 
@@ -195,6 +197,8 @@ export function Receipt(props: { title: string; amountLabel: string | null; fact
 }
 
 const g = StyleSheet.create({
+  testNote: { flexDirection: "row", gap: 8, borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, borderRadius: 14, padding: 12, marginTop: 14 },
+  testNoteText: { flex: 1, color: C.amber, fontFamily: F.body, fontSize: 13, lineHeight: 19 },
   card: { backgroundColor: "rgba(17,22,29,0.35)", borderColor: "rgba(160,205,235,0.16)", borderWidth: 1, borderRadius: 20, padding: 18, marginBottom: 14, overflow: "hidden", boxShadow: "0px 10px 28px rgba(0,0,0,0.45)" },
   cardEdge: { position: "absolute", top: 0, left: 24, right: 24, height: 1 },
   tag: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 14, paddingHorizontal: 11, minHeight: 28, alignSelf: "center" },
