@@ -1,0 +1,69 @@
+# SkyHedge design system (Seeker app)
+
+Tokens live in `mobile/src/theme.ts`; motion primitives in `mobile/src/motion.tsx`.
+Visual reference: `~/Documents/Codex/skyhedge-revamp-refs/opendesign/flows-v2.html` (+ `flows-v2-board.png`).
+
+The palette (graphite canvas, glacier-blue signal, gold for money, mint for verified) and the V1 umbrella logo are unchanged.
+
+## Type scale (`type`, imported as `T`)
+
+| Token | Size / line height | Tracking | Weight | Use |
+|---|---|---|---|---|
+| `hero` | 40 / 46 | −1.2 | Inter Bold | Landing headline |
+| `display` | 32 / 38 | −0.8 | Inter Bold | Screen titles |
+| `title` | 24 / 30 | −0.5 | Inter Bold | Status titles, big labels |
+| `cardTitle` | 20 / 26 | −0.3 | Inter Bold | Card headings |
+| `heading` | 18 / 24 | 0 | Inter SemiBold | Section headings |
+| `body` / `lead` | 15 / 22 | 0 | Inter Regular | Paragraphs, row labels |
+| `bodyStrong` | 15 / 22 | 0 | Inter SemiBold | Item names, row values, chips |
+| `label` | 13 / 18 | 0 | Inter SemiBold | Field labels, links, pills |
+| `caption` | 12 / 18 | 0 | Inter Regular | Supporting text (minimum readable size) |
+| `overline` | 12 / 16 | +0.8, caps | Inter SemiBold | Section eyebrows |
+| `amountXL` | 48 / 56 | −1 | Mono Bold, tabular | Payout / balance hero figures |
+| `amountL` | 40 / 48 | −0.8 | Mono Bold, tabular | Trigger figure |
+| `amountM` | 32 / 40 | −0.5 | Mono Bold, tabular | "You pay / You get" split |
+| `amountS` | 24 / 32 | 0 | Mono Bold, tabular | Counts, position values |
+| `unit` | 13 / 18 | +0.2 | Mono | Units next to figures (SKYT, mm) |
+
+Every amount uses `fontVariant: ["tabular-nums"]` so digits don't shift while they animate or update.
+No readable text is below 12 (enforced by `theme.test.ts`).
+
+## Spacing (`space`, imported as `S`): 4/8pt grid
+
+`xxs 2 · xs 4 · sm 8 · md 12 · lg 16 · xl 24 · xxl 32 · xxxl 40`
+
+- Card padding: `lg + 4` (20). Gap between cards: `lg` (16).
+- Section gap (overline above a group): `xl` (24) top, `sm` (8) bottom.
+- Row height: 48 minimum (`MIN_TOUCH`). Chips: 52 tall, `sm` gap.
+- Inline gaps (icon ↔ text, dot ↔ label): `sm` or `md`.
+
+## Motion (`motion` tokens)
+
+| Token | Value | Where |
+|---|---|---|
+| `fast` | 140 ms | reserved for micro feedback |
+| `base` | 240 ms | screen transition (fade + 10px rise, ease-out cubic) |
+| `slow` | 420 ms | card / step enter (fade + rise) |
+| `stagger` | 60 ms | delay between successive cards / tracker steps |
+| `progress` | 900 ms | step rails and payout tracker fill |
+| `pressScale` | 0.97 | press-down scale |
+| `spring` | damping 18, stiffness 260, mass 0.9 | press springs |
+
+Primitives (`mobile/src/motion.tsx`), all on React Native `Animated` (no new dependencies):
+
+- `SpringPress`: Pressable with spring press-down; when `selected` flips on it pops 0.94 → 1. Used by coverage chips, region chips, market rows, "Look around first".
+- `Enter`: staggered fade + rise on mount. Used by onboarding steps and payout tracker steps.
+- `ProgressRail`: animated fill to a 0–1 value. Used by the 3-step bar and the payout tracker.
+- `ScreenTransition` (`liquid-glass.tsx`): tab change fade + rise, 240 ms ease-out.
+
+### Reduce motion
+
+All primitives, `GlassCard`, `CountUp`, `RainGauge`, the ticker, the landing fade and the receipt check pop read
+`useReducedMotion()` (`AccessibilityInfo.isReduceMotionEnabled` + change listener). When it's on, elements render in their
+final state with no movement.
+
+## Rules
+
+- Copy and amounts are owned by `consumer-flow.ts` / `ticket.ts`; design passes don't change them.
+- Never describe SkyHedge as insurance; use protection, coverage or hedge.
+- Don't add hard-coded font sizes or spacings in screens; extend the tokens instead.

@@ -2,7 +2,8 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { ONBOARDING_STEPS, TEST_TOKEN_NOTE } from "./consumer-flow";
 import { Animated, Easing, Linking, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { C, F, MIN_TOUCH } from "./theme";
+import { C, F, MIN_TOUCH, motion, space as S, type as T } from "./theme";
+import { Enter, SpringPress } from "./motion";
 import { ActionButton, AppIcon, Text } from "./ui";
 import { GlassTargetContext, useReducedMotion } from "./liquid-glass";
 import { BlurView } from "expo-blur";
@@ -23,10 +24,10 @@ export function GlassCard({ children, style, accent, delay }: { children: React.
   const enter = useRef(new Animated.Value(reduced ? 1 : 0)).current;
   useEffect(() => {
     if (reduced) { enter.setValue(1); return; }
-    const d = delay ?? (entryOrder++ % 6) * 70;
-    Animated.timing(enter, { toValue: 1, duration: 520, delay: d, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    const d = delay ?? (entryOrder++ % 6) * motion.stagger;
+    Animated.timing(enter, { toValue: 1, duration: motion.slow, delay: d, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [enter, reduced, delay]);
-  return <Animated.View style={[g.card, accent ? { borderColor: accent + "66", boxShadow: `0px 0px 26px ${accent}22, 0px 10px 28px rgba(0,0,0,0.45)` } : null, style, { opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
+  return <Animated.View style={[g.card, accent ? { borderColor: accent + "66", boxShadow: `0px 0px 26px ${accent}22, 0px 10px 28px rgba(0,0,0,0.45)` } : null, style, { opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [motion.enterOffset, 0] }) }] }]}>
     {nativeBlur ? <BlurView pointerEvents="none" blurTarget={blurTarget!} tint="dark" intensity={55} blurReductionFactor={4} blurMethod="dimezisBlurViewSdk31Plus" style={StyleSheet.absoluteFill} /> : null}
     <LinearGradient pointerEvents="none" colors={nativeBlur ? ["rgba(40,52,68,0.45)", "rgba(20,27,36,0.35)", "rgba(12,17,23,0.50)"] : ["rgba(40,52,68,0.70)", "rgba(20,27,36,0.62)", "rgba(12,17,23,0.70)"]} locations={[0, 0.5, 1]} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={StyleSheet.absoluteFill} />
     <LinearGradient pointerEvents="none" colors={["rgba(255,255,255,0)", accent ? accent + "88" : "rgba(190,225,255,0.35)", "rgba(255,255,255,0)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={g.cardEdge} />
@@ -99,18 +100,22 @@ export function Ticker({ items }: { items: string[] }) {
 
 /* ───────────── Landing ───────────── */
 export function Landing(props: { onConnect: () => void; onBrowse: () => void; busy: boolean; live: boolean }) {
-  const fade = useRef(new Animated.Value(0)).current;
-  useEffect(() => { Animated.timing(fade, { toValue: 1, duration: 600, useNativeDriver: true }).start(); }, [fade]);
+  const reduced = useReducedMotion();
+  const fade = useRef(new Animated.Value(reduced ? 1 : 0)).current;
+  useEffect(() => {
+    if (reduced) { fade.setValue(1); return; }
+    Animated.timing(fade, { toValue: 1, duration: motion.slow + 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [fade, reduced]);
   const concepts = MARKETS.filter((m) => m.status === "concept").length;
-  return <Animated.View style={{ opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }] }}>
+  return <Animated.View style={{ opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [motion.enterOffset * 1.6, 0] }) }] }}>
     <ScreenTop brand />
     <Text style={g.hero}>Get paid when the{"\n"}<Text style={{ color: C.rain, textShadowColor: "rgba(94,200,255,0.5)", textShadowRadius: 16 }}>weather ruins your plans.</Text></Text>
     <Text style={g.heroLead}>Pick a city and the dates you care about. If official weather data shows it rained past the limit, money lands in your wallet automatically. No forms, no calls.</Text>
-    <GlassCard style={{ marginTop: 18 }}>
+    <GlassCard style={{ marginTop: S.xl }}>
       <Text style={g.overline}>How it works</Text>
-      {ONBOARDING_STEPS.map((st) => <View key={st.n} style={g.how}>
-        <View style={g.howN}><Text style={g.howNText}>{st.n}</Text></View><View style={{ flex: 1 }}><Text style={g.body}>{st.title}</Text><Text style={g.caption}>{st.body}</Text></View>
-      </View>)}
+      {ONBOARDING_STEPS.map((st, i) => <Enter key={st.n} index={i + 2} style={g.how}>
+        <View style={g.howN}><Text style={g.howNText}>{st.n}</Text></View><View style={{ flex: 1, gap: S.xxs }}><Text style={g.body}>{st.title}</Text><Text style={g.caption}>{st.body}</Text></View>
+      </Enter>)}
     </GlassCard>
     <GlassCard>
       <View style={g.marketLine}><View style={[g.tagDot, { backgroundColor: C.mint }]} /><Text style={g.marketName}>Des Moines, IA</Text><StatusTag status={props.live ? "live" : "soon"} label={props.live ? "Open now" : "Not selling now"} /></View>
@@ -118,8 +123,8 @@ export function Landing(props: { onConnect: () => void; onBrowse: () => void; bu
     </GlassCard>
     <RadarMap scope="region" onScope={() => props.onBrowse()} focusCode="DSM" highlight={new Set()} onSelect={() => props.onBrowse()} />
     <View accessibilityRole="text" style={g.testNote}><AppIcon name="info" color={C.amber} size={16} /><Text style={g.testNoteText}>{TEST_TOKEN_NOTE}</Text></View>
-    <View style={{ marginTop: 18 }}><ActionButton label="Get started · connect wallet" icon="credit-card" busy={props.busy} onPress={props.onConnect} /></View>
-    <Pressable accessibilityRole="button" onPress={props.onBrowse} style={g.linkBtn}><Text style={g.link}>Look around first →</Text></Pressable>
+    <View style={{ marginTop: S.xl }}><ActionButton label="Get started · connect wallet" icon="credit-card" busy={props.busy} onPress={props.onConnect} /></View>
+    <SpringPress accessibilityRole="button" onPress={props.onBrowse} style={g.linkBtn}><Text style={g.link}>Look around first →</Text></SpringPress>
   </Animated.View>;
 }
 
@@ -181,7 +186,8 @@ export function GlobalGroups({ onPick }: { onPick: (group: CatalogMarket["group"
 /* ───────────── Receipt ───────────── */
 export function Receipt(props: { title: string; amountLabel: string | null; facts: Array<[string, string]>; ticker: string[]; signature: string; onAgain: () => void; onMarkets: () => void }) {
   const pop = useRef(new Animated.Value(0)).current;
-  useEffect(() => { Animated.spring(pop, { toValue: 1, friction: 5, useNativeDriver: true }).start(); }, [pop]);
+  const reducedPop = useReducedMotion();
+  useEffect(() => { if (reducedPop) { pop.setValue(1); return; } Animated.spring(pop, { toValue: 1, friction: 5, useNativeDriver: true }).start(); }, [pop, reducedPop]);
   return <GlassCard accent={C.mint}>
     <Animated.View style={[g.check, { transform: [{ scale: pop }] }]}><AppIcon name="check" color={C.mint} size={26} /></Animated.View>
     <Text style={[g.overline, { textAlign: "center" }]}>{props.title}</Text>
@@ -197,9 +203,9 @@ export function Receipt(props: { title: string; amountLabel: string | null; fact
 }
 
 const g = StyleSheet.create({
-  testNote: { flexDirection: "row", gap: 8, borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, borderRadius: 14, padding: 12, marginTop: 14 },
-  testNoteText: { flex: 1, color: C.amber, fontFamily: F.body, fontSize: 13, lineHeight: 19 },
-  card: { backgroundColor: "rgba(17,22,29,0.35)", borderColor: "rgba(160,205,235,0.16)", borderWidth: 1, borderRadius: 20, padding: 18, marginBottom: 14, overflow: "hidden", boxShadow: "0px 10px 28px rgba(0,0,0,0.45)" },
+  testNote: { flexDirection: "row", gap: 8, borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, borderRadius: 14, padding: S.md, marginTop: S.lg },
+  testNoteText: { ...T.label, fontFamily: F.body, flex: 1, color: C.amber },
+  card: { backgroundColor: "rgba(17,22,29,0.35)", borderColor: "rgba(160,205,235,0.16)", borderWidth: 1, borderRadius: 20, padding: S.lg + 4, marginBottom: S.lg, overflow: "hidden", boxShadow: "0px 10px 28px rgba(0,0,0,0.45)" },
   cardEdge: { position: "absolute", top: 0, left: 24, right: 24, height: 1 },
   tag: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 14, paddingHorizontal: 11, minHeight: 28, alignSelf: "center" },
   tagDot: { width: 7, height: 7, borderRadius: 4 },
@@ -210,45 +216,45 @@ const g = StyleSheet.create({
   gaugeDash: { width: 4, height: 2, backgroundColor: C.payout },
   ticker: { overflow: "hidden", borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.border, paddingVertical: 8, marginVertical: 12 },
   tickerRow: { flexDirection: "row" },
-  tickerText: { color: C.muted, fontFamily: F.mono, fontSize: 12 },
+  tickerText: { ...T.unit, fontSize: 12, color: C.muted },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 22 },
   brandMark: { width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(94,200,255,0.12)", alignItems: "center", justifyContent: "center" },
   brandText: { flex: 1, color: C.ink, fontFamily: F.headingBold, fontSize: 18 },
   devnet: { borderWidth: 1, borderColor: C.amber + "66", backgroundColor: C.amberSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
   devnetText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 11 },
-  hero: { color: C.ink, fontFamily: F.headingBold, fontSize: 40, lineHeight: 46, letterSpacing: -1.4, marginTop: 4 },
-  heroLead: { color: C.muted, fontFamily: F.body, fontSize: 15, lineHeight: 22, marginTop: 10 },
+  hero: { ...T.hero, color: C.ink, marginTop: S.xs },
+  heroLead: { ...T.lead, color: C.muted, marginTop: S.md },
   marketLine: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 40 },
-  marketName: { flex: 1, color: C.ink, fontFamily: F.bodySemi, fontSize: 15 },
+  marketName: { ...T.bodyStrong, flex: 1, color: C.ink },
   steps: { flexDirection: "row", gap: 8 },
   step: { flex: 1, padding: 12 },
   stepN: { color: C.rain, fontFamily: F.mono, fontSize: 13, fontWeight: "700" },
   stepT: { color: C.ink, fontFamily: F.bodyBold, fontSize: 15, marginTop: 4 },
   linkBtn: { minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center" },
-  link: { color: C.rain, fontFamily: F.bodySemi, fontSize: 14 },
-  caption: { color: C.quiet, fontFamily: F.body, fontSize: 12, lineHeight: 18 },
-  body: { color: C.ink, fontFamily: F.bodySemi, fontSize: 15, lineHeight: 21 },
-  overline: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 },
-  big: { fontFamily: F.headingBold, fontSize: 24, lineHeight: 30, letterSpacing: -0.4 },
-  hr: { height: 1, backgroundColor: C.border, marginVertical: 12 },
+  link: { ...T.label, fontSize: 14, lineHeight: 20, color: C.rain },
+  caption: { ...T.caption, color: C.quiet },
+  body: { ...T.bodyStrong, color: C.ink },
+  overline: { ...T.overline, color: C.quiet, marginBottom: S.sm },
+  big: { ...T.title },
+  hr: { height: 1, backgroundColor: C.border, marginVertical: S.md },
   back: { minHeight: MIN_TOUCH, flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 2 },
-  detailHead: { flexDirection: "row", gap: 12, alignItems: "center", marginBottom: 14 },
+  detailHead: { flexDirection: "row", gap: S.md, alignItems: "center", marginBottom: S.lg },
   shield: { width: 44, height: 44, borderRadius: 14, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  detailTitle: { color: C.ink, fontFamily: F.headingBold, fontSize: 30, lineHeight: 36, letterSpacing: -0.8 },
+  detailTitle: { ...T.display, fontSize: 30, lineHeight: 36, color: C.ink },
   rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  how: { flexDirection: "row", gap: 12, alignItems: "flex-start", paddingVertical: 8 },
-  howN: { width: 26, height: 26, borderRadius: 8, backgroundColor: C.rainSoft, alignItems: "center", justifyContent: "center" },
-  howNText: { color: C.rain, fontFamily: F.mono, fontSize: 12 },
+  how: { flexDirection: "row", gap: S.md, alignItems: "flex-start", paddingVertical: S.sm },
+  howN: { width: 28, height: 28, borderRadius: 8, backgroundColor: C.rainSoft, alignItems: "center", justifyContent: "center" },
+  howNText: { color: C.rain, fontFamily: F.mono, fontSize: 13, fontWeight: "700", fontVariant: TAB },
   notify: { minHeight: 58, borderRadius: 16, backgroundColor: C.amber, boxShadow: "0px 6px 24px rgba(245,184,65,0.45)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 4 },
   notifyOn: { backgroundColor: C.amberSoft, borderWidth: 1, borderColor: C.amber },
   notifyText: { color: "#1A1205", fontFamily: F.bodyBold, fontSize: 16 },
   secondary: { minHeight: 54, borderRadius: 16, borderWidth: 1, borderColor: "rgba(160,200,230,0.18)", backgroundColor: "rgba(30,40,52,0.6)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10 },
-  secondaryText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 14 },
+  secondaryText: { ...T.label, fontSize: 14, lineHeight: 20, color: C.ink },
   groupRow: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: 12 },
   groupBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
-  groupN: { color: C.rain, fontFamily: F.mono, fontWeight: "700", fontSize: 24, fontVariant: TAB, textShadowColor: "rgba(94,200,255,0.5)", textShadowRadius: 10 },
+  groupN: { ...T.amountS, color: C.rain, fontVariant: TAB, textShadowColor: "rgba(94,200,255,0.5)", textShadowRadius: 10 },
   check: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.mintSoft, borderWidth: 1, borderColor: C.mint, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 10 },
-  receiptBig: { color: C.mint, fontFamily: F.mono, fontWeight: "700", fontSize: 50, lineHeight: 60, textShadowColor: "rgba(52,211,153,0.55)", textShadowRadius: 18, textAlign: "center", fontVariant: TAB, letterSpacing: -1 },
-  fact: { flexDirection: "row", justifyContent: "space-between", minHeight: 34, alignItems: "center", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
-  factV: { color: C.ink, fontFamily: F.mono, fontSize: 13 },
+  receiptBig: { ...T.amountXL, fontSize: 50, lineHeight: 60, color: C.mint, textShadowColor: "rgba(52,211,153,0.55)", textShadowRadius: 18, textAlign: "center", fontVariant: TAB, letterSpacing: -1 },
+  fact: { flexDirection: "row", justifyContent: "space-between", minHeight: 40, alignItems: "center", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
+  factV: { ...T.unit, color: C.ink, fontVariant: TAB },
 });

@@ -6,7 +6,8 @@ import { GROUP_ORDER, highlightParts, MARKETS, searchMarkets, type CatalogMarket
 import { useReducedMotion } from "./liquid-glass";
 import { CoverageHero, FactRows, PerilSelector, ReceiptView, ScreenTop, StatPair } from "./journey";
 import type { CityIndex, ClaimReadiness, DevnetStatus, FinalizedWalletState, Portfolio, ProtectionQuote } from "./api";
-import { C, F, MIN_TOUCH } from "./theme";
+import { C, F, MIN_TOUCH, space as S, type as T } from "./theme";
+import { Enter, ProgressRail, SpringPress } from "./motion";
 import { ActionButton, AppIcon, Disclosure, Reveal, Text } from "./ui";
 import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } from "./friendly-errors";
 import { dealSentence, payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
@@ -94,22 +95,22 @@ export function MarketsScreen(props: {
       {query ? <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setQuery("")} hitSlop={10}><AppIcon name="x" color={C.muted} size={18} /></Pressable> : null}
     </View>
 
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10, flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingRight: 8 }} accessibilityRole="tablist">
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: S.md, flexGrow: 0 }} contentContainerStyle={{ gap: S.sm, paddingRight: S.sm }} accessibilityRole="tablist">
       {([null, ...GROUP_ORDER] as Array<MarketGroup | null>).map((grp) => {
         const on = group === grp;
         const n = grp ? MARKETS.filter((m) => m.group === grp).length : MARKETS.length;
-        return <Pressable key={grp ?? "all"} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => pickGroup(grp)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: on ? C.rain : "rgba(150,190,220,0.22)", backgroundColor: on ? C.rain + "22" : "transparent" }}>
-          <Text style={[s.caption, { color: on ? C.rain : C.muted, fontFamily: on ? F.bodyBold : undefined }]}>{grp ?? "All"} {n}</Text>
-        </Pressable>;
+        return <SpringPress key={grp ?? "all"} selected={on} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => pickGroup(grp)} style={[s.regionChip, on && s.regionChipOn]}>
+          <Text style={[s.regionChipText, on && { color: C.rain, fontFamily: F.bodySemi }]}>{grp ?? "All"} <Text style={[s.regionChipN, on && { color: C.rain }]}>{n}</Text></Text>
+        </SpringPress>;
       })}
     </ScrollView>
 
-    <GlassCard style={{ paddingVertical: 6, paddingHorizontal: 8 }}>
+    <GlassCard style={{ paddingVertical: S.xs, paddingHorizontal: S.sm }}>
       {visibleRows.length ? visibleRows.map((m) => {
         const [a, b, c] = highlightParts(m.name, query);
         const col = m.status === "live" ? C.mint : m.status === "soon" ? C.amber : C.rain;
         const on = highlight.has(m.code) && m.code === focusCode;
-        return <Pressable key={m.code} accessibilityRole="button" accessibilityLabel={`${m.name}, ${m.status === "live" ? state : statusLabel(m.status)}`} onPress={() => open(m)} style={[s.resultRow, on && { backgroundColor: col + "14", borderColor: col + "55" }]}>
+        return <SpringPress key={m.code} accessibilityRole="button" accessibilityLabel={`${m.name}, ${m.status === "live" ? state : statusLabel(m.status)}`} onPress={() => open(m)} style={[s.resultRow, on && { backgroundColor: col + "14", borderColor: col + "55" }]}>
           <View style={[s.dot, m.status === "concept" ? { borderWidth: 1.5, borderColor: col } : { backgroundColor: col }]} />
           <View style={{ flex: 1 }}>
             <Text style={s.resultName}>{a}<Text style={{ fontFamily: F.bodyBold, color: col }}>{b}</Text>{c}{m.code === "DSM" ? ", IA" : ""}</Text>
@@ -117,7 +118,7 @@ export function MarketsScreen(props: {
           </View>
           <StatusTag status={m.status} label={m.status === "live" ? state : undefined} />
           <AppIcon name="chevron-right" color={C.quiet} size={16} />
-        </Pressable>;
+        </SpringPress>;
       }) : <Text style={[s.caption, { padding: 10 }]}>No covered zone matches “{query}”.</Text>}
       {moreConcepts ? <Pressable accessibilityRole="button" onPress={() => { if (filtering) { setQuery(""); return; } setScope(scope === "region" ? "global" : "region"); }} style={s.moreRow}>
         <Text style={s.caption}>○  +{moreConcepts} {filtering ? "more matches" : `concept markets ${scope === "region" ? "in North America" : "worldwide"}`}</Text>
@@ -134,11 +135,11 @@ export function MarketsScreen(props: {
         <View style={{ flex: 1 }}>
           <Text style={s.cardTitle}>Des Moines, IA</Text>
           <Text style={s.cardSub}>NOAA · {station}</Text>
-          <Text style={[s.caption, { marginTop: 4 }]}><Text style={{ color: C.mint }}>● Rain live</Text>  ·  Wind, Snow, Heat soon</Text>
+          <Text style={[s.caption, { marginTop: S.xs }]}><Text style={{ color: C.mint }}>● Rain live</Text>  ·  Wind, Snow, Heat soon</Text>
         </View>
         <Pill label={state} tone={live ? "live" : "warn"} />
       </View>
-      <View style={[s.between, { marginTop: 16, alignItems: "flex-end" }]}>
+      <View style={[s.between, { marginTop: S.lg, alignItems: "flex-end" }]}>
         <View>
           <Text style={s.smallLabel}>{thresholdMm != null ? "Trigger" : "Rain this window"}</Text>
           {thresholdMm != null ? <Text style={s.triggerBig}>{symbol} {trimMm(thresholdMm)} <Text style={s.unitMono}>mm</Text></Text>
@@ -164,10 +165,10 @@ export function MarketsScreen(props: {
           </View>)}
         </View>
         <View style={s.between}><Text style={s.caption}>{history.length}-week rainfall · NOAA · mm</Text>{thresholdMm != null ? <Text style={[s.caption, { color: C.payout }]}>– – trigger</Text> : null}</View>
-      </View> : <Text style={[s.caption, { marginTop: 12 }]}>Weekly history isn’t available yet — nothing is estimated.</Text>}
+      </View> : <Text style={[s.caption, { marginTop: S.md }]}>Weekly history isn’t available yet — nothing is estimated.</Text>}
 
-      {countdown ? <View style={[s.between, { marginTop: 12 }]}><Text style={s.caption}>Sales window</Text><Pill label={countdown} tone="neutral" /></View> : null}
-      <View style={{ marginTop: 14 }}><ActionButton label={live ? "View coverage" : "See this window"} icon="arrow-right" onPress={props.onProtect} /></View>
+      {countdown ? <View style={[s.between, { marginTop: S.md }]}><Text style={s.caption}>Sales window</Text><Pill label={countdown} tone="neutral" /></View> : null}
+      <View style={{ marginTop: S.lg }}><ActionButton label={live ? "View coverage" : "See this window"} icon="arrow-right" onPress={props.onProtect} /></View>
     </GlassCard>
 
     <Pressable accessibilityRole="button" accessibilityLabel="Toronto Pearson, Ontario. Environment Canada rain data. Opens soon." onPress={() => { const t = MARKETS.find((m) => m.code === "YYZ"); if (t) props.onOpenMarket?.(t); }}>
@@ -176,7 +177,7 @@ export function MarketsScreen(props: {
           <View style={{ flex: 1 }}><Text style={s.cardTitleSm}>Toronto Pearson, ON</Text><Text style={s.cardSub}>Environment Canada · YYZ station</Text></View>
           <StatusTag status="soon" />
         </View>
-        <View style={[s.between, { marginTop: 12 }]}><Text style={s.caption}>Payout: automatic when triggered</Text><Text style={s.link}>View market →</Text></View>
+        <View style={[s.between, { marginTop: S.md }]}><Text style={s.caption}>Payout: automatic when triggered</Text><Text style={s.link}>View market →</Text></View>
       </GlassCard>
     </Pressable>
     {props.guide}
@@ -257,7 +258,7 @@ export function ProtectTicket(props: {
     <PerilSelector value="rain" available={["rain"]} />
     {stage ? <PayoutStatusCard stage={stage} /> : <StepBar step={props.walletConnected && q ? 3 : 2} />}
 
-    {!live ? <View style={[s.notice, { marginTop: 8 }]} accessibilityRole="alert">
+    {!live ? <View style={[s.notice, { marginTop: S.sm }]} accessibilityRole="alert">
       <Text style={s.noticeTitle}>This window isn’t selling right now</Text>
       <Text style={s.noticeBody}>Pricing appears as soon as the next Des Moines window opens. Pull down or tap refresh to check again.</Text>
       <Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh status</Text></Pressable>
@@ -276,9 +277,9 @@ export function ProtectTicket(props: {
     <View style={s.chipRow} accessibilityRole="radiogroup" accessibilityLabel="Coverage amount in SKYT">
       {options.map((o) => {
         const on = o.id === props.coverageId;
-        return <Pressable key={o.id} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: !o.enabled }} accessibilityLabel={o.id === "max" ? `Max${o.amountBase ? `, ${formatSkytFixed(o.amountBase, 0)} SKYT` : ", unavailable"}` : `${o.label} SKYT`} disabled={!o.enabled} onPress={() => props.onCoverage(o)} style={[s.chip, { paddingHorizontal: 6 }, o.id === "max" && { flex: 1.45 }, on && s.chipOn, !o.enabled && { opacity: 0.4 }]}>
+        return <SpringPress key={o.id} selected={on} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: !o.enabled }} accessibilityLabel={o.id === "max" ? `Max${o.amountBase ? `, ${formatSkytFixed(o.amountBase, 0)} SKYT` : ", unavailable"}` : `${o.label} SKYT`} disabled={!o.enabled} onPress={() => props.onCoverage(o)} outerStyle={[{ flex: 1 }, o.id === "max" && { flex: 1.45 }]} style={[s.chip, { paddingHorizontal: S.sm - 2 }, on && s.chipOn, !o.enabled && { opacity: 0.4 }]}>
           <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.chipText, on && { color: C.rain }]}>{o.id === "max" ? (o.amountBase ? `Max ${formatSkytFixed(o.amountBase, 0)} SKYT` : "Max") : `${o.label} SKYT`}</Text>
-        </Pressable>;
+        </SpringPress>;
       })}
     </View>
     <Text style={s.overline}>Rain limit</Text>
@@ -299,10 +300,10 @@ export function ProtectTicket(props: {
           <Text style={s.caption}>SKYT · automatic</Text>
         </View>
       </View>
-      <View style={{ padding: 16 }}>
+      <View style={{ padding: S.lg }}>
         {deal ? <Text style={[s.body, { fontFamily: F.bodySemi }]} accessibilityLiveRegion="polite">{deal}</Text> : <Text style={s.body}>{sentence ?? "Terms will appear once the market is finalized."}</Text>}
-        {deal ? <Text style={[s.caption, { marginTop: 6 }]}>If it stays drier, there's no payout. If the official data never arrives, you get what you paid back.</Text> : null}
-        <View style={{ marginTop: 6 }}>
+        {deal ? <Text style={[s.caption, { marginTop: S.sm }]}>If it stays drier, there's no payout. If the official data never arrives, you get what you paid back.</Text> : null}
+        <View style={{ marginTop: S.sm }}>
           <Row label="Chance it rains that much" value={q ? `${(q.probabilityBps / 100).toFixed(1)}%` : "—"} />
           <Row label="Payout vs. price" value={q ? returnMultiple(q.premium, q.protectedAmount) ?? "—" : "—"} gold />
           <Row label="Premium + 1% fee" value={q ? premiumFeeLine(q.premium, q.protocolFee) ?? `${formatSkytFixed(q.premium)}` : "—"} />
@@ -312,7 +313,7 @@ export function ProtectTicket(props: {
       </View>
     </View>
 
-    <View style={[s.card, s.between, { paddingVertical: 12 }]} accessibilityLiveRegion="polite">
+    <View style={[s.card, s.between, { paddingVertical: S.md }]} accessibilityLiveRegion="polite">
       <Text style={s.rowLabel}>Wallet balance</Text>
       {!props.walletConnected ? <Text style={s.rowLabel}>Not connected</Text>
         : props.walletSkytBase == null ? <Text style={s.rowLabel}>Checking…</Text>
@@ -321,11 +322,11 @@ export function ProtectTicket(props: {
           {balance === "enough" ? <AppIcon name="check" color={C.mint} size={16} /> : balance === "short" ? <AppIcon name="alert-circle" color={C.amber} size={16} /> : null}
         </View>}
     </View>
-    {balance === "short" && q ? <Text style={[s.caption, { color: C.amber, marginTop: -6, marginBottom: 8 }]} accessibilityRole="alert">You need {formatSkytFixed(q.premium, 2)} SKYT — pick less coverage or top up your wallet.</Text> : null}
+    {balance === "short" && q ? <Text style={[s.caption, { color: C.amber, marginTop: -S.xs, marginBottom: S.sm }]} accessibilityRole="alert">You need {formatSkytFixed(q.premium, 2)} SKYT — pick less coverage or top up your wallet.</Text> : null}
 
     {blocking && live ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>Not ready to price yet</Text><Text style={s.noticeBody}>{friendlyError(blocking)}</Text><Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh status</Text></Pressable></View> : null}
     {props.quoteError ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>{quoteErrorTitle(props.quoteError)}</Text><Text style={s.noticeBody}>{friendlyError(props.quoteError)}</Text><Pressable accessibilityRole="button" onPress={props.onRetryQuote} style={s.inlineBtn}><Text style={s.link}>Get a new price</Text></Pressable></View> : null}
-    {props.transactionMessage ? <Text accessibilityLiveRegion="polite" style={[s.body, { color: C.rain, marginBottom: 10 }]}>{props.transactionMessage}</Text> : null}
+    {props.transactionMessage ? <Text accessibilityLiveRegion="polite" style={[s.body, { color: C.rain, marginBottom: S.md }]}>{props.transactionMessage}</Text> : null}
     {props.transactionError ? <View style={[s.notice, { borderColor: C.coral }]} accessibilityRole="alert"><Text style={s.noticeTitle}>{transactionErrorTitle(props.transactionError, props.walletName)}</Text><Text style={s.noticeBody}>{friendlyError(props.transactionError)} Nothing was charged unless Explorer shows a transaction.</Text></View> : null}
     {props.transactionSignature ? <Reveal><ReceiptView
       title={props.claimReadiness?.state === "claimed" ? "Payout settled" : "Protection confirmed"}
@@ -345,8 +346,8 @@ export function ProtectTicket(props: {
       onClose={() => props.onProtectAgain?.()}
       onAgain={() => props.onProtectAgain?.()}
       onMarkets={() => props.onBackToMarkets?.()}
-    /><Text style={[s.caption, { marginTop: 8, marginBottom: 8, textAlign: "center" }]}>One protection per wallet per window.</Text></Reveal> : null}
-    {isExistingPosition && !props.transactionSignature ? <Text style={[s.caption, { marginBottom: 8 }]}>One protection per wallet per window — this wallet is already covered.</Text> : null}
+    /><Text style={[s.caption, { marginTop: S.sm, marginBottom: S.sm, textAlign: "center" }]}>One protection per wallet per window.</Text></Reveal> : null}
+    {isExistingPosition && !props.transactionSignature ? <Text style={[s.caption, { marginBottom: S.sm }]}>One protection per wallet per window — this wallet is already covered.</Text> : null}
 
     {props.claimReadiness?.state === "claimable" && props.claimReadiness.action === "claim_payout" ? <GlassCard accent={C.mint}>
       <Text style={s.overlineIn}>Trigger hit · payout ready</Text>
@@ -367,8 +368,8 @@ export function ProtectTicket(props: {
         <View style={{ flex: 1 }}><Text style={s.cardTitleSm}>How it’s verified</Text><Text style={s.caption}>{readyCount} of {checks.length} on-chain checks passed</Text></View>
         <AppIcon name={verifyOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={20} />
       </Pressable>
-      {verifyOpen ? <View style={{ marginTop: 6 }}>
-        {checks.map((c) => <View key={c.label} style={s.checkRow}><AppIcon name={c.ready ? "check" : "clock"} color={c.ready ? C.mint : C.amber} size={16} /><Text style={[s.body, { flex: 1, marginLeft: 10 }]}>{c.label}</Text></View>)}
+      {verifyOpen ? <View style={{ marginTop: S.sm }}>
+        {checks.map((c) => <View key={c.label} style={s.checkRow}><AppIcon name={c.ready ? "check" : "clock"} color={c.ready ? C.mint : C.amber} size={16} /><Text style={[s.body, { flex: 1, marginLeft: S.md }]}>{c.label}</Text></View>)}
         <Row label="Settlement source" value={`NOAA · ${station}`} />
         {market?.salesCloseAt ? <Row label="Sales close" value={`${new Date(market.salesCloseAt * 1_000).toISOString().replace("T", " ").slice(0, 16)} UTC`} /> : null}
         {q ? <Row label="Quote" value={`${q.inputsHash.slice(0, 10)} · ${q.modelVersion}`} /> : null}
@@ -381,9 +382,9 @@ export function ProtectTicket(props: {
 
 /** Sticky bottom CTA used by Protect. */
 function StepBar({ step }: { step: FlowStep }) {
-  return <View style={{ marginTop: 4, marginBottom: 8 }} accessible accessibilityLabel={stepLabel(step)}>
+  return <View style={{ marginTop: S.xs, marginBottom: S.sm }} accessible accessibilityLabel={stepLabel(step)}>
     <Text style={s.stepLabel}>{stepLabel(step)}</Text>
-    <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>{[1, 2, 3].map((n) => <View key={n} style={[s.stepDot, n <= step && { backgroundColor: C.rain }]} />)}</View>
+    <View style={{ flexDirection: "row", gap: S.sm - 2, marginTop: S.sm }}>{[1, 2, 3].map((n) => <View key={n} style={{ flex: 1 }}><ProgressRail progress={n <= step ? 1 : 0} color={C.rain} track={C.border} /></View>)}</View>
   </View>;
 }
 
@@ -393,17 +394,18 @@ function PayoutStatusCard({ stage }: { stage: NonNullable<ReturnType<typeof payo
   return <View style={[s.card, { borderColor: col + "66" }]} accessibilityLiveRegion="polite" accessible accessibilityLabel={`Your protection: ${stage.title}. ${stage.body}`}>
     <Text style={s.stepLabel}>Your protection</Text>
     <Text style={[s.statusTitle, { color: col }]}>{stage.title}</Text>
-    {steps.map((label, i) => <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8 }}>
+    <View style={{ marginTop: S.md, marginBottom: S.xs }}><ProgressRail progress={steps.length ? stage.done / steps.length : 0} color={col} track={C.border} /></View>
+    {steps.map((label, i) => <Enter key={label} index={i} style={{ flexDirection: "row", alignItems: "center", gap: S.md, marginTop: S.sm }}>
       <View style={[s.stepNode, i < stage.done && { backgroundColor: col, borderColor: col }]} />
       <Text style={[s.body, i >= stage.done && { color: C.quiet }]}>{label}</Text>
-    </View>)}
-    <Text style={[s.caption, { marginTop: 10 }]}>{stage.body}</Text>
+    </Enter>)}
+    <Text style={[s.caption, { marginTop: S.md }]}>{stage.body}</Text>
   </View>;
 }
 
 export function StickyCta(props: { label: string; onPress: () => void; disabled?: boolean; busy?: boolean; hint?: string | null }) {
   return <View style={s.sticky}>
-    {props.hint ? <Text style={[s.caption, { textAlign: "center", marginBottom: 6 }]}>{props.hint}</Text> : null}
+    {props.hint ? <Text style={[s.caption, { textAlign: "center", marginBottom: S.sm }]}>{props.hint}</Text> : null}
     <ActionButton label={props.label} icon="arrow-right" disabled={props.disabled} busy={props.busy} onPress={props.onPress} />
   </View>;
 }
@@ -432,85 +434,90 @@ export function WalletV2(props: {
     {props.walletError ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>Wallet didn’t connect — try again</Text><Text style={s.noticeBody}>{friendlyError(props.walletError)}</Text></View> : null}
     {!props.wallet ? <View style={s.card}>
       <Text style={s.cardTitle}>Connect a Solana wallet</Text>
-      <Text style={[s.body, { color: C.muted, marginTop: 6 }]}>Your wallet asks before sharing your address. Keys never leave it, and you approve every transaction there.</Text>
-      <View style={{ marginTop: 16 }}><ActionButton label="Connect wallet" icon="credit-card" busy={props.loading} onPress={props.onConnect} /></View>
+      <Text style={[s.body, { color: C.muted, marginTop: S.sm }]}>Your wallet asks before sharing your address. Keys never leave it, and you approve every transaction there.</Text>
+      <View style={{ marginTop: S.lg }}><ActionButton label="Connect wallet" icon="credit-card" busy={props.loading} onPress={props.onConnect} /></View>
     </View> : <>
       <View style={s.card}>
         <View style={s.between}>
           <View style={s.baseline}>
             <View style={s.avatar}><AppIcon name="credit-card" color={C.rain} size={18} /></View>
-            <View style={{ marginLeft: 12 }}><Text style={s.cardTitleSm}>{props.walletName}</Text><Text style={s.caption} accessibilityLabel={`Address ${props.wallet}`}>{shortAddress(props.wallet)}</Text></View>
+            <View style={{ marginLeft: S.md }}><Text style={s.cardTitleSm}>{props.walletName}</Text><Text style={s.caption} accessibilityLabel={`Address ${props.wallet}`}>{shortAddress(props.wallet)}</Text></View>
           </View>
           <Pill label="Connected" tone="live" />
         </View>
-        <Text style={[s.smallLabel, { marginTop: 18 }]}>Available</Text>
+        <Text style={[s.smallLabel, { marginTop: S.lg }]}>Available</Text>
         <View style={s.baseline}>
           <Text style={s.hugeFigure}>{skytBase ? formatSkytFixed(skytBase, 2) : "—"}</Text>
           <Text style={s.unit}>SKYT</Text>
         </View>
         <Text style={s.caption}>{props.balances ? `${props.balances.sol.toFixed(4)} SOL for fees` : "Reading balances from Solana…"}</Text>
-        <View style={{ marginTop: 14 }}><ExplorerButton url={`https://explorer.solana.com/address/${encodeURIComponent(props.wallet)}?cluster=devnet`} label="Open in Explorer" /></View>
+        <View style={{ marginTop: S.md }}><ExplorerButton url={`https://explorer.solana.com/address/${encodeURIComponent(props.wallet)}?cluster=devnet`} label="Open in Explorer" /></View>
       </View>
 
       <Text style={s.overline}>Positions</Text>
       <View style={s.card}>
         {props.portfolio?.indexed && props.portfolio.protections.length ? props.portfolio.protections.map((p) => <View key={p.address} style={[s.between, s.positionRow]}>
           <View style={{ flex: 1 }}><Text style={s.cardTitleSm}>{p.market === props.marketAddress ? "Des Moines · Rain" : `Market ${shortAddress(p.market)}`}</Text><Text style={s.caption}>Paid {formatSkytFixed(p.premiumPaid, 2)} SKYT</Text></View>
-          <View style={{ alignItems: "flex-end" }}><Text style={[s.rowValue, { color: C.payout, fontSize: 18 }]}>{formatSkytFixed(p.protectedAmount, 0)}</Text><Text style={s.caption}>potential</Text></View>
+          <View style={{ alignItems: "flex-end" }}><Text style={[s.rowValue, { ...T.amountS, fontSize: 18, lineHeight: 24, color: C.payout }]}>{formatSkytFixed(p.protectedAmount, 0)}</Text><Text style={s.caption}>potential</Text></View>
         </View>) : <Text style={s.body}>{props.portfolio?.indexed ? "No positions yet. Protect a window from Markets." : friendlyError(props.portfolioError, props.portfolio?.message ?? "Positions will appear once Solana confirms them.")}</Text>}
       </View>
 
-      <View style={{ marginTop: 16 }}><ActionButton variant="secondary" label="Disconnect" icon="log-out" onPress={props.onDisconnect} /></View>
+      <View style={{ marginTop: S.lg }}><ActionButton variant="secondary" label="Disconnect" icon="log-out" onPress={props.onDisconnect} /></View>
     </>}
     <Disclosure>Balances are read directly from Solana Devnet. Missing values are shown as —, never as zero.</Disclosure>
   </>;
 }
 
+/* Styles resolve to theme tokens: T (type scale), S (4/8pt spacing). Colours unchanged. */
 const s = StyleSheet.create({
-  stepLabel: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase" },
+  stepLabel: { ...T.overline, color: C.quiet, fontSize: 12, letterSpacing: 1.2 },
   stepDot: { flex: 1, height: 4, borderRadius: 2, backgroundColor: C.border },
   stepNode: { width: 12, height: 12, borderRadius: 6, borderWidth: 1, borderColor: C.border },
-  statusTitle: { fontFamily: F.headingBold, fontSize: 22, lineHeight: 28, marginTop: 4 },
-  eyebrowCaps: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase" },
-  devnetTag: { borderWidth: 1, borderColor: C.amber + "66", backgroundColor: C.amberSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
-  devnetTagText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 11 },
-  search: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, borderRadius: 20, backgroundColor: "rgba(28,37,48,0.62)", borderWidth: 1, borderColor: "rgba(160,205,235,0.18)", marginTop: 16, marginBottom: 12, boxShadow: "0px 8px 24px rgba(0,0,0,0.4)" },
-  searchInput: { flex: 1, minHeight: 48, color: C.ink, fontFamily: F.body, fontSize: 16 },
-  resultRow: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 10, borderRadius: 12, borderWidth: 1, borderColor: "transparent" },
-  resultName: { color: C.ink, fontFamily: F.bodyMedium, fontSize: 15 },
-  moreRow: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
-  triggerBig: { color: C.payout, fontFamily: F.mono, fontSize: 40, lineHeight: 48, fontWeight: "700", fontVariant: TAB, textShadowColor: "rgba(245,184,65,0.45)", textShadowRadius: 14 },
-  fromFigure: { color: C.ink, fontFamily: F.mono, fontSize: 30, lineHeight: 38, fontWeight: "700", fontVariant: TAB },
-  unitMono: { color: C.muted, fontFamily: F.mono, fontSize: 13, fontWeight: "400" },
+  statusTitle: { ...T.title, fontSize: 22, lineHeight: 28, marginTop: S.xs },
+  eyebrowCaps: { ...T.overline, color: C.quiet, letterSpacing: 1.2 },
+  devnetTag: { borderWidth: 1, borderColor: C.amber + "66", backgroundColor: C.amberSoft, borderRadius: 12, paddingHorizontal: S.md, paddingVertical: S.xs },
+  devnetTagText: { ...T.label, color: C.amber, fontSize: 12, lineHeight: 16 },
+  search: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: S.md, paddingHorizontal: S.lg, borderRadius: 20, backgroundColor: "rgba(28,37,48,0.62)", borderWidth: 1, borderColor: "rgba(160,205,235,0.18)", marginTop: S.lg, marginBottom: S.md, boxShadow: "0px 8px 24px rgba(0,0,0,0.4)" },
+  searchInput: { ...T.body, flex: 1, minHeight: 48, color: C.ink, fontSize: 16 },
+  regionChip: { minHeight: 36, justifyContent: "center", paddingHorizontal: S.md, borderRadius: 999, borderWidth: 1, borderColor: "rgba(150,190,220,0.22)", backgroundColor: "transparent" },
+  regionChipOn: { borderColor: C.rain, backgroundColor: C.rain + "22" },
+  regionChipText: { ...T.label, color: C.muted },
+  regionChipN: { fontFamily: F.mono, fontSize: 12, color: C.quiet, fontVariant: TAB },
+  resultRow: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: S.md, paddingHorizontal: S.md, borderRadius: 12, borderWidth: 1, borderColor: "transparent" },
+  resultName: { ...T.bodyStrong, color: C.ink, fontFamily: F.bodyMedium },
+  moreRow: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: S.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
+  triggerBig: { ...T.amountL, color: C.payout, textShadowColor: "rgba(245,184,65,0.45)", textShadowRadius: 14 },
+  fromFigure: { ...T.amountM, fontSize: 30, lineHeight: 38, color: C.ink },
+  unitMono: { ...T.unit, color: C.muted, fontWeight: "400", letterSpacing: 0 },
   barHit: { backgroundColor: C.payout, opacity: 1 },
-  payoutBig: { color: C.mint, fontFamily: F.mono, fontWeight: "700", fontSize: 48, lineHeight: 58, textShadowColor: "rgba(52,211,153,0.55)", textShadowRadius: 18, fontVariant: TAB, marginBottom: 6 },
-  h1: { color: C.ink, fontFamily: F.headingBold, fontSize: 32, lineHeight: 38, letterSpacing: -1 },
-  lead: { color: C.muted, fontFamily: F.body, fontSize: 14, lineHeight: 20, marginTop: 4, marginBottom: 14 },
-  eyebrow: { color: C.muted, fontFamily: F.bodyMedium, fontSize: 13, marginBottom: 2 },
-  overline: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 12, letterSpacing: 0.8, textTransform: "uppercase", marginTop: 18, marginBottom: 8 },
-  overlineIn: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 12, letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 6 },
-  card: { backgroundColor: "rgba(24,32,42,0.6)", borderColor: "rgba(160,205,235,0.16)", borderWidth: 1, borderRadius: 20, padding: 18, marginBottom: 14 },
-  cardTitle: { color: C.ink, fontFamily: F.headingBold, fontSize: 19 },
-  cardTitleSm: { color: C.ink, fontFamily: F.bodySemi, fontSize: 16 },
-  cardSub: { color: C.muted, fontFamily: F.body, fontSize: 13, marginTop: 2 },
-  between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  payoutBig: { ...T.amountXL, lineHeight: 58, color: C.mint, textShadowColor: "rgba(52,211,153,0.55)", textShadowRadius: 18, marginBottom: S.sm },
+  h1: { ...T.display, color: C.ink, letterSpacing: -1 },
+  lead: { ...T.lead, color: C.muted, marginTop: S.xs, marginBottom: S.lg },
+  eyebrow: { ...T.label, color: C.muted, fontFamily: F.bodyMedium, marginBottom: S.xxs },
+  overline: { ...T.overline, color: C.quiet, marginTop: S.xl, marginBottom: S.sm },
+  overlineIn: { ...T.overline, color: C.quiet, marginBottom: S.sm },
+  card: { backgroundColor: "rgba(24,32,42,0.6)", borderColor: "rgba(160,205,235,0.16)", borderWidth: 1, borderRadius: 20, padding: S.lg + 4, marginBottom: S.lg },
+  cardTitle: { ...T.cardTitle, color: C.ink },
+  cardTitleSm: { ...T.bodyStrong, color: C.ink, fontSize: 16 },
+  cardSub: { ...T.label, color: C.muted, fontFamily: F.body, marginTop: S.xxs },
+  between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: S.md },
   baseline: { flexDirection: "row", alignItems: "center" },
-  smallLabel: { color: C.muted, fontFamily: F.bodyMedium, fontSize: 13 },
-  bigFigure: { color: C.ink, fontFamily: F.mono, fontWeight: "700", fontSize: 44, lineHeight: 52, letterSpacing: -1, fontVariant: TAB },
-  hugeFigure: { color: C.ink, fontFamily: F.mono, fontWeight: "700", fontSize: 46, lineHeight: 54, letterSpacing: -1, fontVariant: TAB, textShadowColor: "rgba(94,200,255,0.35)", textShadowRadius: 14 },
-  unit: { color: C.muted, fontFamily: F.bodySemi, fontSize: 16, marginLeft: 6, marginTop: 10 },
-  trigger: { color: C.payout, fontFamily: F.headingBold, fontSize: 22, fontVariant: TAB },
-  caption: { color: C.quiet, fontFamily: F.body, fontSize: 12, lineHeight: 18 },
-  body: { color: C.ink, fontFamily: F.body, fontSize: 15, lineHeight: 22 },
+  smallLabel: { ...T.label, color: C.muted, fontFamily: F.bodyMedium },
+  bigFigure: { ...T.amountXL, fontSize: 44, lineHeight: 52, color: C.ink },
+  hugeFigure: { ...T.amountXL, fontSize: 46, lineHeight: 54, color: C.ink, textShadowColor: "rgba(94,200,255,0.35)", textShadowRadius: 14 },
+  unit: { color: C.muted, fontFamily: F.bodySemi, fontSize: 16, lineHeight: 22, marginLeft: S.sm, marginTop: S.sm },
+  trigger: { ...T.title, fontSize: 22, color: C.payout, fontVariant: TAB },
+  caption: { ...T.caption, color: C.quiet },
+  body: { ...T.body, color: C.ink },
   bodyStrong: { color: C.ink, fontFamily: F.bodyBold, fontVariant: TAB },
-  chipRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
-  hazardChip: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" },
+  chipRow: { flexDirection: "row", gap: S.sm, marginBottom: S.md },
+  hazardChip: { minHeight: 44, paddingHorizontal: S.lg, borderRadius: 22, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" },
   hazardChipOn: { borderColor: C.rain, backgroundColor: C.rainSoft },
-  hazardText: { color: C.muted, fontFamily: F.bodyMedium, fontSize: 14 },
-  chip: { flex: 1, minHeight: 50, borderRadius: 16, borderWidth: 1, borderColor: "rgba(160,205,235,0.16)", backgroundColor: "rgba(24,32,42,0.6)", alignItems: "center", justifyContent: "center" },
+  hazardText: { ...T.label, color: C.muted, fontFamily: F.bodyMedium, fontSize: 14 },
+  chip: { flex: 1, minHeight: 52, borderRadius: 16, borderWidth: 1, borderColor: "rgba(160,205,235,0.16)", backgroundColor: "rgba(24,32,42,0.6)", alignItems: "center", justifyContent: "center" },
   chipOn: { borderColor: C.rain, backgroundColor: C.rainSoft, boxShadow: "0px 0px 16px rgba(94,200,255,0.35)" },
-  chipText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 15, fontVariant: TAB },
-  chart: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginTop: 16, marginBottom: 6 },
+  chipText: { ...T.bodyStrong, color: C.ink, fontVariant: TAB, letterSpacing: -0.1 },
+  chart: { flexDirection: "row", alignItems: "flex-end", gap: S.sm, marginTop: S.lg, marginBottom: S.sm },
   barCol: { flex: 1, justifyContent: "flex-end", height: "100%" },
   bar: { backgroundColor: C.rain, opacity: 0.45, borderRadius: 3 },
   barCurrent: { backgroundColor: C.rain, opacity: 1 },
@@ -518,23 +525,23 @@ const s = StyleSheet.create({
   strike: { position: "absolute", left: 0, right: 0, height: 1, flexDirection: "row", justifyContent: "space-between", overflow: "hidden", zIndex: 2 },
   dash: { width: 4, height: 1, backgroundColor: C.payout },
   split: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: C.border },
-  splitCell: { flex: 1, padding: 16 },
-  splitFigure: { color: C.ink, fontFamily: F.mono, fontWeight: "700", fontSize: 34, lineHeight: 42, fontVariant: TAB, marginTop: 4 },
-  row: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
-  rowLabel: { color: C.muted, fontFamily: F.body, fontSize: 15 },
-  rowValue: { color: C.ink, fontFamily: F.bodySemi, fontSize: 15, fontVariant: TAB },
-  notice: { backgroundColor: C.surface, borderColor: C.amber, borderWidth: 1, borderRadius: 12, padding: 14, marginBottom: 12 },
-  noticeTitle: { color: C.ink, fontFamily: F.bodySemi, fontSize: 15 },
-  noticeBody: { color: C.muted, fontFamily: F.body, fontSize: 14, lineHeight: 20, marginTop: 4 },
+  splitCell: { flex: 1, padding: S.lg },
+  splitFigure: { ...T.amountM, fontSize: 34, lineHeight: 42, color: C.ink, marginTop: S.xs },
+  row: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
+  rowLabel: { ...T.body, color: C.muted },
+  rowValue: { ...T.bodyStrong, color: C.ink, fontVariant: TAB },
+  notice: { backgroundColor: C.surface, borderColor: C.amber, borderWidth: 1, borderRadius: 12, padding: S.lg, marginBottom: S.md },
+  noticeTitle: { ...T.bodyStrong, color: C.ink },
+  noticeBody: { ...T.body, fontSize: 14, lineHeight: 20, color: C.muted, marginTop: S.xs },
   inlineBtn: { minHeight: MIN_TOUCH, justifyContent: "center", alignSelf: "flex-start" },
-  link: { color: C.rain, fontFamily: F.bodySemi, fontSize: 14 },
-  checkRow: { minHeight: 36, flexDirection: "row", alignItems: "center" },
-  sticky: { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 12, backgroundColor: "rgba(11,15,20,0.92)", borderTopWidth: 1, borderTopColor: "rgba(160,205,235,0.10)" },
-  netPill: { minHeight: 32, flexDirection: "row", alignItems: "center", gap: 7, borderWidth: 1, borderColor: C.border, borderRadius: 16, paddingHorizontal: 12, backgroundColor: C.surface },
-  netPillText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 12 },
-  pill: { minHeight: 28, flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 14, paddingHorizontal: 10 },
-  pillText: { fontFamily: F.bodySemi, fontSize: 12 },
-  dot: { width: 7, height: 7, borderRadius: 4 },
+  link: { ...T.label, fontSize: 14, lineHeight: 20, color: C.rain },
+  checkRow: { minHeight: 40, flexDirection: "row", alignItems: "center" },
+  sticky: { paddingHorizontal: S.lg + 2, paddingTop: S.md, paddingBottom: S.md, backgroundColor: "rgba(11,15,20,0.92)", borderTopWidth: 1, borderTopColor: "rgba(160,205,235,0.10)" },
+  netPill: { minHeight: 32, flexDirection: "row", alignItems: "center", gap: S.sm, borderWidth: 1, borderColor: C.border, borderRadius: 16, paddingHorizontal: S.md, backgroundColor: C.surface },
+  netPillText: { ...T.label, fontSize: 12, lineHeight: 16, color: C.ink },
+  pill: { minHeight: 28, flexDirection: "row", alignItems: "center", gap: S.sm - 2, borderRadius: 14, paddingHorizontal: S.md - 2 },
+  pillText: { ...T.label, fontSize: 12, lineHeight: 16 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.rainSoft, alignItems: "center", justifyContent: "center" },
-  positionRow: { minHeight: 56, paddingVertical: 6 },
+  positionRow: { minHeight: 56, paddingVertical: S.sm },
 });

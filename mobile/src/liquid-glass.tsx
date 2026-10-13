@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { BlurTargetView, BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { AccessibilityInfo, Animated, Platform, Pressable, StyleSheet, type PressableProps, type StyleProp, type ViewProps, type ViewStyle, View } from "react-native";
+import { AccessibilityInfo, Animated, Easing, Platform, Pressable, StyleSheet, type PressableProps, type StyleProp, type ViewProps, type ViewStyle, View } from "react-native";
 import { liquidGlassRecipe } from "./liquid-glass-config";
 import { C } from "./theme";
 
@@ -98,10 +98,10 @@ export function ScreenTransition({ transitionKey, children }: { transitionKey: s
       return;
     }
     opacity.setValue(0);
-    translateY.setValue(12);
+    translateY.setValue(10);
     Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: 0, duration: 180, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
   }, [opacity, reducedMotion, transitionKey, translateY]);
   return <Animated.View style={{ opacity, transform: [{ translateY }] }}>{children}</Animated.View>;
