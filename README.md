@@ -46,6 +46,26 @@ Pick place + risk  →  NOAA / Environment Canada data  →  quote (premium, pay
 
 Pricing uses ten analogous NOAA windows plus a forecast signal, a 15% risk load and the 1% fee. Markets come from a per-market counter, and city, station and provider are stored as hashes, so **adding Toronto needs no program change** (see [docs/canadian-market-plan.md](docs/canadian-market-plan.md)).
 
+## Money flow
+
+Each city market is its own fully collateralized pool. Liquidity providers take the other side; there is no order book or outside insurer.
+
+```mermaid
+flowchart LR
+  LP["Liquidity providers"] -- "deposit (fund_pool)" --> V[("Market vault<br/>one per city")]
+  V -. "shares" .-> LP
+  B["Buyer"] -- "premium (open_position)<br/>only if vault covers every possible payout" --> V
+  SA["Settlement authority"] -- "NOAA reading, source-hashed" --> P{{"Anchor program<br/>settle_market"}}
+  P -- "trigger hit" --> C["Buyer claims payout<br/>(claim_payout)"]
+  P -- "data unavailable" --> R["Buyer gets premium back<br/>(claim_premium_refund)"]
+  V --> C
+  V --> R
+  V -- "close_market: 1% protocol fee" --> F[("Protocol fee vault")]
+  V -- "remainder (redeem_closed_liquidity)" --> LP
+```
+
+Providers keep the premiums when the trigger isn't hit and fund payouts when it is. Creating, funding and opening a market each require the protocol admin's wallet approval. On Devnet everything uses the valueless SKYT test token.
+
 ## Install
 
 **APK:** download it from [Releases](https://github.com/msourial/SkyHedge-Sol/releases). A release for build `e5ca97a` is coming. Install with `adb install SkyHedge-ClockIn.apk` or sideload it on the Seeker.
