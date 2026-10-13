@@ -9,7 +9,7 @@ import { Platform } from "react-native";
 import { liquidGlassRecipe } from "./liquid-glass-config";
 import { RadarMap } from "./RadarMap";
 import { PerilSelector, ScreenTop } from "./journey";
-import { groupCounts, MARKETS, type CatalogMarket } from "./markets-catalog";
+import { GROUP_ORDER, groupCounts, MARKETS, type CatalogMarket } from "./markets-catalog";
 
 const TAB = ["tabular-nums" as const];
 
@@ -40,7 +40,7 @@ export function StatusTag({ status, label }: { status: CatalogMarket["status"]; 
     <Text style={[g.tagText, { color: col }]}>{label ?? statusLabel(status)}</Text>
   </View>;
 }
-export const statusLabel = (s: CatalogMarket["status"]) => (s === "live" ? "Live" : s === "soon" ? "Opens soon" : "Concept");
+export const statusLabel = (s: CatalogMarket["status"]) => (s === "live" ? "Live" : s === "ready" ? "Ready to open" : s === "soon" ? "Opens soon" : "Concept");
 
 /** Animates a real number up from zero. Renders "—" when the value is unknown. */
 export function CountUp({ value, decimals = 1, style }: { value: number | null; decimals?: number; style?: any }) {
@@ -108,7 +108,7 @@ export function Landing(props: { onConnect: () => void; onBrowse: () => void; bu
     <GlassCard style={{ marginTop: 18 }}>
       <View style={g.marketLine}><View style={[g.tagDot, { backgroundColor: C.mint }]} /><Text style={g.marketName}>Des Moines, IA</Text><StatusTag status={props.live ? "live" : "soon"} label={props.live ? "Live" : "Not selling now"} /></View>
       <View style={g.marketLine}><View style={[g.tagDot, { backgroundColor: C.amber }]} /><Text style={g.marketName}>Toronto Pearson</Text><StatusTag status="soon" /></View>
-      <Text style={g.caption}>+{concepts} concept markets across 6 regions</Text>
+      <Text style={g.caption}>+{MARKETS.filter((m) => m.status === "ready").length} ready to open · {concepts} concept markets across {GROUP_ORDER.length} regions</Text>
     </GlassCard>
     <RadarMap scope="region" onScope={() => props.onBrowse()} focusCode="DSM" highlight={new Set()} onSelect={() => props.onBrowse()} />
     <View style={g.steps}>
@@ -125,26 +125,28 @@ export function Landing(props: { onConnect: () => void; onBrowse: () => void; bu
 export function MarketDetail(props: { market: CatalogMarket; onBack: () => void; onExploreLive: () => void; notified: boolean; onNotify: () => void }) {
   const m = props.market;
   const soon = m.status === "soon";
+  const ready = m.status === "ready";
   const col = soon ? C.amber : C.rain;
   return <>
     <ScreenTop onBack={props.onBack} />
     <View style={g.detailHead}>
       <View style={[g.shield, { borderColor: col + "66" }]}><AppIcon name="umbrella" color={col} size={20} /></View>
-      <View style={{ flex: 1 }}><Text style={g.caption}>{m.source} · {m.code} station</Text><Text style={g.detailTitle}>{m.name}</Text><Text style={g.caption}>{m.region} · {m.lat.toFixed(2)}°, {m.lon.toFixed(2)}°</Text></View>
+      <View style={{ flex: 1 }}><Text style={g.caption}>{m.source} · {m.station ? m.station.replace("GHCND:", "") : `${m.code} station`}</Text><Text style={g.detailTitle}>{m.name}</Text><Text style={g.caption}>{m.region} · {m.lat.toFixed(2)}°, {m.lon.toFixed(2)}°</Text></View>
     </View>
     <PerilSelector value="rain" available={[]} />
+    <Text style={[g.caption, { marginTop: -4, marginBottom: 8 }]}>{m.country} · {m.group}</Text>
     <GlassCard accent={col}>
-      <View style={g.rowBetween}><StatusTag status={m.status} label={soon ? "Coming soon" : "Concept market"} /></View>
+      <View style={g.rowBetween}><StatusTag status={m.status} label={soon ? "Coming soon" : ready ? "Ready to open" : "Concept market"} /></View>
       <View style={{ flexDirection: "row", gap: 16, marginTop: 14 }}>
         <RainGauge observedMm={null} triggerMm={null} color={col} height={130} />
         <View style={{ flex: 1 }}>
           <Text style={g.overline}>Trigger</Text>
           <Text style={[g.big, { color: col }]}>{soon ? "Set per window" : "Not yet defined"}</Text>
-          <Text style={g.caption}>{soon ? "Windows, triggers and prices are published when the market opens." : "Concept only — no window, trigger or price exists yet."}</Text>
+          <Text style={g.caption}>{soon ? "Windows, triggers and prices are published when the market opens." : ready ? "NOAA rain data is wired in. No Devnet market exists yet, so there is no window, trigger or price." : "Concept only — no window, trigger or price exists yet."}</Text>
           <View style={g.hr} />
           <Text style={g.overline}>Weather data</Text>
           <Text style={g.body}>{m.source}</Text>
-          <Text style={g.caption}>{m.name} station</Text>
+          <Text style={g.caption}>{m.station ? `GHCND ${m.station.replace("GHCND:", "")}` : `${m.name} station`}</Text>
         </View>
       </View>
     </GlassCard>
@@ -160,12 +162,12 @@ export function MarketDetail(props: { market: CatalogMarket; onBack: () => void;
     </Pressable> : null}
     {soon && props.notified ? <Text style={[g.caption, { textAlign: "center", marginTop: 6 }]}>Kept in the app on this device only. No notification is scheduled yet and nothing was sent.</Text> : null}
     <Pressable accessibilityRole="button" onPress={props.onExploreLive} style={g.secondary}><View style={[g.tagDot, { backgroundColor: C.mint }]} /><Text style={g.secondaryText}>Explore Des Moines (live)</Text></Pressable>
-    <Text style={[g.caption, { textAlign: "center", marginTop: 8 }]}>{soon ? "Concept preview · not yet open" : "Concept market · not tradable"}</Text>
+    <Text style={[g.caption, { textAlign: "center", marginTop: 8 }]}>{soon ? "Concept preview · not yet open" : ready ? "Ready to open · not tradable yet" : "Concept market · not tradable"}</Text>
   </>;
 }
 
 /* ───────────── Global list ───────────── */
-export function GlobalGroups({ onPick }: { onPick: (group: string) => void }) {
+export function GlobalGroups({ onPick }: { onPick: (group: CatalogMarket["group"]) => void }) {
   return <GlassCard style={{ paddingVertical: 6 }}>
     {groupCounts().map((gc, i) => <Pressable key={gc.group} accessibilityRole="button" onPress={() => onPick(gc.group)} style={[g.groupRow, i > 0 && g.groupBorder]}>
       <View style={{ flex: 1 }}><Text style={g.body}>{gc.group}</Text><Text style={g.caption} numberOfLines={1}>{gc.sources.join(" · ")}</Text></View>

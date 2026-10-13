@@ -82,7 +82,7 @@ export function RadarMap(props: {
           const [x, y] = isRegion ? m.regionXY : m.globalXY;
           const hit = props.highlight.has(m.code);
           const col = tone(m);
-          const main = m.status !== "concept";
+          const main = m.status === "live" || m.status === "soon" || m.status === "ready";
           const r = (main ? 4.5 : hit ? 3.8 : 2.8) * k;
           return <G key={m.code} onPress={() => props.onSelect(m)}>
             <Circle cx={x} cy={y} r={12 * k} fill="transparent" />
@@ -116,7 +116,8 @@ export function RadarMap(props: {
       <Text style={s.proj}>{isRegion ? "LCC · 35°/55° N" : "Equal Earth"}{hidden && isRegion ? ` · +${hidden} off-map` : ""}</Text>
       <View style={s.legend} pointerEvents="none">
         <View style={[s.lDot, { backgroundColor: C.mint }]} /><Text style={s.lText}>Live</Text>
-        <View style={[s.lDot, { backgroundColor: C.amber }]} /><Text style={s.lText}>Opens soon</Text>
+        <View style={[s.lDot, { backgroundColor: C.rain }]} /><Text style={s.lText}>Ready</Text>
+        <View style={[s.lDot, { backgroundColor: C.amber }]} /><Text style={s.lText}>Soon</Text>
         <View style={[s.lDot, s.lHollow]} /><Text style={s.lText}>Concept</Text>
       </View>
     </View>

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Easing, Linking, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, Animated, Easing, Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { RadarMap, type MapScope } from "./RadarMap";
 import { CountUp, GlassCard, GlobalGroups, RainGauge, Receipt, StatusTag, statusLabel } from "./revamp";
-import { highlightParts, MARKETS, searchMarkets, type CatalogMarket } from "./markets-catalog";
+import { GROUP_ORDER, highlightParts, MARKETS, searchMarkets, type CatalogMarket, type MarketGroup } from "./markets-catalog";
 import { useReducedMotion } from "./liquid-glass";
 import { CoverageHero, FactRows, PerilSelector, ReceiptView, ScreenTop, StatPair } from "./journey";
 import type { CityIndex, ClaimReadiness, DevnetStatus, FinalizedWalletState, Portfolio, ProtectionQuote } from "./api";
@@ -56,6 +56,8 @@ export function MarketsScreen(props: {
 }) {
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<MapScope>("region");
+  const [group, setGroup] = useState<MarketGroup | null>(null);
+  const pickGroup = (grp: MarketGroup | null) => { setGroup(grp); setScope(grp === "North America" ? "region" : "global"); };
   const market = props.status?.desMoinesMarket;
   const city = props.city?.slug === "des-moines" ? props.city : null;
   const live = marketIsLive(props.status, props.nowSeconds);
@@ -72,11 +74,12 @@ export function MarketsScreen(props: {
   const station = stationLabel(props.status?.noaaEvidence.package?.stationId ?? "USW00014933");
   const state = live ? "Live" : market?.onchainStatus ? (countdown === "Sales closed" ? "Sales closed" : formatOnchainMarketStatus(market.onchainStatus)) : "Opens soon";
 
-  const results = searchMarkets(query, scope === "region" ? "region" : "global");
-  const highlight = new Set(query.trim() ? results.map((r) => r.code) : []);
-  const focusCode = query.trim() && results[0] ? results[0].code : "DSM";
-  const visibleRows = query.trim() ? results.slice(0, 6) : results.filter((m) => m.status !== "concept");
-  const moreConcepts = query.trim() ? Math.max(0, results.length - visibleRows.length) : results.filter((m) => m.status === "concept").length;
+  const results = searchMarkets(query, group ? "all" : scope === "region" ? "region" : "global", group);
+  const filtering = !!query.trim() || !!group;
+  const highlight = new Set(filtering ? results.map((r) => r.code) : []);
+  const focusCode = filtering && results[0] ? results[0].code : "DSM";
+  const visibleRows = query.trim() ? results.slice(0, 6) : group ? results : results.filter((m) => m.status !== "concept");
+  const moreConcepts = filtering ? Math.max(0, results.length - visibleRows.length) : results.filter((m) => m.status === "concept").length;
   const open = (m: CatalogMarket) => { if (m.status === "live") props.onProtect(); else props.onOpenMarket?.(m); };
 
   return <>
@@ -88,6 +91,16 @@ export function MarketsScreen(props: {
       {query ? <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setQuery("")} hitSlop={10}><AppIcon name="x" color={C.muted} size={18} /></Pressable> : null}
     </View>
 
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10, flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingRight: 8 }} accessibilityRole="tablist">
+      {([null, ...GROUP_ORDER] as Array<MarketGroup | null>).map((grp) => {
+        const on = group === grp;
+        const n = grp ? MARKETS.filter((m) => m.group === grp).length : MARKETS.length;
+        return <Pressable key={grp ?? "all"} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => pickGroup(grp)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: on ? C.rain : "rgba(150,190,220,0.22)", backgroundColor: on ? C.rain + "22" : "transparent" }}>
+          <Text style={[s.caption, { color: on ? C.rain : C.muted, fontFamily: on ? F.bodyBold : undefined }]}>{grp ?? "All"} {n}</Text>
+        </Pressable>;
+      })}
+    </ScrollView>
+
     <GlassCard style={{ paddingVertical: 6, paddingHorizontal: 8 }}>
       {visibleRows.length ? visibleRows.map((m) => {
         const [a, b, c] = highlightParts(m.name, query);
@@ -97,21 +110,21 @@ export function MarketsScreen(props: {
           <View style={[s.dot, m.status === "concept" ? { borderWidth: 1.5, borderColor: col } : { backgroundColor: col }]} />
           <View style={{ flex: 1 }}>
             <Text style={s.resultName}>{a}<Text style={{ fontFamily: F.bodyBold, color: col }}>{b}</Text>{c}{m.code === "DSM" ? ", IA" : ""}</Text>
-            {query.trim() ? <Text style={s.caption}>{m.code} · {m.source}</Text> : null}
+            {filtering || m.status === "ready" ? <Text style={s.caption}>{m.code} · {m.country} · {m.source}</Text> : null}
           </View>
           <StatusTag status={m.status} label={m.status === "live" ? state : undefined} />
           <AppIcon name="chevron-right" color={C.quiet} size={16} />
         </Pressable>;
       }) : <Text style={[s.caption, { padding: 10 }]}>No covered zone matches “{query}”.</Text>}
-      {moreConcepts ? <Pressable accessibilityRole="button" onPress={() => setScope(scope === "region" ? "global" : "region")} style={s.moreRow}>
-        <Text style={s.caption}>○  +{moreConcepts} {query.trim() ? "more matches" : `concept markets ${scope === "region" ? "in North America" : "worldwide"}`}</Text>
+      {moreConcepts ? <Pressable accessibilityRole="button" onPress={() => { if (filtering) { setQuery(""); return; } setScope(scope === "region" ? "global" : "region"); }} style={s.moreRow}>
+        <Text style={s.caption}>○  +{moreConcepts} {filtering ? "more matches" : `concept markets ${scope === "region" ? "in North America" : "worldwide"}`}</Text>
         <Text style={s.link}>{scope === "region" ? "Global →" : "Region →"}</Text>
       </Pressable> : null}
     </GlassCard>
 
     <RadarMap scope={scope} onScope={setScope} focusCode={focusCode} highlight={highlight} onSelect={open} />
 
-    {scope === "global" && !query.trim() ? <GlobalGroups onPick={(grp) => setQuery(MARKETS.find((m) => m.group === grp && m.status === "concept")?.source ?? "")} /> : null}
+    {scope === "global" && !filtering ? <GlobalGroups onPick={pickGroup} /> : null}
 
     <GlassCard accent={live ? C.mint : undefined}>
       <View style={s.between}>
