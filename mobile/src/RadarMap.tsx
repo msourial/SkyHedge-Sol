@@ -30,7 +30,7 @@ export function placeLabels(pins: readonly CatalogMarket[], isRegion: boolean, h
     const main = m.status !== "concept";
     const hit = highlight.has(m.code);
     if (!(isRegion || hit || m.status === "live")) continue;
-    const text = main ? (isRegion ? (m.code === "DSM" ? "Des Moines" : m.name.split(/[ (]/)[0]) : m.code) : m.code;
+    const text = isRegion ? (main ? m.short : m.code) : (main || hit ? m.short : m.code);
     const size = (main ? 10 : 8.5) * k;
     const w = text.length * size * 0.62, h = size;
     const [px, py] = isRegion ? m.regionXY : m.globalXY;

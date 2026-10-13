@@ -51,3 +51,11 @@ test("group counts cover every market and highlight splits correctly", () => {
   assert.equal(groupCounts().reduce((n, g) => n + g.count, 0), MARKETS.length);
   assert.deepEqual(highlightParts("Toronto Pearson", "tor"), ["", "Tor", "onto Pearson"]);
 });
+
+test("every market has a sensible short map label", () => {
+  for (const m of MARKETS) { assert.ok(m.short.length > 0 && m.short.length <= 12, m.code); }
+  assert.equal(marketByCode("DSM")?.short, "Des Moines");
+  assert.equal(marketByCode("NYC")?.short, "NYC");
+  assert.equal(marketByCode("MEX")?.short, "CDMX");
+  assert.equal(marketByCode("SGN")?.short, "HCMC");
+});
