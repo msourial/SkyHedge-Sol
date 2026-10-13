@@ -74,12 +74,13 @@ export function MarketsScreen(props: {
   const station = stationLabel(props.status?.noaaEvidence.package?.stationId ?? "USW00014933");
   const state = live ? "Live" : market?.onchainStatus ? (countdown === "Sales closed" ? "Sales closed" : formatOnchainMarketStatus(market.onchainStatus)) : "Opens soon";
 
-  const results = searchMarkets(query, group ? "all" : scope === "region" ? "region" : "global", group);
+  const results = searchMarkets(query, group || query.trim() ? "all" : scope === "region" ? "region" : "global", group);
   const filtering = !!query.trim() || !!group;
   const highlight = new Set(filtering ? results.map((r) => r.code) : []);
   const focusCode = filtering && results[0] ? results[0].code : "DSM";
   const visibleRows = query.trim() ? results.slice(0, 6) : group ? results : results.filter((m) => m.status !== "concept");
   const moreConcepts = filtering ? Math.max(0, results.length - visibleRows.length) : results.filter((m) => m.status === "concept").length;
+  const mapScope: MapScope = filtering && results[0] && results[0].group !== "North America" ? "global" : scope;
   const open = (m: CatalogMarket) => { if (m.status === "live") props.onProtect(); else props.onOpenMarket?.(m); };
 
   return <>
@@ -122,7 +123,7 @@ export function MarketsScreen(props: {
       </Pressable> : null}
     </GlassCard>
 
-    <RadarMap scope={scope} onScope={setScope} focusCode={focusCode} highlight={highlight} onSelect={open} />
+    <RadarMap scope={mapScope} onScope={setScope} focusCode={focusCode} highlight={highlight} onSelect={open} />
 
     {scope === "global" && !filtering ? <GlobalGroups onPick={pickGroup} /> : null}
 
