@@ -4,11 +4,11 @@ This is the authoritative design reference for the SkyHedge web application. It 
 
 ## Product character
 
-SkyHedge is a calm, credible climate-protection service for agricultural customers. The customer experience should feel like modern insurance and financial infrastructure: clear, trustworthy, restrained, and easy to use without blockchain knowledge. Builder mode is a separate technical workspace for protocol administration and verification.
+SkyHedge is a calm, credible climate-protection service for agricultural customers. The customer experience should feel like modern financial infrastructure: clear, trustworthy, restrained, and easy to use without blockchain knowledge. Builder mode is a separate technical workspace for protocol administration and verification.
 
 ## Design direction
 
-`[PLAN:@DESIGN|type=climate_insurance_application] palette=signal_dark accent=rain_blue typography=IBM_Plex_Sans display=same_as_body layout=compact_rail_and_map_workspace mood=professional_minimal density=balanced exclude=neon,glow,grid,cyberpunk,uppercase_heavy,decorative_gradients responsive=mobile_first`
+`[PLAN:@DESIGN|type=climate_protection_application] palette=signal_dark accent=rain_blue typography=IBM_Plex_Sans display=same_as_body layout=compact_rail_and_map_workspace mood=professional_minimal density=balanced exclude=neon,glow,grid,cyberpunk,uppercase_heavy,decorative_gradients responsive=mobile_first`
 
 ## Typography
 
@@ -52,7 +52,7 @@ Builder mode uses a restrained dark navy canvas (`#081521`) with raised surfaces
 - Panels: dark customer surfaces or navy Builder surfaces; consistent 12px radius and 20–24px padding.
 - Status chips: sentence case with semantic color and subtle tint. Never use color alone.
 - Forms: persistent sentence-case labels, 16px controls, inline help/errors, explicit units, and full-width mobile actions.
-- Maps: compact context panels secondary to the form; reference point only, never an insured boundary.
+- Maps: compact context panels secondary to the form; reference point only, never an coverage boundary.
 - Test environment: concise expandable notice. Do not dominate every screen.
 - Technical details: hide SKYT, PDAs, IDs, authorities, and raw diagnostics in Builder mode or expandable technical details.
 

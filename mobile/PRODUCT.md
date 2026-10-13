@@ -22,7 +22,7 @@ The app runs natively on Android. It reads SkyHedge API and finalized Solana Dev
 
 - Rainfall is the sole protection pilot. Wind gust and new snowfall are research-only.
 - NOAA is the sole settlement source. WeatherXM is not used to settle contracts.
-- A listed place or reference marker is not an insured boundary or an available market.
+- A listed place or reference marker is not a coverage boundary or an available market.
 - Ordinary dollar amounts are non-binding previews. SKYT is a separate Devnet test asset with no real-world value; it is not USD or USDC. The test position cap is 500 SKYT per wallet.
 - AI guidance can explain existing areas and contracts, but cannot create or sign one.
 - No balance, observation, quote, transaction, or payout may be invented for presentation.

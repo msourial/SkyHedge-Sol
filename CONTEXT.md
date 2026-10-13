@@ -26,7 +26,7 @@ _Avoid_: City market, commodity market, trading pair
 
 **Reference location**:
 The city or area used to describe an agricultural index, shown as locality, administrative area, and country.
-_Avoid_: Coverage area, insured boundary
+_Avoid_: Coverage area, coverage boundary
 
 **Catalog region**:
 A broad browsing group such as North America, South America, or Emerging markets.

@@ -21,4 +21,4 @@ The public product is USD-first. Bank, card, and embedded-wallet payment paths a
 
 ## Explicit non-claims
 
-SkyHedge is not live insurance, a futures exchange, an options chain, or a public USDC custody product. Legal, payments, custody, KYC/AML, and launch-jurisdiction requirements precede any live rollout.
+SkyHedge is not a regulated product, a futures exchange, an options chain, or a public USDC custody product. Legal, payments, custody, KYC/AML, and launch-jurisdiction requirements precede any live rollout.

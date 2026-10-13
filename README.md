@@ -48,7 +48,7 @@ Pricing uses ten analogous NOAA windows plus a forecast signal, a 15% risk load 
 
 ## Money flow
 
-Each city market has its own fully collateralized vault (a PDA-owned SPL token account). Liquidity providers take the other side of every protection position; there is no order book or outside insurer. Everything below is enforced by `anchor/programs/skyhedge_protection/src/lib.rs`.
+Each city market has its own fully collateralized vault (a PDA-owned SPL token account). Liquidity providers take the other side of every protection position; there is no order book or outside counterparty. Everything below is enforced by `anchor/programs/skyhedge_protection/src/lib.rs`.
 
 ```mermaid
 flowchart LR
@@ -158,7 +158,7 @@ docs/      demo script, pitch deck, submission draft, plans, takeover log
 
 ## Status & honesty
 
-Devnet only. SKYT is a test token. This is not insurance and not a regulated product. No traction numbers are claimed.
+Devnet only. SKYT is a test token. SkyHedge is a parametric weather hedge and not a regulated product. No traction numbers are claimed.
 
 ## License
 

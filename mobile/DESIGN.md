@@ -19,6 +19,6 @@ The Android app is a calm, dark climate-fintech experience. It shares semantic s
 
 ## Trust and accessibility
 
-- The map appears after the risk/evidence decision and draws only reference coordinates. It never implies an insured boundary, a station marker, coverage, or live WeatherXM observations. Exact text location remains available when tiles fail.
+- The map appears after the risk/evidence decision and draws only reference coordinates. It never implies an coverage boundary, a station marker, coverage, or live WeatherXM observations. Exact text location remains available when tiles fail.
 - Preserve Android safe areas, system Back, 48dp controls, scalable fonts, TalkBack order, clear labels, status text in addition to color, and reduced-motion support.
 - Never fabricate prices, rainfall observations, readiness, coverage, wallet balances, or transaction confirmation.

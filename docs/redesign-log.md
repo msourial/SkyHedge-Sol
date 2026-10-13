@@ -14,12 +14,12 @@ Worktree: `SkyHedge-clock-in-redesign`, branch `clock-in-redesign` (from `codex/
 3. Protect flow: the progress stepper sat *below* the form and verification, so users had no orientation. The trigger (the actual contract term) had the same visual weight as the helper text.
 4. Copy overload: every block carries a disclaimer paragraph, so the primary action competes with 3–4 notes.
 5. Ad hoc buttons (Wallet used raw Pressables with a different radius and height from ActionButton). Buttons were inconsistent.
-6. Decorative "liquid glass" and ambient aura chrome reads as consumer crypto, not enterprise insurance.
+6. Decorative "liquid glass" and ambient aura chrome reads as consumer crypto, not an enterprise financial service.
 7. Explore: search, filters, examples, guide and catalog are all on one scroll before a decision.
 
 ## Direction: "Institutional Signal Dark"
 Keep the Signal Dark semantic palette (it already passes contrast and is test-pinned), and make it more restrained. Use a strict type scale (display 32, title 24, heading 18, body 15, label 13, caption/overline 12, so nothing is below 12). Radii are 8/12/16 (no 18–22 pills on cards). Elevation comes from a surface step plus a 1px hairline, not glow. Contract terms get a rain-accent left rule, like a term sheet. There is one primary (mint) action per screen, and secondary actions are outlined.
-Why: insurance/fintech buyers trust dense, calm, legible term presentation. Seeker is a small dark-OLED device.
+Why: fintech and risk buyers trust dense, calm, legible term presentation. Seeker is a small dark-OLED device.
 
 ## Commits
 - 5bd6316 design: tokens (`type`, `radius`, `elevation`, `MIN_TOUCH`, `MIN_FONT`) + tests

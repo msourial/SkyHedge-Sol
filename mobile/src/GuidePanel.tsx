@@ -56,7 +56,7 @@ export function GuidePanel({ turns, busy, onSend, onViewMatch }: {
           {turn.result.unavailableReason ? <Text style={styles.blocker}>{turn.result.unavailableReason}</Text> : null}
           <Pressable accessibilityRole="link" accessibilityLabel={`Open map for ${turn.result.match.location}; reference place only`} onPress={() => { setMapError(null); void Linking.openURL(`https://www.openstreetmap.org/search?query=${encodeURIComponent(turn.result!.match!.location)}`).catch(() => setMapError("The map could not be opened. The exact place is shown above.")); }} style={styles.mapLink}><AppIcon name="map-pin" color={C.blue} size={17} /><Text style={styles.mapLinkText}>View reference place</Text></Pressable>
           {mapError ? <Text accessibilityRole="alert" style={styles.blocker}>{mapError}</Text> : null}
-          <Text style={styles.mapNote}>Place reference only—not an insured boundary or NOAA station pin.</Text>
+          <Text style={styles.mapNote}>Place reference only—not a coverage boundary or NOAA station pin.</Text>
         </View> : null}
         {turn.result.status === "matched" || turn.result.status === "quote_ready" ? <View style={styles.explanation}>
           <Text style={styles.explanationText}>{turn.result.costExplanation}</Text>

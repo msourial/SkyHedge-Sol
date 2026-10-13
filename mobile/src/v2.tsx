@@ -180,7 +180,7 @@ export function MarketsScreen(props: {
       </GlassCard>
     </Pressable>
     {props.guide}
-    <Disclosure>Devnet test token, not insurance. Concept markets are previews: no prices, triggers or rainfall figures exist for them. Observed station data only — missing values are never estimated.</Disclosure>
+    <Disclosure>Devnet test token. Parametric weather protection. Concept markets are previews: no prices, triggers or rainfall figures exist for them. Observed station data only — missing values are never estimated.</Disclosure>
   </>;
 }
 
@@ -375,7 +375,7 @@ export function ProtectTicket(props: {
         {market?.address ? <ExplorerButton url={`https://explorer.solana.com/address/${encodeURIComponent(market.address)}?cluster=devnet`} label="Market account on Explorer" /> : null}
       </View> : null}
     </View>
-    <Disclosure>Devnet test token · not insurance. SKYT has no monetary value. Your wallet shows and approves every transaction.</Disclosure>
+    <Disclosure>Devnet test token · parametric weather protection. SKYT has no monetary value. Your wallet shows and approves every transaction.</Disclosure>
   </>;
 }
 
