@@ -18,5 +18,5 @@
 ## Plan
 1. Off-chain (done locally): ECCC adapter, Toronto config, and copy/mockup showing Toronto alongside Des Moines.
 2. Off-chain (to do): a `/api/markets/toronto/evidence-package` route that mirrors des-moines, plus making `protection.ts` accept the toronto slug. Hold this until the readiness bug fix lands, because it touches the same gating.
-3. On-chain (needs Miro's admin wallet on the Seeker, DKA9…FD6y): `create_market` (Toronto hashes, threshold, window), then `open_market`, then `fund_pool` (SKYT liquidity). That's 3 signatures. Settlement later needs the settlement authority.
+3. On-chain (needs Miro's admin wallet on the Seeker, DKA9…FD6y): `create_market` (Toronto hashes, threshold, window), then `fund_pool` (SKYT liquidity), then `open_market` (the program refuses to open a market with no LP shares). That's 3 signatures; only create and open must come from the admin wallet, since `fund_pool` accepts any LP wallet. Settlement later needs the settlement authority.
 4. Fallback if time is short: demo Des Moines live, and show Toronto as "Opens soon" with real ECCC history. No signature needed.

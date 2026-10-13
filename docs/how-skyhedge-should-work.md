@@ -104,7 +104,7 @@ Before an index becomes available, SkyHedge must pin:
 - claim deadline
 - basis-risk disclosure
 
-If NOAA cannot provide valid final data within the source deadline, the outcome is `DATA_UNAVAILABLE`. Buyers receive premium refunds, reserved exposure is released, and LP principal is preserved according to the protocol rules.
+If NOAA cannot provide valid final data within the source deadline, the outcome is `DATA_UNAVAILABLE`. Buyers receive full premium refunds, reserved exposure is released, the protocol fee is waived, and LPs redeem what remains in the market vault after the claim window (see the Money flow section in the README).
 
 ## Pricing model
 
