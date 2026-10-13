@@ -4,13 +4,13 @@ import { C, F } from "./theme.ts";
 
 describe("Instrument theme", () => {
   it("exposes the shared semantic weather and status tokens", () => {
-    assert.equal(C.canvas, "#0A0E13");
+    assert.equal(C.canvas, "#0B0F14");
     assert.equal(C.surface, "#11161D");
     assert.equal(C.surfaceRaised, "#171D26");
-    assert.equal(C.rain, "#5CC8FF");
-    assert.equal(C.mint, "#3DDC97");
-    assert.equal(C.amber, "#E8B04B");
-    assert.equal(C.payout, "#E8B04B");
+    assert.equal(C.rain, "#5EC8FF");
+    assert.equal(C.mint, "#34D399");
+    assert.equal(C.amber, "#F5B841");
+    assert.equal(C.payout, "#F5B841");
     assert.equal(C.coral, "#F2787D");
   });
 

@@ -1,5 +1,9 @@
-import React, { useState } from "react";
-import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Animated, Easing, Linking, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { RadarMap, type MapScope } from "./RadarMap";
+import { CountUp, GlassCard, GlobalGroups, RainGauge, Receipt, StatusTag, statusLabel } from "./revamp";
+import { highlightParts, MARKETS, searchMarkets, type CatalogMarket } from "./markets-catalog";
+import { useReducedMotion } from "./liquid-glass";
 import type { CityIndex, ClaimReadiness, DevnetStatus, FinalizedWalletState, Portfolio, ProtectionQuote } from "./api";
 import { C, F, MIN_TOUCH } from "./theme";
 import { ActionButton, AppIcon, Disclosure, Reveal, Text } from "./ui";
@@ -46,8 +50,11 @@ export function MarketsScreen(props: {
   indicativeQuote: ProtectionQuote | null;
   nowSeconds: number;
   onProtect: () => void;
+  onOpenMarket?: (m: CatalogMarket) => void;
   guide?: React.ReactNode;
 }) {
+  const [query, setQuery] = useState("");
+  const [scope, setScope] = useState<MapScope>("region");
   const market = props.status?.desMoinesMarket;
   const city = props.city?.slug === "des-moines" ? props.city : null;
   const live = marketIsLive(props.status, props.nowSeconds);
@@ -64,16 +71,51 @@ export function MarketsScreen(props: {
   const station = stationLabel(props.status?.noaaEvidence.package?.stationId ?? "USW00014933");
   const state = live ? "Live" : market?.onchainStatus ? (countdown === "Sales closed" ? "Sales closed" : formatOnchainMarketStatus(market.onchainStatus)) : "Opens soon";
 
+  const results = searchMarkets(query, scope === "region" ? "region" : "global");
+  const highlight = new Set(query.trim() ? results.map((r) => r.code) : []);
+  const focusCode = query.trim() && results[0] ? results[0].code : "DSM";
+  const visibleRows = query.trim() ? results.slice(0, 6) : results.filter((m) => m.status !== "concept");
+  const moreConcepts = query.trim() ? Math.max(0, results.length - visibleRows.length) : results.filter((m) => m.status === "concept").length;
+  const open = (m: CatalogMarket) => { if (m.status === "live") props.onProtect(); else props.onOpenMarket?.(m); };
+
   return <>
-    <Text accessibilityRole="header" style={s.h1}>Markets</Text>
-    <Text style={s.lead}>Protect against weather with verified public data.</Text>
-    <View style={s.chipRow} accessibilityRole="tablist" accessibilityLabel="Weather hazard">
-      <View style={[s.hazardChip, s.hazardChipOn]} accessibilityRole="tab" accessibilityState={{ selected: true }}><Text style={[s.hazardText, { color: C.rain }]}>Rain</Text></View>
-      <View style={s.hazardChip} accessibilityRole="tab" accessibilityState={{ disabled: true }} accessibilityLabel="Snow, coming soon"><Text style={s.hazardText}>Snow · soon</Text></View>
-      <View style={s.hazardChip} accessibilityRole="tab" accessibilityState={{ disabled: true }} accessibilityLabel="Wind, coming soon"><Text style={s.hazardText}>Wind · soon</Text></View>
+    <View style={s.between}>
+      <View><Text style={s.eyebrowCaps}>SkyHedge</Text><Text accessibilityRole="header" style={s.h1}>Rain markets</Text></View>
+      <View style={s.devnetTag}><Text style={s.devnetTagText}>Devnet · test token</Text></View>
     </View>
 
-    <View style={s.card}>
+    <View style={s.search}>
+      <AppIcon name="search" color={C.muted} size={18} />
+      <TextInput value={query} onChangeText={setQuery} placeholder="Find a covered zone" placeholderTextColor={C.quiet} style={s.searchInput} accessibilityLabel="Search markets" autoCorrect={false} returnKeyType="search" />
+      {query ? <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setQuery("")} hitSlop={10}><AppIcon name="x" color={C.muted} size={18} /></Pressable> : null}
+    </View>
+
+    <GlassCard style={{ paddingVertical: 6, paddingHorizontal: 8 }}>
+      {visibleRows.length ? visibleRows.map((m) => {
+        const [a, b, c] = highlightParts(m.name, query);
+        const col = m.status === "live" ? C.mint : m.status === "soon" ? C.amber : C.rain;
+        const on = highlight.has(m.code) && m.code === focusCode;
+        return <Pressable key={m.code} accessibilityRole="button" accessibilityLabel={`${m.name}, ${m.status === "live" ? state : statusLabel(m.status)}`} onPress={() => open(m)} style={[s.resultRow, on && { backgroundColor: col + "14", borderColor: col + "55" }]}>
+          <View style={[s.dot, m.status === "concept" ? { borderWidth: 1.5, borderColor: col } : { backgroundColor: col }]} />
+          <View style={{ flex: 1 }}>
+            <Text style={s.resultName}>{a}<Text style={{ fontFamily: F.bodyBold, color: col }}>{b}</Text>{c}{m.code === "DSM" ? ", IA" : ""}</Text>
+            {query.trim() ? <Text style={s.caption}>{m.code} · {m.source}</Text> : null}
+          </View>
+          <StatusTag status={m.status} label={m.status === "live" ? state : undefined} />
+          <AppIcon name="chevron-right" color={C.quiet} size={16} />
+        </Pressable>;
+      }) : <Text style={[s.caption, { padding: 10 }]}>No covered zone matches “{query}”.</Text>}
+      {moreConcepts ? <Pressable accessibilityRole="button" onPress={() => setScope(scope === "region" ? "global" : "region")} style={s.moreRow}>
+        <Text style={s.caption}>○  +{moreConcepts} {query.trim() ? "more matches" : `concept markets ${scope === "region" ? "in North America" : "worldwide"}`}</Text>
+        <Text style={s.link}>{scope === "region" ? "Global →" : "Region →"}</Text>
+      </Pressable> : null}
+    </GlassCard>
+
+    <RadarMap scope={scope} onScope={setScope} focusCode={focusCode} highlight={highlight} onSelect={open} />
+
+    {scope === "global" && !query.trim() ? <GlobalGroups onPick={(grp) => setQuery(MARKETS.find((m) => m.group === grp && m.status === "concept")?.source ?? "")} /> : null}
+
+    <GlassCard accent={live ? C.mint : undefined}>
       <View style={s.between}>
         <View style={{ flex: 1 }}>
           <Text style={s.cardTitle}>Des Moines, IA</Text>
@@ -83,18 +125,19 @@ export function MarketsScreen(props: {
       </View>
       <View style={[s.between, { marginTop: 16, alignItems: "flex-end" }]}>
         <View>
-          <Text style={s.smallLabel}>Rain this window</Text>
-          <View style={s.baseline}>
-            <Text style={s.bigFigure}>{city?.cumulativeMm != null ? city.cumulativeMm.toFixed(1) : "—"}</Text>
-            <Text style={s.unit}>mm</Text>
-          </View>
-          {city?.cumulativeMm == null ? <Text style={s.caption}>Not reported by NOAA yet</Text> : city.observedThrough ? <Text style={s.caption}>Through {city.observedThrough}</Text> : null}
+          <Text style={s.smallLabel}>{thresholdMm != null ? "Trigger" : "Rain this window"}</Text>
+          {thresholdMm != null ? <Text style={s.triggerBig}>{symbol} {trimMm(thresholdMm)} <Text style={s.unitMono}>mm</Text></Text>
+            : <View style={s.baseline}><CountUp value={city?.cumulativeMm ?? null} style={s.bigFigure} /><Text style={s.unit}>mm</Text></View>}
         </View>
-        {thresholdMm != null ? <View style={{ alignItems: "flex-end" }}>
-          <Text style={s.smallLabel}>Trigger</Text>
-          <Text style={s.trigger}>{symbol} {trimMm(thresholdMm)} mm</Text>
+        {per100 ? <View style={{ alignItems: "flex-end" }}>
+          <Text style={s.smallLabel}>From</Text>
+          <Text style={s.fromFigure}>{per100} <Text style={s.unitMono}>SKYT / 100</Text></Text>
+        </View> : thresholdMm != null ? <View style={{ alignItems: "flex-end" }}>
+          <Text style={s.smallLabel}>Rain so far</Text>
+          <View style={s.baseline}><CountUp value={city?.cumulativeMm ?? null} style={s.fromFigure} /><Text style={s.unitMono}> mm</Text></View>
         </View> : null}
       </View>
+      {city?.cumulativeMm == null ? <Text style={s.caption}>Not reported by NOAA yet</Text> : city.observedThrough ? <Text style={s.caption}>Observed through {city.observedThrough}</Text> : null}
 
       {history.length ? <View accessible accessibilityLabel={`Weekly NOAA rainfall, last ${history.length} weeks: ${history.map((w, i) => `${formatWeekLabel(w.week)} ${values[i] == null ? "unavailable" : `${values[i]!.toFixed(1)} mm`}`).join("; ")}.${thresholdMm != null ? ` Trigger ${trimMm(thresholdMm)} mm.` : ""}`}>
         <View style={[s.chart, { height: CHART_H }]}>
@@ -102,27 +145,39 @@ export function MarketsScreen(props: {
             {Array.from({ length: 40 }).map((_, i) => <View key={i} style={s.dash} />)}
           </View> : null}
           {values.map((v, i) => <View key={history[i].week} style={s.barCol}>
-            {v == null ? <View style={s.barUnknown} /> : <View style={[s.bar, i === lastKnown && s.barCurrent, { height: Math.max(2, (v / scale) * CHART_H) }]} />}
+            {v == null ? <View style={s.barUnknown} /> : <GrowBar height={Math.max(2, (v / scale) * CHART_H)} delay={i * 60} style={[s.bar, i === lastKnown && s.barCurrent, thresholdMm != null && v >= thresholdMm && s.barHit]} />}
           </View>)}
         </View>
-        <View style={s.between}><Text style={s.caption}>{history.length} weeks · NOAA</Text>{thresholdMm != null ? <Text style={[s.caption, { color: C.payout }]}>– – trigger</Text> : null}</View>
+        <View style={s.between}><Text style={s.caption}>{history.length}-week rainfall · NOAA · mm</Text>{thresholdMm != null ? <Text style={[s.caption, { color: C.payout }]}>– – trigger</Text> : null}</View>
       </View> : <Text style={[s.caption, { marginTop: 12 }]}>Weekly history isn’t available yet — nothing is estimated.</Text>}
 
-      {per100 || countdown ? <View style={[s.between, { marginTop: 14 }]}>
-        {per100 ? <Text style={s.body}>From <Text style={s.bodyStrong}>{per100} SKYT</Text> per 100 covered</Text> : <View />}
-        {countdown ? <Pill label={countdown} tone="neutral" /> : null}
-      </View> : null}
-      <View style={{ marginTop: 14 }}><ActionButton label={live ? "Protect this window" : "See this window"} icon="shield" onPress={props.onProtect} /></View>
-    </View>
+      {countdown ? <View style={[s.between, { marginTop: 12 }]}><Text style={s.caption}>Sales window</Text><Pill label={countdown} tone="neutral" /></View> : null}
+      <View style={{ marginTop: 14 }}><ActionButton label={live ? "View coverage" : "See this window"} icon="arrow-right" onPress={props.onProtect} /></View>
+    </GlassCard>
 
-    <Text style={s.overline}>Coming next</Text>
-    <View style={[s.card, s.between]} accessible accessibilityLabel="Toronto Pearson, Ontario. Environment Canada rain data. Opens soon.">
-      <View style={{ flex: 1 }}><Text style={s.cardTitleSm}>Toronto Pearson, ON</Text><Text style={s.cardSub}>Environment Canada · rain</Text></View>
-      <Pill label="Opens soon" tone="neutral" />
-    </View>
+    <Pressable accessibilityRole="button" accessibilityLabel="Toronto Pearson, Ontario. Environment Canada rain data. Opens soon." onPress={() => { const t = MARKETS.find((m) => m.code === "YYZ"); if (t) props.onOpenMarket?.(t); }}>
+      <GlassCard accent={C.amber}>
+        <View style={s.between}>
+          <View style={{ flex: 1 }}><Text style={s.cardTitleSm}>Toronto Pearson, ON</Text><Text style={s.cardSub}>Environment Canada · YYZ station</Text></View>
+          <StatusTag status="soon" />
+        </View>
+        <View style={[s.between, { marginTop: 12 }]}><Text style={s.caption}>Payout: automatic when triggered</Text><Text style={s.link}>View market →</Text></View>
+      </GlassCard>
+    </Pressable>
     {props.guide}
-    <Disclosure>Devnet test token, not insurance. Observed station data only — missing values are never estimated.</Disclosure>
+    <Disclosure>Devnet test token, not insurance. Concept markets are previews: no prices, triggers or rainfall figures exist for them. Observed station data only — missing values are never estimated.</Disclosure>
   </>;
+}
+
+/** Bar that grows from zero on mount (micro-animation for the weekly chart). */
+function GrowBar({ height, delay, style }: { height: number; delay: number; style: any }) {
+  const reduced = useReducedMotion();
+  const h = useRef(new Animated.Value(reduced ? height : 0)).current;
+  useEffect(() => {
+    if (reduced) { h.setValue(height); return; }
+    Animated.timing(h, { toValue: height, duration: 700, delay, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+  }, [height, delay, reduced, h]);
+  return <Animated.View style={[style, { height: h }]} />;
 }
 
 /* ───────────────────────────── Protect ───────────────────────────── */
@@ -149,6 +204,9 @@ export function ProtectTicket(props: {
   transactionSignature: string | null;
   walletName: string;
   onRefresh: () => void;
+  observedMm?: number | null;
+  onProtectAgain?: () => void;
+  onBackToMarkets?: () => void;
 }) {
   const [verifyOpen, setVerifyOpen] = useState(false);
   const market = props.status?.desMoinesMarket;
@@ -183,6 +241,19 @@ export function ProtectTicket(props: {
       <Text style={s.noticeBody}>Pricing appears as soon as the next Des Moines window opens. Pull down or tap refresh to check again.</Text>
       <Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh status</Text></Pressable>
     </View> : null}
+
+    <GlassCard accent={live ? C.rain : undefined}>
+      <View style={s.between}><StatusTag status={live ? "live" : "soon"} label={live ? "Live window" : "Not selling now"} />{endDate ? <Text style={s.caption}>Settles after {endDate}</Text> : null}</View>
+      <View style={{ flexDirection: "row", gap: 16, marginTop: 14, alignItems: "flex-end" }}>
+        <RainGauge observedMm={props.observedMm ?? null} triggerMm={thresholdMm != null ? Number(thresholdMm) : null} />
+        <View style={{ flex: 1 }}>
+          <Text style={s.smallLabel}>Observed so far</Text>
+          <View style={s.baseline}><CountUp value={props.observedMm ?? null} style={s.hugeFigure} /><Text style={s.unit}>mm</Text></View>
+          {thresholdMm ? <Text style={[s.caption, { color: C.payout }]}>– – Trigger {market?.operator === "gt" ? ">" : market?.operator === "lt" ? "<" : market?.operator === "lte" ? "≤" : "≥"} {thresholdMm} mm</Text> : null}
+          <Text style={s.caption}>NOAA · {station}</Text>
+        </View>
+      </View>
+    </GlassCard>
 
     <Text style={s.overline}>Coverage (paid if triggered)</Text>
     <View style={s.chipRow} accessibilityRole="radiogroup" accessibilityLabel="Coverage amount in SKYT">
@@ -238,9 +309,24 @@ export function ProtectTicket(props: {
     {props.quoteError ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>{quoteErrorTitle(props.quoteError)}</Text><Text style={s.noticeBody}>{friendlyError(props.quoteError)}</Text><Pressable accessibilityRole="button" onPress={props.onRetryQuote} style={s.inlineBtn}><Text style={s.link}>Get a new price</Text></Pressable></View> : null}
     {props.transactionMessage ? <Text accessibilityLiveRegion="polite" style={[s.body, { color: C.rain, marginBottom: 10 }]}>{props.transactionMessage}</Text> : null}
     {props.transactionError ? <View style={[s.notice, { borderColor: C.coral }]} accessibilityRole="alert"><Text style={s.noticeTitle}>{transactionErrorTitle(props.transactionError, props.walletName)}</Text><Text style={s.noticeBody}>{friendlyError(props.transactionError)} Nothing was charged unless Explorer shows a transaction.</Text></View> : null}
-    {props.transactionSignature ? <Reveal><View style={[s.card, { borderColor: C.mint }]}><View style={s.baseline}><AppIcon name="check-circle" color={C.mint} size={20} /><Text style={[s.cardTitleSm, { marginLeft: 8 }]}>You’re protected</Text></View><Text style={s.caption}>Finalized on Solana Devnet · {shortAddress(props.transactionSignature)}</Text><ExplorerButton url={`https://explorer.solana.com/tx/${encodeURIComponent(props.transactionSignature)}?cluster=devnet`} label="View on Explorer" /></View><Text style={[s.caption, { marginTop: -4, marginBottom: 8 }]}>One protection per wallet per window.</Text></Reveal> : null}
+    {props.transactionSignature ? <Reveal><Receipt
+      title={props.claimReadiness?.state === "claimed" ? "Payout settled" : "Protection confirmed"}
+      amountLabel={props.amountBase ? `${formatSkytFixed(props.amountBase, 0)} SKYT` : null}
+      ticker={[`DSM-RAIN`, `NOAA · ${station}`, thresholdMm ? `TRIGGER ${thresholdMm} MM` : "TRIGGER PENDING", `TX ${shortAddress(props.transactionSignature)}`, "SOLANA DEVNET · FINALIZED"]}
+      facts={[["Covered", props.amountBase ? `${formatSkytFixed(props.amountBase, 0)} SKYT` : "—"], ["Source", `NOAA · ${station}`], ["Settles", endDate ? `After ${endDate}` : "NOAA final"], ["Signature", shortAddress(props.transactionSignature)]]}
+      signature={props.transactionSignature}
+      onAgain={() => props.onProtectAgain?.()}
+      onMarkets={() => props.onBackToMarkets?.()}
+    /><Text style={[s.caption, { marginTop: -4, marginBottom: 8 }]}>One protection per wallet per window.</Text></Reveal> : null}
     {isExistingPosition && !props.transactionSignature ? <Text style={[s.caption, { marginBottom: 8 }]}>One protection per wallet per window — this wallet is already covered.</Text> : null}
 
+    {props.claimReadiness?.state === "claimable" && props.claimReadiness.action === "claim_payout" ? <GlassCard accent={C.mint}>
+      <Text style={s.overlineIn}>Trigger hit · payout ready</Text>
+      {props.claimReadiness.amount ? <Text style={s.payoutBig}>+{formatSkytFixed(props.claimReadiness.amount, 0)} <Text style={s.unitMono}>SKYT</Text></Text> : null}
+      {props.claimReadiness.observation ? <Row label="Observed" value={`${(Number(props.claimReadiness.observation.rainfallMmX100) / 100).toFixed(1)} mm · NOAA`} /> : null}
+      {thresholdMm ? <Row label="Trigger" value={`${thresholdMm} mm`} gold /> : null}
+      <Text style={s.caption}>No claims form. Tap “Collect payout to wallet” below and approve once in your wallet.</Text>
+    </GlassCard> : null}
     {hasPosition && props.claimReadiness ? <View style={s.card}>
       <Text style={s.overlineIn}>Your position</Text>
       <Text style={s.body}>{props.claimReadiness.reason}</Text>
@@ -332,6 +418,19 @@ export function WalletV2(props: {
 }
 
 const s = StyleSheet.create({
+  eyebrowCaps: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase" },
+  devnetTag: { borderWidth: 1, borderColor: C.amber + "66", backgroundColor: C.amberSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
+  devnetTagText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 11 },
+  search: { minHeight: 54, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, borderRadius: 16, backgroundColor: "rgba(17,22,29,0.85)", borderWidth: 1, borderColor: C.border, marginTop: 14, marginBottom: 10 },
+  searchInput: { flex: 1, minHeight: 48, color: C.ink, fontFamily: F.body, fontSize: 16 },
+  resultRow: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 10, borderRadius: 12, borderWidth: 1, borderColor: "transparent" },
+  resultName: { color: C.ink, fontFamily: F.bodyMedium, fontSize: 15 },
+  moreRow: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
+  triggerBig: { color: C.payout, fontFamily: F.mono, fontSize: 30, fontWeight: "700", fontVariant: TAB },
+  fromFigure: { color: C.ink, fontFamily: F.mono, fontSize: 24, fontWeight: "700", fontVariant: TAB },
+  unitMono: { color: C.muted, fontFamily: F.mono, fontSize: 13, fontWeight: "400" },
+  barHit: { backgroundColor: C.payout, opacity: 1 },
+  payoutBig: { color: C.mint, fontFamily: F.headingBold, fontSize: 40, lineHeight: 48, fontVariant: TAB, marginBottom: 6 },
   h1: { color: C.ink, fontFamily: F.headingBold, fontSize: 28, lineHeight: 34, letterSpacing: -0.6 },
   lead: { color: C.muted, fontFamily: F.body, fontSize: 14, lineHeight: 20, marginTop: 4, marginBottom: 14 },
   eyebrow: { color: C.muted, fontFamily: F.bodyMedium, fontSize: 13, marginBottom: 2 },

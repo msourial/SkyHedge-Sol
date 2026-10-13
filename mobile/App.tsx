@@ -28,8 +28,11 @@ import { friendlyError, isNetworkError, stationLabel } from "./src/friendly-erro
 import { ScreenTransition, TactilePressable } from "./src/liquid-glass";
 import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
 import { ReferenceAreaMap } from "./src/ReferenceAreaMap";
-import { MarketsScreen, NetworkPill, ProtectTicket, StickyCta, WalletV2 } from "./src/v2";
+import { marketIsLive, MarketsScreen, NetworkPill, ProtectTicket, StickyCta, WalletV2 } from "./src/v2";
 import { coverageOptions, type CoverageOption } from "./src/ticket";
+import { Landing, MarketDetail } from "./src/revamp";
+import { marketByCode, type CatalogMarket } from "./src/markets-catalog";
+import { LinearGradient } from "expo-linear-gradient";
 import { referenceEvidenceLabel, referenceLocationFor, referencePointFor } from "./src/reference-map";
 
 type Tab = "weather" | "catalog" | "protect" | "wallet";
@@ -72,6 +75,10 @@ export default function App() {
   const [indicativeQuote, setIndicativeQuote] = useState<ProtectionQuote | null>(null);
   const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1_000));
   const [guideOpen, setGuideOpen] = useState(false);
+  const [showLanding, setShowLanding] = useState(true);
+  const [detailCode, setDetailCode] = useState<string | null>(null);
+  /** Local-only "notify me" choices (in memory on this device; never sent anywhere). */
+  const [notifyCodes, setNotifyCodes] = useState<ReadonlySet<string>>(new Set());
   const quoteRequestId = useRef(0);
   useEffect(() => {
     const timer = setInterval(() => setNowSeconds(Math.floor(Date.now() / 1_000)), 30_000);
@@ -346,14 +353,15 @@ export default function App() {
     <SafeAreaProvider>
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor={C.canvas} translucent={false} />
-      <View style={styles.header} accessibilityRole="header">
+      <LinearGradient pointerEvents="none" colors={["#0F1A24", "#0B0F14", "#0B0F14"]} locations={[0, 0.35, 1]} style={StyleSheet.absoluteFill} />
+      {!showLanding ? <View style={styles.header} accessibilityRole="header">
         <View style={styles.brandMark}><AppIcon name="cloud-drizzle" color={C.green} size={22} /></View>
         <View style={styles.brandCopy}>
           <Text style={styles.brand}>SkyHedge</Text>
           <Text style={styles.brandSub}>Weather protection</Text>
         </View>
         <NetworkPill />
-      </View>
+      </View> : null}
 
       <ScrollView
         ref={scrollRef}
@@ -363,8 +371,21 @@ export default function App() {
         <ScreenTransition transitionKey={tab}>
         {error ? <ErrorBanner message={error} onRetry={() => { void retryData(); }} /> : null}
         {homeLoading && cities.length === 0 && catalog.length === 0 ? <View style={styles.loadingPanel}><ActivityIndicator color={C.blue} /><Text style={styles.emptyText}>Loading finalized weather, market catalog, and Devnet readiness…</Text></View> : null}
-        {tab === "catalog" ? (
+        {showLanding ? (
+          <Landing live={!!status && marketIsLive(status, nowSeconds)} busy={loading} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect().then(() => setShowLanding(false)); }} />
+        ) : null}
+        {!showLanding && tab === "catalog" && detailCode && marketByCode(detailCode) ? (
+          <MarketDetail
+            market={marketByCode(detailCode)!}
+            notified={notifyCodes.has(detailCode)}
+            onNotify={() => setNotifyCodes((prev) => { const next = new Set(prev); if (next.has(detailCode)) next.delete(detailCode); else next.add(detailCode); return next; })}
+            onBack={() => setDetailCode(null)}
+            onExploreLive={() => { setDetailCode(null); if (selectedCity !== "des-moines") changeCity("des-moines"); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
+          />
+        ) : null}
+        {!showLanding && tab === "catalog" && !detailCode ? (
           <MarketsScreen
+            onOpenMarket={(m: CatalogMarket) => { setDetailCode(m.code); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
             status={status}
             city={city}
             indicativeQuote={indicativeQuote}
@@ -376,7 +397,7 @@ export default function App() {
             </>}
           />
         ) : null}
-        {tab === "protect" ? (
+        {!showLanding && tab === "protect" ? (
           !status && (isNetworkError(error) || isNetworkError(walletError) || isNetworkError(portfolioError)) ? (
             <View style={styles.emptyState} accessibilityRole="alert">
               <AppIcon name="wifi-off" color={C.amber} size={22} />
@@ -405,10 +426,13 @@ export default function App() {
               transactionSignature={transactionSignature}
               walletName={WALLET_NAME}
               onRefresh={() => { void refresh(); }}
+              observedMm={city?.slug === "des-moines" ? city.cumulativeMm : null}
+              onProtectAgain={() => { setTransactionSignature(null); setTransactionMessage(null); setTransactionError(null); scrollRef.current?.scrollTo({ y: 0, animated: true }); }}
+              onBackToMarkets={() => { setTransactionSignature(null); setTab("catalog"); setDetailCode(null); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
             />
           )
         ) : null}
-        {tab === "wallet" ? (
+        {!showLanding && tab === "wallet" ? (
           <WalletV2
             wallet={wallet}
             walletName={WALLET_NAME}
@@ -425,9 +449,9 @@ export default function App() {
         </ScreenTransition>
       </ScrollView>
 
-      {tab === "protect" && status ? (() => {
+      {!showLanding && tab === "protect" && status ? (() => {
         const claimable = claimReadiness?.state === "claimable" && claimReadiness.action;
-        if (claimable) return <StickyCta label={claimReadiness.action === "claim_payout" ? "Claim payout in wallet" : "Claim refund in wallet"} busy={transactionBusy} onPress={() => { if (claimReadiness?.action) void submitApprovedAction(claimReadiness.action); }} />;
+        if (claimable) return <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={transactionBusy} onPress={() => { if (claimReadiness?.action) void submitApprovedAction(claimReadiness.action); }} />;
         if (!wallet) return <StickyCta label="Connect wallet to protect" busy={loading} onPress={() => { void connect(); }} />;
         const quoteReady = !!quote && quote.protectedAmount === amountBase;
         return <StickyCta
@@ -438,11 +462,11 @@ export default function App() {
           onPress={() => { void submitApprovedAction("open_position"); }}
         />;
       })() : null}
-      <View style={styles.bottomBar} accessibilityRole="tablist" accessibilityLabel="Main navigation">
-        <TabButton label="Markets" icon="map-pin" selected={tab === "catalog" || tab === "weather"} onPress={() => setTab("catalog")} />
+      {showLanding ? null : <View style={styles.bottomBar} accessibilityRole="tablist" accessibilityLabel="Main navigation">
+        <TabButton label="Markets" icon="map-pin" selected={tab === "catalog" || tab === "weather"} onPress={() => { setTab("catalog"); setDetailCode(null); }} />
         <TabButton label="Protect" icon="shield" selected={tab === "protect"} onPress={() => setTab("protect")} />
         <TabButton label="Wallet" icon="credit-card" selected={tab === "wallet"} onPress={() => setTab("wallet")} />
-      </View>
+      </View>}
     </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -500,7 +524,7 @@ function shorten(value: string) {
 const styles = StyleSheet.create({
   fontLoading: { flex: 1, backgroundColor: C.canvas, justifyContent: "center", alignItems: "center" },
   safe: { flex: 1, backgroundColor: C.canvas },
-  header: { minHeight: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: 20, backgroundColor: C.canvas, borderBottomWidth: 1, borderBottomColor: C.border },
+  header: { minHeight: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: 20, backgroundColor: "transparent", borderBottomWidth: 1, borderBottomColor: C.border },
   card: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 12 },
   brandMark: { width: 36, height: 36, borderRadius: 8, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" },
   brandCopy: { marginLeft: 10, flex: 1 },
@@ -707,7 +731,7 @@ const styles = StyleSheet.create({
   emptyTitle: { color: C.ink, fontFamily: F.heading, fontSize: 17, marginBottom: 6 },
   emptyAction: { minHeight: 48, justifyContent: "center", alignSelf: "flex-start", paddingRight: 12 },
   emptyActionText: { color: C.blue, fontFamily: F.bodySemi, fontSize: 13 },
-  bottomBar: { minHeight: 72, backgroundColor: C.canvas, borderTopWidth: 1, borderTopColor: C.border, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10, paddingHorizontal: 8 },
+  bottomBar: { minHeight: 72, backgroundColor: "rgba(11,15,20,0.96)", borderTopWidth: 1, borderTopColor: C.border, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10, paddingHorizontal: 8 },
   tabButtonWrap: { flex: 1, minWidth: 0 },
   tabButton: { flex: 1, minWidth: 0, minHeight: 58, alignItems: "center", justifyContent: "center", borderRadius: 14, paddingHorizontal: 2 },
   tabButtonSelected: { borderTopWidth: 2, borderTopColor: C.mint, borderRadius: 0 },
