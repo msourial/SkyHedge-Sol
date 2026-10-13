@@ -15,6 +15,31 @@ Devnet Solana software for **fixed-payout cumulative-rainfall protection markets
 
 SkyHedge is not an options exchange, futures market, staking product, multi-chain app, or automated trading system.
 
+## Money flow
+
+Each city market has its own fully collateralized vault (a PDA-owned SPL token account). Liquidity providers take the other side of every protection position; there is no order book or outside insurer. Everything below is enforced by `anchor/programs/skyhedge_protection/src/lib.rs`.
+
+```mermaid
+flowchart LR
+  LP["Liquidity providers"] -- "deposit (fund_pool)" --> V[("Market vault<br/>one per city")]
+  V -. "shares, 1:1 with deposit" .-> LP
+  B["Buyer"] -- "premium (open_position)<br/>only if the vault covers every reserved payout" --> V
+  SA["Settlement authority"] -- "NOAA observation, source-hashed<br/>(submit_weather_observation)" --> P{{"settle_market"}}
+  P -- "trigger hit" --> C["Buyer claims payout<br/>(claim_payout)"]
+  SA -- "no valid NOAA data by the deadline<br/>(mark_data_unavailable)" --> R["Buyer reclaims premium<br/>(claim_premium_refund)"]
+  V --> C
+  V --> R
+  V -- "close_market (admin, after claim deadline):<br/>1% protocol fee" --> F[("Protocol fee vault")]
+  V -- "everything left, pro rata<br/>(redeem_closed_liquidity)" --> LP
+```
+
+- **Funding.** Any wallet can `fund_pool` while a market is Draft or Open and before sales close, up to the market's liquidity cap; LP shares are 1:1 with SKYT deposited. `withdraw_liquidity` is allowed in the same window only if the vault still covers reserved exposure.
+- **Buying.** `open_position` charges `premium = ceil(protected_amount × premium_rate_bps / 10,000)`, where `premium_rate_bps = ceil(probability_bps × 1.15) + 100`. The 1% protocol fee (1% of the protected amount) is part of the premium and is only accrued, not moved. The purchase reserves the full payout and is rejected unless the vault, including the new premium, covers all reserved exposure and stays within the market's exposure and per-wallet caps.
+- **Settlement.** The settlement authority posts one NOAA observation that must match the market's station hash, methodology hash and window and carry a non-zero source hash; `settle_market` compares it with the immutable trigger. If the trigger is not hit, premiums stay in the vault for LPs. If no valid NOAA data exists after the data deadline, `mark_data_unavailable` lets every buyer reclaim their full premium and waives the protocol fee.
+- **Close.** After the claim deadline the admin calls `close_market`: the accrued 1% fee moves to the protocol fee vault (zero when data was unavailable) and everything left in the vault is redeemable by LPs pro rata.
+- **Who signs.** The protocol admin wallet creates, opens (needs at least one LP share) and closes markets; the settlement authority posts observations; LPs and buyers sign their own deposits, purchases and claims. Funding is not admin-gated on chain; on Devnet the admin wallet seeds the first liquidity.
+- **Collateral.** Devnet uses the valueless six-decimal SKYT test token; no real money is involved.
+
 ## Architecture
 
 For the product-level operating model, audience split, first activation market, and demo flow, read [How SkyHedge Should Work](docs/how-skyhedge-should-work.md).

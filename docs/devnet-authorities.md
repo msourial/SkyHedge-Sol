@@ -21,4 +21,4 @@ This is a public-key-only record. It contains no recovery phrases, private keys,
 
 The settlement private key is stored locally in an ignored file. It must be rotated before any use beyond this Devnet build, and never committed or pasted into chat.
 
-The protocol admin is a wallet public key, distinct from the current program-upgrade signer. The owner must approve market cancellation, creation, funding, and opening through the admin wallet; no service or deployer key can substitute for those approvals.
+The protocol admin is a wallet public key, distinct from the current program-upgrade signer. The owner must approve market cancellation, creation, opening and closing through the admin wallet; no service or deployer key can substitute for those approvals. On chain, `fund_pool` is open to any liquidity-provider wallet; for Devnet activation the admin wallet seeds the first liquidity itself.

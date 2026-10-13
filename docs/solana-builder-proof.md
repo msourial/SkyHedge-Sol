@@ -2,7 +2,7 @@
 
 ## One-line thesis
 
-SkyHedge uses Solana to make parametric rainfall protection auditable: immutable market terms, USDC-ready collateral vaults, NOAA source-hashed settlement evidence, and deterministic payout or refund paths.
+SkyHedge uses Solana to make parametric rainfall protection auditable: immutable market terms, one fully collateralized vault per city market funded by liquidity providers (SKYT on Devnet, USDC later), NOAA source-hashed settlement evidence, and deterministic payout or refund paths.
 
 ## Current state
 

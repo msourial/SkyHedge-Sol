@@ -14,7 +14,7 @@ Premium rate is `ceil(probability_bps × 1.15) + 100` basis points. The quote pr
 
 `DRAFT → OPEN → LOCKED → AWAITING_SETTLEMENT → SETTLED | DATA_UNAVAILABLE → CLOSED`
 
-LP shares are one-to-one with pre-lock deposits. LP withdrawals are allowed only before lock and cannot leave less collateral than reserved exposure. Protection purchases reserve the full potential payout. The protocol fee is accrued separately and transferred to the protocol fee vault only after the claim deadline.
+LP shares are one-to-one with pre-lock deposits. LP withdrawals are allowed only before sales close (and therefore before lock) and cannot leave less collateral than reserved exposure. Protection purchases reserve the full potential payout. The 1% protocol fee (1% of each protected amount, included in the premium) is accrued separately and transferred to the protocol fee vault only after the claim deadline; it is waived if the market ends `DATA_UNAVAILABLE`. Funding is open to any LP wallet; market creation, opening and closing are admin-signed. See the Money flow section in the README.
 
 Winning protection claims transfer SKYT from the market vault once. If NOAA cannot return final source data within seven days, the settlement signer records `DATA_UNAVAILABLE`; buyers may reclaim their premium once. At the immutable deadline—seven days of source grace plus 30 days of claims—the admin closes the market, moves fees to the fee vault, and LPs redeem all remaining assets pro rata.
 
