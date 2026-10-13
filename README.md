@@ -71,6 +71,43 @@ flowchart LR
 - **Who signs.** The protocol admin wallet creates, opens (needs at least one LP share) and closes markets; the settlement authority posts observations; LPs and buyers sign their own deposits, purchases and claims. Funding is not admin-gated on chain; on Devnet the admin wallet seeds the first liquidity.
 - **Collateral.** Devnet uses the valueless six-decimal SKYT test token; no real money is involved.
 
+## Pricing model
+
+**Live today:** premium rate = ceil(rain probability × 1.15) + 1% fee, charged on the coverage amount. Rain probability comes from NOAA: 70% from hits in the 10 matching past windows and 30% from the NOAA forecast, clamped between 1% and 90%. **Proposed (not yet in the program):** replace the flat 1% with a risk-based fee. Changing it needs an on-chain program update.
+
+```mermaid
+flowchart TB
+  subgraph DATA["1. Rain probability p (NOAA)"]
+    H["10 past NOAA windows<br/>hit rate × 70%"] --> P["p, clamped 1%–90%"]
+    F["NOAA forecast hit<br/>× 30%"] --> P
+  end
+  P --> FAIR["Fair cost = p × coverage"]
+  FAIR --> LOAD["+ 15% risk load<br/>(goes to LP vault)"]
+  P --> FEE
+  subgraph FEE["2. SkyHedge fee"]
+    direction TB
+    NOW["Today: flat 1% of coverage"]
+    NEW["Proposed: risk-based<br/>Polymarket-style curve<br/>coverage × rate × p × (1 − p)<br/>peaks at 50/50, near 0 at extremes"]
+    TIER["Proposed tiers for small tickets<br/>low / medium / high risk = 2% / 4% / 6%<br/>about 5% on a $50 ticket"]
+    NOW -. "replaced by" .-> NEW
+    NEW --- TIER
+  end
+  LOAD --> PREM["Premium the buyer pays"]
+  FEE --> PREM
+  subgraph LIMITS["3. Coverage limits (in code)"]
+    W["max 500 SKYT per wallet"]
+    M["max 8,000 SKYT exposure per market"]
+    L["max 10,000 SKYT liquidity per market"]
+  end
+  LIMITS -. "checked before purchase" .-> PREM
+  PREM --> VAULT[("City market vault<br/>funded by LPs")]
+  VAULT -- "trigger hit: payout" --> BUYER["Buyer"]
+  VAULT -- "fee at close" --> FV[("Protocol fee vault<br/>= SkyHedge revenue")]
+  VAULT -- "remainder" --> LPS["Liquidity providers"]
+```
+
+Payouts come from the liquidity providers' vault, not from SkyHedge. SkyHedge's revenue is only the fee, so it carries no weather risk unless it also provides liquidity. Limits come from `scripts/seed-markets.ts`, and the formula comes from `anchor/programs/skyhedge_protection/src/lib.rs` and `server/services/quote-engine.ts`. The fee tiers are a modeling proposal.
+
 ## Install
 
 **APK:** download it from [Releases](https://github.com/msourial/SkyHedge-Sol/releases). A release for build `e5ca97a` is coming. Install with `adb install SkyHedge-ClockIn.apk` or sideload it on the Seeker.
