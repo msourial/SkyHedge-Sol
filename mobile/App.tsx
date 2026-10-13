@@ -353,7 +353,9 @@ export default function App() {
     <SafeAreaProvider>
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor={C.canvas} translucent={false} />
-      <LinearGradient pointerEvents="none" colors={["#0F1A24", "#0B0F14", "#0B0F14"]} locations={[0, 0.35, 1]} style={StyleSheet.absoluteFill} />
+      <LinearGradient pointerEvents="none" colors={["#0F1C28", "#0B0F14", "#0B0F14", "#12100C"]} locations={[0, 0.35, 0.75, 1]} style={StyleSheet.absoluteFill} />
+      <View pointerEvents="none" style={styles.auraBlue} />
+      <View pointerEvents="none" style={styles.auraAmber} />
       {!showLanding ? <View style={styles.header} accessibilityRole="header">
         <View style={styles.brandMark}><AppIcon name="cloud-drizzle" color={C.green} size={22} /></View>
         <View style={styles.brandCopy}>
@@ -525,6 +527,8 @@ function shorten(value: string) {
 const styles = StyleSheet.create({
   fontLoading: { flex: 1, backgroundColor: C.canvas, justifyContent: "center", alignItems: "center" },
   safe: { flex: 1, backgroundColor: C.canvas },
+  auraBlue: { position: "absolute", top: -160, left: -120, width: 420, height: 420, borderRadius: 210, backgroundColor: "rgba(94,200,255,0.10)", boxShadow: "0px 0px 120px 60px rgba(94,200,255,0.10)" },
+  auraAmber: { position: "absolute", bottom: 40, right: -160, width: 360, height: 360, borderRadius: 180, backgroundColor: "rgba(245,184,65,0.05)", boxShadow: "0px 0px 120px 60px rgba(245,184,65,0.05)" },
   header: { minHeight: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: 20, backgroundColor: "transparent", borderBottomWidth: 1, borderBottomColor: C.border },
   card: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 12 },
   brandMark: { width: 36, height: 36, borderRadius: 8, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" },
@@ -732,10 +736,10 @@ const styles = StyleSheet.create({
   emptyTitle: { color: C.ink, fontFamily: F.heading, fontSize: 17, marginBottom: 6 },
   emptyAction: { minHeight: 48, justifyContent: "center", alignSelf: "flex-start", paddingRight: 12 },
   emptyActionText: { color: C.blue, fontFamily: F.bodySemi, fontSize: 13 },
-  bottomBar: { minHeight: 72, backgroundColor: "rgba(11,15,20,0.96)", borderTopWidth: 1, borderTopColor: C.border, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10, paddingHorizontal: 8 },
+  bottomBar: { minHeight: 76, backgroundColor: "rgba(14,19,26,0.94)", borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: "0px -8px 24px rgba(0,0,0,0.45)", borderTopWidth: 1, borderTopColor: C.border, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10, paddingHorizontal: 8 },
   tabButtonWrap: { flex: 1, minWidth: 0 },
   tabButton: { flex: 1, minWidth: 0, minHeight: 58, alignItems: "center", justifyContent: "center", borderRadius: 14, paddingHorizontal: 2 },
-  tabButtonSelected: { borderTopWidth: 2, borderTopColor: C.mint, borderRadius: 0 },
+  tabButtonSelected: { backgroundColor: "rgba(94,200,255,0.12)", borderWidth: 1, borderColor: "rgba(94,200,255,0.35)", borderRadius: 16, boxShadow: "0px 0px 16px rgba(94,200,255,0.30)" },
   tabLabel: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 12, marginTop: 5 },
   tabLabelSelected: { color: C.green, fontFamily: F.bodySemi },
 });

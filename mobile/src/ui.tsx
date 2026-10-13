@@ -3,6 +3,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text as NativeText, type TextProps, View, type ViewProps } from "react-native";
 import { C, F } from "./theme";
 import { TactilePressable } from "./liquid-glass";
+import { LinearGradient } from "expo-linear-gradient";
 
 export type AppIconName = React.ComponentProps<typeof Feather>["name"];
 
@@ -87,6 +88,8 @@ export function ActionButton({ label, onPress, disabled = false, busy = false, i
       android_ripple={{ color: C.greenSoft }}
       style={({ pressed }) => [styles.action, variant === "secondary" && styles.actionSecondary, disabled && styles.actionDisabled, pressed && !disabled && styles.actionPressed]}
     >
+      {variant === "primary" && !disabled ? <LinearGradient pointerEvents="none" colors={["#8FDDFF", "#5EC8FF", "#2E9BEA"]} locations={[0, 0.45, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: 16 }]} /> : null}
+      {variant === "primary" && !disabled ? <View pointerEvents="none" style={styles.actionSheen} /> : null}
       {icon ? <AppIcon name={icon} color={disabled ? C.quiet : variant === "secondary" ? C.ink : C.actionText} size={19} /> : null}
       <Text style={[styles.actionText, variant === "secondary" && styles.actionTextSecondary, disabled && styles.actionTextDisabled]}>{busy ? "Working…" : label}</Text>
     </TactilePressable>
@@ -146,12 +149,13 @@ const styles = StyleSheet.create({
   pill: { minHeight: 32, flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 7, borderWidth: 1, borderRadius: 16, paddingHorizontal: 10 },
   dot: { width: 6, height: 6, borderRadius: 3 },
   pillText: { fontFamily: F.bodySemi, fontSize: 12, letterSpacing: 0.3 },
-  action: { minHeight: 52, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", borderRadius: 10, paddingHorizontal: 18, backgroundColor: C.rain },
-  actionSecondary: { backgroundColor: "transparent", borderWidth: 1, borderColor: C.border },
+  action: { minHeight: 56, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", borderRadius: 16, paddingHorizontal: 18, backgroundColor: C.rain, overflow: "hidden", boxShadow: "0px 6px 22px rgba(94,200,255,0.45)" },
+  actionSheen: { position: "absolute", left: 1, right: 1, top: 1, height: "45%", borderTopLeftRadius: 15, borderTopRightRadius: 15, backgroundColor: "rgba(255,255,255,0.16)" },
+  actionSecondary: { backgroundColor: "rgba(30,40,52,0.6)", borderWidth: 1, borderColor: "rgba(160,200,230,0.18)", boxShadow: "none" },
   actionTextSecondary: { color: C.ink },
-  actionDisabled: { backgroundColor: C.surfaceRaised, borderWidth: 1, borderColor: C.border },
+  actionDisabled: { backgroundColor: C.surfaceRaised, borderWidth: 1, borderColor: C.border, boxShadow: "none" },
   actionPressed: { opacity: 0.84 },
-  actionText: { color: C.actionText, fontFamily: F.bodyBold, fontSize: 15 },
+  actionText: { color: C.actionText, fontFamily: F.bodyBold, fontSize: 16, letterSpacing: 0.2 },
   actionTextDisabled: { color: C.quiet },
   screenHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 20 },
   screenHeaderCopy: { flex: 1 },

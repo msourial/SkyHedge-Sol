@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { Animated, Easing, Pressable, StyleSheet, View } from "react-native";
-import Svg, { Circle, Defs, G, Line, Path, RadialGradient, Stop, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, Defs, G, Line, LinearGradient, Path, RadialGradient, Stop, Text as SvgText } from "react-native-svg";
 import { GLOBAL_GRATICULE, GLOBAL_LAND, GLOBAL_VIEW, REGION_GRATICULE, REGION_LAKES, REGION_LAND, REGION_VIEW } from "./geo-paths";
 import { MARKETS, type CatalogMarket } from "./markets-catalog";
 import { C, F } from "./theme";
@@ -61,13 +61,18 @@ export function RadarMap(props: {
       <View style={StyleSheet.absoluteFill} renderToHardwareTextureAndroid needsOffscreenAlphaCompositing={false}>
       <Svg width="100%" height="100%" viewBox={`${win.x} ${win.y} ${win.w} ${win.h}`}>
         <Defs>
+          <LinearGradient id="land" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#5EC8FF" stopOpacity="0.12" />
+            <Stop offset="1" stopColor="#5EC8FF" stopOpacity="0.04" />
+          </LinearGradient>
           <RadialGradient id="glow" cx="50%" cy="50%" r="50%">
             <Stop offset="0" stopColor={fc} stopOpacity="0.28" />
             <Stop offset="1" stopColor={fc} stopOpacity="0" />
           </RadialGradient>
         </Defs>
         <Path d={isRegion ? REGION_GRATICULE : GLOBAL_GRATICULE} stroke="rgba(255,255,255,0.06)" strokeWidth={1 * k} strokeDasharray={`${3 * k} ${4 * k}`} fill="none" />
-        <Path d={isRegion ? REGION_LAND : GLOBAL_LAND} fill="rgba(94,200,255,0.06)" stroke="rgba(94,200,255,0.32)" strokeWidth={1.1 * k} strokeLinejoin="round" />
+        <Path d={isRegion ? REGION_LAND : GLOBAL_LAND} fill="none" stroke="rgba(94,200,255,0.10)" strokeWidth={5 * k} strokeLinejoin="round" />
+        <Path d={isRegion ? REGION_LAND : GLOBAL_LAND} fill="url(#land)" stroke="rgba(120,210,255,0.55)" strokeWidth={1 * k} strokeLinejoin="round" />
         {isRegion ? <Path d={REGION_LAKES} fill="#0B0F14" stroke="rgba(94,200,255,0.22)" strokeWidth={0.8 * k} /> : null}
         <Circle cx={fx} cy={fy} r={60 * ring} fill="url(#glow)" />
         {[22, 44, 66].map((r) => <Circle key={r} cx={fx} cy={fy} r={r * ring} fill="none" stroke={fc} strokeOpacity={0.18} strokeWidth={1 * k} />)}
@@ -94,12 +99,12 @@ export function RadarMap(props: {
           <Svg width={260} height={260} viewBox="-130 -130 260 260">
             <Defs>
               <RadialGradient id="sw" cx="0" cy="0" r="130" gradientUnits="userSpaceOnUse">
-                <Stop offset="0" stopColor={fc} stopOpacity="0.32" />
+                <Stop offset="0" stopColor={fc} stopOpacity="0.5" />
                 <Stop offset="1" stopColor={fc} stopOpacity="0" />
               </RadialGradient>
             </Defs>
             <Path d="M0,0 L130,0 A130,130 0 0,0 112.6,-65 Z" fill="url(#sw)" />
-            <Line x1={0} y1={0} x2={130} y2={0} stroke={fc} strokeOpacity={0.5} strokeWidth={1} />
+            <Line x1={0} y1={0} x2={130} y2={0} stroke={fc} strokeOpacity={0.9} strokeWidth={1.5} />
           </Svg>
         </Animated.View>
       </View>
@@ -119,14 +124,14 @@ export function RadarMap(props: {
 }
 
 const s = StyleSheet.create({
-  wrap: { borderRadius: 20, borderWidth: 1, borderColor: "rgba(94,200,255,0.16)", backgroundColor: "#0D131A", overflow: "hidden", marginBottom: 12 },
+  wrap: { borderRadius: 20, borderWidth: 1, borderColor: "rgba(94,200,255,0.22)", backgroundColor: "#0A1119", overflow: "hidden", marginBottom: 14, boxShadow: "0px 0px 30px rgba(94,200,255,0.10), 0px 10px 28px rgba(0,0,0,0.5)" },
   map: { width: "100%", overflow: "hidden" },
   sweepHost: { position: "absolute", width: 0, height: 0 },
   pulse: { position: "absolute", left: -12, top: -12, width: 24, height: 24, borderRadius: 12, borderWidth: 2 },
   sweep: { position: "absolute", left: -130, top: -130, width: 260, height: 260 },
   toggle: { position: "absolute", top: 10, right: 10, flexDirection: "row", backgroundColor: "rgba(17,22,29,0.85)", borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: 3 },
   toggleBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9 },
-  toggleOn: { backgroundColor: "rgba(94,200,255,0.14)" },
+  toggleOn: { backgroundColor: "rgba(94,200,255,0.18)", boxShadow: "0px 0px 10px rgba(94,200,255,0.35)" },
   toggleText: { color: C.muted, fontFamily: F.bodySemi, fontSize: 12 },
   proj: { position: "absolute", left: 12, top: 14, color: C.quiet, fontFamily: F.mono, fontSize: 10 },
   legend: { position: "absolute", right: 10, bottom: 8, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(11,15,20,0.8)", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 },

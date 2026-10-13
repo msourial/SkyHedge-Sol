@@ -9,16 +9,25 @@ import { groupCounts, MARKETS, type CatalogMarket } from "./markets-catalog";
 const TAB = ["tabular-nums" as const];
 
 /** Frosted glass card: translucent graphite, hairline glacier border, soft top sheen. */
-export function GlassCard({ children, style, accent }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; accent?: string }) {
-  return <View style={[g.card, accent ? { borderColor: accent + "55" } : null, style]}>
-    <LinearGradient pointerEvents="none" colors={["rgba(255,255,255,0.06)", "rgba(255,255,255,0)"]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 0.6 }} style={StyleSheet.absoluteFill} />
+let entryOrder = 0;
+export function GlassCard({ children, style, accent, delay }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; accent?: string; delay?: number }) {
+  const reduced = useReducedMotion();
+  const enter = useRef(new Animated.Value(reduced ? 1 : 0)).current;
+  useEffect(() => {
+    if (reduced) { enter.setValue(1); return; }
+    const d = delay ?? (entryOrder++ % 6) * 70;
+    Animated.timing(enter, { toValue: 1, duration: 520, delay: d, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [enter, reduced, delay]);
+  return <Animated.View style={[g.card, accent ? { borderColor: accent + "66", boxShadow: `0px 0px 26px ${accent}22, 0px 10px 28px rgba(0,0,0,0.45)` } : null, style, { opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
+    <LinearGradient pointerEvents="none" colors={["rgba(40,52,68,0.70)", "rgba(20,27,36,0.62)", "rgba(12,17,23,0.70)"]} locations={[0, 0.5, 1]} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={StyleSheet.absoluteFill} />
+    <LinearGradient pointerEvents="none" colors={["rgba(255,255,255,0)", accent ? accent + "88" : "rgba(190,225,255,0.35)", "rgba(255,255,255,0)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={g.cardEdge} />
     {children}
-  </View>;
+  </Animated.View>;
 }
 
 export function StatusTag({ status, label }: { status: CatalogMarket["status"]; label?: string }) {
   const col = status === "live" ? C.mint : status === "soon" ? C.amber : C.rain;
-  return <View style={[g.tag, { borderColor: col + "66", backgroundColor: col + "1A" }]} accessible accessibilityLabel={label ?? statusLabel(status)}>
+  return <View style={[g.tag, { borderColor: col + "77", backgroundColor: col + "1F", boxShadow: status === "concept" ? "none" : `0px 0px 12px ${col}40` }]} accessible accessibilityLabel={label ?? statusLabel(status)}>
     {status !== "concept" ? <View style={[g.tagDot, { backgroundColor: col }]} /> : <View style={[g.tagDot, { borderWidth: 1.5, borderColor: col }]} />}
     <Text style={[g.tagText, { color: col }]}>{label ?? statusLabel(status)}</Text>
   </View>;
@@ -174,11 +183,12 @@ export function Receipt(props: { title: string; amountLabel: string | null; fact
 }
 
 const g = StyleSheet.create({
-  card: { backgroundColor: "rgba(17,22,29,0.78)", borderColor: "rgba(94,200,255,0.14)", borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 12, overflow: "hidden" },
-  tag: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, minHeight: 26, alignSelf: "center" },
+  card: { backgroundColor: "rgba(17,22,29,0.35)", borderColor: "rgba(160,205,235,0.16)", borderWidth: 1, borderRadius: 20, padding: 18, marginBottom: 14, overflow: "hidden", boxShadow: "0px 10px 28px rgba(0,0,0,0.45)" },
+  cardEdge: { position: "absolute", top: 0, left: 24, right: 24, height: 1 },
+  tag: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 14, paddingHorizontal: 11, minHeight: 28, alignSelf: "center" },
   tagDot: { width: 7, height: 7, borderRadius: 4 },
-  tagText: { fontFamily: F.bodySemi, fontSize: 12 },
-  gauge: { width: 44, borderRadius: 14, borderWidth: 1, borderColor: C.border, backgroundColor: "#0B0F14", overflow: "hidden", justifyContent: "flex-end" },
+  tagText: { fontFamily: F.bodyBold, fontSize: 12, letterSpacing: 0.3 },
+  gauge: { width: 52, borderRadius: 16, boxShadow: "inset 0px 2px 8px rgba(0,0,0,0.6)", borderWidth: 1, borderColor: C.border, backgroundColor: "#0B0F14", overflow: "hidden", justifyContent: "flex-end" },
   gaugeFill: { width: "100%", overflow: "hidden" },
   gaugeLine: { position: "absolute", left: -2, right: -2, flexDirection: "row", justifyContent: "space-between" },
   gaugeDash: { width: 4, height: 2, backgroundColor: C.payout },
@@ -190,20 +200,20 @@ const g = StyleSheet.create({
   brandText: { flex: 1, color: C.ink, fontFamily: F.headingBold, fontSize: 18 },
   devnet: { borderWidth: 1, borderColor: C.amber + "66", backgroundColor: C.amberSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
   devnetText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 11 },
-  hero: { color: C.ink, fontFamily: F.headingBold, fontSize: 36, lineHeight: 42, letterSpacing: -1 },
+  hero: { color: C.ink, fontFamily: F.headingBold, fontSize: 40, lineHeight: 46, letterSpacing: -1.4 },
   heroLead: { color: C.muted, fontFamily: F.body, fontSize: 15, lineHeight: 22, marginTop: 10 },
   marketLine: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 40 },
   marketName: { flex: 1, color: C.ink, fontFamily: F.bodySemi, fontSize: 15 },
   steps: { flexDirection: "row", gap: 8 },
   step: { flex: 1, padding: 12 },
-  stepN: { color: C.rain, fontFamily: F.mono, fontSize: 12 },
+  stepN: { color: C.rain, fontFamily: F.mono, fontSize: 13, fontWeight: "700" },
   stepT: { color: C.ink, fontFamily: F.bodySemi, fontSize: 13, marginTop: 4 },
   linkBtn: { minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center" },
   link: { color: C.rain, fontFamily: F.bodySemi, fontSize: 14 },
   caption: { color: C.quiet, fontFamily: F.body, fontSize: 12, lineHeight: 18 },
   body: { color: C.ink, fontFamily: F.bodySemi, fontSize: 15, lineHeight: 21 },
   overline: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 },
-  big: { fontFamily: F.headingBold, fontSize: 22, lineHeight: 28 },
+  big: { fontFamily: F.headingBold, fontSize: 24, lineHeight: 30, letterSpacing: -0.4 },
   hr: { height: 1, backgroundColor: C.border, marginVertical: 12 },
   back: { minHeight: MIN_TOUCH, flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 2 },
   detailHead: { flexDirection: "row", gap: 12, alignItems: "center", marginBottom: 14 },
@@ -213,16 +223,16 @@ const g = StyleSheet.create({
   how: { flexDirection: "row", gap: 12, alignItems: "flex-start", paddingVertical: 8 },
   howN: { width: 26, height: 26, borderRadius: 8, backgroundColor: C.rainSoft, alignItems: "center", justifyContent: "center" },
   howNText: { color: C.rain, fontFamily: F.mono, fontSize: 12 },
-  notify: { minHeight: 56, borderRadius: 16, backgroundColor: C.amber, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 4 },
+  notify: { minHeight: 58, borderRadius: 16, backgroundColor: C.amber, boxShadow: "0px 6px 24px rgba(245,184,65,0.45)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 4 },
   notifyOn: { backgroundColor: C.amberSoft, borderWidth: 1, borderColor: C.amber },
   notifyText: { color: "#1A1205", fontFamily: F.bodyBold, fontSize: 16 },
-  secondary: { minHeight: 52, borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10 },
+  secondary: { minHeight: 54, borderRadius: 16, borderWidth: 1, borderColor: "rgba(160,200,230,0.18)", backgroundColor: "rgba(30,40,52,0.6)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10 },
   secondaryText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 14 },
   groupRow: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: 12 },
   groupBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
-  groupN: { color: C.rain, fontFamily: F.headingBold, fontSize: 20, fontVariant: TAB },
+  groupN: { color: C.rain, fontFamily: F.mono, fontWeight: "700", fontSize: 24, fontVariant: TAB, textShadowColor: "rgba(94,200,255,0.5)", textShadowRadius: 10 },
   check: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.mintSoft, borderWidth: 1, borderColor: C.mint, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 10 },
-  receiptBig: { color: C.mint, fontFamily: F.headingBold, fontSize: 44, lineHeight: 52, textAlign: "center", fontVariant: TAB, letterSpacing: -1 },
+  receiptBig: { color: C.mint, fontFamily: F.mono, fontWeight: "700", fontSize: 50, lineHeight: 60, textShadowColor: "rgba(52,211,153,0.55)", textShadowRadius: 18, textAlign: "center", fontVariant: TAB, letterSpacing: -1 },
   fact: { flexDirection: "row", justifyContent: "space-between", minHeight: 34, alignItems: "center", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
   factV: { color: C.ink, fontFamily: F.mono, fontSize: 13 },
 });
