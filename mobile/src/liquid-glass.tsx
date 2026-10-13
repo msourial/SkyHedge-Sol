@@ -5,7 +5,7 @@ import { AccessibilityInfo, Animated, Platform, Pressable, StyleSheet, type Pres
 import { liquidGlassRecipe } from "./liquid-glass-config";
 import { C } from "./theme";
 
-const GlassTargetContext = createContext<React.RefObject<View | null> | null>(null);
+export const GlassTargetContext = createContext<React.RefObject<View | null> | null>(null);
 
 export function GlassBackdrop({ children }: { children: React.ReactNode }) {
   const targetRef = useRef<View>(null);

@@ -1,9 +1,14 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { Animated, Easing, Linking, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { C, F, MIN_TOUCH } from "./theme";
 import { ActionButton, AppIcon, Text } from "./ui";
-import { useReducedMotion } from "./liquid-glass";
+import { GlassTargetContext, useReducedMotion } from "./liquid-glass";
+import { BlurView } from "expo-blur";
+import { Platform } from "react-native";
+import { liquidGlassRecipe } from "./liquid-glass-config";
+import { RadarMap } from "./RadarMap";
+import { PerilSelector, ScreenTop } from "./journey";
 import { groupCounts, MARKETS, type CatalogMarket } from "./markets-catalog";
 
 const TAB = ["tabular-nums" as const];
@@ -12,6 +17,8 @@ const TAB = ["tabular-nums" as const];
 let entryOrder = 0;
 export function GlassCard({ children, style, accent, delay }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; accent?: string; delay?: number }) {
   const reduced = useReducedMotion();
+  const blurTarget = useContext(GlassTargetContext);
+  const nativeBlur = liquidGlassRecipe(Number(Platform.Version), false).usesNativeBlur && !!blurTarget;
   const enter = useRef(new Animated.Value(reduced ? 1 : 0)).current;
   useEffect(() => {
     if (reduced) { enter.setValue(1); return; }
@@ -19,7 +26,8 @@ export function GlassCard({ children, style, accent, delay }: { children: React.
     Animated.timing(enter, { toValue: 1, duration: 520, delay: d, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [enter, reduced, delay]);
   return <Animated.View style={[g.card, accent ? { borderColor: accent + "66", boxShadow: `0px 0px 26px ${accent}22, 0px 10px 28px rgba(0,0,0,0.45)` } : null, style, { opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
-    <LinearGradient pointerEvents="none" colors={["rgba(40,52,68,0.70)", "rgba(20,27,36,0.62)", "rgba(12,17,23,0.70)"]} locations={[0, 0.5, 1]} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={StyleSheet.absoluteFill} />
+    {nativeBlur ? <BlurView pointerEvents="none" blurTarget={blurTarget!} tint="dark" intensity={55} blurReductionFactor={4} blurMethod="dimezisBlurViewSdk31Plus" style={StyleSheet.absoluteFill} /> : null}
+    <LinearGradient pointerEvents="none" colors={nativeBlur ? ["rgba(40,52,68,0.45)", "rgba(20,27,36,0.35)", "rgba(12,17,23,0.50)"] : ["rgba(40,52,68,0.70)", "rgba(20,27,36,0.62)", "rgba(12,17,23,0.70)"]} locations={[0, 0.5, 1]} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={StyleSheet.absoluteFill} />
     <LinearGradient pointerEvents="none" colors={["rgba(255,255,255,0)", accent ? accent + "88" : "rgba(190,225,255,0.35)", "rgba(255,255,255,0)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={g.cardEdge} />
     {children}
   </Animated.View>;
@@ -94,17 +102,18 @@ export function Landing(props: { onConnect: () => void; onBrowse: () => void; bu
   useEffect(() => { Animated.timing(fade, { toValue: 1, duration: 600, useNativeDriver: true }).start(); }, [fade]);
   const concepts = MARKETS.filter((m) => m.status === "concept").length;
   return <Animated.View style={{ opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }] }}>
-    <View style={g.brandRow}><View style={g.brandMark}><AppIcon name="cloud-drizzle" color={C.rain} size={20} /></View><Text style={g.brandText}>SkyHedge</Text><View style={g.devnet}><Text style={g.devnetText}>Devnet · test token</Text></View></View>
-    <Text style={g.hero}>Rain protection{"\n"}<Text style={{ color: C.rain }}>that pays itself.</Text></Text>
-    <Text style={g.heroLead}>Pick a covered window. If verified station data shows rain hit the trigger, your payout settles automatically. No claims forms.</Text>
+    <ScreenTop brand />
+    <Text style={g.hero}>Weather protection{"\n"}<Text style={{ color: C.rain, textShadowColor: "rgba(94,200,255,0.5)", textShadowRadius: 16 }}>that pays itself.</Text></Text>
+    <Text style={g.heroLead}>Pick a covered window. If verified station data shows your peril hit the trigger, your payout settles automatically. No claims forms.</Text>
     <GlassCard style={{ marginTop: 18 }}>
       <View style={g.marketLine}><View style={[g.tagDot, { backgroundColor: C.mint }]} /><Text style={g.marketName}>Des Moines, IA</Text><StatusTag status={props.live ? "live" : "soon"} label={props.live ? "Live" : "Not selling now"} /></View>
       <View style={g.marketLine}><View style={[g.tagDot, { backgroundColor: C.amber }]} /><Text style={g.marketName}>Toronto Pearson</Text><StatusTag status="soon" /></View>
       <Text style={g.caption}>+{concepts} concept markets across 6 regions</Text>
     </GlassCard>
+    <RadarMap scope="region" onScope={() => props.onBrowse()} focusCode="DSM" highlight={new Set()} onSelect={() => props.onBrowse()} />
     <View style={g.steps}>
-      {[["01", "Pick a zone", "NOAA station"], ["02", "Set trigger", "mm of rain"], ["03", "Auto payout", "to your wallet"]].map(([n, t, d]) => <GlassCard key={n} style={g.step}>
-        <Text style={g.stepN}>{n}</Text><Text style={g.stepT}>{t}</Text><Text style={g.caption}>{d}</Text>
+      {[["01", "Pick a city", "Covered market", C.rain], ["02", "Pick a peril", "Rain live · more soon", C.amber], ["03", "Auto payout", "Settles on-chain", C.mint]].map(([n, t, d, col]) => <GlassCard key={n} style={g.step}>
+        <Text style={[g.stepN, { color: col }]}>{n}</Text><Text style={g.stepT}>{t}</Text><Text style={g.caption}>{d}</Text>
       </GlassCard>)}
     </View>
     <View style={{ marginTop: 18 }}><ActionButton label="Connect wallet" icon="credit-card" busy={props.busy} onPress={props.onConnect} /></View>
@@ -118,11 +127,12 @@ export function MarketDetail(props: { market: CatalogMarket; onBack: () => void;
   const soon = m.status === "soon";
   const col = soon ? C.amber : C.rain;
   return <>
-    <Pressable accessibilityRole="button" accessibilityLabel="Back to markets" onPress={props.onBack} style={g.back}><AppIcon name="chevron-left" color={C.rain} size={22} /><Text style={g.link}>Markets</Text></Pressable>
+    <ScreenTop onBack={props.onBack} />
     <View style={g.detailHead}>
       <View style={[g.shield, { borderColor: col + "66" }]}><AppIcon name="umbrella" color={col} size={20} /></View>
       <View style={{ flex: 1 }}><Text style={g.caption}>{m.source} · {m.code} station</Text><Text style={g.detailTitle}>{m.name}</Text><Text style={g.caption}>{m.region} · {m.lat.toFixed(2)}°, {m.lon.toFixed(2)}°</Text></View>
     </View>
+    <PerilSelector value="rain" available={[]} />
     <GlassCard accent={col}>
       <View style={g.rowBetween}><StatusTag status={m.status} label={soon ? "Coming soon" : "Concept market"} /></View>
       <View style={{ flexDirection: "row", gap: 16, marginTop: 14 }}>
@@ -132,7 +142,7 @@ export function MarketDetail(props: { market: CatalogMarket; onBack: () => void;
           <Text style={[g.big, { color: col }]}>{soon ? "Set per window" : "Not yet defined"}</Text>
           <Text style={g.caption}>{soon ? "Windows, triggers and prices are published when the market opens." : "Concept only — no window, trigger or price exists yet."}</Text>
           <View style={g.hr} />
-          <Text style={g.overline}>Rain data</Text>
+          <Text style={g.overline}>Weather data</Text>
           <Text style={g.body}>{m.source}</Text>
           <Text style={g.caption}>{m.name} station</Text>
         </View>
@@ -140,7 +150,7 @@ export function MarketDetail(props: { market: CatalogMarket; onBack: () => void;
     </GlassCard>
     <GlassCard>
       <Text style={g.overline}>How payout works</Text>
-      {[["Pick a window", "Choose the days you want covered."], ["Rain is measured", `${m.source} data at ${m.code}.`], ["Payout settles automatically", "If the trigger is hit, it goes to your wallet. No claims forms."]].map(([t, d], i) => <View key={t} style={g.how}>
+      {[["Pick a window", "Choose the days you want covered."], ["Weather is measured", `${m.source} data at ${m.code}.`], ["Payout settles automatically", "If the trigger is hit, it goes to your wallet. No claims forms."]].map(([t, d], i) => <View key={t} style={g.how}>
         <View style={g.howN}><Text style={g.howNText}>{i + 1}</Text></View><View style={{ flex: 1 }}><Text style={g.body}>{t}</Text><Text style={g.caption}>{d}</Text></View>
       </View>)}
     </GlassCard>
@@ -200,14 +210,14 @@ const g = StyleSheet.create({
   brandText: { flex: 1, color: C.ink, fontFamily: F.headingBold, fontSize: 18 },
   devnet: { borderWidth: 1, borderColor: C.amber + "66", backgroundColor: C.amberSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
   devnetText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 11 },
-  hero: { color: C.ink, fontFamily: F.headingBold, fontSize: 40, lineHeight: 46, letterSpacing: -1.4 },
+  hero: { color: C.ink, fontFamily: F.headingBold, fontSize: 40, lineHeight: 46, letterSpacing: -1.4, marginTop: 4 },
   heroLead: { color: C.muted, fontFamily: F.body, fontSize: 15, lineHeight: 22, marginTop: 10 },
   marketLine: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 40 },
   marketName: { flex: 1, color: C.ink, fontFamily: F.bodySemi, fontSize: 15 },
   steps: { flexDirection: "row", gap: 8 },
   step: { flex: 1, padding: 12 },
   stepN: { color: C.rain, fontFamily: F.mono, fontSize: 13, fontWeight: "700" },
-  stepT: { color: C.ink, fontFamily: F.bodySemi, fontSize: 13, marginTop: 4 },
+  stepT: { color: C.ink, fontFamily: F.bodyBold, fontSize: 15, marginTop: 4 },
   linkBtn: { minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center" },
   link: { color: C.rain, fontFamily: F.bodySemi, fontSize: 14 },
   caption: { color: C.quiet, fontFamily: F.body, fontSize: 12, lineHeight: 18 },
@@ -218,7 +228,7 @@ const g = StyleSheet.create({
   back: { minHeight: MIN_TOUCH, flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 2 },
   detailHead: { flexDirection: "row", gap: 12, alignItems: "center", marginBottom: 14 },
   shield: { width: 44, height: 44, borderRadius: 14, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  detailTitle: { color: C.ink, fontFamily: F.headingBold, fontSize: 26, letterSpacing: -0.6 },
+  detailTitle: { color: C.ink, fontFamily: F.headingBold, fontSize: 30, lineHeight: 36, letterSpacing: -0.8 },
   rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   how: { flexDirection: "row", gap: 12, alignItems: "flex-start", paddingVertical: 8 },
   howN: { width: 26, height: 26, borderRadius: 8, backgroundColor: C.rainSoft, alignItems: "center", justifyContent: "center" },

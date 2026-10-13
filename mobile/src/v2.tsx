@@ -4,6 +4,7 @@ import { RadarMap, type MapScope } from "./RadarMap";
 import { CountUp, GlassCard, GlobalGroups, RainGauge, Receipt, StatusTag, statusLabel } from "./revamp";
 import { highlightParts, MARKETS, searchMarkets, type CatalogMarket } from "./markets-catalog";
 import { useReducedMotion } from "./liquid-glass";
+import { CoverageHero, FactRows, PerilSelector, ReceiptView, ScreenTop, StatPair } from "./journey";
 import type { CityIndex, ClaimReadiness, DevnetStatus, FinalizedWalletState, Portfolio, ProtectionQuote } from "./api";
 import { C, F, MIN_TOUCH } from "./theme";
 import { ActionButton, AppIcon, Disclosure, Reveal, Text } from "./ui";
@@ -79,8 +80,7 @@ export function MarketsScreen(props: {
   const open = (m: CatalogMarket) => { if (m.status === "live") props.onProtect(); else props.onOpenMarket?.(m); };
 
   return <>
-    <Text accessibilityRole="header" style={s.h1}>Rain markets</Text>
-    <Text style={s.caption}>Devnet · test token · settled from public weather-station data</Text>
+    <ScreenTop title="Markets" lead="Pick a city. Choose the peril inside the market." />
 
     <View style={s.search}>
       <AppIcon name="search" color={C.muted} size={18} />
@@ -118,6 +118,7 @@ export function MarketsScreen(props: {
         <View style={{ flex: 1 }}>
           <Text style={s.cardTitle}>Des Moines, IA</Text>
           <Text style={s.cardSub}>NOAA · {station}</Text>
+          <Text style={[s.caption, { marginTop: 4 }]}><Text style={{ color: C.mint }}>● Rain live</Text>  ·  Wind, Snow, Heat soon</Text>
         </View>
         <Pill label={state} tone={live ? "live" : "warn"} />
       </View>
@@ -234,8 +235,8 @@ export function ProtectTicket(props: {
   const youPay = q ? formatSkytFixed(q.premium, 2) : props.quoteBusy ? null : "—";
 
   return <>
-    <Text style={s.eyebrow}>Des Moines · Rain</Text>
-    <View style={s.between}><Text accessibilityRole="header" style={s.h1}>Protection ticket</Text>{!live ? <Pill label={salesCountdown(market?.salesCloseAt, props.nowSeconds) === "Sales closed" ? "Sales closed" : "Not open"} tone="warn" /> : null}</View>
+    <ScreenTop onBack={props.onBackToMarkets} eyebrow={`NOAA · ${station}`} title="Des Moines, IA" />
+    <PerilSelector value="rain" available={["rain"]} />
 
     {!live ? <View style={[s.notice, { marginTop: 8 }]} accessibilityRole="alert">
       <Text style={s.noticeTitle}>This window isn’t selling right now</Text>
@@ -243,18 +244,14 @@ export function ProtectTicket(props: {
       <Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh status</Text></Pressable>
     </View> : null}
 
-    <GlassCard accent={live ? C.rain : undefined}>
-      <View style={s.between}><StatusTag status={live ? "live" : "soon"} label={live ? "Live window" : "Not selling now"} />{endDate ? <Text style={s.caption}>Settles after {endDate}</Text> : null}</View>
-      <View style={{ flexDirection: "row", gap: 16, marginTop: 14, alignItems: "flex-end" }}>
-        <RainGauge observedMm={props.observedMm ?? null} triggerMm={thresholdMm != null ? Number(thresholdMm) : null} />
-        <View style={{ flex: 1 }}>
-          <Text style={s.smallLabel}>Observed so far</Text>
-          <View style={s.baseline}><CountUp value={props.observedMm ?? null} style={s.hugeFigure} /><Text style={s.unit}>mm</Text></View>
-          {thresholdMm ? <Text style={[s.caption, { color: C.payout }]}>– – Trigger {market?.operator === "gt" ? ">" : market?.operator === "lt" ? "<" : market?.operator === "lte" ? "≤" : "≥"} {thresholdMm} mm</Text> : null}
-          <Text style={s.caption}>NOAA · {station}</Text>
-        </View>
-      </View>
-    </GlassCard>
+    <CoverageHero live={live} stateLabel={live ? "Live" : salesCountdown(market?.salesCloseAt, props.nowSeconds) === "Sales closed" ? "Sales closed" : "Not open"} windowLabel={market?.observationStart && market?.observationEnd ? `${shortUtcDate(market.observationStart)}–${shortUtcDate(market.observationEnd - 1)}` : null} observedMm={props.observedMm ?? null} triggerMm={thresholdMm != null ? Number(thresholdMm) : null} triggerSymbol={market?.operator === "gt" ? ">" : market?.operator === "lt" ? "<" : market?.operator === "lte" ? "≤" : "≥"} source="NOAA" />
+    <StatPair leftLabel="Coverage" left={props.amountBase ? formatSkytFixed(props.amountBase, 0) : "—"} leftUnit="SKYT" rightLabel="Premium" right={q ? `~${formatSkytFixed(q.premium, 2)}` : props.quoteBusy ? "…" : "—"} rightUnit={q ? "SKYT incl. 1% fee" : props.walletConnected ? "Pricing…" : "Connect wallet to price"} />
+    <FactRows rows={[
+      { k: "Window", v: market?.observationStart && market?.observationEnd ? `${shortUtcDate(market.observationStart)} – ${shortUtcDate(market.observationEnd - 1)}` : "—" },
+      { k: "Trigger", v: thresholdMm ? `${market?.operator === "gt" ? ">" : market?.operator === "lt" ? "<" : market?.operator === "lte" ? "≤" : "≥"} ${thresholdMm} mm cumulative` : "Pending", tone: "gold" },
+      { k: "Settlement", v: "Automatic · parametric" },
+      { k: "On-chain checks", v: `${readyCount === checks.length ? "✓ " : ""}${readyCount} of ${checks.length} passed`, tone: readyCount === checks.length ? "mint" : "gold" },
+    ]} />
 
     <Text style={s.overline}>Coverage (paid if triggered)</Text>
     <View style={s.chipRow} accessibilityRole="radiogroup" accessibilityLabel="Coverage amount in SKYT">
@@ -265,7 +262,7 @@ export function ProtectTicket(props: {
         </Pressable>;
       })}
     </View>
-    <Text style={s.overline}>Rain trigger</Text>
+    <Text style={s.overline}>Trigger · Rain</Text>
     <View style={s.chipRow} accessible accessibilityLabel={thresholdMm ? `Rain trigger: ${market?.operator === "gt" ? "more than" : market?.operator === "lt" ? "less than" : market?.operator === "lte" ? "at most" : "at least"} ${thresholdMm} millimetres` : "Rain trigger pending"}>
       <View style={[s.chip, { opacity: 0.9 }]}><Text style={s.chipText}>{thresholdMm ? `Trigger ${market?.operator === "gt" ? ">" : market?.operator === "lt" ? "<" : market?.operator === "lte" ? "≤" : "≥"} ${thresholdMm} mm rain` : "Trigger pending"}</Text></View>
     </View>
@@ -310,15 +307,25 @@ export function ProtectTicket(props: {
     {props.quoteError ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>{quoteErrorTitle(props.quoteError)}</Text><Text style={s.noticeBody}>{friendlyError(props.quoteError)}</Text><Pressable accessibilityRole="button" onPress={props.onRetryQuote} style={s.inlineBtn}><Text style={s.link}>Get a new price</Text></Pressable></View> : null}
     {props.transactionMessage ? <Text accessibilityLiveRegion="polite" style={[s.body, { color: C.rain, marginBottom: 10 }]}>{props.transactionMessage}</Text> : null}
     {props.transactionError ? <View style={[s.notice, { borderColor: C.coral }]} accessibilityRole="alert"><Text style={s.noticeTitle}>{transactionErrorTitle(props.transactionError, props.walletName)}</Text><Text style={s.noticeBody}>{friendlyError(props.transactionError)} Nothing was charged unless Explorer shows a transaction.</Text></View> : null}
-    {props.transactionSignature ? <Reveal><Receipt
+    {props.transactionSignature ? <Reveal><ReceiptView
       title={props.claimReadiness?.state === "claimed" ? "Payout settled" : "Protection confirmed"}
-      amountLabel={props.amountBase ? `${formatSkytFixed(props.amountBase, 0)} SKYT` : null}
-      ticker={[`DSM-RAIN`, `NOAA · ${station}`, thresholdMm ? `TRIGGER ${thresholdMm} MM` : "TRIGGER PENDING", `TX ${shortAddress(props.transactionSignature)}`, "SOLANA DEVNET · FINALIZED"]}
-      facts={[["Covered", props.amountBase ? `${formatSkytFixed(props.amountBase, 0)} SKYT` : "—"], ["Source", `NOAA · ${station}`], ["Settles", endDate ? `After ${endDate}` : "NOAA final"], ["Signature", shortAddress(props.transactionSignature)]]}
+      badge={props.claimReadiness?.state === "claimed" ? "SETTLED" : "FINALIZED"}
+      symbol="SKYT · DSM-RAIN"
+      amount={props.amountBase ? `${formatSkytFixed(props.amountBase, 2)}` : null}
+      caption={props.amountBase ? "SKYT covered · pays automatically if triggered" : null}
+      rows={[
+        { k: "Trigger", v: thresholdMm ? `${thresholdMm} mm` : "—", tone: "gold" },
+        { k: "Source", v: `NOAA · ${station}` },
+        { k: "Window", v: market?.observationStart && market?.observationEnd ? `${shortUtcDate(market.observationStart)} – ${shortUtcDate(market.observationEnd - 1)}`.toUpperCase() : "—" },
+        { k: "Tx", v: `${shortAddress(props.transactionSignature)} ↗`, tone: "rain", onPress: () => { void Linking.openURL(`https://explorer.solana.com/tx/${encodeURIComponent(props.transactionSignature!)}?cluster=devnet`); } },
+        { k: "Network", v: "SOLANA DEVNET", tone: "gold" },
+      ]}
+      ticker={["DSM-RAIN", `NOAA · ${station}`, thresholdMm ? `TRG ${thresholdMm} MM` : "TRG PENDING", `TX ${shortAddress(props.transactionSignature)}`, "FINALIZED"]}
       signature={props.transactionSignature}
+      onClose={() => props.onProtectAgain?.()}
       onAgain={() => props.onProtectAgain?.()}
       onMarkets={() => props.onBackToMarkets?.()}
-    /><Text style={[s.caption, { marginTop: -4, marginBottom: 8 }]}>One protection per wallet per window.</Text></Reveal> : null}
+    /><Text style={[s.caption, { marginTop: 8, marginBottom: 8, textAlign: "center" }]}>One protection per wallet per window.</Text></Reveal> : null}
     {isExistingPosition && !props.transactionSignature ? <Text style={[s.caption, { marginBottom: 8 }]}>One protection per wallet per window — this wallet is already covered.</Text> : null}
 
     {props.claimReadiness?.state === "claimable" && props.claimReadiness.action === "claim_payout" ? <GlassCard accent={C.mint}>
@@ -380,7 +387,7 @@ export function WalletV2(props: {
 }) {
   const skytBase = props.balances?.skytBaseUnits ?? null;
   return <>
-    <Text accessibilityRole="header" style={[s.h1, { marginBottom: 16 }]}>Wallet</Text>
+    <ScreenTop title="Wallet" />
     {props.walletError ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>Wallet didn’t connect — try again</Text><Text style={s.noticeBody}>{friendlyError(props.walletError)}</Text></View> : null}
     {!props.wallet ? <View style={s.card}>
       <Text style={s.cardTitle}>Connect a Solana wallet</Text>
