@@ -32,6 +32,7 @@ import { marketIsLive, MarketsScreen, NetworkPill, ProtectTicket, StickyCta, Wal
 import { coverageOptions, type CoverageOption } from "./src/ticket";
 import { Landing, MarketDetail } from "./src/revamp";
 import { CollectPayoutView, ReceiptView } from "./src/journey";
+import { BrandMark } from "./src/BrandMark";
 import { BlurTargetView } from "expo-blur";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 import { GlassTargetContext } from "./src/liquid-glass";
@@ -481,7 +482,7 @@ export default function App() {
         ) : null}
         {!showLanding && tab === "wallet" ? (
           <View style={{ alignItems: "center", marginTop: 18 }}>
-            <Pressable onLongPress={() => setDemoUnlocked((v) => !v)} delayLongPress={900} accessibilityLabel="App version"><Text style={styles.versionText}>SkyHedge 0.1.0 · Devnet</Text></Pressable>
+            <Pressable onLongPress={() => setDemoUnlocked((v) => !v)} delayLongPress={900} accessibilityLabel="App version" style={{ alignItems: "center", gap: 8 }}><BrandMark size={28} /><Text style={styles.versionText}>SkyHedge 0.1.0 · Devnet</Text></Pressable>
             {demoUnlocked ? <View style={styles.demoPanel}>
               <Text style={styles.demoTitle}>DEMO · Preview states</Text>
               <Text style={styles.emptyText}>Design review only. Sample values, clearly labelled; nothing is signed or sent.</Text>

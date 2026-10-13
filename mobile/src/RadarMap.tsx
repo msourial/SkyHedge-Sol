@@ -20,6 +20,34 @@ function regionWindow(focus: CatalogMarket | undefined) {
   return { x, y, w, h };
 }
 
+type Label = { x: number; y: number; anchor: "start" | "end"; size: number; text: string };
+/** Greedy label placement: important markets first; each label tries 4 slots around its pin and is dropped (concepts only) if all collide or leave the map. */
+export function placeLabels(pins: readonly CatalogMarket[], isRegion: boolean, highlight: ReadonlySet<string>, k: number, win: { x: number; y: number; w: number; h: number }): Map<string, Label> {
+  const pri = (m: CatalogMarket) => (m.status === "live" ? 0 : highlight.has(m.code) ? 1 : m.status === "soon" ? 2 : m.status === "ready" ? 3 : 4);
+  const boxes: Array<[number, number, number, number]> = pins.map((m) => { const [x, y] = isRegion ? m.regionXY : m.globalXY; const r = 5 * k; return [x - r, y - r, x + r, y + r]; });
+  const out = new Map<string, Label>();
+  for (const m of [...pins].sort((a, b) => pri(a) - pri(b))) {
+    const main = m.status !== "concept";
+    const hit = highlight.has(m.code);
+    if (!(isRegion || hit || m.status === "live")) continue;
+    const text = main ? (isRegion ? (m.code === "DSM" ? "Des Moines" : m.name.split(/[ (]/)[0]) : m.code) : m.code;
+    const size = (main ? 10 : 8.5) * k;
+    const w = text.length * size * 0.62, h = size;
+    const [px, py] = isRegion ? m.regionXY : m.globalXY;
+    const g = 6 * k;
+    const slots: Array<[number, number, "start" | "end"]> = [[px + g, py - 5 * k, "start"], [px + g, py + h + 2 * k, "start"], [px - g, py - 5 * k, "end"], [px - g, py + h + 2 * k, "end"]];
+    let placed = false;
+    for (const [x, y, anchor] of slots) {
+      const x0 = anchor === "start" ? x : x - w, b: [number, number, number, number] = [x0, y - h, x0 + w, y + 2 * k];
+      if (b[0] < win.x + 2 || b[2] > win.x + win.w - 2 || b[1] < win.y + 2 || b[3] > win.y + win.h - 2) continue;
+      if (boxes.some((o) => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1])) continue;
+      boxes.push(b); out.set(m.code, { x, y, anchor, size, text }); placed = true; break;
+    }
+    if (!placed && main) { const [x, y, anchor] = slots[0]; out.set(m.code, { x, y, anchor, size, text }); }
+  }
+  return out;
+}
+
 export function RadarMap(props: {
   scope: MapScope;
   onScope: (scope: MapScope) => void;
@@ -55,6 +83,7 @@ export function RadarMap(props: {
   const fc = tone(focus);
   const ring = isRegion ? k : k * 0.45; // world view: tighter radar so it does not swamp the continent
   const hidden = MARKETS.length - pins.length;
+  const labels = useMemo(() => placeLabels(pins, isRegion, props.highlight, k, win), [pins, isRegion, props.highlight, k, win.x, win.y, win.w, win.h]);
 
   return <View style={s.wrap}>
     <View style={[s.map, { aspectRatio: win.w / win.h }]} accessible accessibilityLabel={`${isRegion ? "Regional" : "Global"} radar map centred on ${focus.name}. ${pins.length} markets shown.`}>
@@ -88,7 +117,7 @@ export function RadarMap(props: {
             <Circle cx={x} cy={y} r={12 * k} fill="transparent" />
             {hit ? <Circle cx={x} cy={y} r={7 * k} fill={col} fillOpacity={0.18} stroke={col} strokeOpacity={0.6} strokeWidth={k} /> : null}
             <Circle cx={x} cy={y} r={r} fill={m.status === "concept" ? C.canvas : col} stroke={col} strokeWidth={(m.status === "concept" ? 1.6 : 1) * k} />
-            {isRegion || hit || m.status === "live" ? <SvgText x={x + 6 * k} y={y - 5 * k} fill={main || hit ? C.ink : "rgba(200,220,235,0.7)"} fontSize={(main ? 10 : 8.5) * k} fontWeight={main || hit ? "700" : "500"} fontFamily={F.mono}>{main ? (isRegion ? (m.code === "DSM" ? "Des Moines" : m.name.split(" ")[0]) : m.code) : m.code}</SvgText> : null}
+            {labels.has(m.code) ? (() => { const L = labels.get(m.code)!; return <SvgText x={L.x} y={L.y} textAnchor={L.anchor} fill={main || hit ? C.ink : "rgba(200,220,235,0.7)"} fontSize={L.size} fontWeight={main || hit ? "700" : "500"} fontFamily={F.mono}>{L.text}</SvgText>; })() : null}
           </G>;
         })}
       </Svg>

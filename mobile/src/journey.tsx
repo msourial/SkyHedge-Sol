@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { C, F, MIN_TOUCH } from "./theme";
 import { ActionButton, AppIcon, Text } from "./ui";
 import { useReducedMotion } from "./liquid-glass";
+import { BrandMark } from "./BrandMark";
 import { GlassCard, RainGauge, CountUp, Ticker } from "./revamp";
 
 const TAB = ["tabular-nums" as const];
@@ -13,8 +14,8 @@ export function ScreenTop(props: { onBack?: () => void; backIcon?: "chevron-left
   return <View style={j.top}>
     <View style={j.topRow}>
       {props.onBack ? <Pressable accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} onPress={props.onBack} style={j.back}><AppIcon name={props.backIcon ?? "chevron-left"} color={C.rain} size={24} /></Pressable>
-        : props.brand ? <View style={j.brand}><LinearGradient colors={["#8FDDFF", "#2E9BEA"]} style={j.brandMark}><AppIcon name="cloud-drizzle" color="#04131F" size={18} /></LinearGradient><Text style={j.brandText}>SkyHedge</Text></View>
-        : <Text style={j.eyebrowCaps}>SkyHedge</Text>}
+        : props.brand ? <View style={j.brand}><BrandMark size={34} /><Text style={j.brandText}>SkyHedge</Text></View>
+        : <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><BrandMark size={20} tile={false} /><Text style={j.eyebrowCaps}>SkyHedge</Text></View>}
       <DevnetPill />
     </View>
     {props.eyebrow ? <Text style={j.eyebrow}>{props.eyebrow}</Text> : null}
