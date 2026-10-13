@@ -276,8 +276,8 @@ export function ProtectTicket(props: {
     <View style={s.chipRow} accessibilityRole="radiogroup" accessibilityLabel="Coverage amount in SKYT">
       {options.map((o) => {
         const on = o.id === props.coverageId;
-        return <Pressable key={o.id} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: !o.enabled }} accessibilityLabel={o.id === "max" ? `Max${o.amountBase ? `, ${formatSkytFixed(o.amountBase, 0)} SKYT` : ", unavailable"}` : `${o.label} SKYT`} disabled={!o.enabled} onPress={() => props.onCoverage(o)} style={[s.chip, on && s.chipOn, !o.enabled && { opacity: 0.4 }]}>
-          <Text style={[s.chipText, on && { color: C.rain }]}>{o.id === "max" ? (o.amountBase ? `Max ${formatSkytFixed(o.amountBase, 0)} SKYT` : "Max") : `${o.label} SKYT`}</Text>
+        return <Pressable key={o.id} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: !o.enabled }} accessibilityLabel={o.id === "max" ? `Max${o.amountBase ? `, ${formatSkytFixed(o.amountBase, 0)} SKYT` : ", unavailable"}` : `${o.label} SKYT`} disabled={!o.enabled} onPress={() => props.onCoverage(o)} style={[s.chip, { paddingHorizontal: 6 }, o.id === "max" && { flex: 1.45 }, on && s.chipOn, !o.enabled && { opacity: 0.4 }]}>
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.chipText, on && { color: C.rain }]}>{o.id === "max" ? (o.amountBase ? `Max ${formatSkytFixed(o.amountBase, 0)} SKYT` : "Max") : `${o.label} SKYT`}</Text>
         </Pressable>;
       })}
     </View>
