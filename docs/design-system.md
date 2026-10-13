@@ -32,7 +32,7 @@ No readable text is below 12 (enforced by `theme.test.ts`).
 
 `xxs 2 · xs 4 · sm 8 · md 12 · lg 16 · xl 24 · xxl 32 · xxxl 40`
 
-- Card padding: `lg + 4` (20). Gap between cards: `lg` (16).
+- Card padding: `lg` (16) on every card. Gap between cards: `lg` (16).
 - Section gap (overline above a group): `xl` (24) top, `sm` (8) bottom.
 - Row height: 48 minimum (`MIN_TOUCH`). Chips: 52 tall, `sm` gap.
 - Inline gaps (icon ↔ text, dot ↔ label): `sm` or `md`.
@@ -54,6 +54,7 @@ Primitives (`mobile/src/motion.tsx`), all on React Native `Animated` (no new dep
 - `SpringPress`: Pressable with spring press-down; when `selected` flips on it pops 0.94 → 1. Used by coverage chips, region chips, market rows, "Look around first".
 - `Enter`: staggered fade + rise on mount. Used by onboarding steps and payout tracker steps.
 - `ProgressRail`: animated fill to a 0–1 value. Used by the 3-step bar and the payout tracker.
+- `SpringPress` also accepts a `({ pressed }) => style` function for pressed states.
 - `ScreenTransition` (`liquid-glass.tsx`): tab change fade + rise, 240 ms ease-out.
 
 ### Reduce motion
@@ -67,3 +68,11 @@ final state with no movement.
 - Copy and amounts are owned by `consumer-flow.ts` / `ticket.ts`; design passes don't change them.
 - Never describe SkyHedge as insurance; use protection, coverage or hedge.
 - Don't add hard-coded font sizes or spacings in screens; extend the tokens instead.
+
+## Component states
+
+- **Coverage chips:** 50 / 100 / 250 on row one, Max full-width on row two (app and board match). States: default, pressed (blue tint), selected (blue border + glow), not-enough-balance (amber border, inline amber message under the chips), disabled (dashed, dimmed; Max when the wallet has no SKYT, with an inline note).
+- **You pay:** shows the real quote premium only. While pricing: skeleton + spinner. Quote error: "Price unavailable" + retry notice. Not sellable: "Sales closed" / "Not selling now" / "Connect wallet". Never a fabricated number.
+- **Sticky buy button:** "Protect for X SKYT" once a live quote exists; otherwise "Protect", disabled, with the reason as a hint above it.
+- **Payout tracker:** shown only when a real position exists (Protect and Wallet). Step dates come from `observationEnd`, the on-chain observation record and `claimDeadline`; steps with no known time show no date. Inactive steps use `C.muted` (well above 4.5:1 on the card).
+- **Wallet empty state:** umbrella icon, "No positions yet", and a "Browse markets →" link.

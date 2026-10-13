@@ -13,7 +13,7 @@ import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } f
 import { dealSentence, payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
 import { formatOnchainMarketStatus, formatWeekLabel } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
-import { balanceCheck, coverageOptions, formatSkytFixed, premiumFeeLine, premiumPer100, returnMultiple, salesCountdown, shortAddress, shortUtcDate, trimMm, triggerSentence, type CoverageOption } from "./ticket";
+import { balanceCheck, coverageOptions, formatSkytFixed, premiumFeeLine, premiumPer100, returnMultiple, payState, salesCountdown, shortAddress, shortUtcDate, trimMm, triggerSentence, utcDateTime, type CoverageOption } from "./ticket";
 
 const TAB = ["tabular-nums" as const];
 
@@ -251,12 +251,15 @@ export function ProtectTicket(props: {
   const thresholdMm = market?.thresholdMmX100 != null && /^\d+$/.test(String(market.thresholdMmX100)) ? trimMm(Number(market.thresholdMmX100) / 100) : null;
   const stage = payoutStage(props.claimReadiness);
   const deal = dealSentence({ place: "Des Moines", premiumBase: q?.premium, payoutBase: q ? props.amountBase : null, thresholdMmX100: market?.thresholdMmX100, operator: market?.operator, start: market?.observationStart, end: market?.observationEnd });
-  const youPay = q ? formatSkytFixed(q.premium, 2) : props.quoteBusy ? null : "—";
+  const salesClosed = salesCountdown(market?.salesCloseAt, props.nowSeconds) === "Sales closed";
+  const pay = payState({ premiumBase: q?.premium, busy: props.quoteBusy, error: props.quoteError, live, salesClosed, walletConnected: props.walletConnected });
+  const selectedOption = options.find((o) => o.id === props.coverageId);
+  const maxOption = options.find((o) => o.id === "max");
 
   return <>
     <ScreenTop onBack={props.onBackToMarkets} eyebrow={`NOAA · ${station}`} title="Des Moines, IA" />
     <PerilSelector value="rain" available={["rain"]} />
-    {stage ? <PayoutStatusCard stage={stage} /> : <StepBar step={props.walletConnected && q ? 3 : 2} />}
+    {stage ? <PayoutStatusCard stage={stage} dates={trackerDates(market, props.claimReadiness)} /> : <StepBar step={props.walletConnected && q ? 3 : 2} />}
 
     {!live ? <View style={[s.notice, { marginTop: S.sm }]} accessibilityRole="alert">
       <Text style={s.noticeTitle}>This window isn’t selling right now</Text>
@@ -274,14 +277,12 @@ export function ProtectTicket(props: {
     ]} />
 
     <Text style={s.overline}>How much do you want back if it rains?</Text>
-    <View style={s.chipRow} accessibilityRole="radiogroup" accessibilityLabel="Coverage amount in SKYT">
-      {options.map((o) => {
-        const on = o.id === props.coverageId;
-        return <SpringPress key={o.id} selected={on} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: !o.enabled }} accessibilityLabel={o.id === "max" ? `Max${o.amountBase ? `, ${formatSkytFixed(o.amountBase, 0)} SKYT` : ", unavailable"}` : `${o.label} SKYT`} disabled={!o.enabled} onPress={() => props.onCoverage(o)} outerStyle={[{ flex: 1 }, o.id === "max" && { flex: 1.45 }]} style={[s.chip, { paddingHorizontal: S.sm - 2 }, on && s.chipOn, !o.enabled && { opacity: 0.4 }]}>
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.chipText, on && { color: C.rain }]}>{o.id === "max" ? (o.amountBase ? `Max ${formatSkytFixed(o.amountBase, 0)} SKYT` : "Max") : `${o.label} SKYT`}</Text>
-        </SpringPress>;
-      })}
+    <View accessibilityRole="radiogroup" accessibilityLabel="Coverage amount in SKYT">
+      <View style={s.chipRow}>{options.filter((o) => o.id !== "max").map((o) => <CoverageChip key={o.id} o={o} on={o.id === props.coverageId} short={o.id === props.coverageId && balance === "short"} onPress={() => props.onCoverage(o)} />)}</View>
+      {maxOption ? <View style={s.chipRow}><CoverageChip o={maxOption} on={maxOption.id === props.coverageId} short={maxOption.id === props.coverageId && balance === "short"} onPress={() => props.onCoverage(maxOption)} /></View> : null}
     </View>
+    {maxOption && !maxOption.enabled ? <Text style={[s.chipMsg, { color: C.muted }]}>Max is unavailable: this wallet has no SKYT yet.</Text> : null}
+    {balance === "short" && q && selectedOption ? <Text style={[s.chipMsg, { color: C.amber }]} accessibilityRole="alert">Not enough SKYT: you need {formatSkytFixed(q.premium, 2)} SKYT. Pick less coverage or top up your wallet.</Text> : null}
     <Text style={s.overline}>Rain limit</Text>
     <View style={s.chipRow} accessible accessibilityLabel={thresholdMm ? `Rain trigger: ${market?.operator === "gt" ? "more than" : market?.operator === "lt" ? "less than" : market?.operator === "lte" ? "at most" : "at least"} ${thresholdMm} millimetres` : "Rain trigger pending"}>
       <View style={[s.chip, { opacity: 0.9 }]}><Text style={s.chipText}>{thresholdMm ? `Trigger ${market?.operator === "gt" ? ">" : market?.operator === "lt" ? "<" : market?.operator === "lte" ? "≤" : "≥"} ${thresholdMm} mm rain` : "Trigger pending"}</Text></View>
@@ -289,10 +290,12 @@ export function ProtectTicket(props: {
 
     <View style={[s.card, { padding: 0, overflow: "hidden" }]} accessibilityLabel="Protection ticket">
       <View style={s.split}>
-        <View style={s.splitCell} accessible accessibilityLabel={`You pay ${q ? `${formatSkytFixed(q.premium, 2)} SKYT` : "not priced yet"}`}>
+        <View style={s.splitCell} accessible accessibilityLabel={`You pay ${pay.kind === "priced" ? `${pay.label} SKYT` : pay.label}`}>
           <Text style={s.smallLabel}>You pay</Text>
-          {youPay === null ? <ActivityIndicator color={C.rain} style={{ alignSelf: "flex-start", marginVertical: 10 }} /> : <Text style={s.splitFigure}>{youPay}</Text>}
-          <Text style={s.caption}>SKYT</Text>
+          {pay.kind === "priced" ? <Text style={s.splitFigure}>{pay.label}</Text>
+            : pay.kind === "pricing" ? <View style={s.skeletonWrap} accessibilityLabel="Pricing"><View style={s.skeleton} /><ActivityIndicator size="small" color={C.rain} /></View>
+            : <Text style={[s.payState, pay.kind === "error" && { color: C.amber }]}>{pay.label}</Text>}
+          <Text style={s.caption}>{pay.kind === "priced" ? "SKYT incl. 1% fee" : pay.kind === "pricing" ? "Getting a live NOAA price…" : pay.kind === "error" ? "Tap “Get a new price” below" : "SKYT"}</Text>
         </View>
         <View style={[s.splitCell, { backgroundColor: C.payoutSoft }]} accessible accessibilityLabel={`You get ${props.amountBase ? formatSkytFixed(props.amountBase, 0) : "nothing selected"} SKYT automatically if it rains past the trigger`}>
           <Text style={s.smallLabel}>You get if it rains</Text>
@@ -322,7 +325,6 @@ export function ProtectTicket(props: {
           {balance === "enough" ? <AppIcon name="check" color={C.mint} size={16} /> : balance === "short" ? <AppIcon name="alert-circle" color={C.amber} size={16} /> : null}
         </View>}
     </View>
-    {balance === "short" && q ? <Text style={[s.caption, { color: C.amber, marginTop: -S.xs, marginBottom: S.sm }]} accessibilityRole="alert">You need {formatSkytFixed(q.premium, 2)} SKYT — pick less coverage or top up your wallet.</Text> : null}
 
     {blocking && live ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>Not ready to price yet</Text><Text style={s.noticeBody}>{friendlyError(blocking)}</Text><Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh status</Text></Pressable></View> : null}
     {props.quoteError ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>{quoteErrorTitle(props.quoteError)}</Text><Text style={s.noticeBody}>{friendlyError(props.quoteError)}</Text><Pressable accessibilityRole="button" onPress={props.onRetryQuote} style={s.inlineBtn}><Text style={s.link}>Get a new price</Text></Pressable></View> : null}
@@ -380,6 +382,15 @@ export function ProtectTicket(props: {
   </>;
 }
 
+function CoverageChip({ o, on, short, onPress }: { o: CoverageOption; on: boolean; short: boolean; onPress: () => void }) {
+  const label = o.id === "max" ? (o.amountBase ? `Max ${formatSkytFixed(o.amountBase, 0)} SKYT` : "Max") : `${o.label} SKYT`;
+  const a11y = o.id === "max" ? `Max${o.amountBase ? `, ${formatSkytFixed(o.amountBase, 0)} SKYT` : ", unavailable, wallet has no SKYT"}` : `${o.label} SKYT`;
+  return <SpringPress selected={on} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: !o.enabled }} accessibilityLabel={short ? `${a11y}, not enough SKYT` : a11y} disabled={!o.enabled} onPress={onPress} outerStyle={{ flex: 1 }}
+    style={({ pressed }: { pressed: boolean }) => [s.chip, { paddingHorizontal: S.sm }, pressed && o.enabled && s.chipPressed, on && s.chipOn, on && short && s.chipShort, !o.enabled && s.chipDisabled]}>
+    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.chipText, on && { color: short ? C.amber : C.rain }, !o.enabled && { color: C.muted }]}>{label}</Text>
+  </SpringPress>;
+}
+
 /** Sticky bottom CTA used by Protect. */
 function StepBar({ step }: { step: FlowStep }) {
   return <View style={{ marginTop: S.xs, marginBottom: S.sm }} accessible accessibilityLabel={stepLabel(step)}>
@@ -388,16 +399,28 @@ function StepBar({ step }: { step: FlowStep }) {
   </View>;
 }
 
-function PayoutStatusCard({ stage }: { stage: NonNullable<ReturnType<typeof payoutStage>> }) {
+type TrackerMarket = { observationEnd: number | null } | undefined;
+/** Per-step timestamps from real market/position data only. A step with no known time gets no date. */
+export function trackerDates(market: TrackerMarket, r: ClaimReadiness | null): Array<string | null> {
+  const windowEnd = utcDateTime(market?.observationEnd ?? null);
+  const checked = r?.observationSignature && r.observation ? `Recorded · window to ${utcDateTime(r.observation.windowEnd) ?? "—"}` : r?.observationSignature ? "Recorded on-chain" : windowEnd ? "After the window ends" : null;
+  const result = r?.claimDeadline ? `Claim by ${utcDateTime(r.claimDeadline)}` : null;
+  return [null, windowEnd, checked, result];
+}
+
+export function PayoutStatusCard({ stage, dates }: { stage: NonNullable<ReturnType<typeof payoutStage>>; dates?: Array<string | null> }) {
   const col = stage.tone === "mint" ? C.mint : stage.tone === "amber" ? C.amber : stage.tone === "rain" ? C.rain : C.muted;
   const steps = stage.key === "refund" || stage.key === "refunded" ? ["Protected", "Rain window ended", "Weather data unavailable", "Refund"] : [...PAYOUT_STEPS];
   return <View style={[s.card, { borderColor: col + "66" }]} accessibilityLiveRegion="polite" accessible accessibilityLabel={`Your protection: ${stage.title}. ${stage.body}`}>
     <Text style={s.stepLabel}>Your protection</Text>
     <Text style={[s.statusTitle, { color: col }]}>{stage.title}</Text>
     <View style={{ marginTop: S.md, marginBottom: S.xs }}><ProgressRail progress={steps.length ? stage.done / steps.length : 0} color={col} track={C.border} /></View>
-    {steps.map((label, i) => <Enter key={label} index={i} style={{ flexDirection: "row", alignItems: "center", gap: S.md, marginTop: S.sm }}>
-      <View style={[s.stepNode, i < stage.done && { backgroundColor: col, borderColor: col }]} />
-      <Text style={[s.body, i >= stage.done && { color: C.quiet }]}>{label}</Text>
+    {steps.map((label, i) => <Enter key={label} index={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: S.md, marginTop: S.sm }}>
+      <View style={[s.stepNode, i < stage.done ? { backgroundColor: col, borderColor: col } : { borderColor: C.muted }]} />
+      <View style={{ flex: 1 }}>
+        <Text style={[s.body, i >= stage.done && { color: C.muted }]}>{label}</Text>
+        {dates?.[i] ? <Text style={[s.caption, { color: C.muted }]}>{dates[i]}</Text> : null}
+      </View>
     </Enter>)}
     <Text style={[s.caption, { marginTop: S.md }]}>{stage.body}</Text>
   </View>;
@@ -425,6 +448,9 @@ export function WalletV2(props: {
   walletError: string | null;
   loading: boolean;
   marketAddress: string | null;
+  claimReadiness?: ClaimReadiness | null;
+  observationEnd?: number | null;
+  onBrowseMarkets?: () => void;
   onConnect: () => void;
   onDisconnect: () => void;
 }) {
@@ -454,12 +480,17 @@ export function WalletV2(props: {
         <View style={{ marginTop: S.md }}><ExplorerButton url={`https://explorer.solana.com/address/${encodeURIComponent(props.wallet)}?cluster=devnet`} label="Open in Explorer" /></View>
       </View>
 
+      {(() => { const st = payoutStage(props.claimReadiness); return st ? <PayoutStatusCard stage={st} dates={trackerDates({ observationEnd: props.observationEnd ?? null }, props.claimReadiness ?? null)} /> : null; })()}
       <Text style={s.overline}>Positions</Text>
       <View style={s.card}>
         {props.portfolio?.indexed && props.portfolio.protections.length ? props.portfolio.protections.map((p) => <View key={p.address} style={[s.between, s.positionRow]}>
           <View style={{ flex: 1 }}><Text style={s.cardTitleSm}>{p.market === props.marketAddress ? "Des Moines · Rain" : `Market ${shortAddress(p.market)}`}</Text><Text style={s.caption}>Paid {formatSkytFixed(p.premiumPaid, 2)} SKYT</Text></View>
           <View style={{ alignItems: "flex-end" }}><Text style={[s.rowValue, { ...T.amountS, fontSize: 18, lineHeight: 24, color: C.payout }]}>{formatSkytFixed(p.protectedAmount, 0)}</Text><Text style={s.caption}>potential</Text></View>
-        </View>) : <Text style={s.body}>{props.portfolio?.indexed ? "No positions yet. Protect a window from Markets." : friendlyError(props.portfolioError, props.portfolio?.message ?? "Positions will appear once Solana confirms them.")}</Text>}
+        </View>) : props.portfolio?.indexed ? <View style={s.emptyCard}>
+          <AppIcon name="umbrella" color={C.muted} size={22} />
+          <Text style={s.body}>No positions yet. Protect a window from Markets.</Text>
+          {props.onBrowseMarkets ? <Pressable accessibilityRole="button" onPress={props.onBrowseMarkets} style={s.inlineBtn}><Text style={s.link}>Browse markets →</Text></Pressable> : null}
+        </View> : <Text style={s.body}>{friendlyError(props.portfolioError, props.portfolio?.message ?? "Positions will appear once Solana confirms them.")}</Text>}
       </View>
 
       <View style={{ marginTop: S.lg }}><ActionButton variant="secondary" label="Disconnect" icon="log-out" onPress={props.onDisconnect} /></View>
@@ -472,7 +503,7 @@ export function WalletV2(props: {
 const s = StyleSheet.create({
   stepLabel: { ...T.overline, color: C.quiet, fontSize: 12, letterSpacing: 1.2 },
   stepDot: { flex: 1, height: 4, borderRadius: 2, backgroundColor: C.border },
-  stepNode: { width: 12, height: 12, borderRadius: 6, borderWidth: 1, borderColor: C.border },
+  stepNode: { width: 12, height: 12, borderRadius: 6, borderWidth: 1, borderColor: C.border, marginTop: 5 },
   statusTitle: { ...T.title, fontSize: 22, lineHeight: 28, marginTop: S.xs },
   eyebrowCaps: { ...T.overline, color: C.quiet, letterSpacing: 1.2 },
   devnetTag: { borderWidth: 1, borderColor: C.amber + "66", backgroundColor: C.amberSoft, borderRadius: 12, paddingHorizontal: S.md, paddingVertical: S.xs },
@@ -496,7 +527,7 @@ const s = StyleSheet.create({
   eyebrow: { ...T.label, color: C.muted, fontFamily: F.bodyMedium, marginBottom: S.xxs },
   overline: { ...T.overline, color: C.quiet, marginTop: S.xl, marginBottom: S.sm },
   overlineIn: { ...T.overline, color: C.quiet, marginBottom: S.sm },
-  card: { backgroundColor: "rgba(24,32,42,0.6)", borderColor: "rgba(160,205,235,0.16)", borderWidth: 1, borderRadius: 20, padding: S.lg + 4, marginBottom: S.lg },
+  card: { backgroundColor: "rgba(24,32,42,0.6)", borderColor: "rgba(160,205,235,0.16)", borderWidth: 1, borderRadius: 20, padding: S.lg, marginBottom: S.lg },
   cardTitle: { ...T.cardTitle, color: C.ink },
   cardTitleSm: { ...T.bodyStrong, color: C.ink, fontSize: 16 },
   cardSub: { ...T.label, color: C.muted, fontFamily: F.body, marginTop: S.xxs },
@@ -516,6 +547,14 @@ const s = StyleSheet.create({
   hazardText: { ...T.label, color: C.muted, fontFamily: F.bodyMedium, fontSize: 14 },
   chip: { flex: 1, minHeight: 52, borderRadius: 16, borderWidth: 1, borderColor: "rgba(160,205,235,0.16)", backgroundColor: "rgba(24,32,42,0.6)", alignItems: "center", justifyContent: "center" },
   chipOn: { borderColor: C.rain, backgroundColor: C.rainSoft, boxShadow: "0px 0px 16px rgba(94,200,255,0.35)" },
+  chipPressed: { backgroundColor: "rgba(94,200,255,0.10)", borderColor: "rgba(94,200,255,0.40)" },
+  chipShort: { borderColor: C.amber, backgroundColor: C.amberSoft, boxShadow: "none" },
+  chipDisabled: { borderStyle: "dashed", backgroundColor: "transparent", opacity: 0.7 },
+  chipMsg: { ...T.caption, marginTop: -S.xs, marginBottom: S.md },
+  payState: { ...T.bodyStrong, fontSize: 17, lineHeight: 24, color: C.ink, marginTop: S.sm, marginBottom: S.xs },
+  skeletonWrap: { flexDirection: "row", alignItems: "center", gap: S.sm, height: 42, marginTop: S.xs },
+  skeleton: { width: 72, height: 24, borderRadius: 6, backgroundColor: C.mutedSurface },
+  emptyCard: { alignItems: "flex-start", gap: S.sm },
   chipText: { ...T.bodyStrong, color: C.ink, fontVariant: TAB, letterSpacing: -0.1 },
   chart: { flexDirection: "row", alignItems: "flex-end", gap: S.sm, marginTop: S.lg, marginBottom: S.sm },
   barCol: { flex: 1, justifyContent: "flex-end", height: "100%" },

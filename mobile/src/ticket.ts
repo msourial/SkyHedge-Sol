@@ -101,3 +101,36 @@ export function balanceCheck(walletSkytBase: string | null | undefined, premiumB
 }
 
 export { formatSkyt };
+
+/** "Oct 14, 00:00 UTC" from unix seconds; null when unknown (never invented). */
+export function utcDateTime(unixSeconds: number | null | undefined): string | null {
+  if (!unixSeconds || !Number.isFinite(unixSeconds)) return null;
+  const d = new Date(unixSeconds * 1_000);
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${hh}:${mm} UTC`;
+}
+
+export type PayState = { kind: "priced" | "pricing" | "error" | "blocked"; label: string };
+
+/** What the "You pay" cell shows. Only a real quote premium ever produces a number. */
+export function payState(input: { premiumBase: string | null | undefined; busy: boolean; error: string | null; live: boolean; salesClosed: boolean; walletConnected: boolean }): PayState {
+  if (input.premiumBase && /^\d+$/.test(input.premiumBase)) return { kind: "priced", label: formatSkytFixed(input.premiumBase, 2) };
+  if (input.busy) return { kind: "pricing", label: "Pricing…" };
+  if (input.error) return { kind: "error", label: "Price unavailable" };
+  if (!input.live) return { kind: "blocked", label: input.salesClosed ? "Sales closed" : "Not selling now" };
+  if (!input.walletConnected) return { kind: "blocked", label: "Connect wallet" };
+  return { kind: "blocked", label: "Not priced yet" };
+}
+
+/** Sticky buy button: "Protect for X SKYT" only with a real quote; otherwise disabled with the reason. */
+export function buyCta(input: { premiumBase: string | null | undefined; busy: boolean; error: string | null; blockedReason: string | null; paymentReason: string | null }): { label: string; disabled: boolean; hint: string | null } {
+  const priced = !!input.premiumBase && /^\d+$/.test(input.premiumBase);
+  const label = priced ? `Protect for ${formatSkytFixed(input.premiumBase!, 2)} SKYT` : "Protect";
+  if (input.blockedReason) return { label, disabled: true, hint: input.blockedReason };
+  if (input.busy) return { label, disabled: true, hint: "Getting a live NOAA price…" };
+  if (input.error) return { label, disabled: true, hint: "Price unavailable. Tap “Get a new price” above." };
+  if (!priced) return { label, disabled: true, hint: "Waiting for a live price." };
+  if (input.paymentReason) return { label, disabled: true, hint: input.paymentReason };
+  return { label, disabled: false, hint: null };
+}

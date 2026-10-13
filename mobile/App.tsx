@@ -29,7 +29,7 @@ import { ScreenTransition, TactilePressable } from "./src/liquid-glass";
 import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
 import { ReferenceAreaMap } from "./src/ReferenceAreaMap";
 import { marketIsLive, MarketsScreen, NetworkPill, ProtectTicket, StickyCta, WalletV2 } from "./src/v2";
-import { coverageOptions, type CoverageOption } from "./src/ticket";
+import { buyCta, coverageOptions, type CoverageOption } from "./src/ticket";
 import { Landing, MarketDetail } from "./src/revamp";
 import { CollectPayoutView, ReceiptView } from "./src/journey";
 import { BrandMark } from "./src/BrandMark";
@@ -476,6 +476,9 @@ export default function App() {
             walletError={walletError}
             loading={loading}
             marketAddress={status?.desMoinesMarket.address ?? null}
+            claimReadiness={claimReadiness}
+            observationEnd={status?.desMoinesMarket.observationEnd ?? null}
+            onBrowseMarkets={() => { setTab("catalog"); setDetailCode(null); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
             onConnect={() => { void connect(); }}
             onDisconnect={() => { setWallet(null); setWalletSession(null); setPortfolio(null); setWalletBalances(null); setPortfolioError(null); setWalletError(null); setClaimReadiness(null); setQuote(null); }}
           />
@@ -502,10 +505,11 @@ export default function App() {
         if (claimable) return <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={transactionBusy} onPress={() => { if (claimReadiness?.action) void submitApprovedAction(claimReadiness.action); }} />;
         if (!wallet) return <StickyCta label="Connect wallet to protect" busy={loading} onPress={() => { void connect(); }} />;
         const quoteReady = !!quote && quote.protectedAmount === amountBase;
+        const cta = buyCta({ premiumBase: quoteReady ? quote!.premium : null, busy: quoteBusy, error: quoteError, blockedReason: protectionUnavailableReason ? friendlyError(protectionUnavailableReason) : null, paymentReason: quotePaymentReason ? "Not enough SKYT in this wallet for this premium." : null });
         return <StickyCta
-          label={`Step 3 · Review in ${WALLET_NAME === "Your wallet" ? "wallet" : WALLET_NAME}`}
-          hint={quoteBusy ? "Getting a live NOAA price…" : null}
-          disabled={!quoteReady || !!quotePaymentReason || !!protectionUnavailableReason || quoteBusy}
+          label={cta.label}
+          hint={cta.hint}
+          disabled={cta.disabled}
           busy={transactionBusy}
           onPress={() => { void submitApprovedAction("open_position"); }}
         />;

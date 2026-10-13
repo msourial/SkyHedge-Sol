@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
 import { useReducedMotion } from "./liquid-glass";
 import { motion } from "./theme";
@@ -7,10 +7,11 @@ import { motion } from "./theme";
  * Pressable with a calm spring press-down (scale to motion.pressScale) and an optional
  * selection "pop" when `selected` flips on. Reduce-motion: no scaling at all.
  */
-export function SpringPress({ style, outerStyle, selected, children, ...rest }: Omit<PressableProps, "style" | "children"> & { style?: StyleProp<ViewStyle>; outerStyle?: StyleProp<ViewStyle>; selected?: boolean; children?: React.ReactNode }) {
+export function SpringPress({ style, outerStyle, selected, children, ...rest }: Omit<PressableProps, "style" | "children"> & { style?: StyleProp<ViewStyle> | ((state: { pressed: boolean }) => StyleProp<ViewStyle>); outerStyle?: StyleProp<ViewStyle>; selected?: boolean; children?: React.ReactNode }) {
   const reduced = useReducedMotion();
   const scale = useRef(new Animated.Value(1)).current;
   const first = useRef(true);
+  const [pressed, setPressed] = useState(false);
   const to = (v: number) => { if (reduced) return; Animated.spring(scale, { toValue: v, ...motion.spring, useNativeDriver: true }).start(); };
   useEffect(() => {
     if (first.current) { first.current = false; return; }
@@ -18,8 +19,8 @@ export function SpringPress({ style, outerStyle, selected, children, ...rest }: 
     scale.setValue(0.94);
     Animated.spring(scale, { toValue: 1, damping: 12, stiffness: 300, mass: 0.8, useNativeDriver: true }).start();
   }, [selected, reduced, scale]);
-  return <Pressable {...rest} style={outerStyle} onPressIn={(e) => { to(motion.pressScale); rest.onPressIn?.(e); }} onPressOut={(e) => { to(1); rest.onPressOut?.(e); }}>
-    <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
+  return <Pressable {...rest} style={outerStyle} onPressIn={(e) => { setPressed(true); to(motion.pressScale); rest.onPressIn?.(e); }} onPressOut={(e) => { setPressed(false); to(1); rest.onPressOut?.(e); }}>
+    <Animated.View style={[typeof style === "function" ? style({ pressed }) : style, { transform: [{ scale }] }]}>{children}</Animated.View>
   </Pressable>;
 }
 
