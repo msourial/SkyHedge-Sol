@@ -1,21 +1,50 @@
 # SkyHedge: weather protection you buy from your phone
 
-> **Parametric weather protection on Solana, built for the Seeker.** Pick a place and a weather risk, see a quote priced from NOAA data, approve it in your wallet, and get paid on-chain automatically when the weather data shows the trigger was hit. No claims adjuster, no paperwork.
+> **Parametric weather protection on Solana.** Pick a place and a weather risk, see a quote priced from NOAA data, approve it in your wallet, and get paid on-chain automatically when the weather data shows the trigger was hit. No claims adjuster, no paperwork.
 >
-> Solana Mobile **Clock In** hackathon entry · native React Native Android app (not a PWA) · Solana Devnet · Mobile Wallet Adapter.
+> **Encode Club Solana Hackathon 2026** entry · native React Native Android app (built for the Solana Seeker) · Solana Devnet · Mobile Wallet Adapter.
 
 | | |
 |---|---|
-| Repo (submission branch) | [msourial/SkyHedge-Sol @ clock-in-submission](https://github.com/msourial/SkyHedge-Sol/tree/clock-in-submission) |
-| APK | See [Releases](https://github.com/msourial/SkyHedge-Sol/releases) (debug-signed Devnet build; SHA-256 in the release notes and [docs/takeover-log.md](docs/takeover-log.md)) |
-| Hackathon | [Solana Mobile Clock In](https://solanamobile.radiant.nexus/) · submitted on Align |
+| Hackathon | Encode Club Solana Hackathon 2026 · readiness checklist: [docs/encode-readiness.md](docs/encode-readiness.md) |
+| Tracks | **Best Consumer App on Solana** · **Best Use of x402 on Solana** (x402 is *planned / under evaluation*, not integrated; see below) |
+| Repo | [msourial/SkyHedge-Sol @ seeker-revamp](https://github.com/msourial/SkyHedge-Sol/tree/seeker-revamp) |
+| APK | See [Releases](https://github.com/msourial/SkyHedge-Sol/releases) (Devnet build; SHA-256 in the release notes) |
 | Demo | `<<DEMO_VIDEO_URL>>` · script: [docs/demo-script.md](docs/demo-script.md) |
-| Pitch deck | [docs/clock-in-pitch.pdf](docs/clock-in-pitch.pdf) |
+| Pitch deck | `<<PITCH_DECK_URL>>` (previous deck: [docs/clock-in-pitch.pdf](docs/clock-in-pitch.pdf)) |
 | Program (Devnet) | `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` |
 | Test token | `SKYT` mint `3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g` (Devnet, no value) |
 
 **On-chain proof:** a real `OpenPosition` purchase from the Seeker through Phantom, finalized on Devnet:
 [`5TjACP1S…7qsPWycH`](https://explorer.solana.com/tx/5TjACP1ScQxXRP4GNpA5zXqxAHK2iCNvcETPx1z7rJ4qXPjMWXZ6qXgngHjrPGv9sVL1h6nGULmzwCiu7qsPWycH?cluster=devnet)
+
+> **History:** SkyHedge was first built for the Solana Mobile **Clock In** hackathon (October 2026). That entry's notes remain in [docs/clock-in-readiness.md](docs/clock-in-readiness.md) and [docs/clock-in-submission-draft.md](docs/clock-in-submission-draft.md).
+
+## For judges
+
+**What it is.** SkyHedge sells parametric weather protection: a fixed payout that triggers automatically when public weather data crosses a pre-set threshold (for example, at least 50 mm of rain in Des Moines over a 7-day window). There is no claims process; the data decides.
+
+**How Solana powers it.**
+- **Anchor program** (`anchor/programs/skyhedge_protection`) holds every rule: market creation, pricing inputs, purchases, settlement, payouts and refunds.
+- **Per-market vaults:** each city market has its own fully collateralized, PDA-owned token vault. A purchase is rejected unless the vault covers every reserved payout.
+- **SKYT** is a valueless six-decimal Devnet test token used as collateral; no real money is involved.
+- **Mobile Wallet Adapter + Phantom:** the server builds the transaction unsigned and the user approves it in Phantom on the phone. Nothing is signed without the user.
+- **Settlement:** the final NOAA observation is normalized, hashed and committed on-chain; if the trigger is hit the buyer claims the payout, and if data is unavailable premiums are refundable.
+
+**How to test.**
+1. Install the Android APK from [Releases](https://github.com/msourial/SkyHedge-Sol/releases) on a Seeker or any Android phone.
+2. Install Phantom and switch it to **Devnet**. You need a little Devnet SOL for fees and some SKYT test tokens to buy protection.
+3. Open SkyHedge → **Markets** → pick a city → **Protect** → choose coverage → **Review in wallet** and approve in Phantom.
+4. The app shows the finalized position with an Explorer link. Without SKYT you can still browse markets, quotes and live NOAA data.
+
+**Current live status (Devnet).**
+- **Des Moines, Iowa:** live market; its observation window runs until **Oct 18, 2026, 8:00 PM ET**. Its sales window has closed, so new purchases need a new window.
+- **Chicago, New York and Miami:** ready to open; each needs an on-chain market creation and funding by the admin wallet.
+- **Toronto:** opens soon (Environment Canada adapter is in the codebase).
+
+**x402 (Best Use of x402 track).** x402 is **not integrated yet**. It is planned and under evaluation, for example for pay-per-request access to premium weather feeds. Today the app only checks a free WeatherXM health endpoint, and x402-paid data is never used for settlement.
+
+No traction numbers are claimed; SkyHedge is pre-launch.
 
 ## Why
 

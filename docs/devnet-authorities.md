@@ -29,3 +29,5 @@ The protocol admin is a wallet public key, distinct from the current program-upg
 - **Initial liquidity provider:** Miro (the owner), depositing through `fund_pool` from his own wallet. Any wallet can fund before sales close, so this needs no admin step. It still needs his wallet approval, because each deposit is a real Devnet transaction.
 - **Why:** `open_position` only sells coverage while the vault plus incoming premium covers all reserved payouts. A 10,000 SKYT vault lets the market sell its full 8,000 SKYT exposure cap, with room to spare. That's 16 buyers at the 500 SKYT per-wallet maximum.
 - **Status:** this is a target only. No funding transaction has been sent. SKYT is a valueless Devnet test token.
+
+> **Open decision (funding):** `scripts/seed-markets.ts` funds 2,000 SKYT per market (cap 10,000), while the current plan is 10,000 SKYT per market. Not resolved; see [encode-readiness.md](encode-readiness.md#open-decision-funding-per-market).
