@@ -2,7 +2,7 @@
   "expo": {
     "name": "SkyHedge",
     "slug": "skyhedge-mobile",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "scheme": "skyhedge",
     "plugins": [
@@ -16,7 +16,7 @@
         "backgroundColor": "#12151A"
       },
       "permissions": [],
-      "versionCode": 2
+      "versionCode": 3
     },
     "icon": "./assets/icon.png"
   }

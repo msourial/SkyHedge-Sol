@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Easing, Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { RadarMap, type MapScope } from "./RadarMap";
-import { CountUp, GlassCard, GlobalGroups, RainGauge, Receipt, StatusTag, statusLabel } from "./revamp";
+import { CountUp, GlassCard, GlobalGroups, StatusTag, statusLabel } from "./revamp";
 import { GROUP_ORDER, highlightParts, MARKETS, searchMarkets, type CatalogMarket, type MarketGroup } from "./markets-catalog";
 import { useReducedMotion } from "./liquid-glass";
 import { CoverageHero, FactRows, PerilSelector, ReceiptView, ScreenTop, StatPair } from "./journey";

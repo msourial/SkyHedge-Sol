@@ -163,11 +163,11 @@ export function MarketDetail(props: { market: CatalogMarket; onBack: () => void;
         <View style={g.howN}><Text style={g.howNText}>{i + 1}</Text></View><View style={{ flex: 1 }}><Text style={g.body}>{t}</Text><Text style={g.caption}>{d}</Text></View>
       </View>)}
     </GlassCard>
-    {soon ? <Pressable accessibilityRole="button" accessibilityState={{ checked: props.notified }} onPress={props.onNotify} style={[g.notify, props.notified && g.notifyOn]}>
+    {soon || ready ? <Pressable accessibilityRole="button" accessibilityLabel={props.notified ? `Interest saved for ${m.name}. Tap to undo.` : `Notify me when ${m.name} opens`} accessibilityState={{ checked: props.notified }} onPress={props.onNotify} style={[g.notify, props.notified && g.notifyOn]}>
       <AppIcon name={props.notified ? "check" : "bell"} color={props.notified ? C.amber : "#1A1205"} size={18} />
       <Text style={[g.notifyText, props.notified && { color: C.amber }]}>{props.notified ? "Interest saved on this phone" : "Notify me when it opens"}</Text>
     </Pressable> : null}
-    {soon && props.notified ? <Text style={[g.caption, { textAlign: "center", marginTop: 6 }]}>Kept in the app on this device only. No notification is scheduled yet and nothing was sent.</Text> : null}
+    {(soon || ready) && props.notified ? <Text style={[g.caption, { textAlign: "center", marginTop: 6 }]}>Kept in the app on this device only. No notification is scheduled yet and nothing was sent.</Text> : null}
     <Pressable accessibilityRole="button" onPress={props.onExploreLive} style={g.secondary}><View style={[g.tagDot, { backgroundColor: C.mint }]} /><Text style={g.secondaryText}>Explore Des Moines (live)</Text></Pressable>
     <Text style={[g.caption, { textAlign: "center", marginTop: 8 }]}>{soon ? "Concept preview · not yet open" : ready ? "Ready to open · not tradable yet" : "Concept market · not tradable"}</Text>
   </>;
@@ -221,7 +221,7 @@ const g = StyleSheet.create({
   brandMark: { width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(94,200,255,0.12)", alignItems: "center", justifyContent: "center" },
   brandText: { flex: 1, color: C.ink, fontFamily: F.headingBold, fontSize: 18 },
   devnet: { borderWidth: 1, borderColor: C.amber + "66", backgroundColor: C.amberSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
-  devnetText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 11 },
+  devnetText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 12 },
   hero: { ...T.hero, color: C.ink, marginTop: S.xs },
   heroLead: { ...T.lead, color: C.muted, marginTop: S.md },
   marketLine: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 40 },

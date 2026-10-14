@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { ActivityIndicator, Linking, Pressable, StyleSheet, TextInput, View } from "react-native";
 import type { AdvisoryResponse } from "./api";
 import { guideActionLabel, guideEvidenceLabel } from "./guide";
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   prompt: { minHeight: 48, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 8 },
   promptText: { flex: 1, color: C.ink, fontFamily: F.bodyMedium, fontSize: 14, lineHeight: 21 },
   turn: { gap: 8, borderTopWidth: 1, borderColor: C.border, paddingTop: 14 },
-  modeLabel: { color: C.quiet, fontFamily: F.body, fontSize: 11, fontStyle: "italic" },
+  modeLabel: { color: C.muted, fontFamily: F.body, fontSize: 12, lineHeight: 18, fontStyle: "italic" },
   turnLabel: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 12 },
   turnCustomer: { color: C.ink, fontFamily: F.bodyMedium, fontSize: 15, lineHeight: 22 },
   reply: { backgroundColor: C.surfaceRaised, borderRadius: 12, padding: 12, gap: 9 },

@@ -3,7 +3,6 @@ import { BlurTargetView, BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { AccessibilityInfo, Animated, Easing, Platform, Pressable, StyleSheet, type PressableProps, type StyleProp, type ViewProps, type ViewStyle, View } from "react-native";
 import { liquidGlassRecipe } from "./liquid-glass-config";
-import { C } from "./theme";
 
 export const GlassTargetContext = createContext<React.RefObject<View | null> | null>(null);
 

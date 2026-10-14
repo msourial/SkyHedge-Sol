@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Animated, Easing, Linking, Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { C, F, MIN_TOUCH } from "./theme";
@@ -164,7 +164,7 @@ const j = StyleSheet.create({
   perilOn: { borderColor: C.rain, backgroundColor: "rgba(94,200,255,0.14)", boxShadow: "0px 0px 16px rgba(94,200,255,0.35)" },
   perilOff: { opacity: 0.6, borderStyle: "dashed" },
   perilText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 13 },
-  perilSoon: { color: C.amber, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 },
+  perilSoon: { color: C.amber, fontFamily: F.mono, fontSize: 12, lineHeight: 16, letterSpacing: 0.6 },
   top: { marginBottom: 14 },
   topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44, marginBottom: 6 },
   back: { minWidth: MIN_TOUCH, minHeight: MIN_TOUCH, justifyContent: "center", marginLeft: -8, paddingLeft: 4 },
