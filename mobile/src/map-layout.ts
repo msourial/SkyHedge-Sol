@@ -79,8 +79,8 @@ export function clusterConcepts(pins: readonly CatalogMarket[], region: boolean,
  * Tries 8 slots per pin; a label that collides with a pin, another label, an `avoid` box or the map edge is hidden, never forced.
  * Global view labels key / highlighted cities only.
  */
-export function placeLabels(pins: readonly CatalogMarket[], region: boolean, highlight: ReadonlySet<string>, k: number, win: Win, opts: { avoid?: Box[]; obstacles?: Box[] } = {}): Map<string, Label> {
-  const pri = (m: CatalogMarket) => (m.status === "live" ? 0 : highlight.has(m.code) ? 1 : m.status === "soon" ? 2 : m.status === "ready" ? 3 : 4);
+export function placeLabels(pins: readonly CatalogMarket[], region: boolean, highlight: ReadonlySet<string>, k: number, win: Win, opts: { avoid?: Box[]; obstacles?: Box[]; labelConcepts?: boolean; prefer?: ReadonlySet<string> } = {}): Map<string, Label> {
+  const pri = (m: CatalogMarket) => (m.status === "live" ? 0 : opts.prefer?.has(m.code) ? 0.5 : highlight.has(m.code) ? 1 : m.status === "soon" ? 2 : m.status === "ready" ? 3 : 4);
   const pinBox = (m: CatalogMarket): Box => { const [x, y] = xy(m, region); const r = 6 * k; return [x - r, y - r, x + r, y + r]; };
   // Key labels must clear key pins, other labels and avoid boxes; small concept pins under a key label are hidden by the renderer instead.
   const boxes: Box[] = [...(opts.obstacles ?? []), ...(opts.avoid ?? []), ...pins.filter((m) => isKey(m) || highlight.has(m.code)).map(pinBox)];
@@ -89,7 +89,7 @@ export function placeLabels(pins: readonly CatalogMarket[], region: boolean, hig
   const edge = 4 * k;
   for (const m of [...pins].sort((a, b) => pri(a) - pri(b))) {
     const key = isKey(m) || highlight.has(m.code);
-    if (!region && !key) continue;
+    if (!region && !key && !opts.labelConcepts) continue;
     const text = key ? m.short : m.code;
     const size = MAP_LABEL_PX * k;
     const w = text.length * size * 0.62, h = size;
@@ -125,4 +125,19 @@ export function labelBox(L: Label): Box {
   const w = L.text.length * L.size * 0.62;
   const x0 = L.anchor === "start" ? L.x : L.anchor === "end" ? L.x - w : L.x - w / 2;
   return [x0, L.y - L.size * 0.85, x0 + w, L.y + L.size * 0.2];
+}
+
+/** Minimum tap target for a cluster badge, in dp. */
+export const CLUSTER_HIT_DP = 44;
+
+/** Global-projection window framing one cluster's cities (2:1, padded, never tighter than ~1/5 of the world). */
+export function clusterWindow(markets: readonly CatalogMarket[], codes: readonly string[]): Win {
+  const pts = markets.filter((m) => codes.includes(m.code)).map((m) => m.globalXY);
+  return fitWindow(pts, MAP_ASPECT_GLOBAL, 40, GLOBAL_VIEW, 200);
+}
+
+/** "Group of 3 cities: Lagos, Accra, Nairobi. Tap to zoom in." */
+export function clusterA11yLabel(c: Cluster, markets: readonly CatalogMarket[]): string {
+  const names = c.codes.map((code) => markets.find((m) => m.code === code)?.name ?? code);
+  return `Group of ${c.count} cities: ${names.join(", ")}. Tap to zoom in.`;
 }

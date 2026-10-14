@@ -2,12 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Pressable, StyleSheet, View } from "react-native";
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, RadialGradient, Stop, Text as SvgText } from "react-native-svg";
 import { GLOBAL_GRATICULE, GLOBAL_LAND, REGION_GRATICULE, REGION_LAKES, REGION_LAND } from "./geo-paths";
-import { clusterConcepts, globalWindow, inWin, isKey, labelBox, placeLabels, regionWindow } from "./map-layout";
+import { CLUSTER_HIT_DP, clusterA11yLabel, clusterConcepts, clusterWindow, globalWindow, inWin, isKey, labelBox, placeLabels, regionWindow } from "./map-layout";
 export { placeLabels } from "./map-layout";
 import { MARKETS, type CatalogMarket } from "./markets-catalog";
 import { C, F, space as S, type as T } from "./theme";
 import { Text } from "./ui";
 import { useReducedMotion } from "./liquid-glass";
+import { SpringPress } from "./motion";
+import { motion } from "./theme";
 
 export type MapScope = "region" | "global";
 
@@ -34,12 +36,24 @@ export function RadarMap(props: {
   const focus = MARKETS.find((m) => m.code === props.focusCode) ?? MARKETS[0];
   const isRegion = props.scope === "region";
   const [widthDp, setWidthDp] = useState(340);
-  const win = useMemo(() => (isRegion ? regionWindow(MARKETS, focus) : globalWindow(MARKETS)), [isRegion, focus]);
+  const [zoomCodes, setZoomCodes] = useState<string[] | null>(null);
+  useEffect(() => { setZoomCodes(null); }, [props.scope]);
+  const zoomed = !isRegion && !!zoomCodes;
+  const win = useMemo(() => (isRegion ? regionWindow(MARKETS, focus) : zoomCodes ? clusterWindow(MARKETS, zoomCodes) : globalWindow(MARKETS)), [isRegion, focus, zoomCodes]);
+  // Calm cross-fade when framing a cluster or returning to Global; reduce-motion swaps instantly.
+  const fade = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (reduced) { fade.setValue(1); return; }
+    fade.setValue(0.25);
+    const a = Animated.timing(fade, { toValue: 1, duration: motion.base, easing: Easing.out(Easing.cubic), useNativeDriver: true });
+    a.start();
+    return () => a.stop();
+  }, [zoomCodes, reduced, fade]);
   const k = win.w / widthDp; // map units per dp, so strokes and 12dp labels render at true size
-  const pins = useMemo(() => MARKETS.filter((m) => (isRegion ? m.group === "North America" && inWin(m.regionXY, win) : true)), [isRegion, win]);
-  const { singles, clusters } = useMemo(() => (isRegion ? { singles: pins.filter((m) => m.status === "concept"), clusters: [] } : clusterConcepts(pins, false, k)), [pins, isRegion, k]);
+  const pins = useMemo(() => MARKETS.filter((m) => (isRegion ? m.group === "North America" && inWin(m.regionXY, win) : zoomed ? inWin(m.globalXY, win) : true)), [isRegion, zoomed, win]);
+  const { singles, clusters } = useMemo(() => (isRegion || zoomed ? { singles: pins.filter((m) => m.status === "concept"), clusters: [] } : clusterConcepts(pins, false, k)), [pins, isRegion, zoomed, k]);
   const drawn = useMemo(() => [...pins.filter((m) => m.status !== "concept" || props.highlight.has(m.code)), ...singles.filter((m) => !props.highlight.has(m.code))], [pins, singles, props.highlight]);
-  const labels = useMemo(() => placeLabels(drawn, isRegion, props.highlight, k, win, { obstacles: clusters.map((c) => { const r = 9 * k; return [c.x - r, c.y - r, c.x + r, c.y + r] as [number, number, number, number]; }) }), [drawn, isRegion, props.highlight, k, win, clusters]);
+  const labels = useMemo(() => placeLabels(drawn, isRegion, props.highlight, k, win, { obstacles: clusters.map((c) => { const r = 9 * k; return [c.x - r, c.y - r, c.x + r, c.y + r] as [number, number, number, number]; }), labelConcepts: zoomed, prefer: zoomed ? new Set(zoomCodes) : undefined }), [drawn, isRegion, zoomed, zoomCodes, props.highlight, k, win, clusters]);
   // Concept pins sitting under a key-city label are hidden so the label stays readable.
   const keyBoxes = [...labels.values()].filter((L) => { const m = MARKETS.find((x) => x.code === L.code); return !!m && (isKey(m) || props.highlight.has(m.code)); }).map(labelBox);
   const visible = drawn.filter((m) => { if (isKey(m) || props.highlight.has(m.code)) return true; const [x, y] = isRegion ? m.regionXY : m.globalXY; return !keyBoxes.some((b) => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]); });
@@ -55,14 +69,17 @@ export function RadarMap(props: {
 
   return <View style={s.wrap}>
     <View style={s.head}>
-      <Text style={s.proj}>{isRegion ? "LCC · 35°/55° N" : "Equal Earth"}{hidden ? ` · +${hidden} more in North America` : ""}</Text>
+      {zoomed ? <SpringPress accessibilityRole="button" accessibilityLabel="Back to Global map" onPress={() => setZoomCodes(null)} hitSlop={8} outerStyle={{ flex: 1 }} style={({ pressed }) => [s.back, pressed && s.backPressed]}>
+        <Text style={s.backText}>‹ Back to Global</Text>
+      </SpringPress> : <Text style={s.proj}>{isRegion ? "LCC · 35°/55° N" : "Equal Earth"}{hidden ? ` · +${hidden} more in North America` : ""}</Text>}
       <View style={s.toggle} accessibilityRole="tablist">
         {(["region", "global"] as const).map((v) => <Pressable key={v} accessibilityRole="tab" accessibilityState={{ selected: props.scope === v }} onPress={() => props.onScope(v)} style={[s.toggleBtn, props.scope === v && s.toggleOn]} hitSlop={6}>
           <Text style={[s.toggleText, props.scope === v && { color: C.rain }]}>{v === "region" ? "Region" : "Global"}</Text>
         </Pressable>)}
       </View>
     </View>
-    <View onLayout={(e) => { const w = Math.round(e.nativeEvent.layout.width); if (w > 0 && w !== widthDp) setWidthDp(w); }} style={[s.map, { aspectRatio: win.w / win.h }]} accessible accessibilityLabel={`${isRegion ? "Regional" : "Global"} radar map${focusOn ? ` centred on ${focus.name}` : ""}. ${pins.length} markets shown${clusters.length ? `, ${clusters.reduce((n, c) => n + c.count, 0)} concept markets grouped` : ""}.`}>
+    <View onLayout={(e) => { const w = Math.round(e.nativeEvent.layout.width); if (w > 0 && w !== widthDp) setWidthDp(w); }} style={[s.map, { aspectRatio: win.w / win.h }]}>
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: fade }]} accessible accessibilityLabel={`${isRegion ? "Regional" : zoomed ? "Zoomed" : "Global"} radar map${focusOn ? ` centred on ${focus.name}` : ""}. ${pins.length} markets shown${clusters.length ? `, ${clusters.reduce((n, c) => n + c.count, 0)} concept markets grouped` : ""}.`}>
       <View style={StyleSheet.absoluteFill} renderToHardwareTextureAndroid needsOffscreenAlphaCompositing={false}>
       <Svg width="100%" height="100%" viewBox={`${win.x} ${win.y} ${win.w} ${win.h}`}>
         <Defs>
@@ -83,10 +100,6 @@ export function RadarMap(props: {
           <Circle cx={fx} cy={fy} r={60 * ring} fill="url(#glow)" />
           {[22, 44, 66].map((r) => <Circle key={r} cx={fx} cy={fy} r={r * ring} fill="none" stroke={fc} strokeOpacity={0.18} strokeWidth={1 * k} />)}
         </> : null}
-        {clusters.map((c) => <G key={c.codes.join("-")}>
-          <Circle cx={c.x} cy={c.y} r={9 * k} fill={C.canvas} stroke={C.rain} strokeOpacity={0.7} strokeWidth={1.2 * k} />
-          <SvgText x={c.x} y={c.y + 4 * k} textAnchor="middle" fill={C.muted} fontSize={11 * k} fontWeight="700" fontFamily={F.mono}>{c.count}</SvgText>
-        </G>)}
         {visible.map((m) => {
           const [x, y] = isRegion ? m.regionXY : m.globalXY;
           const hit = props.highlight.has(m.code);
@@ -103,6 +116,12 @@ export function RadarMap(props: {
           return <React.Fragment key={`l-${L.code}`}>{L.leader ? <Line x1={L.leader.x1} y1={L.leader.y1} x2={L.leader.x2} y2={L.leader.y2} stroke={strong ? C.muted : C.quiet} strokeOpacity={0.8} strokeWidth={1 * k} /> : null}<SvgText x={L.x} y={L.y} textAnchor={L.anchor} fill="none" stroke={C.canvas} strokeWidth={3 * k} strokeOpacity={0.85} strokeLinejoin="round" fontSize={L.size} fontWeight={strong ? "700" : "500"} fontFamily={F.mono}>{L.text}</SvgText><SvgText x={L.x} y={L.y} textAnchor={L.anchor} fill={strong ? C.ink : C.muted} fontSize={L.size} fontWeight={strong ? "700" : "500"} fontFamily={F.mono} onPress={() => props.onSelect(m)}>{L.text}</SvgText></React.Fragment>; })}
       </Svg>
       </View>
+      </Animated.View>
+      {clusters.map((c) => <SpringPress key={c.codes.join("-")} accessibilityRole="button" accessibilityLabel={clusterA11yLabel(c, MARKETS)} onPress={() => setZoomCodes(c.codes)}
+        outerStyle={[s.clusterHit, { left: `${((c.x - win.x) / win.w) * 100}%`, top: `${((c.y - win.y) / win.h) * 100}%` }]}
+        style={({ pressed }) => [s.clusterBadge, pressed && s.clusterBadgePressed]}>
+        <Text style={s.clusterText}>{c.count}</Text>
+      </SpringPress>)}
       {focusOn ? <View pointerEvents="none" style={[s.sweepHost, { left: `${fPct.left}%`, top: `${fPct.top}%` }]}>
         <Animated.View renderToHardwareTextureAndroid style={[s.pulse, { borderColor: fc, opacity: pulseO, transform: [{ scale: pulseS }] }]} />
         <Animated.View renderToHardwareTextureAndroid style={[s.sweep, { transform: [{ scale: isRegion ? 0.8 : 0.45 }, { rotate }] }]}>
@@ -141,6 +160,13 @@ const s = StyleSheet.create({
   toggleBtn: { minHeight: 32, justifyContent: "center", paddingHorizontal: S.md, borderRadius: 10 },
   toggleOn: { backgroundColor: "rgba(94,200,255,0.18)", boxShadow: "0px 0px 10px rgba(94,200,255,0.35)" },
   toggleText: { ...T.label, fontSize: 12, lineHeight: 16, color: C.muted },
+  clusterHit: { position: "absolute", width: CLUSTER_HIT_DP, height: CLUSTER_HIT_DP, marginLeft: -CLUSTER_HIT_DP / 2, marginTop: -CLUSTER_HIT_DP / 2, alignItems: "center", justifyContent: "center" },
+  clusterBadge: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.2, borderColor: "rgba(94,200,255,0.7)", backgroundColor: C.canvas, alignItems: "center", justifyContent: "center" },
+  clusterBadgePressed: { backgroundColor: C.rainSoft, borderColor: C.rain },
+  clusterText: { fontFamily: F.mono, fontSize: 12, lineHeight: 16, fontWeight: "700", color: C.muted, fontVariant: ["tabular-nums"] },
+  back: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start", paddingHorizontal: S.sm, borderRadius: 10 },
+  backPressed: { backgroundColor: "rgba(94,200,255,0.12)" },
+  backText: { ...T.label, color: C.rain },
   proj: { ...T.caption, flex: 1, color: C.quiet, fontFamily: F.mono },
   legend: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: S.xs, paddingHorizontal: S.md, paddingVertical: S.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
   lDot: { width: 8, height: 8, borderRadius: 4, marginLeft: S.xs },

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { GLOBAL_VIEW, REGION_VIEW } from "./geo-paths.ts";
 import { MARKETS } from "./markets-catalog.ts";
-import { MAP_LABEL_PX, clusterConcepts, globalWindow, inWin, isKey, labelBox, placeLabels, regionWindow } from "./map-layout.ts";
+import { CLUSTER_HIT_DP, MAP_LABEL_PX, clusterA11yLabel, clusterWindow, clusterConcepts, globalWindow, inWin, isKey, labelBox, placeLabels, regionWindow } from "./map-layout.ts";
 
 const PHONE_DP = 340;
 const keyNA = MARKETS.filter((m) => m.group === "North America" && isKey(m));
@@ -62,4 +62,34 @@ describe("clusters", () => {
     const { clusters } = clusterConcepts(MARKETS, false, k);
     for (const c of clusters) for (const m of MARKETS.filter(isKey)) assert.ok(Math.hypot(m.globalXY[0] - c.x, m.globalXY[1] - c.y) > 16 * k, `cluster ${c.codes.join(",")} covers ${m.code}`);
   });
+});
+
+describe("cluster zoom", () => {
+  const gw = globalWindow(MARKETS); const gk = gw.w / PHONE_DP;
+  const { clusters } = clusterConcepts(MARKETS, false, gk);
+  it("hit targets are at least 44dp", () => { assert.ok(CLUSTER_HIT_DP >= 44); });
+  it("labels every cluster for screen readers", () => {
+    const c = clusters[0];
+    const label = clusterA11yLabel(c, MARKETS);
+    assert.match(label, new RegExp(`^Group of ${c.count} cities: `));
+    for (const code of c.codes) assert.ok(label.includes(MARKETS.find((m) => m.code === code)!.name));
+  });
+  for (const c of clusters) {
+    it(`framing ${c.codes.join(",")} shows and labels its cities without overlap`, () => {
+      const win = clusterWindow(MARKETS, c.codes);
+      assert.ok(win.w < gw.w, "zoomed in");
+      for (const code of c.codes) assert.ok(inWin(MARKETS.find((m) => m.code === code)!.globalXY, win, 8), `${code} in frame`);
+      const k = win.w / PHONE_DP;
+      const pins = MARKETS.filter((m) => inWin(m.globalXY, win));
+      const labels = [...placeLabels(pins, false, new Set(), k, win, { labelConcepts: true, prefer: new Set(c.codes) }).values()];
+      for (const L of labels) assert.ok(L.size / k >= MAP_LABEL_PX - 1e-9);
+      const boxes = labels.map(labelBox);
+      boxes.forEach((b, i) => {
+        assert.ok(b[0] >= win.x && b[2] <= win.x + win.w && b[1] >= win.y && b[3] <= win.y + win.h);
+        boxes.forEach((o, j) => { if (j > i) assert.ok(!overlap(b, o), `${labels[i].code} overlaps ${labels[j].code}`); });
+      });
+      const shown = c.codes.filter((code) => labels.some((L) => L.code === code)).length;
+      assert.ok(shown >= Math.ceil(c.count / 2), `at least half of the cluster labelled (${shown}/${c.count})`);
+    });
+  }
 });
