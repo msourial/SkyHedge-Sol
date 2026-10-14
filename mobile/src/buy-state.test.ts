@@ -32,3 +32,17 @@ describe("utcDateTime", () => {
     assert.equal(utcDateTime(null), null);
   });
 });
+
+import { reviewReason } from "./ticket.ts";
+describe("review step reason", () => {
+  const p = (kind: "priced" | "pricing" | "error" | "blocked", label = "") => ({ kind, label });
+  it("asks to connect first, then reuses the buy-state reason", () => {
+    assert.equal(reviewReason(false, p("blocked", "Connect wallet")), "Connect wallet to review");
+    assert.equal(reviewReason(true, p("blocked", "Sales closed")), "Sales closed");
+    assert.equal(reviewReason(true, p("pricing", "Pricing…")), "Getting a live NOAA price…");
+    assert.equal(reviewReason(true, p("error", "Price unavailable")), "Price unavailable");
+  });
+  it("is empty once step 3 is reached", () => {
+    assert.equal(reviewReason(true, p("priced", "3.48")), null);
+  });
+});

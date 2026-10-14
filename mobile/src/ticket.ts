@@ -134,3 +134,12 @@ export function buyCta(input: { premiumBase: string | null | undefined; busy: bo
   if (input.paymentReason) return { label, disabled: true, hint: input.paymentReason };
   return { label, disabled: false, hint: null };
 }
+
+/** Why step 3 (Review) isn't reached yet; null once a live quote exists for a connected wallet. */
+export function reviewReason(walletConnected: boolean, pay: PayState): string | null {
+  if (!walletConnected) return "Connect wallet to review";
+  if (pay.kind === "priced") return null;
+  if (pay.kind === "pricing") return "Getting a live NOAA price…";
+  if (pay.kind === "error") return "Price unavailable";
+  return pay.label;
+}

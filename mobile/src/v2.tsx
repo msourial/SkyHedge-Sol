@@ -13,7 +13,7 @@ import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } f
 import { dealSentence, payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
 import { formatOnchainMarketStatus, formatWeekLabel } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
-import { balanceCheck, coverageOptions, formatSkytFixed, premiumFeeLine, premiumPer100, returnMultiple, payState, salesCountdown, shortAddress, shortUtcDate, trimMm, triggerSentence, utcDateTime, type CoverageOption } from "./ticket";
+import { balanceCheck, coverageOptions, formatSkytFixed, premiumFeeLine, premiumPer100, returnMultiple, payState, reviewReason, salesCountdown, shortAddress, shortUtcDate, trimMm, triggerSentence, utcDateTime, type CoverageOption } from "./ticket";
 
 const TAB = ["tabular-nums" as const];
 
@@ -259,7 +259,7 @@ export function ProtectTicket(props: {
   return <>
     <ScreenTop onBack={props.onBackToMarkets} eyebrow={`NOAA · ${station}`} title="Des Moines, IA" />
     <PerilSelector value="rain" available={["rain"]} />
-    {stage ? <PayoutStatusCard stage={stage} dates={trackerDates(market, props.claimReadiness)} /> : <StepBar step={props.walletConnected && q ? 3 : 2} />}
+    {stage ? <PayoutStatusCard stage={stage} dates={trackerDates(market, props.claimReadiness)} /> : <StepBar step={props.walletConnected && q ? 3 : 2} reason={props.walletConnected && q ? null : reviewReason(props.walletConnected, pay)} />}
 
     {!live ? <View style={[s.notice, { marginTop: S.sm }]} accessibilityRole="alert">
       <Text style={s.noticeTitle}>This window isn’t selling right now</Text>
@@ -392,10 +392,14 @@ function CoverageChip({ o, on, short, onPress }: { o: CoverageOption; on: boolea
 }
 
 /** Sticky bottom CTA used by Protect. */
-function StepBar({ step }: { step: FlowStep }) {
-  return <View style={{ marginTop: S.xs, marginBottom: S.sm }} accessible accessibilityLabel={stepLabel(step)}>
+/** Inactive rail track: muted ink at 40% so pending steps read as "not yet", not as missing. */
+const RAIL_TRACK = "rgba(163,174,188,0.40)";
+function StepBar({ step, reason }: { step: FlowStep; reason?: string | null }) {
+  const why = step < 3 && reason ? reason : null;
+  return <View style={{ marginTop: S.xs, marginBottom: S.sm }} accessible accessibilityLabel={why ? `${stepLabel(step)}. Step 3, Review: ${why}` : stepLabel(step)}>
     <Text style={s.stepLabel}>{stepLabel(step)}</Text>
-    <View style={{ flexDirection: "row", gap: S.sm - 2, marginTop: S.sm }}>{[1, 2, 3].map((n) => <View key={n} style={{ flex: 1 }}><ProgressRail progress={n <= step ? 1 : 0} color={C.rain} track={C.border} /></View>)}</View>
+    <View style={{ flexDirection: "row", gap: S.sm - 2, marginTop: S.sm }}>{[1, 2, 3].map((n) => <View key={n} style={{ flex: 1 }}><ProgressRail progress={n <= step ? 1 : 0} color={C.rain} track={RAIL_TRACK} /></View>)}</View>
+    {why ? <View style={s.stepWhy}><AppIcon name="info" color={C.muted} size={14} /><Text style={s.stepWhyText}>Step 3 · Review: {why}</Text></View> : null}
   </View>;
 }
 
@@ -502,6 +506,8 @@ export function WalletV2(props: {
 /* Styles resolve to theme tokens: T (type scale), S (4/8pt spacing). Colours unchanged. */
 const s = StyleSheet.create({
   stepLabel: { ...T.overline, color: C.quiet, fontSize: 12, letterSpacing: 1.2 },
+  stepWhy: { flexDirection: "row", alignItems: "center", gap: S.xs + 2, marginTop: S.sm },
+  stepWhyText: { ...T.caption, color: C.muted, flex: 1 },
   stepDot: { flex: 1, height: 4, borderRadius: 2, backgroundColor: C.border },
   stepNode: { width: 12, height: 12, borderRadius: 6, borderWidth: 1, borderColor: C.border, marginTop: 5 },
   statusTitle: { ...T.title, fontSize: 22, lineHeight: 28, marginTop: S.xs },
