@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { BrandMark } from "@/components/brand-mark";
-import { PhoneMockup } from "@/components/phone-mockup";
+import { PhoneMockup, PhoneMockupStack } from "@/components/phone-mockup";
 import { WaitlistForm } from "@/components/waitlist-form";
-import BlurText from "@/components/react-bits/BlurText/BlurText";
 
 const MARKETS = [
   {
@@ -200,47 +199,10 @@ function useStickyStepScreen() {
   return { active, stepRefs };
 }
 
-function HeroTitle({ className }: { className?: string }) {
-  const [reduce, setReduce] = useState(true);
-  useEffect(() => {
-    setReduce(prefersReducedMotion());
-  }, []);
-
-  if (reduce) {
-    return (
-      <h1 id="wl-hero-title" className={className}>
-        Weather risk, settled on-chain.
-      </h1>
-    );
-  }
-
-  return (
-    <>
-      <h1 id="wl-hero-title" className="sr-only">
-        Weather risk, settled on-chain.
-      </h1>
-      <div className={className} aria-hidden="true">
-        <BlurText
-          text="Weather risk, settled on-chain."
-          animateBy="words"
-          direction="bottom"
-          delay={40}
-          stepDuration={0.28}
-          blur={6}
-          distance={10}
-          effect="blur"
-          trigger="load"
-          announce={false}
-          className="wl-hero__blur"
-        />
-      </div>
-    </>
-  );
-}
-
 export default function WaitlistPage() {
   const heroPhoneRef = usePhoneParallax(true);
   const { active, stepRefs } = useStickyStepScreen();
+  const activeScreen = STEPS[active]?.screen ?? "markets";
 
   useEffect(() => {
     document.title = "SkyHedge — weather risk, settled on-chain";
@@ -275,8 +237,10 @@ export default function WaitlistPage() {
 
       <main>
         <section className="wl-hero" aria-labelledby="wl-hero-title">
-          <div className="wl-hero__copy wl-hero__copy--enter">
-            <HeroTitle className="wl-hero__title" />
+          <div className="wl-hero__copy">
+            <h1 id="wl-hero-title" className="wl-hero__title">
+              Weather risk, settled on-chain.
+            </h1>
             <p className="wl-hero__lead">
               Buy rainfall protection from your wallet. Official station data hits the trigger — payout settles on
               Solana.
@@ -287,7 +251,7 @@ export default function WaitlistPage() {
             </div>
           </div>
           <div ref={heroPhoneRef} className="wl-hero__phone wl-hero__phone--enter">
-            <PhoneMockup screen="markets" glow parallax />
+            <PhoneMockup screen="markets" glow parallax float />
           </div>
         </section>
 
@@ -326,7 +290,7 @@ export default function WaitlistPage() {
               </ol>
               <div className="wl-how__phone" aria-hidden="true">
                 <div className="wl-how__phone-sticky">
-                  <PhoneMockup key={STEPS[active]?.screen ?? "markets"} screen={STEPS[active]?.screen ?? "markets"} glow />
+                  <PhoneMockupStack active={activeScreen} glow />
                 </div>
               </div>
             </div>

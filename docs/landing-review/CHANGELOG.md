@@ -1,5 +1,17 @@
 # Landing pass — 2026-10-15
 
+## Phone + motion polish (follow-up)
+
+Skills: **frontend-design**, **react-bits** (restraint — CSS motion only), **21st-ui-review**.
+
+- Rebuilt Seeker/Android frame: 44px outer radius, matching inner clip, graphite bezel, edge highlight, glacier glow + shadow.
+- Marketing screenshots in `client/public/mockups/landing/` — status bar cropped, Devnet badge removed (disclosure stays in page copy/footer).
+- Hero: staggered fade/rise (title → lead → form), 300–500ms ease-out, ~12px travel.
+- Phone: 3px float + scroll parallax; how-it-works sticky stack crossfades Markets → Protect → Wallet.
+- Market cards: hover lift + border glow; status dots soft pulse.
+- Content visible by default; `prefers-reduced-motion` disables float/pulse/stagger.
+- Shots: `before-phone-*` / `after-phone-*` (1440 + 390).
+
 ## Skill 1 · refero-design
 
 References: **airpayy.com** (primary), **Nuri sticky-phone crypto banking** (secondary), **Keel / mobile-crypto product hero** (secondary).
