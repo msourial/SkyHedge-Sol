@@ -515,7 +515,7 @@ export default function App() {
 
 function TabButton({ label, icon, selected, onPress }: { label: string; icon: AppIconName; selected: boolean; onPress: () => void }) {
   return (
-    <TactilePressable containerStyle={styles.tabButtonWrap} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected }} onPress={onPress} android_ripple={{ color: C.rainSoft }} style={[styles.tabButton, selected && styles.tabButtonSelected]}>
+    <TactilePressable containerStyle={styles.tabButtonWrap} accessibilityRole="tab" accessibilityLabel={`${label} tab`} accessibilityState={{ selected }} onPress={onPress} android_ripple={{ color: C.rainSoft }} style={[styles.tabButton, selected && styles.tabButtonSelected]}>
       <AppIcon name={icon} color={selected ? C.rain : C.quiet} size={21} />
       <Text style={[styles.tabLabel, selected && styles.tabLabelSelected]}>{label}</Text>
     </TactilePressable>
@@ -540,7 +540,7 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
       <View style={{ flex: 1, gap: S.xs }}>
         <Text style={styles.errorTitle}>{evidenceMissing ? "NOAA evidence unavailable" : mobileRoutesMissing ? "Mobile API needs an update" : "Can’t reach SkyHedge"}</Text>
         <Text style={styles.errorBody}>{friendlyError(readableMessage)}</Text>
-        <Pressable accessibilityRole="button" onPress={onRetry} style={styles.retryButton}><Text style={styles.retryButtonText}>Try again</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Try again" onPress={onRetry} style={styles.retryButton}><Text style={styles.retryButtonText}>Try again</Text></Pressable>
       </View>
     </View>
   );

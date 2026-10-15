@@ -230,7 +230,7 @@ export function AgriculturalAreaMap({
         {variant === "standard" ? (
           <div className="mt-3 grid gap-2 border-t border-[var(--border)] pt-3 text-[11px] leading-relaxed text-[var(--muted-foreground)] sm:grid-cols-[1fr_auto] sm:items-end">
             <div>
-              <p>The marker identifies the index reference location, not an insured boundary.</p>
+              <p>The marker identifies the index reference location, not a coverage boundary.</p>
               <p className="mt-1">WeatherXM: context only—not used for settlement. NOAA is the sole settlement source.</p>
             </div>
             <a href={largerMapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1.5 text-[var(--identity)] underline underline-offset-4 hover:text-[var(--foreground)]">Open larger map <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></a>

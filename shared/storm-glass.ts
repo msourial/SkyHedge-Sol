@@ -10,7 +10,8 @@ export const C = {
   mutedSurface: "#243044",
   ink: "#F2F5F8",
   muted: "#A3AEBC",
-  quiet: "#7D8896",
+  /** Secondary labels — kept ≥4.5:1 on canvas for WCAG AA small text. */
+  quiet: "#98A3B0",
   border: "#2A3444",
   rain: "#7CC4FF",
   rainSoft: "#10283A",

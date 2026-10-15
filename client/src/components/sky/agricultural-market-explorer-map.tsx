@@ -71,11 +71,15 @@ export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEviden
     if (!containerRef.current) { setPhase("unavailable"); return; }
 
     let cancelled = false;
-    let errorCount = 0;
+    let hardErrors = 0;
+    let mapReady = false;
     setLoaded(false);
     setPhase("loading");
     const slowTimer = window.setTimeout(() => setPhase((current) => current === "loading" ? "slow" : current), 6_000);
-    const unavailableTimer = window.setTimeout(() => setPhase((current) => current === "ready" ? current : "unavailable"), 15_000);
+    // Soft tile/font errors are common; only mark unavailable if load never completes.
+    const unavailableTimer = window.setTimeout(() => {
+      if (!cancelled && !mapReady) setPhase("unavailable");
+    }, 25_000);
 
     void import("maplibre-gl").then((maplibre) => {
       if (cancelled || !containerRef.current) return;
@@ -93,16 +97,24 @@ export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEviden
       });
       mapRef.current = map;
       map.addControl(new maplibre.NavigationControl({ showCompass: false }), "top-right");
-      map.once("load", () => {
-        if (cancelled) return;
+      const markReady = () => {
+        if (cancelled || mapReady) return;
+        mapReady = true;
+        map.resize();
         setLoaded(true);
-        setPhase(errorCount >= 3 ? "unavailable" : "ready");
+        setPhase("ready");
+      };
+      map.once("load", markReady);
+      map.once("idle", markReady);
+      map.on("error", (event) => {
+        if (cancelled || mapReady) return;
+        const message = String(event?.error?.message ?? event?.error ?? "");
+        // Ignore routine missing-tile noise; escalate only on style/auth failures.
+        if (!/unauthorized|403|401|style/i.test(message)) return;
+        hardErrors += 1;
+        if (hardErrors >= 3) setPhase("unavailable");
       });
-      map.on("error", () => {
-        if (cancelled) return;
-        errorCount += 1;
-        if (errorCount >= 3) setPhase("unavailable");
-      });
+      requestAnimationFrame(() => { if (!cancelled) map.resize(); });
     }).catch(() => {
       if (!cancelled) setPhase("unavailable");
     });
@@ -182,7 +194,7 @@ export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEviden
               <h2>{selectedMarket ? agriculturalMarketLocation(selectedMarket) : "Choose a catalog location"}</h2>
               {selectedMarket && <p className="market-map-fallback__coordinates">{selectedMarket.latitude.toFixed(4)}°, {selectedMarket.longitude.toFixed(4)}°</p>}
               <p className="market-map-fallback__copy">Interactive map tiles are not configured for this local preview. You can still search the catalog and inspect every exact reference location.</p>
-              <p className="market-map-fallback__note">Reference point only — not an insured boundary or validated station.</p>
+              <p className="market-map-fallback__note">Reference point only — not a coverage boundary or validated station.</p>
               {onSelectFromList && <button type="button" onClick={onSelectFromList} className="market-map-fallback__action">Select a region from the list</button>}
             </div>
           </div>
@@ -210,7 +222,7 @@ export function AgriculturalMarketExplorerMap({ markets, selectedSlug, getEviden
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-700 bg-[#172334] px-4 py-3 text-xs text-slate-300">
-        <span>Each marker identifies a reference point, not an insured boundary or weather station.</span>
+        <span>Each marker identifies a reference point, not a coverage boundary or weather station.</span>
         <span>NOAA is the sole settlement source.</span>
       </div>
     </section>

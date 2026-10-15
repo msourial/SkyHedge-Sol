@@ -27,7 +27,7 @@ SkyHedge is a calm, credible weather-risk product: graphite panes over a navy ca
 | Surface | `#141B28` | Quiet supporting areas / fields |
 | Foreground / ink | `#F2F5F8` | Primary text |
 | Muted | `#A3AEBC` | Secondary text |
-| Quiet / faint | `#7D8896` | Tertiary text |
+| Quiet / faint | `#98A3B0` | Tertiary text (WCAG AA on canvas) |
 | Border | `#2A3444` | Dividers and controls |
 | Rain / identity | `#7CC4FF` | Primary actions, rain data, selected nav |
 | Action text | `#04131F` | Text on glacier-blue buttons |
