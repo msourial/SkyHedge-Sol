@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { Check, ChevronDown, Copy } from "lucide-react";
+import { BrandMark } from "@/components/brand-mark";
 import { WalletButton } from "@/components/wallet-button";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +36,7 @@ export default function Layout() {
     <a href="#main-content" className="sr-only z-[100] rounded-lg bg-[var(--identity)] px-4 py-3 text-[var(--action-text)] focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to main content</a>
     <header className="sky-app-header sticky top-0 z-30">
       <div className="mx-auto flex h-[4.5rem] max-w-[92rem] items-center justify-between gap-3 px-4 sm:px-6">
-        <NavLink to="/" className="flex min-h-11 min-w-0 shrink items-center gap-3" aria-label="SkyHedge home"><span className="sky-brand-mark flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl" aria-hidden="true"><img src="/favicon.svg" alt="" width={40} height={40} className="h-10 w-10" /></span><span className="min-w-0 leading-tight"><span className="block text-base font-semibold tracking-tight">SkyHedge</span><span className="hidden text-xs text-[var(--muted-foreground)] sm:block">Parametric weather protection</span></span></NavLink>
+        <NavLink to="/" className="flex min-h-12 min-w-0 shrink items-center gap-3" aria-label="SkyHedge home"><BrandMark size={40} /><span className="min-w-0 leading-tight"><span className="block text-base font-semibold tracking-tight">SkyHedge</span><span className="hidden text-xs text-[var(--muted-foreground)] sm:block">Parametric weather protection</span></span></NavLink>
         <div className="flex items-center gap-2"><NetworkPill /><WalletButton /></div>
       </div>
     </header>

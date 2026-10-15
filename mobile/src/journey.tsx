@@ -41,7 +41,7 @@ export function GradientMeter({ fraction, tick, height = 6 }: { fraction: number
   const f = fraction == null ? 0 : Math.max(0, Math.min(1, fraction));
   return <View style={[j.meter, { height, borderRadius: height / 2 }]}>
     <Animated.View style={{ width: `${f * 100}%`, height: "100%", transformOrigin: "left", transform: [{ scaleX: v }] }}>
-      <LinearGradient colors={[C.rain, "#9CCB9A", C.payout]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[StyleSheet.absoluteFill, { borderRadius: height / 2 }]} />
+      <LinearGradient colors={[C.rain, C.mint, C.payout]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[StyleSheet.absoluteFill, { borderRadius: height / 2 }]} />
     </Animated.View>
     {tick != null ? <View style={[j.tick, { left: `${Math.max(0, Math.min(1, tick)) * 100}%` }]} /> : null}
   </View>;
@@ -51,7 +51,7 @@ export function GradientMeter({ fraction, tick, height = 6 }: { fraction: number
 export function ProgressSteps({ steps, done }: { steps: string[]; done: number }) {
   return <View style={j.steps} accessible accessibilityLabel={`${done} of ${steps.length} steps complete`}>
     {steps.map((s, i) => <View key={s} style={{ flex: 1 }}>
-      {i < done ? <LinearGradient colors={[C.rain, "#8FDDFF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={j.stepBar} /> : <View style={[j.stepBar, { backgroundColor: C.border }]} />}
+      {i < done ? <LinearGradient colors={[C.rain, C.rainBright]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={j.stepBar} /> : <View style={[j.stepBar, { backgroundColor: C.border }]} />}
       <Text style={[j.stepLabel, i < done && { color: C.ink }]}>{s}</Text>
     </View>)}
   </View>;

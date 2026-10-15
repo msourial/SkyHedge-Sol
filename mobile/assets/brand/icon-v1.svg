@@ -1,4 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-<defs><radialGradient id="bg" cx="50%" cy="30%" r="80%"><stop offset="0" stop-color="#1C222B"/><stop offset="1" stop-color="#12151A"/></radialGradient>
-<linearGradient id="ice" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7BC3F0"/><stop offset="1" stop-color="#4F96D6"/></linearGradient><linearGradient id="sol" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9945FF"/><stop offset="1" stop-color="#14F195"/></linearGradient></defs>
-<rect width="1024" height="1024" fill="url(#bg)"/><path d="M512 230 L262 520 L387 490Z" fill="#7BC3F0"/><path d="M512 230 L387 490 L512 520Z" fill="#9FD5F5"/><path d="M512 230 L512 520 L637 490Z" fill="#4F96D6"/><path d="M512 230 L637 490 L762 520Z" fill="#3A78B5"/><path d="M512 520 L512 720 Q512 760 472 760" fill="none" stroke="#7BC3F0" stroke-width="36" stroke-linecap="round"/><circle cx="512" cy="225" r="22" fill="#F5B342"/></svg>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#12151A"/>
+  <g transform="translate(0 0)">
+    <svg width="1024" height="1024" viewBox="236 190 552 590">
+      <path d="M512 230 L262 520 L387 490Z" fill="#7BC3F0"/>
+      <path d="M512 230 L387 490 L512 520Z" fill="#9FD5F5"/>
+      <path d="M512 230 L512 520 L637 490Z" fill="#4F96D6"/>
+      <path d="M512 230 L637 490 L762 520Z" fill="#3A78B5"/>
+      <path d="M512 520 L512 720 Q512 760 472 760" fill="none" stroke="#7BC3F0" stroke-width="40" stroke-linecap="round"/>
+      <circle cx="512" cy="225" r="24" fill="#F5B342"/>
+    </svg>
+  </g>
+</svg>

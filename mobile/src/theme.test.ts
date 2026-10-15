@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { accentGlow, C, F, glass, motion, statusGlow, type as typeScale, MIN_FONT, MIN_TOUCH, radius } from "./theme.ts";
+import { accentGlow, brandMark, C, F, glass, motion, statusGlow, type as typeScale, MIN_FONT, MIN_TOUCH, radius } from "./theme.ts";
 
 describe("Storm Glass theme", () => {
   it("exposes the shared semantic weather and status tokens", () => {
@@ -8,11 +8,19 @@ describe("Storm Glass theme", () => {
     assert.equal(C.surface, "#141B28");
     assert.equal(C.surfaceRaised, "#1C2433");
     assert.equal(C.rain, "#7CC4FF");
+    assert.equal(C.rainBright, "#A8D9FF");
     assert.equal(C.mint, "#34D399");
     assert.equal(C.amber, "#FFB020");
     assert.equal(C.payout, "#F5B841");
     assert.notEqual(C.amber, C.payout);
     assert.equal(C.coral, "#F2787D");
+  });
+
+  it("exposes isometric umbrella BrandMark colors shared with web", () => {
+    assert.equal(brandMark.panel1, "#7BC3F0");
+    assert.equal(brandMark.tip, "#F5B342");
+    assert.equal(brandMark.tile, "#12151A");
+    assert.equal(brandMark.viewBox, "236 190 552 590");
   });
 
   it("exposes frosted-pane recipes for Markets glass surfaces", () => {

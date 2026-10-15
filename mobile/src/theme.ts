@@ -12,6 +12,7 @@
  */
 export {
   C,
+  brandMark,
   glass,
   space,
   motion,

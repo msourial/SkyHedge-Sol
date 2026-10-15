@@ -3,6 +3,7 @@ import { BlurTargetView, BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { AccessibilityInfo, Animated, Easing, Platform, Pressable, StyleSheet, type PressableProps, type StyleProp, type ViewProps, type ViewStyle, View } from "react-native";
 import { liquidGlassRecipe } from "./liquid-glass-config";
+import { C, glass } from "./theme";
 
 export const GlassTargetContext = createContext<React.RefObject<View | null> | null>(null);
 
@@ -10,7 +11,7 @@ export function GlassBackdrop({ children }: { children: React.ReactNode }) {
   const targetRef = useRef<View>(null);
   return <GlassTargetContext.Provider value={targetRef}>
     <BlurTargetView ref={targetRef} pointerEvents="none" style={styles.backdrop}>
-      <LinearGradient colors={["#10192B", "#080B14", "#15122A"]} locations={[0, 0.48, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[C.surface, C.canvas, C.surfaceRaised]} locations={[0, 0.48, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
     </BlurTargetView>
     {children}
   </GlassTargetContext.Provider>;
@@ -39,8 +40,8 @@ export function LiquidGlassSurface({ children, style, contentStyle, blurRadius =
   const blurTarget = useContext(GlassTargetContext);
   return <View {...props} style={[styles.surface, { borderRadius: radius }, style]}>
     {usesNativeBlur && blurTarget ? <BlurView pointerEvents="none" blurTarget={blurTarget} tint="dark" intensity={Math.min(100, Math.max(1, Math.round(blurRadius * 3)))} blurReductionFactor={4} blurMethod="dimezisBlurViewSdk31Plus" style={StyleSheet.absoluteFill} /> : null}
-    <LinearGradient pointerEvents="none" colors={["rgba(246,248,252,0.28)", "rgba(112,214,255,0.12)", "rgba(246,248,252,0.03)"]} locations={[0, 0.45, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: radius }]} />
-    <View style={[styles.content, { margin: strokeWidth, borderRadius: Math.max(0, radius - strokeWidth), backgroundColor: `rgba(16,20,29,${alpha})` }, contentStyle]}>{children}</View>
+    <LinearGradient pointerEvents="none" colors={[glass.edge, glass.border, "transparent"]} locations={[0, 0.45, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: radius }]} />
+    <View style={[styles.content, { margin: strokeWidth, borderRadius: Math.max(0, radius - strokeWidth), backgroundColor: glass.fill }, contentStyle]}>{children}</View>
   </View>;
 }
 
@@ -62,7 +63,7 @@ export function AmbientGlassAura({ style }: { style?: StyleProp<ViewStyle> }) {
   }, [drift, reducedMotion]);
   const translateX = drift.interpolate({ inputRange: [0, 1], outputRange: [-16, 16] });
   return <View pointerEvents="none" style={[styles.aura, style]}>
-    <Animated.View style={[styles.auraOrb, { transform: [{ translateX }] }]}><LinearGradient colors={["rgba(112,214,255,0.3)", "rgba(155,140,255,0.03)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} /></Animated.View>
+    <Animated.View style={[styles.auraOrb, { transform: [{ translateX }] }]}><LinearGradient colors={[glass.borderStrong, "transparent"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} /></Animated.View>
   </View>;
 }
 

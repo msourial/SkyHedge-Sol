@@ -68,7 +68,7 @@ export function ReferenceAreaMap({ point, location, evidenceLabel, onChangeLocat
         <AppIcon name={detailsOpen ? "chevron-down" : "chevron-up"} color={C.blue} size={20} />
       </Pressable>
       {detailsOpen ? <View style={styles.details}>
-        <Text style={styles.note}>{point ? `${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)} · ` : ""}Not an insured boundary or a NOAA station marker.</Text>
+        <Text style={styles.note}>{point ? `${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)} · ` : ""}Not a coverage boundary or a NOAA station marker.</Text>
         <Text style={styles.note}>WeatherXM is context only—not used for settlement.</Text>
         <View style={styles.actions}>
           {state === "unavailable" && point ? <Pressable accessibilityRole="button" accessibilityLabel="Retry map loading" onPress={() => setAttempt((value) => value + 1)} style={styles.action}><Text style={styles.actionText}>Retry map</Text></Pressable> : null}

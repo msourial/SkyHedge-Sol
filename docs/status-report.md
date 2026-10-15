@@ -47,7 +47,7 @@ Branch is **ahead of `origin/seeker-revamp`** (local commits not pushed). Map WI
 
 ### 4. Website polish
 
-- Page title / description / canonical / OG+Twitter tags; `client/public/og.jpg`; favicon from V1 umbrella (`mobile/assets/brand/icon-v1.svg` → `client/public/favicon.svg`); header brand mark uses favicon; mobile layout CSS for explorer/hazard/actions; map load reliability on committed explorer map.
+- Page title / description / canonical / OG+Twitter tags; `client/public/og.png`; isometric umbrella BrandMark (`shared/storm-glass` `brandMark` → favicon SVG/PNG sizes, apple-touch-icon, OG); mobile layout CSS for explorer/hazard/actions; map load reliability on committed explorer map.
 
 ### 5. Copy pass
 

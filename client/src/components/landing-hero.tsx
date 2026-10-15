@@ -1,4 +1,5 @@
-import { CloudRain, MapPin, SlidersHorizontal, Waves } from "lucide-react";
+import { MapPin, SlidersHorizontal, Waves } from "lucide-react";
+import { BrandMark } from "@/components/brand-mark";
 
 const FEATURES = [
   {
@@ -30,7 +31,7 @@ function PhoneMockup() {
             <span className="sky-phone__devnet">Devnet</span>
           </div>
           <div className="sky-phone__brand">
-            <span className="sky-phone__mark"><CloudRain className="h-3.5 w-3.5" /></span>
+            <BrandMark size={26} />
             <span>SkyHedge</span>
           </div>
           <p className="sky-phone__headline">Get paid when the weather ruins your plans.</p>

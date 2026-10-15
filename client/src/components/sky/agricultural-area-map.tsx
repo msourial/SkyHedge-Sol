@@ -3,6 +3,7 @@ import { ExternalLink, MapPin, RefreshCw } from "lucide-react";
 import { CircleMarker, MapContainer, TileLayer, Tooltip, ZoomControl, useMap } from "react-leaflet";
 import type { AgriculturalMarket } from "../../../../shared/agricultural-markets";
 import { agriculturalMarketLocation } from "../../../../shared/agricultural-markets";
+import { C } from "../../../../shared/storm-glass";
 
 type MapStatus = "researching_evidence" | "validated" | "DATA_UNAVAILABLE" | "map_unavailable";
 type MapLoadPhase = "idle" | "loading" | "slow" | "ready" | "unavailable";
@@ -170,11 +171,11 @@ export function AgriculturalAreaMap({
               eventHandlers={{ load: handleLayerLoad, tileerror: handleTileError }}
             />
             <ZoomControl position="topright" />
-            <CircleMarker center={[market.latitude, market.longitude]} radius={8} pathOptions={{ color: "#ffffff", fillColor: "#0878b9", fillOpacity: 1, weight: 3 }}>
+            <CircleMarker center={[market.latitude, market.longitude]} radius={8} pathOptions={{ color: C.ink, fillColor: C.rain, fillOpacity: 1, weight: 3 }}>
               <Tooltip direction="top"><strong>{location}</strong><br />Reference point only</Tooltip>
             </CircleMarker>
             {stationValidated && stationCoordinates && (
-              <CircleMarker center={[stationCoordinates.latitude, stationCoordinates.longitude]} radius={6} pathOptions={{ color: "#ffffff", fillColor: "#287a55", fillOpacity: 1, weight: 2 }}>
+              <CircleMarker center={[stationCoordinates.latitude, stationCoordinates.longitude]} radius={6} pathOptions={{ color: C.ink, fillColor: C.mint, fillOpacity: 1, weight: 2 }}>
                 <Tooltip direction="top">Validated NOAA settlement station</Tooltip>
               </CircleMarker>
             )}

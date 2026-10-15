@@ -164,7 +164,7 @@ export function MarketDetail(props: { market: CatalogMarket; onBack: () => void;
       </View>)}
     </GlassCard>
     {soon || ready ? <Pressable accessibilityRole="button" accessibilityLabel={props.notified ? `Interest saved for ${m.name}. Tap to undo.` : `Notify me when ${m.name} opens`} accessibilityState={{ checked: props.notified }} onPress={props.onNotify} style={[g.notify, props.notified && g.notifyOn]}>
-      <AppIcon name={props.notified ? "check" : "bell"} color={props.notified ? C.amber : "#1A1205"} size={18} />
+      <AppIcon name={props.notified ? "check" : "bell"} color={props.notified ? C.amber : C.actionText} size={18} />
       <Text style={[g.notifyText, props.notified && { color: C.amber }]}>{props.notified ? "Interest saved on this phone" : "Notify me when it opens"}</Text>
     </Pressable> : null}
     {(soon || ready) && props.notified ? <Text style={[g.caption, { textAlign: "center", marginTop: 6 }]}>Kept in the app on this device only. No notification is scheduled yet and nothing was sent.</Text> : null}

@@ -22,7 +22,7 @@ export function Stat({ label, value, accent, className }: { label: string; value
           "mt-1 text-base font-semibold tabular-nums text-[var(--foreground)]",
           accent === "cyan" && "text-[var(--identity)]",
           accent === "green" && "text-[var(--success)]",
-          accent === "red" && "text-[#F87171]",
+          accent === "red" && "text-[var(--destructive)]",
           accent === "amber" && "text-[var(--warning)]",
         )}
       >

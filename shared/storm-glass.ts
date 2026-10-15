@@ -14,6 +14,8 @@ export const C = {
   quiet: "#98A3B0",
   border: "#2A3444",
   rain: "#7CC4FF",
+  /** Lighter rain for pressed/selected text on dark panes. */
+  rainBright: "#A8D9FF",
   rainSoft: "#10283A",
   mint: "#34D399",
   mintSoft: "#0F2E24",
@@ -24,6 +26,7 @@ export const C = {
   amberSoft: "#2E2414",
   coral: "#F2787D",
   redSoft: "#3B222D",
+  coralBright: "#FFD9DB",
   white: "#F2F5F8",
   actionText: "#04131F",
   blue: "#7CC4FF",
@@ -38,6 +41,25 @@ export const C = {
   /** Money / payout figures — distinct from alert amber. */
   payout: "#F5B841",
   payoutSoft: "#2E2414",
+} as const;
+
+/**
+ * Isometric umbrella glyph (source of truth: mobile BrandMark / icon-v1).
+ * Keep panel fills here so web + native stay identical.
+ */
+export const brandMark = {
+  panel1: "#7BC3F0",
+  panel2: "#9FD5F5",
+  panel3: "#4F96D6",
+  panel4: "#3A78B5",
+  handle: "#7BC3F0",
+  tip: "#F5B342",
+  /** App-icon / favicon tile behind the glyph. */
+  tile: "#12151A",
+  tileBorder: "rgba(124,196,255,0.35)",
+  tileGlow: "0px 0px 14px rgba(124,196,255,0.35)",
+  /** Cropped viewBox matching BrandMark.tsx */
+  viewBox: "236 190 552 590",
 } as const;
 
 export const glass = {
