@@ -351,7 +351,7 @@ test("locations wrap without horizontal overflow at supported widths", async ({ 
 
 test("customer screens hide protocol administration and Builder mode contains it", async ({ page }) => {
   await page.goto("/?tab=markets&city=des-moines");
-  await expect(page.getByRole("heading", { name: "Agricultural rainfall protection" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Weather risk, settled on-chain." })).toBeVisible();
   await expect(page.getByText("Live Devnet status", { exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Builder", exact: true }).click();
