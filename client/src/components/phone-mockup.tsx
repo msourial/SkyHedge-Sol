@@ -1,44 +1,48 @@
-import { BrandMark } from "@/components/brand-mark";
+type Screen = "markets" | "protect" | "wallet";
 
-/** CSS phone frame mirroring the Storm Glass Markets screen — decorative, not interactive. */
-export function PhoneMockup() {
+const SCREENS: Record<Screen, { src: string; alt: string }> = {
+  markets: { src: "/mockups/markets.png", alt: "SkyHedge Markets screen" },
+  protect: { src: "/mockups/protect.png", alt: "SkyHedge Protect screen" },
+  wallet: { src: "/mockups/wallet.png", alt: "SkyHedge Wallet screen" },
+};
+
+/** Clean device frame wrapping a real Storm Glass app screenshot. */
+export function PhoneMockup({
+  screen = "markets",
+  className = "",
+  glow = false,
+  parallax = false,
+}: {
+  screen?: Screen;
+  className?: string;
+  glow?: boolean;
+  parallax?: boolean;
+}) {
+  const asset = SCREENS[screen];
   return (
-    <div className="sky-phone" aria-hidden="true">
+    <div
+      className={[
+        "sky-phone",
+        glow ? "sky-phone--glow" : "",
+        parallax ? "sky-phone--parallax" : "",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="sky-phone__bezel">
-        <div className="sky-phone__notch" />
+        <div className="sky-phone__notch" aria-hidden="true" />
         <div className="sky-phone__screen">
-          <div className="sky-phone__status">
-            <span>9:41</span>
-            <span className="sky-phone__devnet">Devnet</span>
-          </div>
-          <div className="sky-phone__brand">
-            <BrandMark size={26} />
-            <span>SkyHedge</span>
-          </div>
-          <p className="sky-phone__headline">Get paid when the weather ruins your plans.</p>
-          <div className="sky-phone__card sky-phone__card--hero">
-            <div className="sky-phone__row">
-              <span>Des Moines, IA</span>
-              <span className="sky-phone__live">Live</span>
-            </div>
-            <div className="sky-phone__bars">
-              {[35, 55, 40, 70, 48, 62, 30].map((height, index) => (
-                <span key={index} style={{ height: `${height}%` }} />
-              ))}
-            </div>
-            <div className="sky-phone__row sky-phone__row--muted">
-              <span>From NOAA station</span>
-              <span className="sky-mono">DSM</span>
-            </div>
-          </div>
-          <div className="sky-phone__card">
-            <div className="sky-phone__row">
-              <span>Toronto</span>
-              <span className="sky-phone__soon">Soon</span>
-            </div>
-            <p className="sky-phone__card-sub">Opens when Environment Canada evidence is finalized.</p>
-          </div>
-          <div className="sky-phone__cta">Protect this window</div>
+          <img
+            src={asset.src}
+            alt={asset.alt}
+            width={390}
+            height={844}
+            loading="eager"
+            decoding="async"
+            fetchPriority={screen === "markets" ? "high" : "auto"}
+            draggable={false}
+          />
         </div>
       </div>
     </div>

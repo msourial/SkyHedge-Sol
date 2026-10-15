@@ -21,7 +21,7 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
         body: JSON.stringify({ email, company, source: "landing" }),
       });
       setStatus("success");
-      setMessage("You're on the list. We'll email when access opens.");
+      setMessage("You're on the list. We'll email when Seeker access opens.");
       setEmail("");
     } catch (error) {
       setStatus("error");
@@ -31,7 +31,11 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
 
   if (status === "success") {
     return (
-      <div className={variant === "hero" ? "wl-form wl-form--success" : "wl-form wl-form--compact wl-form--success"} role="status" aria-live="polite">
+      <div
+        className={variant === "hero" ? "wl-form wl-form--success" : "wl-form wl-form--compact wl-form--success"}
+        role="status"
+        aria-live="polite"
+      >
         <p className="wl-form__success-title">You're on the waitlist</p>
         <p className="wl-form__success-body">{message}</p>
       </div>
@@ -39,9 +43,16 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
   }
 
   return (
-    <form id={id} className={variant === "hero" ? "wl-form" : "wl-form wl-form--compact"} onSubmit={(event) => void onSubmit(event)} noValidate>
-      <label className="sr-only" htmlFor={`${fieldId}-email`}>Email</label>
-      <div className="wl-form__row">
+    <form
+      id={id}
+      className={variant === "hero" ? "wl-form" : "wl-form wl-form--compact"}
+      onSubmit={(event) => void onSubmit(event)}
+      noValidate
+    >
+      <label className="sr-only" htmlFor={`${fieldId}-email`}>
+        Email
+      </label>
+      <div className="wl-form__pill">
         <input
           id={`${fieldId}-email`}
           name="email"
@@ -51,13 +62,12 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="Your email address"
+          placeholder="Enter your email"
           className="wl-form__input"
           disabled={status === "submitting"}
           aria-invalid={status === "error"}
           aria-describedby={message ? `${fieldId}-msg` : undefined}
         />
-        {/* Honeypot — visually hidden, not tabbable */}
         <input
           tabIndex={-1}
           autoComplete="off"
@@ -67,11 +77,15 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
           onChange={(event) => setCompany(event.target.value)}
           className="wl-form__honeypot"
         />
-        <button type="submit" className="sky-btn-primary wl-form__submit" disabled={status === "submitting"}>
-          {status === "submitting" ? "Joining…" : "Join the waitlist"}
+        <button type="submit" className="wl-form__submit" disabled={status === "submitting"}>
+          {status === "submitting" ? "Joining…" : "Join waitlist"}
         </button>
       </div>
-      {message ? <p id={`${fieldId}-msg`} className="wl-form__error" role="alert">{message}</p> : null}
+      {message ? (
+        <p id={`${fieldId}-msg`} className="wl-form__error" role="alert">
+          {message}
+        </p>
+      ) : null}
     </form>
   );
 }
