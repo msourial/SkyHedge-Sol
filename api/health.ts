@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { PublicKey } from "@solana/web3.js";
 import { settlementWorkerReadiness, type SettlementWorkerConfig } from "../server/services/settlement-config.js";
+import { applyCorsHeaders } from "../server/services/cors.js";
 
 type JsonResponse = ServerResponse & {
   status: (code: number) => JsonResponse;
@@ -35,7 +36,8 @@ export function createHealthHandler(options: HealthOptions = {}) {
   const [protocolAddress] = PublicKey.findProgramAddressSync([Buffer.from("protocol")], programId);
   const readAccount = options.getAccountInfo ?? getAccountInfo;
 
-  return async function healthHandler(_req: IncomingMessage, res: JsonResponse) {
+  return async function healthHandler(req: IncomingMessage, res: JsonResponse) {
+    applyCorsHeaders(req, res);
     const started = Date.now();
     const settlement = settlementWorkerReadiness(options.settlementConfig ?? {
       signerConfigured: Boolean(process.env.SETTLEMENT_AUTHORITY_KEYPAIR),

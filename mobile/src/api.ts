@@ -154,7 +154,7 @@ export type FinalizedWalletState = {
   slot: number;
 };
 
-const apiBase = (process.env.EXPO_PUBLIC_API_BASE_URL || "https://skyhedge.vercel.app").replace(/\/$/, "");
+const apiBase = (process.env.EXPO_PUBLIC_API_BASE_URL || "https://skyhedge.app").replace(/\/$/, "");
 
 /** Thrown when a deployment answers a JSON route with HTML (e.g. an SPA rewrite). Treat as "not available yet". */
 export class NotAvailableYetError extends Error {

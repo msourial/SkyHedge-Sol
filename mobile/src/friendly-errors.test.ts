@@ -4,7 +4,7 @@ import { friendlyError, isNetworkError, stationLabel } from "./friendly-errors.t
 
 describe("friendly errors", () => {
   it("maps the Seeker UnknownHostException to an offline message", () => {
-    const raw = "java.net.UnknownHostException: Unable to resolve host \"skyhedge.vercel.app\": No address associated with hostname";
+    const raw = "java.net.UnknownHostException: Unable to resolve host \"skyhedge.app\": No address associated with hostname";
     assert.ok(isNetworkError(raw));
     assert.match(friendlyError(raw), /offline|can't be reached/);
     assert.doesNotMatch(friendlyError(raw), /java|vercel/);

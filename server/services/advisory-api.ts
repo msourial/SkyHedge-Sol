@@ -3,12 +3,14 @@ import type { DevnetStatus } from "./devnet-status.js";
 import { offlineAdvisoryAnswer } from "./advisory-offline.js";
 import { withRecommendation } from "./advisory-recommendation.js";
 import { advisoryRequestSchema, assessProtectionRequest, type ExtractedProtectionIntent } from "./advisory.js";
+import { applyCorsHeaders } from "./cors.js";
 
 export function createAdvisoryHandler(dependencies: {
   extract: (message: string, context?: Partial<ExtractedProtectionIntent>) => Promise<ExtractedProtectionIntent>;
   readStatus: () => Promise<DevnetStatus>;
 }) {
-  return async function advisoryHandler(req: Pick<ApiRequest, "method" | "body">, res: ApiResponse) {
+  return async function advisoryHandler(req: Pick<ApiRequest, "method" | "body" | "headers">, res: ApiResponse) {
+    applyCorsHeaders(req, res);
     res.setHeader("Cache-Control", "no-store");
     if (req.method && req.method !== "POST") {
       res.setHeader("Allow", "POST");

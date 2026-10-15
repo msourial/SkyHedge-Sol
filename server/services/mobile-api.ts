@@ -5,6 +5,7 @@ import { cityBySlug } from "../../shared/cities.js";
 import { createClaimReadinessHandler, type ApiRequest as ClaimRequest, type ApiResponse as ClaimResponse } from "./vercel-api.js";
 import type { ClaimReadiness } from "./unsigned-tx.js";
 import { allCityIndexStates, cityIndexState, weeklyHistory } from "./weather-index.js";
+import { applyCorsHeaders } from "./cors.js";
 
 type ApiRequest = IncomingMessage & { query?: Record<string, unknown> };
 type ApiResponse = ServerResponse & {
@@ -33,6 +34,7 @@ export function createMobileApiHandler(dependencies: {
   const readHistory = dependencies.readHistory ?? weeklyHistory;
 
   return async function mobileApiHandler(req: ApiRequest, res: ApiResponse) {
+    applyCorsHeaders(req, res);
     if (req.method !== "GET") {
       res.setHeader("Allow", "GET");
       return res.status(405).json({ error: "METHOD_NOT_ALLOWED", message: "Use GET for mobile read APIs." });

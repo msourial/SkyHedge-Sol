@@ -4,7 +4,7 @@ Audited: 2026-09-29
 
 ## Verified deployment state
 
-- **Public interface:** `https://skyhedge.vercel.app` is live. Production `/api/health` and `/api/devnet/status` were queried directly on 2026-09-29.
+- **Public interface:** `https://skyhedge.app` is the canonical production domain (legacy alias `https://skyhedge.vercel.app` remains). Production `/api/health` and `/api/devnet/status` were queried directly on 2026-09-29.
 - **Devnet program:** `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` is executable and upgradeable. Authority `7zfJ9sYr1x2kA5qMkBAMd1DmFGZcdE6HzBNAutWkHF2c` remains the upgrade authority. The deployed 22-instruction IDL matches the committed IDL and includes empty-Draft cancellation; production status reports this capability verified.
 - **Protocol and mint:** the protocol is initialized, unpaused, and points to the configured admin, settlement authority, and six-decimal SKYT mint. Finalized supply is 350,000 SKYT.
 - **NOAA credentials:** production health reports NOAA configured. The live status endpoint returns a historical station-evidence package separately from current exact-window five-day quote terms. Neither artifact is a future settlement observation.

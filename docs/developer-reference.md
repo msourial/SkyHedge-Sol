@@ -52,7 +52,8 @@ Trust model: the server builds unsigned `VersionedTransaction`s and the wallet s
 - Node 22+, npm
 - solana-cli 2.x, anchor-cli 0.30, Rust `nightly-2024-08-01`
 - WeatherXM Agent API access is optional and supplemental. SkyHedge uses only its free health endpoint by default; live WeatherXM weather endpoints require x402 payment and are never used for settlement.
-- A browser-visible MapTiler key (`VITE_MAPTILER_KEY`) for premium map tiles. Restrict it by domain before production use. Without a key, the app shows a truthful location fallback.
+- A browser-visible MapTiler key (`VITE_MAPTILER_KEY`) for premium map tiles. Restrict it by domain before production use (`skyhedge.app`, `www.skyhedge.app`, and keep `skyhedge.vercel.app`). Without a key, the app shows a truthful location fallback.
+- Canonical public site: `https://skyhedge.app` (legacy alias `https://skyhedge.vercel.app` stays on CORS/MapTiler allowlists).
 - Phantom or Solflare wallet set to Devnet
 
 ## Setup
@@ -77,7 +78,9 @@ Environment:
 | `ANTHROPIC_API_KEY` | Secondary AI guide provider, used if OpenRouter is unset or fails. With no provider, or on any provider error/timeout (12 s), `/api/advisory` returns deterministic keyword answers tagged `mode: "offline"` ("Guide answers (offline mode)") with no quote, contract or transaction. Optional `ANTHROPIC_MODEL` overrides the pinned default `claude-sonnet-5-5`. |
 | `SKYT_MINT` | Mint address for the six-decimal SKYT test token; defaults to the committed Devnet mint for status reads |
 | `VITE_MAP_PROVIDER` | Defaults to `maptiler`; keeps future map providers isolated behind one component |
-| `VITE_MAPTILER_KEY` | Browser-visible MapTiler key for premium Hybrid/Basic maps |
+| `VITE_MAPTILER_KEY` | Browser-visible MapTiler key for premium Hybrid/Basic maps; allowlist `skyhedge.app`, `www.skyhedge.app`, and `skyhedge.vercel.app` |
+| `VITE_API_BASE_URL` | Optional web API base; leave empty on Vercel for same-origin `/api` |
+| `EXPO_PUBLIC_API_BASE_URL` | Mobile build-time API base; defaults to `https://skyhedge.app` |
 | `VITE_MAPTILER_SHARE_BASE_URL` | Optional public larger-map base URL; falls back to OpenStreetMap when unset |
 | `WEATHERXM_AGENT_BASE_URL` | Optional override for the WeatherXM Agent API base URL; defaults to `https://agent.weatherxm.com` |
 

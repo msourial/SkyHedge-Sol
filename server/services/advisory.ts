@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AGRICULTURAL_MARKETS, normalizeAgriculturalMarketSearch } from "../../shared/agricultural-markets.js";
+import { PUBLIC_SITE_ORIGIN } from "../../shared/public-origins.js";
 import { desMoinesQuoteUnavailableReason, isOpenMarket } from "./tester-readiness.js";
 import type { DevnetStatus } from "./devnet-status.js";
 
@@ -186,7 +187,7 @@ async function extractViaOpenRouter(apiKey: string, message: string, context?: P
   const model = process.env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL;
   const result = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST", signal: AbortSignal.timeout(12_000),
-    headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}`, "HTTP-Referer": "https://skyhedge.vercel.app", "X-Title": "SkyHedge" },
+    headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}`, "HTTP-Referer": PUBLIC_SITE_ORIGIN, "X-Title": "SkyHedge" },
     body: JSON.stringify({
       model, max_tokens: 280, temperature: 0,
       messages: [

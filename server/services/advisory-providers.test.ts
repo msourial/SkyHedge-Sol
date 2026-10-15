@@ -24,7 +24,7 @@ describe("advisory providers", () => {
     expect(calls[0].url).to.equal("https://openrouter.ai/api/v1/chat/completions");
     const headers = calls[0].init.headers as Record<string, string>;
     expect(headers.authorization).to.equal("Bearer sk-or-v1-test");
-    expect(headers["HTTP-Referer"]).to.equal("https://skyhedge.vercel.app");
+    expect(headers["HTTP-Referer"]).to.equal("https://skyhedge.app");
     expect(headers["X-Title"]).to.equal("SkyHedge");
     expect(JSON.parse(String(calls[0].init.body)).model).to.equal(DEFAULT_OPENROUTER_MODEL);
   });

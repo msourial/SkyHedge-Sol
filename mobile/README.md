@@ -41,7 +41,7 @@ For the locally verified release build, with Android Studio's JDK and SDK config
 
 ```sh
 npm ci
-EXPO_PUBLIC_API_BASE_URL=https://skyhedge.vercel.app ./android/gradlew -p android :app:assembleRelease
+EXPO_PUBLIC_API_BASE_URL=https://skyhedge.app ./android/gradlew -p android :app:assembleRelease
 ```
 
 The APK is written to `android/app/build/outputs/apk/release/app-release.apk`. Verify its SHA-256 and API URL again after any source or configuration change.
@@ -60,7 +60,7 @@ The guide distinguishes a non-binding USD preview from SKYT Devnet test amounts.
 
 ## Verified local test build
 
-On October 6, 2026, the release APK was rebuilt with `EXPO_PUBLIC_API_BASE_URL=https://skyhedge.vercel.app`, installed on a physical Seeker, and opened successfully. The Explore and Protect screens read the live NOAA station package and the finalized expired Draft/empty-vault status. Wallet authorization, signing, and a finalized position on the physical phone are **not yet verified**. The output is `android/app/build/outputs/apk/release/app-release.apk`. Do not upload source to EAS unless you intentionally authorize its cloud build/source upload.
+On October 6, 2026, the release APK was rebuilt with `EXPO_PUBLIC_API_BASE_URL=https://skyhedge.app` (then still aliased via `skyhedge.vercel.app`), installed on a physical Seeker, and opened successfully. The Explore and Protect screens read the live NOAA station package and the finalized expired Draft/empty-vault status. Wallet authorization, signing, and a finalized position on the physical phone are **not yet verified**. The output is `android/app/build/outputs/apk/release/app-release.apk`. Do not upload source to EAS unless you intentionally authorize its cloud build/source upload.
 
 Public production-API APK SHA-256: `322cfb18428400c63e9173b8e39e5a0181255069ee53589f4bb370111e1e4987` (built from `382592a`). A clean `3d7f245` candidate, SHA-256 `cf3224de382e0e80eaf96867f3f0df849cddfda1f747fa2f18e330bededd5de4`, is installed on the Seeker but its screen remains unverified; it has not replaced the public release asset.
 

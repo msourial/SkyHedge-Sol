@@ -6,6 +6,7 @@ import { MARKET_LIMITS, quoteFromCommittedMarketTerms, type Quote, type TriggerO
 import { desMoinesQuoteUnavailableReason, testerProtectionUnavailableReason } from "./tester-readiness.js";
 import type { DevnetStatus } from "./devnet-status";
 import { ClaimUnavailableError, type ClaimReadiness, type TxAction, type UnsignedTransactionBuilder, type UnsignedTxResult } from "./unsigned-tx.js";
+import { applyCorsHeaders } from "./cors.js";
 
 export type ApiRequest = IncomingMessage & { body?: unknown; query?: Record<string, string | string[] | undefined> };
 export type ApiResponse = ServerResponse & { status: (code: number) => ApiResponse; json: (body: unknown) => unknown };
@@ -49,6 +50,7 @@ export function createQuoteHandler(dependencies: {
   quote: (request: { city: SkyHedgeCity; stationId: string; observationStart: string; observationEnd: string; thresholdMm: number; operator: TriggerOperator; protectedAmount: bigint }) => Promise<Quote>;
 }) {
   return async function quoteHandler(req: ApiRequest, res: ApiResponse) {
+    applyCorsHeaders(req, res);
     if (req.method && req.method !== "POST") return methodNotAllowed(res, "POST");
     const parsed = quoteSchema.safeParse(req.body);
     if (!parsed.success) return sendJson(res, 400, { error: "INVALID_PROTECTION_PARAMETERS", message: "Provide valid rainfall protection parameters." });
@@ -99,6 +101,7 @@ export function createUnsignedTransactionHandler(dependencies: {
   builder: Pick<UnsignedTransactionBuilder, "build">;
 }) {
   return async function unsignedTransactionHandler(req: ApiRequest, res: ApiResponse) {
+    applyCorsHeaders(req, res);
     if (req.method && req.method !== "POST") return methodNotAllowed(res, "POST");
     const parsed = unsignedIntentSchema.safeParse(req.body);
     if (!parsed.success) return sendJson(res, 400, { error: "INVALID_TRANSACTION_INTENT", message: "A valid market, wallet, action, and explicit approval are required." });
@@ -125,6 +128,7 @@ export function createClaimReadinessHandler(dependencies: {
   read: (market: string, wallet: string) => Promise<ClaimReadiness>;
 }) {
   return async function claimReadinessHandler(req: ApiRequest, res: ApiResponse) {
+    applyCorsHeaders(req, res);
     if (req.method && req.method !== "GET") return methodNotAllowed(res, "GET");
     const market = queryValue(req.query?.market);
     const wallet = queryValue(req.query?.wallet);

@@ -154,12 +154,12 @@ cd mobile
 npm install
 npm run check          # typecheck (mobile)
 npm run test:mobile    # mobile tests (67 passing)
-EXPO_PUBLIC_API_BASE_URL=https://skyhedge.vercel.app npx expo prebuild --platform android
-cd android && EXPO_PUBLIC_API_BASE_URL=https://skyhedge.vercel.app ./gradlew assembleRelease
+EXPO_PUBLIC_API_BASE_URL=https://skyhedge.app npx expo prebuild --platform android
+cd android && EXPO_PUBLIC_API_BASE_URL=https://skyhedge.app ./gradlew assembleRelease
 # → android/app/build/outputs/apk/release/app-release.apk
 ```
 
-`EXPO_PUBLIC_API_BASE_URL` is baked in at build time and falls back to `https://skyhedge.vercel.app`. `EXPO_PUBLIC_SKYT_MINT` can override the SKYT mint. For the full developer reference (env vars, localnet, Devnet activation, API, security posture), see [docs/developer-reference.md](docs/developer-reference.md).
+`EXPO_PUBLIC_API_BASE_URL` is baked in at build time and falls back to `https://skyhedge.app`. `EXPO_PUBLIC_SKYT_MINT` can override the SKYT mint. For the full developer reference (env vars, localnet, Devnet activation, API, security posture), see [docs/developer-reference.md](docs/developer-reference.md).
 
 ## Tech stack
 
@@ -174,7 +174,7 @@ cd android && EXPO_PUBLIC_API_BASE_URL=https://skyhedge.vercel.app ./gradlew ass
 mobile/    Expo / React Native Android app (Markets · Protect · Wallet), MWA, direct Solana RPC reads
 server/    Express API: quote engine, NOAA + ECCC providers, evidence, unsigned-tx builder, settlement
 anchor/    Anchor program skyhedge_protection (markets, vaults, positions, settlement, claims)
-client/    Web companion / operator console (React + Vite), skyhedge.vercel.app
+client/    Web companion / operator console (React + Vite), skyhedge.app
 shared/    IDL, methodology, optional Postgres schema
 docs/      demo script, pitch deck, submission draft, plans, takeover log
 ```

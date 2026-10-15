@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { DevnetStatusReader, publicDevnetStatus, type DevnetStatus } from "../../server/services/devnet-status.js";
+import { applyCorsHeaders } from "../../server/services/cors.js";
 
 type JsonResponse = ServerResponse & {
   status: (code: number) => JsonResponse;
@@ -11,7 +12,8 @@ const reader = new DevnetStatusReader();
 
 /** Keep Vercel and the local API on the same finalized-RPC status implementation. */
 export function createDevnetStatusHandler(loadStatus: StatusLoader = () => reader.read()) {
-  return async function devnetStatusHandler(_req: IncomingMessage, res: JsonResponse) {
+  return async function devnetStatusHandler(req: IncomingMessage, res: JsonResponse) {
+    applyCorsHeaders(req, res);
     try {
       const status = publicDevnetStatus(await loadStatus());
       res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=60");

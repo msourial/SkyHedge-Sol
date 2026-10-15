@@ -3,6 +3,7 @@ import { loadEnv } from "./env";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { applyCorsHeaders, isCorsPreflight } from "./services/cors";
 
 const env = loadEnv();
 
@@ -19,6 +20,13 @@ app.use((_req, res, next) => {
   if (env.nodeEnv === "production") {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
+  next();
+});
+
+// Reflect allowlisted browser origins (skyhedge.app, www, and legacy skyhedge.vercel.app).
+app.use((req, res, next) => {
+  applyCorsHeaders(req, res);
+  if (isCorsPreflight(req)) return res.status(204).end();
   next();
 });
 

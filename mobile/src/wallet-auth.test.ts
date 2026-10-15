@@ -10,7 +10,7 @@ describe("authorizeForSigning", () => {
     assert.equal(calls.length, 1);
     assert.equal(calls[0].chain, DEVNET_CHAIN);
     assert.equal(calls[0].auth_token, "tok");
-    assert.equal(calls[0].identity.uri, "https://skyhedge.vercel.app");
+    assert.equal(calls[0].identity.uri, "https://skyhedge.app");
   });
   it("falls back to a fresh authorize when the cached token is rejected", async () => {
     const calls: any[] = [];
