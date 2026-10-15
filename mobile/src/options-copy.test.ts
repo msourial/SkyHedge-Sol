@@ -9,12 +9,12 @@ describe("options-style Protect copy", () => {
     assert.equal(hedgeWindowDays(10, 5), null);
   });
   it("leads with a plain headline when open and a human one when not", () => {
-    assert.deepEqual(marketHeadline({ place: "Des Moines", open: true, days: 5 }), { title: "Des Moines is open", detail: "Hedge against rain over the next 5 days." });
+    assert.deepEqual(marketHeadline({ place: "Des Moines", open: true, days: 5 }), { title: "Des Moines is open", detail: "Protect against rain over the next 5 days." });
     assert.equal(marketHeadline({ place: "Des Moines", open: false, days: 5 }).title, "New Des Moines protection opens soon");
-    assert.equal(marketHeadline({ place: "Des Moines", open: true, days: 1 }).detail, "Hedge against rain over the next 1 day.");
+    assert.equal(marketHeadline({ place: "Des Moines", open: true, days: 1 }).detail, "Protect against rain over the next 1 day.");
   });
-  it("states the hedgeable balance honestly", () => {
-    assert.equal(hedgeBalanceLine("1500000000", true), "You have 1500 SKYT to hedge with");
+  it("states the coverage balance honestly", () => {
+    assert.equal(hedgeBalanceLine("1500000000", true), "You have 1500 SKYT for coverage");
     assert.match(hedgeBalanceLine(null, true), /isn't available/);
     assert.match(hedgeBalanceLine("1", false), /Connect your wallet/);
   });
