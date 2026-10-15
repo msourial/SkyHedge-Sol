@@ -12,6 +12,8 @@ export const C = {
   muted: "#A3AEBC",
   /** Secondary labels — kept ≥4.5:1 on canvas for WCAG AA small text. */
   quiet: "#98A3B0",
+  /** Marketing body on navy — landing floor (≥ muted) for long-form copy. */
+  bodyOnNavy: "#A9B4C7",
   border: "#2A3444",
   rain: "#7CC4FF",
   /** Lighter rain for pressed/selected text on dark panes. */

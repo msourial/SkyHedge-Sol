@@ -62,7 +62,8 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="Enter your email"
+          placeholder="you@example.com…"
+          spellCheck={false}
           className="wl-form__input"
           disabled={status === "submitting"}
           aria-invalid={status === "error"}

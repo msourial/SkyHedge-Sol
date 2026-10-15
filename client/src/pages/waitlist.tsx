@@ -3,13 +3,44 @@ import { Link } from "react-router-dom";
 import { BrandMark } from "@/components/brand-mark";
 import { PhoneMockup } from "@/components/phone-mockup";
 import { WaitlistForm } from "@/components/waitlist-form";
+import BlurText from "@/components/react-bits/BlurText/BlurText";
 
 const MARKETS = [
-  { city: "Des Moines", detail: "IA · Rain · NOAA", status: "Live" as const },
-  { city: "New York", detail: "NY · Rain · NOAA", status: "Live" as const },
-  { city: "Miami", detail: "FL · Rain · NOAA", status: "Live" as const },
-  { city: "Chicago", detail: "IL · Rain · NOAA", status: "Live" as const },
-  { city: "Toronto", detail: "ON · Rain · Environment Canada", status: "Soon" as const },
+  {
+    city: "Des Moines",
+    region: "IA",
+    peril: "Rain",
+    source: "NOAA",
+    status: "Live" as const,
+  },
+  {
+    city: "New York",
+    region: "NY",
+    peril: "Rain",
+    source: "NOAA",
+    status: "Live" as const,
+  },
+  {
+    city: "Miami",
+    region: "FL",
+    peril: "Rain",
+    source: "NOAA",
+    status: "Live" as const,
+  },
+  {
+    city: "Chicago",
+    region: "IL",
+    peril: "Rain",
+    source: "NOAA",
+    status: "Live" as const,
+  },
+  {
+    city: "Toronto",
+    region: "ON",
+    peril: "Rain",
+    source: "Environment Canada",
+    status: "Soon" as const,
+  },
 ] as const;
 
 const STEPS = [
@@ -72,17 +103,22 @@ const FAQ = [
   },
 ] as const;
 
-function useReveal(threshold = 0.14) {
+function prefersReducedMotion() {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Content stays readable; motion only lifts opacity/transform slightly when in view. */
+function useReveal(threshold = 0.12) {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
+    if (prefersReducedMotion()) {
       setVisible(true);
       return;
     }
+    setVisible(false);
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry?.isIntersecting) {
@@ -90,9 +126,12 @@ function useReveal(threshold = 0.14) {
           observer.disconnect();
         }
       },
-      { threshold },
+      { threshold, rootMargin: "0px 0px -8% 0px" },
     );
     observer.observe(node);
+    // If already in view on mount (fast scroll / short viewport), reveal immediately.
+    const rect = node.getBoundingClientRect();
+    if (rect.top < window.innerHeight * 0.92) setVisible(true);
     return () => observer.disconnect();
   }, [threshold]);
   return { ref, visible };
@@ -113,8 +152,7 @@ function usePhoneParallax(enabled: boolean) {
     if (!enabled) return;
     const node = ref.current;
     if (!node) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
+    if (prefersReducedMotion()) return;
     let frame = 0;
     const onScroll = () => {
       cancelAnimationFrame(frame);
@@ -136,8 +174,73 @@ function usePhoneParallax(enabled: boolean) {
   return ref;
 }
 
+function useStickyStepScreen() {
+  const [active, setActive] = useState(0);
+  const stepRefs = useRef<(HTMLLIElement | null)[]>([]);
+
+  useEffect(() => {
+    const nodes = stepRefs.current.filter(Boolean) as HTMLLIElement[];
+    if (!nodes.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        const top = visible[0];
+        if (!top?.target) return;
+        const idx = nodes.indexOf(top.target as HTMLLIElement);
+        if (idx >= 0) setActive(idx);
+      },
+      { rootMargin: "-35% 0px -45% 0px", threshold: [0.2, 0.5, 0.8] },
+    );
+    nodes.forEach((n) => observer.observe(n));
+    return () => observer.disconnect();
+  }, []);
+
+  return { active, stepRefs };
+}
+
+function HeroTitle({ className }: { className?: string }) {
+  const [reduce, setReduce] = useState(true);
+  useEffect(() => {
+    setReduce(prefersReducedMotion());
+  }, []);
+
+  if (reduce) {
+    return (
+      <h1 id="wl-hero-title" className={className}>
+        Weather risk, settled on-chain.
+      </h1>
+    );
+  }
+
+  return (
+    <>
+      <h1 id="wl-hero-title" className="sr-only">
+        Weather risk, settled on-chain.
+      </h1>
+      <div className={className} aria-hidden="true">
+        <BlurText
+          text="Weather risk, settled on-chain."
+          animateBy="words"
+          direction="bottom"
+          delay={40}
+          stepDuration={0.28}
+          blur={6}
+          distance={10}
+          effect="blur"
+          trigger="load"
+          announce={false}
+          className="wl-hero__blur"
+        />
+      </div>
+    </>
+  );
+}
+
 export default function WaitlistPage() {
   const heroPhoneRef = usePhoneParallax(true);
+  const { active, stepRefs } = useStickyStepScreen();
 
   useEffect(() => {
     document.title = "SkyHedge — weather risk, settled on-chain";
@@ -173,11 +276,10 @@ export default function WaitlistPage() {
       <main>
         <section className="wl-hero" aria-labelledby="wl-hero-title">
           <div className="wl-hero__copy wl-hero__copy--enter">
-            <h1 id="wl-hero-title" className="wl-hero__title">
-              Weather risk, settled on-chain.
-            </h1>
+            <HeroTitle className="wl-hero__title" />
             <p className="wl-hero__lead">
-              Buy rainfall protection from your wallet. Official station data hits the trigger — payout settles on Solana.
+              Buy rainfall protection from your wallet. Official station data hits the trigger — payout settles on
+              Solana.
             </p>
             <div id="waitlist" className="wl-hero__form">
               <WaitlistForm variant="hero" />
@@ -197,22 +299,37 @@ export default function WaitlistPage() {
               </h2>
               <p className="wl-section__lead">Three screens. One Devnet path from city to settlement.</p>
             </div>
-            <ol className="wl-steps">
-              {STEPS.map((step, index) => (
-                <li key={step.title} className={`wl-steps__item wl-steps__item--${index % 2 === 0 ? "ltr" : "rtl"}`}>
-                  <div className="wl-steps__copy">
-                    <span className="wl-steps__num" aria-hidden="true">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <h3>{step.title}</h3>
-                    <p>{step.body}</p>
-                  </div>
-                  <div className="wl-steps__phone">
-                    <PhoneMockup screen={step.screen} />
-                  </div>
-                </li>
-              ))}
-            </ol>
+
+            <div className="wl-how">
+              <ol className="wl-how__steps">
+                {STEPS.map((step, index) => (
+                  <li
+                    key={step.title}
+                    ref={(el) => {
+                      stepRefs.current[index] = el;
+                    }}
+                    className={`wl-how__step ${index === active ? "wl-how__step--active" : ""}`}
+                    aria-current={index === active ? "step" : undefined}
+                  >
+                    <div className="wl-how__copy">
+                      <span className="wl-how__num" aria-hidden="true">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <h3>{step.title}</h3>
+                      <p>{step.body}</p>
+                    </div>
+                    <div className="wl-how__mobile-phone">
+                      <PhoneMockup screen={step.screen} />
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <div className="wl-how__phone" aria-hidden="true">
+                <div className="wl-how__phone-sticky">
+                  <PhoneMockup key={STEPS[active]?.screen ?? "markets"} screen={STEPS[active]?.screen ?? "markets"} glow />
+                </div>
+              </div>
+            </div>
           </section>
         </Reveal>
 
@@ -222,24 +339,29 @@ export default function WaitlistPage() {
               <h2 id="wl-markets-title" className="wl-section__title">
                 Live markets
               </h2>
-              <p className="wl-section__lead">Rainfall cities on Devnet research. Toronto stays soon until evidence lands.</p>
+              <p className="wl-section__lead">
+                Rainfall cities on Devnet research. Toronto stays soon until evidence lands.
+              </p>
             </div>
-            <ul className="wl-markets">
+            <ul className="wl-markets" aria-label="Devnet rainfall markets">
               {MARKETS.map((market) => (
-                <li key={market.city} className="wl-markets__chip">
-                  <div>
+                <li key={market.city} className="wl-markets__card">
+                  <div className="wl-markets__top">
                     <p className="wl-markets__city">{market.city}</p>
-                    <p className="wl-markets__detail">{market.detail}</p>
+                    <span
+                      className={
+                        market.status === "Live"
+                          ? "wl-markets__status wl-markets__status--live"
+                          : "wl-markets__status wl-markets__status--soon"
+                      }
+                    >
+                      {market.status}
+                    </span>
                   </div>
-                  <span
-                    className={
-                      market.status === "Live"
-                        ? "wl-markets__status wl-markets__status--live"
-                        : "wl-markets__status wl-markets__status--soon"
-                    }
-                  >
-                    {market.status}
-                  </span>
+                  <p className="wl-markets__peril">
+                    {market.peril} · {market.region}
+                  </p>
+                  <p className="wl-markets__source">{market.source}</p>
                 </li>
               ))}
             </ul>
