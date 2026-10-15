@@ -566,15 +566,16 @@ export function WalletV2(props: {
   onDisconnect: () => void;
 }) {
   const skytBase = props.balances?.skytBaseUnits ?? null;
+  const stage = payoutStage(props.claimReadiness);
   return <>
-    <ScreenTop title="Wallet" />
+    <ScreenTop title="Wallet" lead="Devnet balances and positions, read from Solana." />
     {props.walletError ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>Wallet didn’t connect — try again</Text><Text style={s.noticeBody}>{friendlyError(props.walletError)}</Text></View> : null}
-    {!props.wallet ? <View style={s.card}>
+    {!props.wallet ? <Enter index={0}><GlassCard>
       <Text style={s.cardTitle}>Connect a Solana wallet</Text>
       <Text style={[s.body, { color: C.muted, marginTop: S.sm }]}>Your wallet asks before sharing your address. Keys never leave it, and you approve every transaction there.</Text>
       <View style={{ marginTop: S.lg }}><ActionButton label="Connect wallet" icon="credit-card" busy={props.loading} onPress={props.onConnect} /></View>
-    </View> : <>
-      <View style={s.card}>
+    </GlassCard></Enter> : <>
+      <GlassCard accent={C.rain} delay={0}>
         <View style={s.between}>
           <View style={s.baseline}>
             <View style={s.avatar}><AppIcon name="credit-card" color={C.rain} size={18} /></View>
@@ -582,27 +583,34 @@ export function WalletV2(props: {
           </View>
           <Pill label="Connected" tone="live" />
         </View>
-        <Text style={[s.smallLabel, { marginTop: S.lg }]}>Available</Text>
+        <Text style={[s.sectionLabel, { marginTop: S.lg }]}>Available</Text>
         <View style={s.baseline}>
           <Text style={s.hugeFigure}>{skytBase ? formatSkytFixed(skytBase, 2) : "—"}</Text>
           <Text style={s.unit}>SKYT</Text>
         </View>
         <Text style={s.caption}>{props.balances ? `${props.balances.sol.toFixed(4)} SOL for fees` : "Reading balances from Solana…"}</Text>
+        {!props.balances && props.loading ? <View style={{ marginTop: S.md, alignItems: "flex-start" }}><ActivityIndicator color={C.rain} /></View> : null}
         <View style={{ marginTop: S.md }}><ExplorerButton url={`https://explorer.solana.com/address/${encodeURIComponent(props.wallet)}?cluster=devnet`} label="Open in Explorer" /></View>
-      </View>
+      </GlassCard>
 
-      {(() => { const st = payoutStage(props.claimReadiness); return st ? <PayoutStatusCard stage={st} dates={trackerDates({ observationEnd: props.observationEnd ?? null }, props.claimReadiness ?? null)} /> : null; })()}
+      {stage ? <PayoutStatusCard stage={stage} dates={trackerDates({ observationEnd: props.observationEnd ?? null }, props.claimReadiness ?? null)} /> : null}
       <Text style={s.overline}>Positions</Text>
-      <View style={s.card}>
+      <GlassCard delay={2 * motion.stagger}>
         {props.portfolio?.indexed && props.portfolio.protections.length ? props.portfolio.protections.map((p) => <View key={p.address} style={[s.between, s.positionRow]}>
           <View style={{ flex: 1 }}><Text style={s.cardTitleSm}>{p.market === props.marketAddress ? "Des Moines · Rain" : `Market ${shortAddress(p.market)}`}</Text><Text style={s.caption}>Paid {formatSkytFixed(p.premiumPaid, 2)} SKYT</Text></View>
           <View style={{ alignItems: "flex-end" }}><Text style={[s.rowValue, { ...T.amountS, fontSize: 18, lineHeight: 24, color: C.payout }]}>{formatSkytFixed(p.protectedAmount, 0)}</Text><Text style={s.caption}>potential</Text></View>
         </View>) : props.portfolio?.indexed ? <View style={s.emptyCard}>
-          <AppIcon name="umbrella" color={C.muted} size={22} />
+          <AppIcon name="umbrella" color={C.rain} size={22} />
           <Text style={s.body}>No positions yet. Protect a window from Markets.</Text>
           {props.onBrowseMarkets ? <Pressable accessibilityRole="button" onPress={props.onBrowseMarkets} style={s.inlineBtn}><Text style={s.link}>Browse markets →</Text></Pressable> : null}
-        </View> : <Text style={s.body}>{friendlyError(props.portfolioError, props.portfolio?.message ?? "Positions will appear once Solana confirms them.")}</Text>}
-      </View>
+        </View> : props.portfolioError ? <View style={s.emptyCard} accessibilityRole="alert">
+          <AppIcon name="alert-circle" color={C.coral} size={22} />
+          <Text style={s.body}>{friendlyError(props.portfolioError)}</Text>
+        </View> : <View style={s.emptyCard}>
+          <ActivityIndicator color={C.rain} />
+          <Text style={[s.body, { color: C.muted }]}>{props.portfolio?.message ?? "Positions will appear once Solana confirms them."}</Text>
+        </View>}
+      </GlassCard>
 
       <View style={{ marginTop: S.lg }}><ActionButton variant="secondary" label="Disconnect" icon="log-out" onPress={props.onDisconnect} /></View>
     </>}
