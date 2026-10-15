@@ -20,7 +20,7 @@ import { type HazardId } from "./src/hazards";
 import { resolveSelectedNoaaCity } from "./src/presentation";
 import { buildCommittedQuoteRequest, formatSkyt, getProtectionUnavailableReason, parseSkytAmount } from "./src/protection";
 import { authorizeDevnetWallet, signAndConfirmDevnetTransaction, type AuthorizedWallet } from "./src/wallet";
-import { C, F } from "./src/theme";
+import { C, F, glass, MIN_TOUCH, space as S, type as T } from "./src/theme";
 import { ActionButton, AppIcon, Text, type AppIconName } from "./src/ui";
 import { friendlyError, isNetworkError, stationLabel } from "./src/friendly-errors";
 import { ScreenTransition, TactilePressable } from "./src/liquid-glass";
@@ -369,11 +369,11 @@ export default function App() {
         ref={scrollRef}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.blue} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.rain} />}
       >
         <ScreenTransition transitionKey={tab}>
         {error ? <ErrorBanner message={error} onRetry={() => { void retryData(); }} /> : null}
-        {!showLanding && homeLoading && cities.length === 0 && catalog.length === 0 ? <View style={styles.loadingPanel}><ActivityIndicator color={C.blue} /><Text style={styles.emptyText}>Loading finalized weather, market catalog, and Devnet readiness…</Text></View> : null}
+        {!showLanding && homeLoading && cities.length === 0 && catalog.length === 0 ? <View style={styles.loadingPanel} accessibilityLabel="Loading"><ActivityIndicator color={C.rain} /><Text style={styles.emptyText}>Loading finalized weather, market catalog, and Devnet readiness…</Text></View> : null}
         {showLanding ? (
           <Landing live={!!status && marketIsLive(status, nowSeconds)} busy={loading} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect().then(() => setShowLanding(false)); }} />
         ) : null}
@@ -395,7 +395,7 @@ export default function App() {
             nowSeconds={nowSeconds}
             onProtect={() => { if (selectedCity !== "des-moines") changeCity("des-moines"); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
             guide={<>
-              <Pressable accessibilityRole="button" accessibilityState={{ expanded: guideOpen }} accessibilityLabel="Describe your plans and let the guide find a market" onPress={() => setGuideOpen((open) => !open)} style={styles.guideToggle}><AppIcon name="message-circle" color={C.blue} size={20} /><Text style={styles.guideToggleText}>Describe your plans instead</Text><AppIcon name={guideOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={18} /></Pressable>
+              <Pressable accessibilityRole="button" accessibilityState={{ expanded: guideOpen }} accessibilityLabel="Describe your plans and let the guide find a market" onPress={() => setGuideOpen((open) => !open)} style={styles.guideToggle}><AppIcon name="message-circle" color={C.rain} size={20} /><Text style={styles.guideToggleText}>Describe your plans instead</Text><AppIcon name={guideOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={18} /></Pressable>
               {guideOpen ? <GuidePanel turns={guideTurns} busy={guideBusy} onSend={(message) => { void askGuide(message); }} onViewMatch={(result) => { if (result.match?.slug !== "des-moines") return; changeCity("des-moines"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} /> : null}
             </>}
           />
@@ -515,8 +515,8 @@ export default function App() {
 
 function TabButton({ label, icon, selected, onPress }: { label: string; icon: AppIconName; selected: boolean; onPress: () => void }) {
   return (
-    <TactilePressable containerStyle={styles.tabButtonWrap} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected }} onPress={onPress} android_ripple={{ color: C.purpleSoft }} style={[styles.tabButton, selected && styles.tabButtonSelected]}>
-      <AppIcon name={icon} color={selected ? C.green : C.quiet} size={21} />
+    <TactilePressable containerStyle={styles.tabButtonWrap} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected }} onPress={onPress} android_ripple={{ color: C.rainSoft }} style={[styles.tabButton, selected && styles.tabButtonSelected]}>
+      <AppIcon name={icon} color={selected ? C.rain : C.quiet} size={21} />
       <Text style={[styles.tabLabel, selected && styles.tabLabelSelected]}>{label}</Text>
     </TactilePressable>
   );
@@ -536,10 +536,10 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
         : message;
   return (
     <View accessibilityRole="alert" style={styles.errorBanner}>
-      <Text style={styles.errorTitle}>{evidenceMissing ? "NOAA evidence unavailable" : mobileRoutesMissing ? "Mobile API needs an update" : "Can’t reach SkyHedge"}</Text>
-      <Text style={styles.errorBody}>{friendlyError(readableMessage)}</Text>
-      <View style={styles.errorActions}>
-        <View />
+      <AppIcon name="alert-circle" color={C.coral} size={18} />
+      <View style={{ flex: 1, gap: S.xs }}>
+        <Text style={styles.errorTitle}>{evidenceMissing ? "NOAA evidence unavailable" : mobileRoutesMissing ? "Mobile API needs an update" : "Can’t reach SkyHedge"}</Text>
+        <Text style={styles.errorBody}>{friendlyError(readableMessage)}</Text>
         <Pressable accessibilityRole="button" onPress={onRetry} style={styles.retryButton}><Text style={styles.retryButtonText}>Try again</Text></Pressable>
       </View>
     </View>
@@ -552,27 +552,26 @@ const styles = StyleSheet.create({
   fontLoading: { flex: 1, backgroundColor: C.canvas, justifyContent: "center", alignItems: "center" },
   safe: { flex: 1, backgroundColor: C.canvas },
   versionText: { color: C.quiet, fontFamily: F.mono, fontSize: 12, padding: 10 },
-  demoPanel: { width: "100%", borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, borderRadius: 16, padding: 14, marginTop: 8 },
+  demoPanel: { width: "100%", borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, backgroundColor: C.amberSoft, borderRadius: glass.radius - 8, padding: S.md, marginTop: S.sm },
   demoTitle: { color: C.amber, fontFamily: F.mono, fontSize: 13, letterSpacing: 1.2, marginBottom: 4 },
-  demoBtn: { flex: 1, minHeight: 48, borderRadius: 14, borderWidth: 1, borderColor: C.amber, alignItems: "center", justifyContent: "center" },
+  demoBtn: { flex: 1, minHeight: MIN_TOUCH, borderRadius: 14, borderWidth: 1, borderColor: C.amber, alignItems: "center", justifyContent: "center" },
   demoBtnText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 14 },
   scrollContent: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 18, paddingTop: 18, paddingBottom: 32 },
-  loadingPanel: { minHeight: 110, alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 12, padding: 18, marginBottom: 14 },
-  emptyText: { color: C.muted, fontSize: 13, lineHeight: 20 },
-  guideToggle: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border, marginTop: 7 },
-  guideToggleText: { flex: 1, color: C.blue, fontFamily: F.bodySemi, fontSize: 14 },
-  errorBanner: { backgroundColor: C.redSoft, borderWidth: 1, borderColor: C.red, borderRadius: 15, padding: 14, marginBottom: 18 },
-  errorTitle: { color: C.red, fontFamily: F.bodySemi, fontSize: 13 },
-  errorBody: { color: C.ink, fontSize: 12, lineHeight: 18, marginTop: 4 },
-  errorActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 },
-  retryButton: { minHeight: 48, justifyContent: "center", paddingHorizontal: 12, borderRadius: 12, backgroundColor: C.surface, borderColor: C.border, borderWidth: 1 },
-  retryButtonText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 12 },
-  emptyState: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 12, padding: 18, marginTop: 8 },
-  emptyTitle: { color: C.ink, fontFamily: F.heading, fontSize: 17, marginBottom: 6 },
-  bottomBar: { minHeight: 76, backgroundColor: "rgba(14,19,26,0.94)", borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: "0px -8px 24px rgba(0,0,0,0.45)", borderTopWidth: 1, borderTopColor: C.border, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10, paddingHorizontal: 8 },
+  loadingPanel: { minHeight: 110, alignItems: "center", justifyContent: "center", gap: S.md - 2, backgroundColor: glass.fill, borderColor: glass.border, borderWidth: 1, borderRadius: glass.radius, padding: S.lg, marginBottom: S.md, boxShadow: glass.shadow },
+  emptyText: { ...T.caption, color: C.muted, fontSize: 13, lineHeight: 20 },
+  guideToggle: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: glass.border, marginTop: S.xs },
+  guideToggleText: { flex: 1, color: C.rain, fontFamily: F.bodySemi, fontSize: 14 },
+  errorBanner: { flexDirection: "row", alignItems: "flex-start", gap: S.md, backgroundColor: C.redSoft, borderWidth: 1, borderColor: C.coral, borderRadius: glass.radius - 10, padding: S.lg, marginBottom: S.lg },
+  errorTitle: { ...T.bodyStrong, color: C.coral, fontSize: 14, lineHeight: 20 },
+  errorBody: { ...T.caption, color: C.ink, fontSize: 13, lineHeight: 18 },
+  retryButton: { minHeight: MIN_TOUCH, alignSelf: "flex-start", justifyContent: "center", paddingHorizontal: S.md, borderRadius: 12, backgroundColor: C.surfaceRaised, borderColor: glass.border, borderWidth: 1 },
+  retryButtonText: { ...T.label, color: C.ink },
+  emptyState: { backgroundColor: glass.fill, borderColor: glass.border, borderWidth: 1, borderRadius: glass.radius, padding: S.lg, marginTop: S.sm, boxShadow: glass.shadow },
+  emptyTitle: { ...T.heading, color: C.ink, marginBottom: S.xs },
+  bottomBar: { minHeight: 76, backgroundColor: C.canvas + "F0", borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: "0px -8px 24px rgba(0,0,0,0.45)", borderTopWidth: 1, borderTopColor: glass.border, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10, paddingHorizontal: S.sm },
   tabButtonWrap: { flex: 1, minWidth: 0 },
   tabButton: { flex: 1, minWidth: 0, minHeight: 58, alignItems: "center", justifyContent: "center", borderRadius: 14, paddingHorizontal: 2 },
-  tabButtonSelected: { backgroundColor: C.rain + "1F", borderWidth: 1, borderColor: C.rain + "59", borderRadius: 16, boxShadow: `0px 0px 16px ${C.rain}4D` },
-  tabLabel: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 12, marginTop: 5 },
-  tabLabelSelected: { color: C.green, fontFamily: F.bodySemi },
+  tabButtonSelected: { backgroundColor: C.rainSoft, borderWidth: 1, borderColor: C.rain + "59", borderRadius: 16, boxShadow: `0px 0px 16px ${C.rain}4D` },
+  tabLabel: { ...T.caption, color: C.quiet, fontFamily: F.bodyMedium, marginTop: 5 },
+  tabLabelSelected: { color: C.rain, fontFamily: F.bodySemi },
 });
