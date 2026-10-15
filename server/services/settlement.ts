@@ -179,7 +179,7 @@ export class SettlementRunner {
           const signatures = await this.connection.getSignaturesForAddress(observationAddress, { limit: 5 }, "finalized");
           observationSignature = signatures.find((item) => !item.err)?.signature ?? "";
           settlementSignature = await this.program.methods.settleMarket()
-            .accounts({ market: marketAddress, protocol: protocolAddress, settlementAuthority: authority.publicKey, observation: observationAddress })
+            .accounts({ market: marketAddress, protocol: protocolAddress, settler: authority.publicKey, observation: observationAddress })
             .signers([authority])
             .rpc();
         } else {
@@ -196,7 +196,7 @@ export class SettlementRunner {
             .accounts({ authority: authority.publicKey, protocol: protocolAddress, market: marketAddress, observation: observationAddress })
             .instruction();
           const settlementInstruction = await this.program.methods.settleMarket()
-            .accounts({ market: marketAddress, protocol: protocolAddress, settlementAuthority: authority.publicKey, observation: observationAddress })
+            .accounts({ market: marketAddress, protocol: protocolAddress, settler: authority.publicKey, observation: observationAddress })
             .instruction();
           settlementSignature = await submitObservationAndSettlementAtomically(this.provider, observationInstruction, settlementInstruction, authority);
           observationSignature = settlementSignature;

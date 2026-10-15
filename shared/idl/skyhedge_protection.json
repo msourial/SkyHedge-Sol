@@ -1145,6 +1145,10 @@
       ],
       "accounts": [
         {
+          "name": "settler",
+          "signer": true
+        },
+        {
           "name": "protocol",
           "pda": {
             "seeds": [
@@ -1165,13 +1169,6 @@
           },
           "relations": [
             "market"
-          ]
-        },
-        {
-          "name": "settlement_authority",
-          "signer": true,
-          "relations": [
-            "protocol"
           ]
         },
         {
@@ -1689,6 +1686,19 @@
         156,
         185,
         189
+      ]
+    },
+    {
+      "name": "BeginSettlement",
+      "discriminator": [
+        135,
+        151,
+        236,
+        223,
+        40,
+        115,
+        124,
+        238
       ]
     },
     {
@@ -2474,6 +2484,18 @@
       }
     },
     {
+      "name": "BeginSettlement",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "MarketSettled",
       "type": {
         "kind": "struct",
@@ -2489,6 +2511,10 @@
                 "name": "SettlementResult"
               }
             }
+          },
+          {
+            "name": "settler",
+            "type": "pubkey"
           }
         ]
       }

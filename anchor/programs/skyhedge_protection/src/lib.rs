@@ -219,6 +219,7 @@ pub mod skyhedge_protection {
         require!(ctx.accounts.market.status == MarketStatus::Locked, ErrorCode::InvalidMarketStatus);
         require!(Clock::get()?.unix_timestamp >= ctx.accounts.market.observation_end, ErrorCode::ObservationNotFinished);
         ctx.accounts.market.status = MarketStatus::AwaitingSettlement;
+        emit!(BeginSettlement { market: ctx.accounts.market.key() });
         Ok(())
     }
 
@@ -266,13 +267,16 @@ pub mod skyhedge_protection {
         market.payout_liability = if triggered { market.reserved_exposure } else { 0 };
         if !triggered { market.reserved_exposure = 0; }
         market.status = MarketStatus::Settled;
-        emit!(MarketSettled { market: market.key(), result: market.result });
+        emit!(MarketSettled {
+            market: market.key(),
+            result: market.result,
+            settler: ctx.accounts.settler.key(),
+        });
         Ok(())
     }
 
     pub fn mark_data_unavailable(ctx: Context<MarkDataUnavailable>, source_hash: [u8; 32]) -> Result<()> {
         require!(ctx.accounts.market.status == MarketStatus::AwaitingSettlement, ErrorCode::InvalidMarketStatus);
-        require_keys_eq!(ctx.accounts.authority.key(), ctx.accounts.protocol.settlement_authority, ErrorCode::UnauthorizedAuthority);
         require!(data_unavailable_attestation_allowed(ctx.accounts.observation.is_some(), source_hash), ErrorCode::InvalidObservation);
         require!(Clock::get()?.unix_timestamp > ctx.accounts.market.data_deadline, ErrorCode::DataDeadlineNotReached);
         let market = &mut ctx.accounts.market;
@@ -457,7 +461,7 @@ pub struct InitializeProtocol<'info> { #[account(mut)] pub admin: Signer<'info>,
 #[derive(Accounts)] pub struct OpenPosition<'info> { #[account(mut)] pub owner: Signer<'info>, pub protocol: Account<'info, ProtocolConfig>, #[account(mut, has_one = protocol)] pub market: Account<'info, Market>, #[account(mut, seeds = [b"vault", market.key().as_ref()], bump, token::mint = collateral_mint, token::authority = market)] pub vault: InterfaceAccount<'info, TokenAccount>, #[account(mut, token::mint = collateral_mint, token::authority = owner)] pub owner_token_account: InterfaceAccount<'info, TokenAccount>, #[account(init, payer = owner, space = 8 + ProtectionPosition::INIT_SPACE, seeds = [b"position", market.key().as_ref(), owner.key().as_ref()], bump)] pub position: Account<'info, ProtectionPosition>, #[account(address = protocol.collateral_mint)] pub collateral_mint: InterfaceAccount<'info, Mint>, #[account(address = protocol.token_program)] pub token_program: Interface<'info, TokenInterface>, pub system_program: Program<'info, System> }
 #[derive(Accounts)] pub struct AdvanceMarket<'info> { #[account(mut)] pub market: Account<'info, Market> }
 #[derive(Accounts)] pub struct SubmitObservation<'info> { #[account(mut)] pub authority: Signer<'info>, #[account(seeds = [b"protocol"], bump = protocol.bump)] pub protocol: Account<'info, ProtocolConfig>, #[account(has_one = protocol)] pub market: Account<'info, Market>, #[account(init, payer = authority, space = 8 + SettlementObservation::INIT_SPACE, seeds = [b"settlement", market.key().as_ref()], bump)] pub observation: Account<'info, SettlementObservation>, pub system_program: Program<'info, System> }
-#[derive(Accounts)] pub struct SettleMarket<'info> { #[account(seeds = [b"protocol"], bump = protocol.bump, has_one = settlement_authority)] pub protocol: Account<'info, ProtocolConfig>, pub settlement_authority: Signer<'info>, #[account(mut, has_one = protocol)] pub market: Account<'info, Market>, #[account(seeds = [b"settlement", market.key().as_ref()], bump = observation.bump, has_one = market)] pub observation: Account<'info, SettlementObservation> }
+#[derive(Accounts)] pub struct SettleMarket<'info> { pub settler: Signer<'info>, #[account(seeds = [b"protocol"], bump = protocol.bump)] pub protocol: Account<'info, ProtocolConfig>, #[account(mut, has_one = protocol)] pub market: Account<'info, Market>, #[account(seeds = [b"settlement", market.key().as_ref()], bump = observation.bump, has_one = market)] pub observation: Account<'info, SettlementObservation> }
 #[derive(Accounts)] pub struct MarkDataUnavailable<'info> { pub authority: Signer<'info>, #[account(seeds = [b"protocol"], bump = protocol.bump)] pub protocol: Account<'info, ProtocolConfig>, #[account(mut, has_one = protocol)] pub market: Account<'info, Market>, #[account(seeds = [b"settlement", market.key().as_ref()], bump)] pub observation: Option<Account<'info, SettlementObservation>> }
 #[derive(Accounts)] pub struct ClaimPosition<'info> { pub owner: Signer<'info>, pub protocol: Account<'info, ProtocolConfig>, #[account(mut, has_one = protocol)] pub market: Account<'info, Market>, #[account(mut, seeds = [b"vault", market.key().as_ref()], bump, token::mint = collateral_mint, token::authority = market)] pub vault: InterfaceAccount<'info, TokenAccount>, #[account(mut, has_one = market, has_one = owner)] pub position: Account<'info, ProtectionPosition>, #[account(mut, token::mint = collateral_mint, token::authority = owner)] pub owner_token_account: InterfaceAccount<'info, TokenAccount>, #[account(address = protocol.collateral_mint)] pub collateral_mint: InterfaceAccount<'info, Mint>, #[account(address = protocol.token_program)] pub token_program: Interface<'info, TokenInterface> }
 #[derive(Accounts)] pub struct CloseMarket<'info> { pub admin: Signer<'info>, #[account(seeds = [b"protocol"], bump = protocol.bump, has_one = admin)] pub protocol: Account<'info, ProtocolConfig>, #[account(mut, has_one = protocol)] pub market: Account<'info, Market>, #[account(mut, seeds = [b"vault", market.key().as_ref()], bump, token::mint = collateral_mint, token::authority = market)] pub vault: InterfaceAccount<'info, TokenAccount>, #[account(mut, seeds = [b"fee-vault", protocol.key().as_ref()], bump, token::mint = collateral_mint, token::authority = protocol)] pub fee_vault: InterfaceAccount<'info, TokenAccount>, #[account(address = protocol.collateral_mint)] pub collateral_mint: InterfaceAccount<'info, Mint>, #[account(address = protocol.token_program)] pub token_program: Interface<'info, TokenInterface> }
@@ -488,8 +492,9 @@ impl CreateMarketArgs { fn validate(&self) -> Result<()> { require!(self.thresho
 #[event] pub struct LiquidityWithdrawn { pub market: Pubkey, pub provider: Pubkey, pub amount: u64 }
 #[event] pub struct PositionOpened { pub market: Pubkey, pub owner: Pubkey, pub premium: u64, pub potential_payout: u64 }
 #[event] pub struct MarketLocked { pub market: Pubkey }
+#[event] pub struct BeginSettlement { pub market: Pubkey }
 #[event] pub struct ObservationSubmitted { pub market: Pubkey, pub authority: Pubkey, pub station_id_hash: [u8; 32], pub methodology_hash: [u8; 32], pub observation_window_start: i64, pub observation_window_end: i64, pub value: i64, pub source_hash: [u8; 32] }
-#[event] pub struct MarketSettled { pub market: Pubkey, pub result: SettlementResult }
+#[event] pub struct MarketSettled { pub market: Pubkey, pub result: SettlementResult, pub settler: Pubkey }
 #[event] pub struct DataUnavailable { pub market: Pubkey, pub authority: Pubkey, pub station_id_hash: [u8; 32], pub methodology_hash: [u8; 32], pub observation_window_start: i64, pub observation_window_end: i64, pub source_hash: [u8; 32] }
 #[event] pub struct PayoutClaimed { pub market: Pubkey, pub owner: Pubkey, pub amount: u64 }
 #[event] pub struct PremiumRefunded { pub market: Pubkey, pub owner: Pubkey, pub amount: u64 }

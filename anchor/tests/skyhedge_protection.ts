@@ -315,16 +315,10 @@ describe("skyhedge_protection localnet lifecycle (real token CPIs)", () => {
     expect(duplicateError).not.to.eq(null);
     expect(errorText(duplicateError)).to.match(/already in use|already initialized|custom program error/i);
 
-    try {
-      await program.methods.settleMarket().accounts({ market: marketPda }).rpc();
-      expect.fail("expected ConstraintHasOne");
-    } catch (error) {
-      expect(errorText(error)).to.match(/ConstraintHasOne|has one relation|2006/);
-    }
-
+    // settle_market is permissionless once an observation exists; any signer may finish settlement.
     await program.methods
       .settleMarket()
-      .accounts({ settlementAuthority: settlementAuthority.publicKey, market: marketPda })
+      .accounts({ settler: settlementAuthority.publicKey, market: marketPda })
       .signers([settlementAuthority])
       .rpc();
     const market = await program.account.market.fetch(marketPda);
@@ -410,7 +404,7 @@ describe("skyhedge_protection localnet lifecycle (real token CPIs)", () => {
       sourceHash: randomHash(),
     }).accounts({ authority: settlementAuthority.publicKey, market }).signers([settlementAuthority]).rpc();
     await program.methods.settleMarket()
-      .accounts({ settlementAuthority: settlementAuthority.publicKey, market, observation })
+      .accounts({ settler: settlementAuthority.publicKey, market, observation })
       .signers([settlementAuthority]).rpc();
 
     const settled = await program.account.market.fetch(market);

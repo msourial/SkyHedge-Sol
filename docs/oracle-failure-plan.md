@@ -69,13 +69,13 @@ Scope rule: NOAA is the sole settlement source. Incomplete, flagged, or malforme
 | e. NOAA outage / format change | Fail-closed, cron retry, 503 guidance; no alt settlement source | Keep fail-closed. Add runbook alert when markets sit `AwaitingSettlement` near deadline; parser version pin in methodology hash (already hashed) | S (ops/docs) |
 | Missing / quality / window (baseline) | Reject; never invent | No change | — |
 
-Cheap closes completed in this pass: this document only (no on-chain or program edits). Program diffs for **c** and **d** are planned below and **not** applied.
+Program changes for **c** and **d** are applied in `lib.rs` (permissionless settle after observation; permissionless unavailable after deadline). Remaining cheap closes: ops alerts for **e**, optional NOAA settle floor for **a**.
 
 ---
 
-## Proposed program changes (c and d only)
+## Program changes (c and d) — applied
 
-Do **not** apply until reviewed. Listed diffs are the intended `lib.rs` edits.
+The diffs below are what landed in `lib.rs`. Off-chain follow-ups (unsigned buyer `mark_data_unavailable`, IDL clients already updated for `settler`) remain as noted.
 
 ### c — Authority / settle liveness
 

@@ -368,8 +368,8 @@ async fn run_settlement_lifecycle(scenario: SettlementScenario) {
         let settle = Instruction {
             program_id: PROGRAM_ID,
             accounts: accounts::SettleMarket {
+                settler: settlement_authority.pubkey(),
                 protocol,
-                settlement_authority: settlement_authority.pubkey(),
                 market,
                 observation,
             }
