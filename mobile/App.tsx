@@ -3,6 +3,7 @@ import "./src/polyfills";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFonts } from "expo-font";
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
+import { InterTight_600SemiBold, InterTight_700Bold } from "@expo-google-fonts/inter-tight";
 import {
   ActivityIndicator,
   Pressable,
@@ -47,7 +48,10 @@ const CITY_ORDER = ["des-moines", "chicago", "new-york", "miami"];
 
 export default function App() {
   const scrollRef = useRef<ScrollView>(null);
-  const [fontsLoaded, fontError] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, });
+  const [fontsLoaded, fontError] = useFonts({
+    Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
+    InterTight_600SemiBold, InterTight_700Bold,
+  });
   const [tab, setTab] = useState<Tab>("catalog");
   const [cities, setCities] = useState<CityIndex[]>([]);
   const [catalog, setCatalog] = useState<AgriculturalMarket[]>([]);
@@ -348,10 +352,10 @@ export default function App() {
       <StatusBar barStyle="light-content" backgroundColor={C.canvas} translucent={false} />
       <GlassTargetContext.Provider value={glassTarget}>
       <View pointerEvents="none" style={StyleSheet.absoluteFill}><BlurTargetView ref={glassTarget} style={StyleSheet.absoluteFill}>
-        <LinearGradient colors={["#0F1C28", "#0B0F14", "#0B0F14", "#12100C"]} locations={[0, 0.35, 0.75, 1]} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={["#122033", C.canvas, C.canvas, "#121820"]} locations={[0, 0.35, 0.75, 1]} style={StyleSheet.absoluteFill} />
         <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
           <Defs>
-            <RadialGradient id="aB" cx="50%" cy="50%" r="50%"><Stop offset="0" stopColor="#5EC8FF" stopOpacity="0.16" /><Stop offset="1" stopColor="#5EC8FF" stopOpacity="0" /></RadialGradient>
+            <RadialGradient id="aB" cx="50%" cy="50%" r="50%"><Stop offset="0" stopColor={C.rain} stopOpacity="0.16" /><Stop offset="1" stopColor={C.rain} stopOpacity="0" /></RadialGradient>
             <RadialGradient id="aA" cx="50%" cy="50%" r="50%"><Stop offset="0" stopColor="#F5B544" stopOpacity="0.10" /><Stop offset="1" stopColor="#F5B544" stopOpacity="0" /></RadialGradient>
             <RadialGradient id="aM" cx="50%" cy="50%" r="50%"><Stop offset="0" stopColor="#34D399" stopOpacity="0.07" /><Stop offset="1" stopColor="#34D399" stopOpacity="0" /></RadialGradient>
           </Defs>
@@ -417,7 +421,7 @@ export default function App() {
         {!showLanding && tab === "protect" && !demo && !(claimReadiness?.state === "claimable" && claimReadiness.action === "claim_payout") ? (
           !status && (isNetworkError(error) || isNetworkError(walletError) || isNetworkError(portfolioError)) ? (
             <View style={styles.emptyState} accessibilityRole="alert">
-              <AppIcon name="wifi-off" color={C.amber} size={22} />
+              <AppIcon name="wifi-off" color={C.coral} size={22} />
               <Text style={[styles.emptyTitle, { marginTop: 10 }]}>You’re offline</Text>
               <Text style={styles.emptyText}>SkyHedge can’t reach its market service from this phone. Check Wi‑Fi or mobile data, then retry.</Text>
               <View style={{ marginTop: 16 }}><ActionButton label="Retry" icon="refresh-cw" onPress={() => { void retryData(); }} /></View>
@@ -568,7 +572,7 @@ const styles = StyleSheet.create({
   bottomBar: { minHeight: 76, backgroundColor: "rgba(14,19,26,0.94)", borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: "0px -8px 24px rgba(0,0,0,0.45)", borderTopWidth: 1, borderTopColor: C.border, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10, paddingHorizontal: 8 },
   tabButtonWrap: { flex: 1, minWidth: 0 },
   tabButton: { flex: 1, minWidth: 0, minHeight: 58, alignItems: "center", justifyContent: "center", borderRadius: 14, paddingHorizontal: 2 },
-  tabButtonSelected: { backgroundColor: "rgba(94,200,255,0.12)", borderWidth: 1, borderColor: "rgba(94,200,255,0.35)", borderRadius: 16, boxShadow: "0px 0px 16px rgba(94,200,255,0.30)" },
+  tabButtonSelected: { backgroundColor: C.rain + "1F", borderWidth: 1, borderColor: C.rain + "59", borderRadius: 16, boxShadow: `0px 0px 16px ${C.rain}4D` },
   tabLabel: { color: C.quiet, fontFamily: F.bodyMedium, fontSize: 12, marginTop: 5 },
   tabLabelSelected: { color: C.green, fontFamily: F.bodySemi },
 });

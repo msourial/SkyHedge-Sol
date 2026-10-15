@@ -1,7 +1,8 @@
 # SkyHedge design system (Seeker app)
 
 Tokens live in `mobile/src/theme.ts`; motion primitives in `mobile/src/motion.tsx`.
-Visual reference: `~/Documents/Codex/skyhedge-revamp-refs/opendesign/flows-v2.html` (+ `flows-v2-board.png`).
+Visual direction: **Storm Glass** (frosted panes over graphite; glow only on status and selection).
+Markets reference: `docs/mockups/storm-glass-markets.png`. Protect uses the same Storm Glass tokens (graphite coverage ticket, Step 3 review reason always visible). Broader flows: `~/Documents/Codex/skyhedge-revamp-refs/opendesign/flows-v2.html` (+ `flows-v2-board.png`).
 
 The palette (graphite canvas, glacier-blue signal, gold for money, mint for verified) and the V1 umbrella logo are unchanged.
 

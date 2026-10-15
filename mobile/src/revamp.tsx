@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { ONBOARDING_STEPS, TEST_TOKEN_NOTE } from "./consumer-flow";
 import { Animated, Easing, Linking, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { C, F, MIN_TOUCH, motion, space as S, type as T } from "./theme";
+import { accentGlow, C, F, glass, MIN_TOUCH, motion, space as S, statusGlow, type as T } from "./theme";
 import { Enter, SpringPress } from "./motion";
 import { ActionButton, AppIcon, Text } from "./ui";
 import { GlassTargetContext, useReducedMotion } from "./liquid-glass";
@@ -15,7 +15,7 @@ import { GROUP_ORDER, groupCounts, MARKETS, type CatalogMarket } from "./markets
 
 const TAB = ["tabular-nums" as const];
 
-/** Frosted glass card: translucent graphite, hairline glacier border, soft top sheen. */
+/** Storm Glass pane: frosted graphite, hairline glacier border, soft top sheen. */
 let entryOrder = 0;
 export function GlassCard({ children, style, accent, delay }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; accent?: string; delay?: number }) {
   const reduced = useReducedMotion();
@@ -27,17 +27,17 @@ export function GlassCard({ children, style, accent, delay }: { children: React.
     const d = delay ?? (entryOrder++ % 6) * motion.stagger;
     Animated.timing(enter, { toValue: 1, duration: motion.slow, delay: d, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [enter, reduced, delay]);
-  return <Animated.View style={[g.card, accent ? { borderColor: accent + "66", boxShadow: `0px 0px 26px ${accent}22, 0px 10px 28px rgba(0,0,0,0.45)` } : null, style, { opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [motion.enterOffset, 0] }) }] }]}>
+  return <Animated.View style={[g.card, accent ? { borderColor: accent + "66", boxShadow: accentGlow(accent) } : null, style, { opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [motion.enterOffset, 0] }) }] }]}>
     {nativeBlur ? <BlurView pointerEvents="none" blurTarget={blurTarget!} tint="dark" intensity={55} blurReductionFactor={4} blurMethod="dimezisBlurViewSdk31Plus" style={StyleSheet.absoluteFill} /> : null}
-    <LinearGradient pointerEvents="none" colors={nativeBlur ? ["rgba(40,52,68,0.45)", "rgba(20,27,36,0.35)", "rgba(12,17,23,0.50)"] : ["rgba(40,52,68,0.70)", "rgba(20,27,36,0.62)", "rgba(12,17,23,0.70)"]} locations={[0, 0.5, 1]} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={StyleSheet.absoluteFill} />
-    <LinearGradient pointerEvents="none" colors={["rgba(255,255,255,0)", accent ? accent + "88" : "rgba(190,225,255,0.35)", "rgba(255,255,255,0)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={g.cardEdge} />
+    <LinearGradient pointerEvents="none" colors={[...(nativeBlur ? glass.sheenBlur : glass.sheen)]} locations={[0, 0.5, 1]} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={StyleSheet.absoluteFill} />
+    <LinearGradient pointerEvents="none" colors={["rgba(255,255,255,0)", accent ? accent + "88" : glass.edge, "rgba(255,255,255,0)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={g.cardEdge} />
     {children}
   </Animated.View>;
 }
 
 export function StatusTag({ status, label }: { status: CatalogMarket["status"]; label?: string }) {
   const col = status === "live" ? C.mint : status === "soon" ? C.amber : C.rain;
-  return <View style={[g.tag, { borderColor: col + "77", backgroundColor: col + "1F", boxShadow: status === "concept" ? "none" : `0px 0px 12px ${col}40` }]} accessible accessibilityLabel={label ?? statusLabel(status)}>
+  return <View style={[g.tag, { borderColor: col + "77", backgroundColor: col + "1F", boxShadow: statusGlow(col, status === "concept") }]} accessible accessibilityLabel={label ?? statusLabel(status)}>
     {status !== "concept" ? <View style={[g.tagDot, { backgroundColor: col }]} /> : <View style={[g.tagDot, { borderWidth: 1.5, borderColor: col }]} />}
     <Text style={[g.tagText, { color: col }]}>{label ?? statusLabel(status)}</Text>
   </View>;
@@ -109,7 +109,7 @@ export function Landing(props: { onConnect: () => void; onBrowse: () => void; bu
   const concepts = MARKETS.filter((m) => m.status === "concept").length;
   return <Animated.View style={{ opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [motion.enterOffset * 1.6, 0] }) }] }}>
     <ScreenTop brand />
-    <Text style={g.hero}>Get paid when the{"\n"}<Text style={{ color: C.rain, textShadowColor: "rgba(94,200,255,0.5)", textShadowRadius: 16 }}>weather ruins your plans.</Text></Text>
+    <Text style={g.hero}>Get paid when the{"\n"}<Text style={{ color: C.rain, textShadowColor: C.rain + "80", textShadowRadius: 16 }}>weather ruins your plans.</Text></Text>
     <Text style={g.heroLead}>Pick a city and the dates you care about. If official weather data shows it rained past the limit, money lands in your wallet automatically. No forms, no calls.</Text>
     <GlassCard style={{ marginTop: S.xl }}>
       <Text style={g.overline}>How it works</Text>
@@ -205,12 +205,12 @@ export function Receipt(props: { title: string; amountLabel: string | null; fact
 const g = StyleSheet.create({
   testNote: { flexDirection: "row", gap: 8, borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, borderRadius: 14, padding: S.md, marginTop: S.lg },
   testNoteText: { ...T.label, fontFamily: F.body, flex: 1, color: C.amber },
-  card: { backgroundColor: "rgba(17,22,29,0.35)", borderColor: "rgba(160,205,235,0.16)", borderWidth: 1, borderRadius: 20, padding: S.lg, marginBottom: S.lg, overflow: "hidden", boxShadow: "0px 10px 28px rgba(0,0,0,0.45)" },
+  card: { backgroundColor: glass.fill, borderColor: glass.border, borderWidth: 1, borderRadius: glass.radius, padding: S.lg, marginBottom: S.lg, overflow: "hidden", boxShadow: glass.shadow },
   cardEdge: { position: "absolute", top: 0, left: 24, right: 24, height: 1 },
   tag: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 14, paddingHorizontal: 11, minHeight: 28, alignSelf: "center" },
   tagDot: { width: 7, height: 7, borderRadius: 4 },
   tagText: { fontFamily: F.bodyBold, fontSize: 12, letterSpacing: 0.3 },
-  gauge: { width: 52, borderRadius: 16, boxShadow: "inset 0px 2px 8px rgba(0,0,0,0.6)", borderWidth: 1, borderColor: C.border, backgroundColor: "#0B0F14", overflow: "hidden", justifyContent: "flex-end" },
+  gauge: { width: 52, borderRadius: 16, boxShadow: "inset 0px 2px 8px rgba(0,0,0,0.6)", borderWidth: 1, borderColor: C.border, backgroundColor: C.canvas, overflow: "hidden", justifyContent: "flex-end" },
   gaugeFill: { width: "100%", overflow: "hidden" },
   gaugeLine: { position: "absolute", left: -2, right: -2, flexDirection: "row", justifyContent: "space-between" },
   gaugeDash: { width: 4, height: 2, backgroundColor: C.payout },
@@ -218,7 +218,7 @@ const g = StyleSheet.create({
   tickerRow: { flexDirection: "row" },
   tickerText: { ...T.unit, fontSize: 12, color: C.muted },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 22 },
-  brandMark: { width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(94,200,255,0.12)", alignItems: "center", justifyContent: "center" },
+  brandMark: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.rainSoft, alignItems: "center", justifyContent: "center" },
   brandText: { flex: 1, color: C.ink, fontFamily: F.headingBold, fontSize: 18 },
   devnet: { borderWidth: 1, borderColor: C.amber + "66", backgroundColor: C.amberSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
   devnetText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 12 },
@@ -245,14 +245,14 @@ const g = StyleSheet.create({
   how: { flexDirection: "row", gap: S.md, alignItems: "flex-start", paddingVertical: S.sm },
   howN: { width: 24, height: 24, marginTop: -1, borderRadius: 8, backgroundColor: C.rainSoft, alignItems: "center", justifyContent: "center" },
   howNText: { color: C.rain, fontFamily: F.mono, fontSize: 13, lineHeight: 16, fontWeight: "700", fontVariant: TAB, textAlign: "center" },
-  notify: { minHeight: 58, borderRadius: 16, backgroundColor: C.amber, boxShadow: "0px 6px 24px rgba(245,184,65,0.45)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 4 },
+  notify: { minHeight: 58, borderRadius: 16, backgroundColor: C.amber, boxShadow: `0px 6px 24px ${C.amber}73`, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 4 },
   notifyOn: { backgroundColor: C.amberSoft, borderWidth: 1, borderColor: C.amber },
-  notifyText: { color: "#1A1205", fontFamily: F.bodyBold, fontSize: 16 },
-  secondary: { minHeight: 54, borderRadius: 16, borderWidth: 1, borderColor: "rgba(160,200,230,0.18)", backgroundColor: "rgba(30,40,52,0.6)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10 },
+  notifyText: { color: C.actionText, fontFamily: F.bodyBold, fontSize: 16 },
+  secondary: { minHeight: 54, borderRadius: 16, borderWidth: 1, borderColor: glass.border, backgroundColor: C.surfaceRaised, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10 },
   secondaryText: { ...T.label, fontSize: 14, lineHeight: 20, color: C.ink },
   groupRow: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: 12 },
   groupBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
-  groupN: { ...T.amountS, color: C.rain, fontVariant: TAB, textShadowColor: "rgba(94,200,255,0.5)", textShadowRadius: 10 },
+  groupN: { ...T.amountS, color: C.rain, fontVariant: TAB, textShadowColor: C.rain + "80", textShadowRadius: 10 },
   check: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.mintSoft, borderWidth: 1, borderColor: C.mint, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 10 },
   receiptBig: { ...T.amountXL, fontSize: 50, lineHeight: 60, color: C.mint, textShadowColor: "rgba(52,211,153,0.55)", textShadowRadius: 18, textAlign: "center", fontVariant: TAB, letterSpacing: -1 },
   fact: { flexDirection: "row", justifyContent: "space-between", minHeight: 40, alignItems: "center", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },

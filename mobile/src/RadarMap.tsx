@@ -5,11 +5,10 @@ import { GLOBAL_GRATICULE, GLOBAL_LAND, REGION_GRATICULE, REGION_LAKES, REGION_L
 import { CLUSTER_HIT_DP, clusterA11yLabel, clusterConcepts, clusterWindow, globalWindow, inWin, isKey, labelBox, placeLabels, regionWindow } from "./map-layout";
 export { placeLabels } from "./map-layout";
 import { MARKETS, type CatalogMarket } from "./markets-catalog";
-import { C, F, space as S, type as T } from "./theme";
+import { C, F, glass, motion, space as S, type as T } from "./theme";
 import { Text } from "./ui";
 import { useReducedMotion } from "./liquid-glass";
 import { SpringPress } from "./motion";
-import { motion } from "./theme";
 
 export type MapScope = "region" | "global";
 
@@ -93,9 +92,9 @@ export function RadarMap(props: {
           </RadialGradient>
         </Defs>
         <Path d={isRegion ? REGION_GRATICULE : GLOBAL_GRATICULE} stroke="rgba(255,255,255,0.06)" strokeWidth={1 * k} strokeDasharray={`${3 * k} ${4 * k}`} fill="none" />
-        <Path d={isRegion ? REGION_LAND : GLOBAL_LAND} fill="none" stroke="rgba(94,200,255,0.10)" strokeWidth={4 * k} strokeLinejoin="round" />
+        <Path d={isRegion ? REGION_LAND : GLOBAL_LAND} fill="none" stroke={`${C.rain}1A`} strokeWidth={4 * k} strokeLinejoin="round" />
         <Path d={isRegion ? REGION_LAND : GLOBAL_LAND} fill="url(#land)" stroke="rgba(120,210,255,0.55)" strokeWidth={1 * k} strokeLinejoin="round" />
-        {isRegion ? <Path d={REGION_LAKES} fill={C.canvas} stroke="rgba(94,200,255,0.22)" strokeWidth={0.8 * k} /> : null}
+        {isRegion ? <Path d={REGION_LAKES} fill={C.canvas} stroke={`${C.rain}38`} strokeWidth={0.8 * k} /> : null}
         {focusOn ? <>
           <Circle cx={fx} cy={fy} r={60 * ring} fill="url(#glow)" />
           {[22, 44, 66].map((r) => <Circle key={r} cx={fx} cy={fy} r={r * ring} fill="none" stroke={fc} strokeOpacity={0.18} strokeWidth={1 * k} />)}
@@ -150,22 +149,22 @@ export function RadarMap(props: {
 
 /* Controls live outside the map (header + legend rows), so they can never cover pins or labels. */
 const s = StyleSheet.create({
-  wrap: { borderRadius: 20, borderWidth: 1, borderColor: "rgba(94,200,255,0.22)", backgroundColor: "#0A1119", overflow: "hidden", marginBottom: S.lg, boxShadow: "0px 0px 30px rgba(94,200,255,0.10), 0px 10px 28px rgba(0,0,0,0.5)" },
+  wrap: { borderRadius: glass.radius, borderWidth: 1, borderColor: `${C.rain}38`, backgroundColor: C.canvas, overflow: "hidden", marginBottom: S.lg, boxShadow: `0px 0px 30px ${C.rain}1A, 0px 10px 28px rgba(0,0,0,0.5)` },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: S.sm, paddingHorizontal: S.md, paddingTop: S.md, paddingBottom: S.sm },
   map: { width: "100%", overflow: "hidden" },
   sweepHost: { position: "absolute", width: 0, height: 0 },
   pulse: { position: "absolute", left: -12, top: -12, width: 24, height: 24, borderRadius: 12, borderWidth: 2 },
   sweep: { position: "absolute", left: -130, top: -130, width: 260, height: 260 },
-  toggle: { flexDirection: "row", backgroundColor: "rgba(17,22,29,0.85)", borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: S.xxs },
+  toggle: { flexDirection: "row", backgroundColor: C.surfaceRaised, borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: S.xxs },
   toggleBtn: { minHeight: 32, justifyContent: "center", paddingHorizontal: S.md, borderRadius: 10 },
-  toggleOn: { backgroundColor: "rgba(94,200,255,0.18)", boxShadow: "0px 0px 10px rgba(94,200,255,0.35)" },
+  toggleOn: { backgroundColor: `${C.rain}2E`, boxShadow: `0px 0px 10px ${C.rain}59` },
   toggleText: { ...T.label, fontSize: 12, lineHeight: 16, color: C.muted },
   clusterHit: { position: "absolute", width: CLUSTER_HIT_DP, height: CLUSTER_HIT_DP, marginLeft: -CLUSTER_HIT_DP / 2, marginTop: -CLUSTER_HIT_DP / 2, alignItems: "center", justifyContent: "center" },
-  clusterBadge: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.2, borderColor: "rgba(94,200,255,0.7)", backgroundColor: C.canvas, alignItems: "center", justifyContent: "center" },
+  clusterBadge: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.2, borderColor: `${C.rain}B3`, backgroundColor: C.canvas, alignItems: "center", justifyContent: "center" },
   clusterBadgePressed: { backgroundColor: C.rainSoft, borderColor: C.rain },
   clusterText: { fontFamily: F.mono, fontSize: 12, lineHeight: 16, fontWeight: "700", color: C.muted, fontVariant: ["tabular-nums"] },
   back: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start", paddingHorizontal: S.sm, borderRadius: 10 },
-  backPressed: { backgroundColor: "rgba(94,200,255,0.12)" },
+  backPressed: { backgroundColor: `${C.rain}1F` },
   backText: { ...T.label, color: C.rain },
   proj: { ...T.caption, flex: 1, color: C.quiet, fontFamily: F.mono },
   legend: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: S.xs, paddingHorizontal: S.md, paddingVertical: S.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },

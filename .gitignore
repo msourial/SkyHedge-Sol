@@ -1,5 +1,9 @@
 # Dependencies
 node_modules/
+node_modules
+
+# Local Gradle home used by mobile Android builds
+mobile/.gradle-home/
 
 # Build outputs
 dist/

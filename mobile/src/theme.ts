@@ -1,49 +1,79 @@
 /**
- * "Instrument" brand system: graphite canvas, one signal colour (glacier blue = rain + primary action),
- * gold reserved for money/payout, mint only for verified state. No purple, no glow.
+ * "Storm Glass" brand system: navy canvas with graphite panes,
+ * one signal colour (glacier blue = rain + primary action), gold reserved for
+ * money/payout, amber only for soon/weather-alert status and the Devnet pill,
+ * mint only for verified/live state. Glow is reserved for status and
+ * the selected control — never ambient decoration on every surface.
+ * Visual references: docs/mockups/storm-glass-markets.png (Markets);
+ * Protect follows the same Storm Glass tokens (coverage ticket + Step 3 review).
  */
 export const C = {
-  canvas: "#0B0F14",
-  surface: "#11161D",
-  surfaceRaised: "#171D26",
-  mutedSurface: "#1E2530",
+  canvas: "#0B1220",
+  surface: "#141B28",
+  surfaceRaised: "#1C2433",
+  mutedSurface: "#243044",
   ink: "#F2F5F8",
   muted: "#A3AEBC",
   quiet: "#7D8896",
-  border: "#252D38",
-  rain: "#5EC8FF",
+  border: "#2A3444",
+  rain: "#7CC4FF",
   rainSoft: "#10283A",
   mint: "#34D399",
   mintSoft: "#0F2E24",
-  violet: "#5EC8FF",
+  violet: "#7CC4FF",
   violetSoft: "#10283A",
-  amber: "#F5B841",
+  /** Soon / weather-alert status and Devnet pill only — not money. */
+  amber: "#FFB020",
   amberSoft: "#2E2414",
   coral: "#F2787D",
   redSoft: "#3B222D",
   white: "#F2F5F8",
   actionText: "#04131F",
   // Existing screen names keep the migration small while all values resolve to semantic tokens.
-  blue: "#5EC8FF",
+  blue: "#7CC4FF",
   blueSoft: "#10283A",
-  green: "#5EC8FF",
+  green: "#7CC4FF",
   greenSoft: "#10283A",
   purple: "#A3AEBC",
-  purpleSoft: "#1E2530",
+  purpleSoft: "#243044",
   red: "#F2787D",
-  field: "#171D26",
+  field: "#1C2433",
   fieldText: "#F2F5F8",
+  /** Money / payout figures — distinct from alert amber. */
   payout: "#F5B841",
   payoutSoft: "#2E2414",
 } as const;
+
+/** Frosted-pane recipes used by GlassCard, Markets search, and selected chips. */
+export const glass = {
+  fill: "rgba(28,36,51,0.92)",
+  fillRaised: "rgba(28,36,51,0.98)",
+  fillField: "rgba(28,36,51,0.72)",
+  border: "rgba(124,196,255,0.16)",
+  borderStrong: "rgba(124,196,255,0.28)",
+  edge: "rgba(190,225,255,0.35)",
+  /** Gradient wash when native blur is unavailable. */
+  sheen: ["rgba(40,52,68,0.70)", "rgba(28,36,51,0.62)", "rgba(11,18,32,0.70)"] as const,
+  /** Lighter wash layered over native BlurView. */
+  sheenBlur: ["rgba(40,52,68,0.45)", "rgba(28,36,51,0.35)", "rgba(11,18,32,0.50)"] as const,
+  shadow: "0px 10px 28px rgba(0,0,0,0.45)",
+  fieldShadow: "0px 8px 24px rgba(0,0,0,0.40)",
+  radius: 24,
+} as const;
+
+/** Soft rim light for live/soon status — concept markets stay flat. */
+export const statusGlow = (color: string, concept = false) => (concept ? "none" : `0px 0px 12px ${color}40`);
+
+/** Accent rim for a focal glass card (hero market, live window). */
+export const accentGlow = (color: string) => `0px 0px 26px ${color}22, 0px 10px 28px rgba(0,0,0,0.45)`;
 
 export const F = {
   body: "Inter_400Regular",
   bodyMedium: "Inter_500Medium",
   bodySemi: "Inter_600SemiBold",
   bodyBold: "Inter_700Bold",
-  heading: "Inter_600SemiBold",
-  headingBold: "Inter_700Bold",
+  heading: "InterTight_600SemiBold",
+  headingBold: "InterTight_700Bold",
   mono: "monospace",
 } as const;
 
@@ -83,24 +113,24 @@ export const type = {
   unit: { fontFamily: F.mono, fontSize: 13, lineHeight: 18, letterSpacing: 0.2 },
 } as const;
 
-/** Motion tokens. Calm, short, decelerating; springs only for direct manipulation (chips, presses). */
+/** Motion tokens. Calm, decelerating; Markets cards rise ~0.7s with 90ms stagger. */
 export const motion = {
   fast: 140,
   base: 240,
-  slow: 420,
+  slow: 700,
   progress: 900,
-  stagger: 60,
-  enterOffset: 10,
+  stagger: 90,
+  enterOffset: 22,
   pressScale: 0.97,
   spring: { damping: 18, stiffness: 260, mass: 0.9 },
 } as const;
 
-export const radius = { sm: 6, md: 10, lg: 14, pill: 999 } as const;
+export const radius = { sm: 6, md: 10, lg: 14, glass: 24, pill: 999 } as const;
 
-/** Elevation is expressed by surface step + hairline, not glow. */
+/** Opaque elevation for non-glass surfaces; Storm Glass panes use `glass` instead. */
 export const elevation = {
   flat: { backgroundColor: C.canvas },
-  card: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1 },
+  card: { backgroundColor: C.surfaceRaised, borderColor: C.border, borderWidth: 1 },
   raised: { backgroundColor: C.surfaceRaised, borderColor: C.border, borderWidth: 1 },
 } as const;
 

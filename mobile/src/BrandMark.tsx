@@ -12,5 +12,5 @@ export function BrandMark({ size = 34, tile = true }: { size?: number; tile?: bo
     <Circle cx={512} cy={225} r={24} fill="#F5B342" />
   </Svg>;
   if (!tile) return glyph;
-  return <View accessibilityLabel="SkyHedge" style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: "#12151A", borderWidth: 1, borderColor: "rgba(123,195,240,0.35)", alignItems: "center", justifyContent: "center", boxShadow: "0px 0px 14px rgba(94,200,255,0.35)" }}>{glyph}</View>;
+  return <View accessibilityLabel="SkyHedge" style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: "#12151A", borderWidth: 1, borderColor: "rgba(124,196,255,0.35)", alignItems: "center", justifyContent: "center", boxShadow: "0px 0px 14px rgba(124,196,255,0.35)" }}>{glyph}</View>;
 }

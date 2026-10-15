@@ -41,7 +41,7 @@ export function GradientMeter({ fraction, tick, height = 6 }: { fraction: number
   const f = fraction == null ? 0 : Math.max(0, Math.min(1, fraction));
   return <View style={[j.meter, { height, borderRadius: height / 2 }]}>
     <Animated.View style={{ width: `${f * 100}%`, height: "100%", transformOrigin: "left", transform: [{ scaleX: v }] }}>
-      <LinearGradient colors={["#5EC8FF", "#9CCB9A", "#F5B841"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[StyleSheet.absoluteFill, { borderRadius: height / 2 }]} />
+      <LinearGradient colors={[C.rain, "#9CCB9A", C.payout]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[StyleSheet.absoluteFill, { borderRadius: height / 2 }]} />
     </Animated.View>
     {tick != null ? <View style={[j.tick, { left: `${Math.max(0, Math.min(1, tick)) * 100}%` }]} /> : null}
   </View>;
@@ -51,7 +51,7 @@ export function GradientMeter({ fraction, tick, height = 6 }: { fraction: number
 export function ProgressSteps({ steps, done }: { steps: string[]; done: number }) {
   return <View style={j.steps} accessible accessibilityLabel={`${done} of ${steps.length} steps complete`}>
     {steps.map((s, i) => <View key={s} style={{ flex: 1 }}>
-      {i < done ? <LinearGradient colors={["#5EC8FF", "#8FDDFF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={j.stepBar} /> : <View style={[j.stepBar, { backgroundColor: C.border }]} />}
+      {i < done ? <LinearGradient colors={[C.rain, "#8FDDFF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={j.stepBar} /> : <View style={[j.stepBar, { backgroundColor: C.border }]} />}
       <Text style={[j.stepLabel, i < done && { color: C.ink }]}>{s}</Text>
     </View>)}
   </View>;
@@ -75,7 +75,7 @@ export function CoverageHero(props: { live: boolean; stateLabel: string; windowL
       <View style={{ flex: 1 }}>
         <Text style={j.overline}>Observed so far</Text>
         <View style={j.baseline}><CountUp value={props.observedMm} style={j.hero} /><Text style={j.unit}> mm</Text></View>
-        {props.triggerMm != null ? <Text style={j.mono}><Text style={{ color: C.amber }}>■ </Text>Trigger {props.triggerSymbol} {props.triggerMm} mm{toGo != null ? <Text style={{ color: C.rain }}> · {toGo.toFixed(1)} mm to go</Text> : null}</Text> : null}
+        {props.triggerMm != null ? <Text style={j.mono}><Text style={{ color: C.payout }}>■ </Text>Trigger {props.triggerSymbol} {props.triggerMm} mm{toGo != null ? <Text style={{ color: C.rain }}> · {toGo.toFixed(1)} mm to go</Text> : null}</Text> : null}
         <View style={{ marginVertical: 10 }}><GradientMeter fraction={props.observedMm != null && props.triggerMm ? props.observedMm / props.triggerMm : null} /></View>
         <Text style={j.caption}>{props.observedMm == null ? `Not reported yet · ${props.source}` : `${props.updated ? `Through ${props.updated} · ` : ""}${props.source}`}</Text>
       </View>
@@ -161,7 +161,7 @@ export function ReceiptView(props: { demo?: boolean; title: string; badge: strin
 const j = StyleSheet.create({
   perilRow: { flexDirection: "row", gap: 8, marginBottom: 6 },
   peril: { flex: 1, minHeight: 64, borderRadius: 16, borderWidth: 1, borderColor: "rgba(160,205,235,0.16)", backgroundColor: "rgba(24,32,42,0.6)", alignItems: "center", justifyContent: "center", gap: 3 },
-  perilOn: { borderColor: C.rain, backgroundColor: "rgba(94,200,255,0.14)", boxShadow: "0px 0px 16px rgba(94,200,255,0.35)" },
+  perilOn: { borderColor: C.rain, backgroundColor: C.rain + "24", boxShadow: `0px 0px 16px ${C.rain}59` },
   perilOff: { opacity: 0.6, borderStyle: "dashed" },
   perilText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 13 },
   perilSoon: { color: C.amber, fontFamily: F.mono, fontSize: 12, lineHeight: 16, letterSpacing: 0.6 },
@@ -169,15 +169,15 @@ const j = StyleSheet.create({
   topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44, marginBottom: 6 },
   back: { minWidth: MIN_TOUCH, minHeight: MIN_TOUCH, justifyContent: "center", marginLeft: -8, paddingLeft: 4 },
   brand: { flexDirection: "row", alignItems: "center", gap: 10 },
-  brandMark: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center", boxShadow: "0px 0px 14px rgba(94,200,255,0.45)" },
+  brandMark: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center", boxShadow: `0px 0px 14px ${C.rain}73` },
   brandText: { color: C.ink, fontFamily: F.headingBold, fontSize: 19 },
   eyebrowCaps: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 12, letterSpacing: 1.4, textTransform: "uppercase" },
   eyebrow: { color: C.muted, fontFamily: F.bodyMedium, fontSize: 13, marginBottom: 2 },
   title: { color: C.ink, fontFamily: F.headingBold, fontSize: 32, lineHeight: 38, letterSpacing: -1 },
   lead: { color: C.muted, fontFamily: F.body, fontSize: 15, lineHeight: 21, marginTop: 6 },
-  devnet: { borderWidth: 1, borderColor: "rgba(245,184,65,0.55)", backgroundColor: "rgba(245,184,65,0.12)", borderRadius: 14, paddingHorizontal: 11, paddingVertical: 5, boxShadow: "0px 0px 12px rgba(245,184,65,0.18)" },
+  devnet: { borderWidth: 1, borderColor: C.amber + "8C", backgroundColor: C.amberSoft, borderRadius: 14, paddingHorizontal: 11, paddingVertical: 5, boxShadow: `0px 0px 12px ${C.amber}2E` },
   devnetText: { color: C.amber, fontFamily: F.bodyBold, fontSize: 12 },
-  demo: { borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, backgroundColor: "rgba(245,184,65,0.10)", borderRadius: 14, padding: 12, marginBottom: 14 },
+  demo: { borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, backgroundColor: C.amberSoft, borderRadius: 14, padding: 12, marginBottom: 14 },
   demoTitle: { color: C.amber, fontFamily: F.mono, fontWeight: "700", fontSize: 13, letterSpacing: 1.5 },
   demoBody: { color: C.muted, fontFamily: F.body, fontSize: 12, lineHeight: 17, marginTop: 4 },
   meter: { width: "100%", backgroundColor: "rgba(160,200,230,0.12)", overflow: "visible" },
@@ -205,9 +205,9 @@ const j = StyleSheet.create({
   factKMono: { color: C.quiet, fontFamily: F.mono, fontSize: 13, letterSpacing: 0.8, textTransform: "uppercase" },
   factVMono: { fontFamily: F.mono, fontSize: 14, fontVariant: TAB },
   rRow: { minHeight: 30, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  triggerFig: { color: C.amber, fontFamily: F.mono, fontWeight: "700", fontSize: 28, textShadowColor: "rgba(245,184,65,0.45)", textShadowRadius: 12 },
+  triggerFig: { color: C.payout, fontFamily: F.mono, fontWeight: "700", fontSize: 28, textShadowColor: C.payout + "73", textShadowRadius: 12 },
   payout: { color: C.mint, fontFamily: F.mono, fontWeight: "700", fontSize: 72, lineHeight: 84, letterSpacing: -2, textShadowColor: "rgba(52,211,153,0.6)", textShadowRadius: 22, fontVariant: TAB },
-  walletChip: { flexDirection: "row", alignItems: "center", marginTop: 12, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: "rgba(94,200,255,0.10)" },
+  walletChip: { flexDirection: "row", alignItems: "center", marginTop: 12, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: C.rainSoft },
   check: { width: 62, height: 62, borderRadius: 31, backgroundColor: "rgba(52,211,153,0.14)", borderWidth: 1, borderColor: "rgba(52,211,153,0.6)", alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 10, boxShadow: "0px 0px 24px rgba(52,211,153,0.35)" },
   symbol: { color: C.ink, fontFamily: F.mono, fontWeight: "700", fontSize: 15, letterSpacing: 1 },
   receiptBig: { color: C.mint, fontFamily: F.mono, fontWeight: "700", fontSize: 64, lineHeight: 76, letterSpacing: -2, marginTop: 6, textShadowColor: "rgba(52,211,153,0.55)", textShadowRadius: 20, fontVariant: TAB },
