@@ -6,10 +6,11 @@
 
 | | |
 |---|---|
+| Live site | **https://skyhedge.app** (Vercel production · Solana Devnet) |
 | Hackathon | Encode Club Solana Hackathon 2026 · readiness checklist: [docs/encode-readiness.md](docs/encode-readiness.md) |
 | Tracks | **Best Consumer App on Solana** · **Best Use of x402 on Solana** (x402 is *planned / under evaluation*, not integrated; see below) |
 | Repo | [msourial/SkyHedge-Sol @ seeker-revamp](https://github.com/msourial/SkyHedge-Sol/tree/seeker-revamp) |
-| APK | See [Releases](https://github.com/msourial/SkyHedge-Sol/releases) (Devnet build; SHA-256 in the release notes) |
+| APK | See [Releases](https://github.com/msourial/SkyHedge-Sol/releases) (Devnet build; SHA-256 in the release notes). Local release path: `mobile/android/app/build/outputs/apk/release/app-release.apk` |
 | Demo | `<<DEMO_VIDEO_URL>>` · script: [docs/demo-script.md](docs/demo-script.md) |
 | Pitch deck | `<<PITCH_DECK_URL>>` (previous deck: [docs/clock-in-pitch.pdf](docs/clock-in-pitch.pdf)) |
 | Program (Devnet) | `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` |
@@ -24,23 +25,24 @@
 
 **What it is.** SkyHedge sells parametric weather protection: a fixed payout that triggers automatically when public weather data crosses a pre-set threshold (for example, at least 50 mm of rain in Des Moines over a 7-day window). There is no claims process; the data decides.
 
+**Quick start.**
+1. Open **https://skyhedge.app** (web companion) or install the Android APK on a Seeker / Android phone.
+2. Install Phantom → Settings → Developer Settings → **Testnet Mode** → Solana **Devnet**. You need Devnet SOL (fees) and SKYT (premiums).
+3. In the app: **Markets** → pick a city → **Protect** → choose coverage → **Review in wallet** → approve in Phantom.
+4. Without SKYT you can still browse markets, quotes, and live NOAA data. Full shot list: [docs/demo-script.md](docs/demo-script.md).
+
 **How Solana powers it.**
 - **Anchor program** (`anchor/programs/skyhedge_protection`) holds every rule: market creation, pricing inputs, purchases, settlement, payouts and refunds.
 - **Per-market vaults:** each city market has its own fully collateralized, PDA-owned token vault. A purchase is rejected unless the vault covers every reserved payout.
 - **SKYT** is a valueless six-decimal Devnet test token used as collateral; no real money is involved.
 - **Mobile Wallet Adapter + Phantom:** the server builds the transaction unsigned and the user approves it in Phantom on the phone. Nothing is signed without the user.
-- **Settlement:** the final NOAA observation is normalized, hashed and committed on-chain; if the trigger is hit the buyer claims the payout, and if data is unavailable premiums are refundable.
-
-**How to test.**
-1. Install the Android APK from [Releases](https://github.com/msourial/SkyHedge-Sol/releases) on a Seeker or any Android phone.
-2. Install Phantom and switch it to **Devnet**. You need a little Devnet SOL for fees and some SKYT test tokens to buy protection.
-3. Open SkyHedge → **Markets** → pick a city → **Protect** → choose coverage → **Review in wallet** and approve in Phantom.
-4. The app shows the finalized position with an Explorer link. Without SKYT you can still browse markets, quotes and live NOAA data.
+- **Settlement:** the final NOAA observation is normalized, hashed and committed on-chain; if the trigger is hit the buyer claims the payout, and if data is unavailable premiums are refundable. Permissionless `settle_market` / `mark_data_unavailable` after gates are in the `seeker-revamp` program source (Devnet upgrade may still be pending).
 
 **Current live status (Devnet).**
-- **Des Moines, Iowa:** live market; its observation window runs until **Oct 18, 2026, 8:00 PM ET**. Its sales window has closed, so new purchases need a new window.
-- **Chicago, New York and Miami:** ready to open; each needs an on-chain market creation and funding by the admin wallet.
-- **Toronto:** opens soon (Environment Canada adapter is in the codebase).
+- **Website:** https://skyhedge.app — Storm Glass UI; MapTiler key configured in Vercel production.
+- **Des Moines, Iowa:** Devnet pilot for cumulative rainfall. Sales and observation windows move with each seeded market — check the live ticket for the active window; do not assume a fixed calendar date from this README.
+- **Chicago, New York and Miami:** ready to open; each needs on-chain market creation and funding by the admin wallet.
+- **Toronto:** opens soon (Environment Canada adapter is in the codebase). Wind gust and snowfall stay research-only in the UI.
 
 **x402 (Best Use of x402 track).** x402 is **not integrated yet**. It is planned and under evaluation, for example for pay-per-request access to premium weather feeds. Today the app only checks a free WeatherXM health endpoint, and x402-paid data is never used for settlement.
 
@@ -153,7 +155,7 @@ npm run test:server    # server tests
 cd mobile
 npm install
 npm run check          # typecheck (mobile)
-npm run test:mobile    # mobile tests (67 passing)
+npm run test:mobile    # mobile tests (see Tests below)
 EXPO_PUBLIC_API_BASE_URL=https://skyhedge.app npx expo prebuild --platform android
 cd android && EXPO_PUBLIC_API_BASE_URL=https://skyhedge.app ./gradlew assembleRelease
 # → android/app/build/outputs/apk/release/app-release.apk
@@ -181,9 +183,10 @@ docs/      demo script, pitch deck, submission draft, plans, takeover log
 
 ## Tests
 
-- `cd mobile && npm run test:mobile`: **67 passing** (wallet auth and send, ticket, chain fallback, network resilience, option copy, and more)
+- `cd mobile && npm run test:mobile`: mobile suites (wallet auth/send, ticket, chain fallback, network resilience, Storm Glass tokens, and more)
 - `npm run test:server`: server suite (quote engine, NOAA/ECCC providers, settlement)
-- `npm run check`: typecheck clean for both root and mobile
+- `npm run test:ui`: Playwright UI reliability (install browsers once with `npx playwright install`)
+- `npm run check`: typecheck for root; `cd mobile && npm run check` for the app
 
 ## Status & honesty
 
