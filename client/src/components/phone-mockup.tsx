@@ -47,7 +47,7 @@ export function PhoneMockup({
             height={844}
             loading="eager"
             decoding="async"
-            fetchPriority={screen === "markets" ? "high" : "auto"}
+            fetchPriority={screen === "protect" ? "high" : "auto"}
             draggable={false}
           />
         </div>

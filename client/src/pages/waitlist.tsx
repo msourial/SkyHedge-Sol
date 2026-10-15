@@ -251,7 +251,7 @@ export default function WaitlistPage() {
             </div>
           </div>
           <div ref={heroPhoneRef} className="wl-hero__phone wl-hero__phone--enter">
-            <PhoneMockup screen="markets" glow parallax float />
+            <PhoneMockup screen="protect" glow parallax float />
           </div>
         </section>
 

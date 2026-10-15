@@ -345,7 +345,7 @@
   .wl-nav__cta { grid-column: 2; padding: 0 .9rem; font-size: .85rem; max-width: 100%; }
 }
 
-.wl-hero { margin: 0 auto; max-width: 72rem; display: grid; gap: 2.75rem; align-items: center; padding: 3rem 1.25rem 4.25rem; }
+.wl-hero { margin: 0 auto; max-width: 72rem; display: grid; gap: 2.75rem; align-items: center; padding: 3rem 1.25rem 2.25rem; }
 .wl-hero__title { margin: 0; font-family: var(--font-display); font-size: clamp(2.75rem, 7vw, 5.25rem); line-height: 1.02; letter-spacing: -0.02em; font-weight: 700; max-width: 14ch; text-wrap: balance; }
 .wl-hero__lead { margin: 1.4rem 0 0; max-width: 30rem; color: var(--wl-body); font-size: clamp(1.05rem, 2.1vw, 1.2rem); line-height: 1.55; text-wrap: pretty; }
 .wl-hero__form { margin-top: 2rem; max-width: 28rem; scroll-margin-top: 5.5rem; }
@@ -362,7 +362,7 @@
   to { opacity: 1; transform: none; }
 }
 @media (min-width: 980px) {
-  .wl-hero { grid-template-columns: minmax(0, 1fr) 375px; gap: 2.75rem; padding: 4.75rem 1.5rem 6.25rem; align-items: center; }
+  .wl-hero { grid-template-columns: minmax(0, 1fr) 375px; gap: 2.75rem; padding: 4rem 1.5rem 2.5rem; align-items: center; }
   .wl-hero__phone { width: 375px; justify-self: end; }
 }
 
@@ -397,11 +397,11 @@
 .wl-cta-secondary:hover { border-color: var(--identity); color: var(--identity); }
 
 /* How it works — sticky phone (desktop) / stacked phones (mobile) */
-.wl-section--how { padding-bottom: 2rem; }
-.wl-how { margin-top: 2.75rem; display: grid; gap: 2rem; }
+.wl-section--how { padding-top: 2.5rem; padding-bottom: 1.5rem; }
+.wl-how { margin-top: 1.5rem; display: grid; gap: 1.5rem; }
 .wl-how__phone { display: none; }
-.wl-how__steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 2.25rem; }
-.wl-how__step { display: grid; gap: 1.5rem; align-items: center; padding: 1.35rem 0; border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+.wl-how__steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.75rem; }
+.wl-how__step { display: grid; gap: 1.25rem; align-items: center; padding: 1.1rem 0; border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
 .wl-how__step:first-child { border-top: 0; padding-top: 0; }
 .wl-how__num { display: inline-block; margin-bottom: .55rem; color: var(--identity); font-family: var(--font-display); font-size: 1rem; font-weight: 700; letter-spacing: .04em; }
 .wl-how__copy h3 { margin: 0; font-family: var(--font-display); font-size: clamp(1.55rem, 3.4vw, 2rem); font-weight: 700; letter-spacing: -.02em; }
@@ -409,14 +409,16 @@
 .wl-how__mobile-phone { justify-self: center; width: min(100%, 280px); }
 .wl-how__mobile-phone .sky-phone { width: 100%; }
 @media (min-width: 960px) {
-  .wl-how { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 3rem; align-items: start; }
+  .wl-how { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 2rem; align-items: start; }
   .wl-how__phone { display: block; }
-  .wl-how__phone-sticky { position: sticky; top: 6.25rem; }
+  .wl-how__phone-sticky { position: sticky; top: 5.5rem; }
   .wl-how__phone-sticky .sky-phone { width: min(100%, 360px); }
   .wl-how__mobile-phone { display: none; }
   .wl-how__steps { gap: 0; }
-  .wl-how__step { min-height: 42vh; display: flex; align-items: center; padding: 1.25rem 0; border-top: 0; opacity: .58; transition: opacity .35s ease; }
-  .wl-how__step:first-child { min-height: 36vh; padding-top: .25rem; }
+  /* Just enough height for sticky screen swaps — not viewport-tall empty bands */
+  .wl-how__step { min-height: 32vh; display: flex; align-items: center; padding: 1.35rem 0; border-top: 0; opacity: .58; transition: opacity .35s ease; }
+  .wl-how__step:first-child { min-height: 28vh; padding-top: .35rem; }
+  .wl-how__step:last-child { padding-bottom: .75rem; }
   .wl-how__step--active { opacity: 1; }
   .wl-how__copy h3 { font-size: clamp(1.75rem, 3vw, 2.15rem); }
   .wl-how__copy p { font-size: 1.14rem; }

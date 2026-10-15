@@ -1,5 +1,11 @@
 # Landing pass — 2026-10-15
 
+## Hero uniqueness + spacing (follow-up)
+
+- Hero phone uses Protect ticket (`protect.png`); How-it-works step 1 keeps Markets — no duplicate Markets shot.
+- Tightened hero bottom padding, `#how` section padding, and sticky step `min-height` (42/36vh → 32/28vh).
+- Shots: `fix-hero-desktop-1440.png`, `fix-hero-mobile-390.png`, `fix-how-desktop-1440.png`, `fix-hero-how-junction-1440.png`.
+
 ## Phone + motion polish (follow-up)
 
 Skills: **frontend-design**, **react-bits** (restraint — CSS motion only), **21st-ui-review**.
