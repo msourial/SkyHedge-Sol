@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Animated, Easing, Linking, Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { C, F, MIN_TOUCH } from "./theme";
+import { C, F, glass, MIN_TOUCH, space as S, statusGlow, type as T } from "./theme";
 import { ActionButton, AppIcon, Text } from "./ui";
 import { useReducedMotion } from "./liquid-glass";
 import { BrandMark } from "./BrandMark";
@@ -58,9 +58,10 @@ export function ProgressSteps({ steps, done }: { steps: string[]; done: number }
 }
 
 export function LivePill({ label, tone = "live" }: { label: string; tone?: "live" | "warn" | "gold" }) {
-  const col = tone === "live" ? C.mint : C.amber;
-  return <View style={[j.livePill, { borderColor: col + "77", backgroundColor: col + "1F", boxShadow: `0px 0px 12px ${col}40` }]}>
-    <View style={[j.liveDot, { backgroundColor: col, boxShadow: `0px 0px 6px ${col}` }]} />
+  const col = tone === "live" ? C.mint : tone === "gold" ? C.payout : C.amber;
+  const soft = tone === "live" ? C.mintSoft : tone === "gold" ? C.payoutSoft : C.amberSoft;
+  return <View style={[j.livePill, { borderColor: col + "77", backgroundColor: soft, boxShadow: statusGlow(col) }]}>
+    <View style={[j.liveDot, { backgroundColor: col }]} />
     <Text style={[j.livePillText, { color: col }]}>{label}</Text>
   </View>;
 }
@@ -68,15 +69,15 @@ export function LivePill({ label, tone = "live" }: { label: string; tone?: "live
 /** Coverage-detail hero: gauge + big observed figure + trigger and gradient meter. */
 export function CoverageHero(props: { live: boolean; stateLabel: string; windowLabel: string | null; observedMm: number | null; triggerMm: number | null; triggerSymbol: string; source: string; updated?: string | null }) {
   const toGo = props.observedMm != null && props.triggerMm != null ? Math.max(0, props.triggerMm - props.observedMm) : null;
-  return <GlassCard accent={props.live ? C.rain : undefined}>
-    <View style={j.rowCenter}><LivePill label={props.stateLabel.toUpperCase()} tone={props.live ? "live" : "warn"} />{props.windowLabel ? <Text style={j.caption}>  Window {props.windowLabel}</Text> : null}</View>
-    <View style={{ flexDirection: "row", gap: 18, marginTop: 16, alignItems: "flex-end" }}>
+  return <GlassCard accent={props.live ? C.mint : undefined}>
+    <View style={j.rowCenter}><LivePill label={props.stateLabel} tone={props.live ? "live" : "warn"} />{props.windowLabel ? <Text style={j.caption}>  Window {props.windowLabel}</Text> : null}</View>
+    <View style={{ flexDirection: "row", gap: S.lg + 2, marginTop: S.lg, alignItems: "flex-end" }}>
       <RainGauge observedMm={props.observedMm} triggerMm={props.triggerMm} height={170} />
       <View style={{ flex: 1 }}>
         <Text style={j.overline}>Observed so far</Text>
         <View style={j.baseline}><CountUp value={props.observedMm} style={j.hero} /><Text style={j.unit}> mm</Text></View>
         {props.triggerMm != null ? <Text style={j.mono}><Text style={{ color: C.payout }}>■ </Text>Trigger {props.triggerSymbol} {props.triggerMm} mm{toGo != null ? <Text style={{ color: C.rain }}> · {toGo.toFixed(1)} mm to go</Text> : null}</Text> : null}
-        <View style={{ marginVertical: 10 }}><GradientMeter fraction={props.observedMm != null && props.triggerMm ? props.observedMm / props.triggerMm : null} /></View>
+        <View style={{ marginVertical: S.md - 2 }}><GradientMeter fraction={props.observedMm != null && props.triggerMm ? props.observedMm / props.triggerMm : null} /></View>
         <Text style={j.caption}>{props.observedMm == null ? `Not reported yet · ${props.source}` : `${props.updated ? `Through ${props.updated} · ` : ""}${props.source}`}</Text>
       </View>
     </View>
@@ -84,16 +85,16 @@ export function CoverageHero(props: { live: boolean; stateLabel: string; windowL
 }
 
 export function StatPair(props: { leftLabel: string; left: string; leftUnit: string; rightLabel: string; right: string; rightUnit: string }) {
-  return <View style={{ flexDirection: "row", gap: 12 }}>
+  return <View style={{ flexDirection: "row", gap: S.md }}>
     <GlassCard style={{ flex: 1 }}><Text style={j.overline}>{props.leftLabel}</Text><Text style={j.stat}>{props.left}</Text><Text style={[j.monoSm, { color: C.rain }]}>{props.leftUnit}</Text></GlassCard>
     <GlassCard style={{ flex: 1 }}><Text style={j.overline}>{props.rightLabel}</Text><Text style={j.stat}>{props.right}</Text><Text style={j.caption}>{props.rightUnit}</Text></GlassCard>
   </View>;
 }
 
 export function FactRows({ rows, mono = false }: { rows: Array<{ k: string; v: string; tone?: "gold" | "mint" | "rain"; onPress?: () => void }>; mono?: boolean }) {
-  return <GlassCard style={{ paddingVertical: 4 }}>
+  return <GlassCard style={{ paddingVertical: S.xs }}>
     {rows.map((r, i) => {
-      const col = r.tone === "gold" ? C.amber : r.tone === "mint" ? C.mint : r.tone === "rain" ? C.rain : C.ink;
+      const col = r.tone === "gold" ? C.payout : r.tone === "mint" ? C.mint : r.tone === "rain" ? C.rain : C.ink;
       const V = <Text style={[mono ? j.factVMono : j.factV, { color: col }]}>{r.v}</Text>;
       return <View key={r.k} style={[j.fact, i > 0 && j.factBorder]}>
         <Text style={mono ? j.factKMono : j.factK}>{r.k}</Text>
@@ -110,16 +111,16 @@ export function CollectPayoutView(props: { demo?: boolean; observedMm: number | 
     <ScreenTop onBack={props.onBack} title="Collect payout" lead="No claims form. Verified station data hit your trigger, so the payout is ready." />
     {props.demo ? <DemoBanner /> : null}
     <ProgressSteps steps={["Trigger hit", "Verified", "Collect"]} done={3} />
-    <GlassCard accent={C.amber}>
-      <LivePill label="⚡ TRIGGER HIT" tone="warn" />
-      <View style={[j.rowBetween, { marginTop: 14, alignItems: "flex-end" }]}>
+    <GlassCard accent={C.mint}>
+      <LivePill label="Trigger hit" tone="live" />
+      <View style={[j.rowBetween, { marginTop: S.md, alignItems: "flex-end" }]}>
         <View><Text style={j.overline}>Observed</Text><View style={j.baseline}><CountUp value={props.observedMm} style={j.hero} /><Text style={j.unit}> mm</Text></View></View>
         <View style={{ alignItems: "flex-end" }}><Text style={j.overline}>Trigger</Text><Text style={j.triggerFig}>{props.triggerMm != null ? `${props.triggerMm} mm` : "—"}</Text></View>
       </View>
-      <View style={{ marginVertical: 12 }}><GradientMeter fraction={props.observedMm != null ? props.observedMm / max : null} tick={props.triggerMm != null ? props.triggerMm / max : null} height={8} /></View>
+      <View style={{ marginVertical: S.md }}><GradientMeter fraction={props.observedMm != null ? props.observedMm / max : null} tick={props.triggerMm != null ? props.triggerMm / max : null} height={8} /></View>
       <Text style={j.caption}>{props.source}{props.windowLabel ? ` · ${props.windowLabel}` : ""}</Text>
     </GlassCard>
-    <GlassCard style={{ alignItems: "center", paddingVertical: 24 }}>
+    <GlassCard style={{ alignItems: "center", paddingVertical: S.xl }}>
       <Text style={j.overline}>Payout</Text>
       <Text style={j.payout}>{props.amountLabel ? `+${props.amountLabel}` : "—"}</Text>
       <Text style={[j.overline, { fontSize: 13 }]}>SKYT</Text>
@@ -144,14 +145,14 @@ export function ReceiptView(props: { demo?: boolean; title: string; badge: strin
       {props.caption ? <Text style={[j.monoSm, { color: C.mint }]}>{props.caption}</Text> : null}
       <View style={{ height: 1, backgroundColor: C.border, marginVertical: 14 }} />
       {props.rows.map((r) => {
-        const col = r.tone === "gold" ? C.amber : r.tone === "mint" ? C.mint : r.tone === "rain" ? C.rain : C.ink;
+        const col = r.tone === "gold" ? C.payout : r.tone === "mint" ? C.mint : r.tone === "rain" ? C.rain : C.ink;
         const V = <Text style={[j.factVMono, { color: col }]}>{r.v}</Text>;
         return <View key={r.k} style={j.rRow}><Text style={j.factKMono}>{r.k}</Text>{r.onPress ? <Pressable accessibilityRole="link" onPress={r.onPress} hitSlop={8}>{V}</Pressable> : V}</View>;
       })}
     </GlassCard>
     <Ticker items={props.ticker} />
-    <View style={{ marginTop: 4 }}><ActionButton label="Protect again" onPress={props.onAgain} disabled={props.demo} /></View>
-    <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
+    <View style={{ marginTop: S.xs }}><ActionButton label="Protect again" onPress={props.onAgain} disabled={props.demo} /></View>
+    <View style={{ flexDirection: "row", gap: S.md, marginTop: S.md }}>
       <Pressable accessibilityRole="button" onPress={props.onMarkets} style={j.ghost}><Text style={j.ghostText}>Back to markets</Text></Pressable>
       <Pressable accessibilityRole="link" disabled={!props.signature} onPress={() => { if (props.signature) void Linking.openURL(`https://explorer.solana.com/tx/${encodeURIComponent(props.signature)}?cluster=devnet`); }} style={[j.ghost, !props.signature && { opacity: 0.5 }]}><Text style={[j.ghostText, { color: C.rain }]}>View on explorer ↗</Text></Pressable>
     </View>
@@ -159,60 +160,60 @@ export function ReceiptView(props: { demo?: boolean; title: string; badge: strin
 }
 
 const j = StyleSheet.create({
-  perilRow: { flexDirection: "row", gap: 8, marginBottom: 6 },
-  peril: { flex: 1, minHeight: 64, borderRadius: 16, borderWidth: 1, borderColor: "rgba(160,205,235,0.16)", backgroundColor: "rgba(24,32,42,0.6)", alignItems: "center", justifyContent: "center", gap: 3 },
-  perilOn: { borderColor: C.rain, backgroundColor: C.rain + "24", boxShadow: `0px 0px 16px ${C.rain}59` },
-  perilOff: { opacity: 0.6, borderStyle: "dashed" },
-  perilText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 13 },
-  perilSoon: { color: C.amber, fontFamily: F.mono, fontSize: 12, lineHeight: 16, letterSpacing: 0.6 },
-  top: { marginBottom: 14 },
-  topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44, marginBottom: 6 },
+  perilRow: { flexDirection: "row", gap: S.sm, marginBottom: S.xs },
+  peril: { flex: 1, minHeight: 64, borderRadius: 16, borderWidth: 1, borderColor: glass.border, backgroundColor: C.surfaceRaised, alignItems: "center", justifyContent: "center", gap: 3 },
+  perilOn: { borderColor: C.rain, backgroundColor: C.rainSoft, boxShadow: `0px 0px 16px ${C.rain}59` },
+  perilOff: { opacity: 0.9, borderColor: C.border, backgroundColor: C.surface },
+  perilText: { ...T.label, color: C.ink },
+  perilSoon: { ...T.overline, color: C.amber, fontSize: 10, lineHeight: 12, letterSpacing: 0.6 },
+  top: { marginBottom: S.md },
+  topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: MIN_TOUCH - 4, marginBottom: S.xs },
   back: { minWidth: MIN_TOUCH, minHeight: MIN_TOUCH, justifyContent: "center", marginLeft: -8, paddingLeft: 4 },
   brand: { flexDirection: "row", alignItems: "center", gap: 10 },
   brandMark: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center", boxShadow: `0px 0px 14px ${C.rain}73` },
   brandText: { color: C.ink, fontFamily: F.headingBold, fontSize: 19 },
-  eyebrowCaps: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 12, letterSpacing: 1.4, textTransform: "uppercase" },
-  eyebrow: { color: C.muted, fontFamily: F.bodyMedium, fontSize: 13, marginBottom: 2 },
-  title: { color: C.ink, fontFamily: F.headingBold, fontSize: 32, lineHeight: 38, letterSpacing: -1 },
-  lead: { color: C.muted, fontFamily: F.body, fontSize: 15, lineHeight: 21, marginTop: 6 },
-  devnet: { borderWidth: 1, borderColor: C.amber + "8C", backgroundColor: C.amberSoft, borderRadius: 14, paddingHorizontal: 11, paddingVertical: 5, boxShadow: `0px 0px 12px ${C.amber}2E` },
-  devnetText: { color: C.amber, fontFamily: F.bodyBold, fontSize: 12 },
-  demo: { borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, backgroundColor: C.amberSoft, borderRadius: 14, padding: 12, marginBottom: 14 },
+  eyebrowCaps: { ...T.overline, color: C.quiet, letterSpacing: 1.4 },
+  eyebrow: { ...T.label, color: C.muted, fontFamily: F.bodyMedium, marginBottom: 2 },
+  title: { ...T.display, color: C.ink },
+  lead: { ...T.lead, color: C.muted, marginTop: S.xs },
+  devnet: { borderWidth: 1, borderColor: C.amber + "8C", backgroundColor: C.amberSoft, borderRadius: 14, paddingHorizontal: 11, paddingVertical: 5, boxShadow: statusGlow(C.amber) },
+  devnetText: { ...T.label, color: C.amber, fontFamily: F.bodyBold, fontSize: 12, lineHeight: 16 },
+  demo: { borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, backgroundColor: C.amberSoft, borderRadius: 14, padding: S.md, marginBottom: S.md },
   demoTitle: { color: C.amber, fontFamily: F.mono, fontWeight: "700", fontSize: 13, letterSpacing: 1.5 },
-  demoBody: { color: C.muted, fontFamily: F.body, fontSize: 12, lineHeight: 17, marginTop: 4 },
-  meter: { width: "100%", backgroundColor: "rgba(160,200,230,0.12)", overflow: "visible" },
+  demoBody: { ...T.caption, color: C.muted, marginTop: S.xs },
+  meter: { width: "100%", backgroundColor: C.mutedSurface, overflow: "visible" },
   tick: { position: "absolute", top: -4, bottom: -4, width: 2, marginLeft: -1, backgroundColor: C.ink },
-  steps: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  stepBar: { height: 4, borderRadius: 2, marginBottom: 6 },
-  stepLabel: { color: C.quiet, fontFamily: F.bodySemi, fontSize: 12 },
+  steps: { flexDirection: "row", gap: S.sm, marginBottom: S.lg },
+  stepBar: { height: 4, borderRadius: 2, marginBottom: S.xs },
+  stepLabel: { ...T.caption, color: C.quiet, fontFamily: F.bodySemi },
   livePill: { flexDirection: "row", alignItems: "center", gap: 7, borderWidth: 1, borderRadius: 14, paddingHorizontal: 11, minHeight: 28, alignSelf: "flex-start" },
   liveDot: { width: 8, height: 8, borderRadius: 4 },
-  livePillText: { fontFamily: F.bodyBold, fontSize: 12, letterSpacing: 0.8 },
+  livePillText: { ...T.label, fontFamily: F.bodyBold, fontSize: 12, lineHeight: 16 },
   rowCenter: { flexDirection: "row", alignItems: "center" },
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   baseline: { flexDirection: "row", alignItems: "baseline" },
-  overline: { color: C.quiet, fontFamily: F.bodyBold, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 4 },
-  hero: { color: C.ink, fontFamily: F.mono, fontWeight: "700", fontSize: 52, lineHeight: 60, letterSpacing: -1.5, fontVariant: TAB },
-  unit: { color: C.muted, fontFamily: F.mono, fontSize: 16 },
+  overline: { ...T.overline, color: C.quiet, marginBottom: S.xs },
+  hero: { ...T.amountXL, fontSize: 52, lineHeight: 60, letterSpacing: -1.5, color: C.ink },
+  unit: { ...T.unit, color: C.muted, fontSize: 16 },
   mono: { color: C.ink, fontFamily: F.mono, fontSize: 13 },
   monoSm: { color: C.muted, fontFamily: F.mono, fontSize: 13 },
-  caption: { color: C.quiet, fontFamily: F.body, fontSize: 12, lineHeight: 18 },
-  stat: { color: C.ink, fontFamily: F.mono, fontWeight: "700", fontSize: 36, lineHeight: 44, fontVariant: TAB },
-  fact: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  factBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(160,200,230,0.18)" },
-  factK: { color: C.muted, fontFamily: F.body, fontSize: 15 },
-  factV: { fontFamily: F.bodySemi, fontSize: 15 },
+  caption: { ...T.caption, color: C.quiet },
+  stat: { ...T.amountM, fontSize: 36, lineHeight: 44, color: C.ink },
+  fact: { minHeight: MIN_TOUCH, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  factBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: glass.border },
+  factK: { ...T.body, color: C.muted },
+  factV: { ...T.bodyStrong },
   factKMono: { color: C.quiet, fontFamily: F.mono, fontSize: 13, letterSpacing: 0.8, textTransform: "uppercase" },
   factVMono: { fontFamily: F.mono, fontSize: 14, fontVariant: TAB },
   rRow: { minHeight: 30, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  triggerFig: { color: C.payout, fontFamily: F.mono, fontWeight: "700", fontSize: 28, textShadowColor: C.payout + "73", textShadowRadius: 12 },
-  payout: { color: C.mint, fontFamily: F.mono, fontWeight: "700", fontSize: 72, lineHeight: 84, letterSpacing: -2, textShadowColor: "rgba(52,211,153,0.6)", textShadowRadius: 22, fontVariant: TAB },
-  walletChip: { flexDirection: "row", alignItems: "center", marginTop: 12, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: C.rainSoft },
-  check: { width: 62, height: 62, borderRadius: 31, backgroundColor: "rgba(52,211,153,0.14)", borderWidth: 1, borderColor: "rgba(52,211,153,0.6)", alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 10, boxShadow: "0px 0px 24px rgba(52,211,153,0.35)" },
+  triggerFig: { ...T.amountS, fontSize: 28, lineHeight: 34, color: C.payout, textShadowColor: C.payout + "73", textShadowRadius: 12 },
+  payout: { ...T.amountXL, fontSize: 72, lineHeight: 84, letterSpacing: -2, color: C.mint, textShadowColor: "rgba(52,211,153,0.6)", textShadowRadius: 22 },
+  walletChip: { flexDirection: "row", alignItems: "center", marginTop: S.md, paddingHorizontal: S.md, paddingVertical: S.xs, borderRadius: 12, backgroundColor: C.rainSoft },
+  check: { width: 62, height: 62, borderRadius: 31, backgroundColor: C.mintSoft, borderWidth: 1, borderColor: C.mint, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: S.md - 2, boxShadow: statusGlow(C.mint) },
   symbol: { color: C.ink, fontFamily: F.mono, fontWeight: "700", fontSize: 15, letterSpacing: 1 },
-  receiptBig: { color: C.mint, fontFamily: F.mono, fontWeight: "700", fontSize: 64, lineHeight: 76, letterSpacing: -2, marginTop: 6, textShadowColor: "rgba(52,211,153,0.55)", textShadowRadius: 20, fontVariant: TAB },
-  ghost: { flex: 1, minHeight: 54, borderRadius: 16, borderWidth: 1, borderColor: "rgba(160,200,230,0.18)", backgroundColor: "rgba(30,40,52,0.6)", alignItems: "center", justifyContent: "center" },
-  ghostText: { color: C.ink, fontFamily: F.bodySemi, fontSize: 15 },
+  receiptBig: { ...T.amountXL, fontSize: 64, lineHeight: 76, letterSpacing: -2, marginTop: S.xs, color: C.mint, textShadowColor: "rgba(52,211,153,0.55)", textShadowRadius: 20 },
+  ghost: { flex: 1, minHeight: 54, borderRadius: 16, borderWidth: 1, borderColor: glass.border, backgroundColor: C.surfaceRaised, alignItems: "center", justifyContent: "center" },
+  ghostText: { ...T.label, fontSize: 15, lineHeight: 20, color: C.ink },
 });
 
 /* ───────────── Peril selector ───────────── */
@@ -226,7 +227,7 @@ export const PERILS: ReadonlyArray<{ id: PerilId; label: string; icon: "cloud-ra
 
 /** A market is a place; the peril is chosen here. Only perils listed in `available` can be selected (Rain today). */
 export function PerilSelector({ value, available, onChange }: { value: PerilId; available: ReadonlyArray<PerilId>; onChange?: (p: PerilId) => void }) {
-  return <View style={{ marginBottom: 14 }}>
+  return <View style={{ marginBottom: S.md }}>
     <Text style={j.overline}>Choose a peril</Text>
     <View style={j.perilRow} accessibilityRole="radiogroup" accessibilityLabel="Weather peril">
       {PERILS.map((p) => {
@@ -235,7 +236,7 @@ export function PerilSelector({ value, available, onChange }: { value: PerilId; 
         return <Pressable key={p.id} disabled={!ok} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: !ok }} accessibilityLabel={ok ? p.label : `${p.label}, coming soon`} onPress={() => onChange?.(p.id)} style={[j.peril, on && j.perilOn, !ok && j.perilOff]}>
           <AppIcon name={p.icon} color={on ? C.rain : ok ? C.ink : C.quiet} size={18} />
           <Text style={[j.perilText, on && { color: C.rain }, !ok && { color: C.quiet }]}>{p.label}</Text>
-          {!ok ? <Text style={j.perilSoon}>SOON</Text> : null}
+          {!ok ? <Text style={j.perilSoon}>soon</Text> : null}
         </Pressable>;
       })}
     </View>

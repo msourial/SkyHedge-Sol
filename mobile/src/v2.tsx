@@ -283,24 +283,24 @@ export function ProtectTicket(props: {
 
   return <>
     <ScreenTop onBack={props.onBackToMarkets} eyebrow={`NOAA · ${station}`} title="Des Moines, IA" />
-    <PerilSelector value="rain" available={["rain"]} />
+    <Enter index={0}><PerilSelector value="rain" available={["rain"]} /></Enter>
     {showTicket ? null : stage ? <PayoutStatusCard stage={stage} dates={trackerDates(market, props.claimReadiness)} /> : <StepBar step={props.walletConnected && q ? 3 : 2} reason={reviewWhy} />}
 
-    {!live ? <View style={[s.notice, { marginTop: S.sm }]} accessibilityRole="alert">
+    {!live ? <View style={[s.notice, s.noticeWarn, { marginTop: S.sm }]} accessibilityRole="alert">
       <Text style={s.noticeTitle}>This window isn’t selling right now</Text>
       <Text style={s.noticeBody}>Pricing appears as soon as the next Des Moines window opens. Pull down or tap refresh to check again.</Text>
       <Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh status</Text></Pressable>
     </View> : null}
 
     {!showTicket ? <>
-      <CoverageHero live={live} stateLabel={live ? "Live" : salesCountdown(market?.salesCloseAt, props.nowSeconds) === "Sales closed" ? "Sales closed" : "Not open"} windowLabel={market?.observationStart && market?.observationEnd ? `${shortUtcDate(market.observationStart)}–${shortUtcDate(market.observationEnd - 1)}` : null} observedMm={props.observedMm ?? null} triggerMm={thresholdMm != null ? Number(thresholdMm) : null} triggerSymbol={triggerSym} source="NOAA" />
-      <StatPair leftLabel="Coverage" left={props.amountBase ? formatSkytFixed(props.amountBase, 0) : "—"} leftUnit="SKYT" rightLabel="Premium" right={q ? `~${formatSkytFixed(q.premium, 2)}` : props.quoteBusy ? "…" : "—"} rightUnit={q ? "SKYT incl. 1% fee" : props.walletConnected ? "Pricing…" : "Connect wallet to price"} />
-      <FactRows rows={[
+      <Enter index={1}><CoverageHero live={live} stateLabel={live ? "Live" : salesCountdown(market?.salesCloseAt, props.nowSeconds) === "Sales closed" ? "Sales closed" : "Not open"} windowLabel={market?.observationStart && market?.observationEnd ? `${shortUtcDate(market.observationStart)}–${shortUtcDate(market.observationEnd - 1)}` : null} observedMm={props.observedMm ?? null} triggerMm={thresholdMm != null ? Number(thresholdMm) : null} triggerSymbol={triggerSym} source="NOAA" /></Enter>
+      <Enter index={2}><StatPair leftLabel="Coverage" left={props.amountBase ? formatSkytFixed(props.amountBase, 0) : "—"} leftUnit="SKYT" rightLabel="Premium" right={q ? `~${formatSkytFixed(q.premium, 2)}` : props.quoteBusy ? "…" : "—"} rightUnit={q ? "SKYT incl. 1% fee" : props.walletConnected ? "Pricing…" : "Connect wallet to price"} /></Enter>
+      <Enter index={3}><FactRows rows={[
         { k: "Window", v: windowLabel },
         { k: "Trigger", v: thresholdMm ? `${triggerLabel} cumulative` : "Pending", tone: "gold" },
         { k: "Payout", v: "Automatic · from official NOAA data" },
         { k: "Ready checks", v: `${readyCount === checks.length ? "✓ " : ""}${readyCount} of ${checks.length} passed`, tone: readyCount === checks.length ? "mint" : "gold" },
-      ]} />
+      ]} /></Enter>
 
       <Text style={s.overline}>How much do you want back if it rains?</Text>
       <View accessibilityRole="radiogroup" accessibilityLabel="Coverage amount in SKYT">
@@ -315,7 +315,7 @@ export function ProtectTicket(props: {
       </View>
 
       <View accessibilityLabel="Protection ticket">
-        <GlassCard style={{ padding: 0, overflow: "hidden" }}>
+        <GlassCard style={{ padding: 0, overflow: "hidden" }} delay={4 * motion.stagger}>
           <View style={s.split}>
             <View style={s.splitCell} accessible accessibilityLabel={`You pay ${pay.kind === "priced" ? `${pay.label} SKYT` : pay.label}`}>
               <Text style={s.smallLabel}>You pay</Text>
@@ -344,7 +344,7 @@ export function ProtectTicket(props: {
         </GlassCard>
       </View>
 
-      <GlassCard style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: S.md, paddingVertical: S.md }}>
+      <GlassCard style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: S.md, paddingVertical: S.md }} delay={5 * motion.stagger}>
         <Text style={s.rowLabel}>Wallet balance</Text>
         {!props.walletConnected ? <Text style={s.rowLabel}>Not connected</Text>
           : props.walletSkytBase == null ? <Text style={s.rowLabel}>Checking…</Text>
@@ -692,7 +692,8 @@ const s = StyleSheet.create({
   row: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
   rowLabel: { ...T.body, color: C.muted },
   rowValue: { ...T.bodyStrong, color: C.ink, fontVariant: TAB },
-  notice: { backgroundColor: C.surface, borderColor: C.coral, borderWidth: 1, borderRadius: 12, padding: S.lg, marginBottom: S.md },
+  notice: { backgroundColor: C.redSoft, borderColor: C.coral, borderWidth: 1, borderRadius: glass.radius - 10, padding: S.lg, marginBottom: S.md },
+  noticeWarn: { backgroundColor: C.amberSoft, borderColor: C.amber + "88" },
   noticeTitle: { ...T.bodyStrong, color: C.ink },
   noticeBody: { ...T.body, fontSize: 14, lineHeight: 20, color: C.muted, marginTop: S.xs },
   inlineBtn: { minHeight: MIN_TOUCH, justifyContent: "center", alignSelf: "flex-start" },
