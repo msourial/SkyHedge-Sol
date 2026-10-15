@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| Live site | **https://skyhedge.app** (Vercel production · Solana Devnet) |
+| Live site | **https://skyhedge.app** (waitlist) · **https://skyhedge.app/app** (Devnet product) |
 | Hackathon | Encode Club Solana Hackathon 2026 · readiness checklist: [docs/encode-readiness.md](docs/encode-readiness.md) |
 | Tracks | **Best Consumer App on Solana** · **Best Use of x402 on Solana** (x402 is *planned / under evaluation*, not integrated; see below) |
 | Repo | [msourial/SkyHedge-Sol @ seeker-revamp](https://github.com/msourial/SkyHedge-Sol/tree/seeker-revamp) |
@@ -26,7 +26,7 @@
 **What it is.** SkyHedge sells parametric weather protection: a fixed payout that triggers automatically when public weather data crosses a pre-set threshold (for example, at least 50 mm of rain in Des Moines over a 7-day window). There is no claims process; the data decides.
 
 **Quick start.**
-1. Open **https://skyhedge.app** (web companion) or install the Android APK on a Seeker / Android phone.
+1. Open **https://skyhedge.app** for the waitlist landing, or **https://skyhedge.app/app** for the Devnet web companion. Install the Android APK on a Seeker / Android phone for the native path.
 2. Install Phantom → Settings → Developer Settings → **Testnet Mode** → Solana **Devnet**. You need Devnet SOL (fees) and SKYT (premiums).
 3. In the app: **Markets** → pick a city → **Protect** → choose coverage → **Review in wallet** → approve in Phantom.
 4. Without SKYT you can still browse markets, quotes, and live NOAA data. Full shot list: [docs/demo-script.md](docs/demo-script.md).
@@ -39,7 +39,7 @@
 - **Settlement:** the final NOAA observation is normalized, hashed and committed on-chain; if the trigger is hit the buyer claims the payout, and if data is unavailable premiums are refundable. Permissionless `settle_market` / `mark_data_unavailable` after gates are in the `seeker-revamp` program source (Devnet upgrade may still be pending).
 
 **Current live status (Devnet).**
-- **Website:** https://skyhedge.app — Storm Glass UI; MapTiler key configured in Vercel production.
+- **Website:** https://skyhedge.app — Storm Glass waitlist; product UI at `/app`. MapTiler key configured in Vercel production. Waitlist emails need `DATABASE_URL` + migration `0002_waitlist_signups.sql`.
 - **Des Moines, Iowa:** Devnet pilot for cumulative rainfall. Sales and observation windows move with each seeded market — check the live ticket for the active window; do not assume a fixed calendar date from this README.
 - **Chicago, New York and Miami:** ready to open; each needs on-chain market creation and funding by the admin wallet.
 - **Toronto:** opens soon (Environment Canada adapter is in the codebase). Wind gust and snowfall stay research-only in the UI.

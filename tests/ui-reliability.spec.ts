@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("search shows exact locations and matches locality, state, country, crop, and accents", async ({ page }) => {
-  await page.goto("/?tab=markets&city=des-moines");
+  await page.goto("/app?tab=markets&city=des-moines");
   const search = page.getByRole("combobox", { name: "Find an index" });
   await search.focus();
   await expect(page.getByText("Lubbock, Texas, United States", { exact: true }).first()).toBeVisible();
@@ -46,7 +46,7 @@ test("wind gust and snowfall are research-only in Markets and never request quot
   page.on("request", (request) => {
     if (/\/api\/(quotes|transactions\/unsigned)/.test(request.url())) apiRequests.push(request.url());
   });
-  await page.goto("/?tab=markets&city=des-moines");
+  await page.goto("/app?tab=markets&city=des-moines");
 
   await page.getByRole("button", { name: "Wind gust" }).click();
   await expect(page.getByRole("heading", { name: "Wind gust protection is research-only" })).toBeVisible();
@@ -72,7 +72,7 @@ test("research-only hazard selection on Protect hides rainfall inputs and blocks
   page.on("request", (request) => {
     if (/\/api\/(quotes|transactions\/unsigned)/.test(request.url())) apiRequests.push(request.url());
   });
-  await page.goto("/?tab=protect&city=des-moines");
+  await page.goto("/app?tab=protect&city=des-moines");
   await page.getByRole("button", { name: "Wind gust" }).click();
 
   await expect(page.getByRole("heading", { name: "Wind gust protection is research-only" })).toBeVisible();
@@ -108,7 +108,7 @@ test("switching hazards clears an earlier rainfall quote until a new quote is re
     probabilityBps: 2_000, premiumRateBps: 2_400, premium: "2400000", protocolFee: "1000000", protectedAmount: "100000000", modelVersion: "noaa-rain-v1", inputsHash: "ab".repeat(32),
     } });
   });
-  await page.goto("/?tab=protect&city=des-moines");
+  await page.goto("/app?tab=protect&city=des-moines");
   await page.getByRole("button", { name: "Request NOAA quote" }).click();
   await expect(page.getByText("Quote ready", { exact: true })).toBeVisible();
 
@@ -125,7 +125,7 @@ test("switching hazards clears an earlier rainfall quote until a new quote is re
 test("hazard selector remains usable without horizontal overflow on mobile", async ({ page }) => {
   for (const width of [375, 414, 768]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/?tab=protect&city=des-moines");
+    await page.goto("/app?tab=protect&city=des-moines");
     await expect(page.getByRole("group", { name: "Protection type" })).toBeVisible();
     const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(hasOverflow, `unexpected horizontal overflow at ${width}px`).toBe(false);
@@ -133,7 +133,7 @@ test("hazard selector remains usable without horizontal overflow on mobile", asy
 });
 
 test("selecting a search result opens the matching market and updates the URL", async ({ page }) => {
-  await page.goto("/?tab=markets&city=des-moines");
+  await page.goto("/app?tab=markets&city=des-moines");
   const search = page.getByRole("combobox", { name: "Find an index" });
   await search.fill("Texas");
   await page.getByRole("option", { name: /Lubbock cotton plains; Lubbock, Texas, United States/ }).click();
@@ -143,7 +143,7 @@ test("selecting a search result opens the matching market and updates the URL", 
 
 test("Markets is a map-led agricultural index explorer with truthful location-only data", async ({ page }) => {
   test.skip(Boolean(process.env.MAP_TEST_KEY), "This fallback scenario runs without a configured map key.");
-  await page.goto("/?tab=markets&city=des-moines");
+  await page.goto("/app?tab=markets&city=des-moines");
 
   await expect(page.getByRole("region", { name: "Agricultural index map" })).toBeVisible();
   await expect(page.getByText("Reference locations", { exact: true })).toBeVisible();
@@ -158,7 +158,7 @@ test("Markets is a map-led agricultural index explorer with truthful location-on
 });
 
 test("Markets gives the selected reference location one enterprise next action", async ({ page }) => {
-  await page.goto("/?tab=markets&city=des-moines");
+  await page.goto("/app?tab=markets&city=des-moines");
 
   const brief = page.getByRole("region", { name: "Selected reference location" });
   await expect(brief.getByText("Des Moines, Iowa, United States", { exact: true })).toBeVisible();
@@ -169,7 +169,7 @@ test("Markets gives the selected reference location one enterprise next action",
 
 test("the explorer uses the twelve catalog reference coordinates and accessible marker controls", async ({ page }) => {
   test.skip(!process.env.MAP_TEST_KEY, "Provide a test-only MapTiler key to exercise vector-map markers.");
-  await page.goto("/?tab=markets&city=des-moines");
+  await page.goto("/app?tab=markets&city=des-moines");
   const map = page.getByTestId("market-explorer-map");
   await expect(map).toHaveAttribute("data-map-state", "ready");
   await expect(map.locator(".sky-index-marker")).toHaveCount(12);
@@ -213,7 +213,7 @@ test("MapLibre reports repeated map tile failures and offers a retry", async ({ 
     await route.abort();
   });
 
-  await page.goto("/?tab=markets&city=des-moines");
+  await page.goto("/app?tab=markets&city=des-moines");
   const map = page.getByTestId("market-explorer-map");
   await expect(map).toHaveAttribute("data-map-state", "unavailable", { timeout: 18_000 });
   await expect(map.getByRole("alert")).toContainText("Map unavailable");
@@ -221,7 +221,7 @@ test("MapLibre reports repeated map tile failures and offers a retry", async ({ 
 });
 
 test("selecting an agricultural area from the explorer opens Protect and keeps the location precise", async ({ page }) => {
-  await page.goto("/?tab=markets&city=des-moines");
+  await page.goto("/app?tab=markets&city=des-moines");
   await page.getByRole("button", { name: /Lubbock, Texas, United States/ }).click();
 
   await expect(page).toHaveURL(/tab=protect&city=lubbock/);
@@ -229,7 +229,7 @@ test("selecting an agricultural area from the explorer opens Protect and keeps t
 });
 
 test("Protect layers finalized verification behind an explicit disclosure", async ({ page }) => {
-  await page.goto("/?tab=protect&city=des-moines");
+  await page.goto("/app?tab=protect&city=des-moines");
 
   const verification = page.getByRole("group", { name: "Verification details" });
   await verification.getByText("Verification details", { exact: true }).click();
@@ -238,12 +238,12 @@ test("Protect layers finalized verification behind an explicit disclosure", asyn
 });
 
 test("Leaflet renders the exact reference location and switches markets", async ({ page }) => {
-  await page.goto("/?tab=protect&city=lubbock");
+  await page.goto("/app?tab=protect&city=lubbock");
   const lubbockMap = page.getByTestId("area-map-lubbock");
   await expect(lubbockMap).toHaveAttribute("data-map-state", "ready");
   await expect(lubbockMap.getByText("Lubbock, Texas, United States", { exact: true }).last()).toBeVisible();
 
-  await page.goto("/?tab=protect&city=ludhiana");
+  await page.goto("/app?tab=protect&city=ludhiana");
   const ludhianaMap = page.getByTestId("area-map-ludhiana");
   await expect(ludhianaMap).toHaveAttribute("data-map-state", "ready");
   await expect(ludhianaMap.getByText("Ludhiana, Punjab, India", { exact: true }).last()).toBeVisible();
@@ -254,7 +254,7 @@ test("map tile failures expose a truthful fallback and retry", async ({ page }) 
   await page.unroute("https://*.tile.openstreetmap.org/**");
   await page.route("https://api.maptiler.com/maps/**", (route) => route.abort());
   await page.route("https://*.tile.openstreetmap.org/**", (route) => route.abort());
-  await page.goto("/?tab=protect&city=lubbock");
+  await page.goto("/app?tab=protect&city=lubbock");
   const map = page.getByTestId("area-map-lubbock");
   await expect(map).toHaveAttribute("data-map-state", "unavailable");
   await expect(map.getByRole("alert")).toContainText("Map unavailable");
@@ -283,7 +283,7 @@ test("changing the protection amount invalidates a quote priced for the previous
     await route.fulfill({ status: 500, json: { error: "unexpected transaction preparation" } });
   });
 
-  await page.goto("/?tab=protect&city=des-moines");
+  await page.goto("/app?tab=protect&city=des-moines");
   await page.getByRole("button", { name: "Request NOAA quote" }).click();
   await expect(page.getByText("Quote ready", { exact: true })).toBeVisible();
   const approval = page.getByRole("button", { name: "Approve Devnet protection" });
@@ -298,7 +298,7 @@ test("changing the protection amount invalidates a quote priced for the previous
 test("wallet opens the supported chooser without attempting connection on load", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/?tab=markets&city=des-moines");
+  await page.goto("/app?tab=markets&city=des-moines");
   await expect(page.locator("[data-wallet-state=idle]")).toBeVisible();
   expect(errors.filter((message) => message.includes("WalletConnectionError"))).toEqual([]);
 
@@ -320,7 +320,7 @@ test("wallet connection timeout offers a safe reset without submitting a transac
     Object.defineProperty(window, "isPhantomInstalled", { value: true, configurable: true });
     Object.defineProperty(window, "phantom", { value: { solana: pendingProvider }, configurable: true });
   });
-  await page.goto("/?tab=markets&city=des-moines");
+  await page.goto("/app?tab=markets&city=des-moines");
   await page.getByRole("button", { name: /Select Wallet|Connect Wallet/ }).click();
   await page.getByRole("button", { name: "Phantom Detected" }).click();
   await expect(page.locator("[data-wallet-state=selected]")).toBeVisible();
@@ -341,7 +341,7 @@ test("wallet connection timeout offers a safe reset without submitting a transac
 test("locations wrap without horizontal overflow at supported widths", async ({ page }) => {
   for (const width of [375, 414, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/?tab=markets&city=des-moines");
+    await page.goto("/app?tab=markets&city=des-moines");
     await page.getByRole("combobox", { name: "Find an index" }).focus();
     await expect(page.getByText("Santa Cruz, Santa Cruz Department, Bolivia", { exact: true }).first()).toBeVisible();
     const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
@@ -349,9 +349,20 @@ test("locations wrap without horizontal overflow at supported widths", async ({ 
   }
 });
 
-test("customer screens hide protocol administration and Builder mode contains it", async ({ page }) => {
-  await page.goto("/?tab=markets&city=des-moines");
+test("waitlist landing owns the root hero and the product lives at /app", async ({ page }) => {
+  await page.goto("/");
   await expect(page.getByRole("heading", { name: "Weather risk, settled on-chain." })).toBeVisible();
+  await expect(page.getByRole("region", { name: /Weather risk/i }).getByRole("button", { name: "Join the waitlist" })).toBeVisible();
+  await expect(page.getByText("insurance", { exact: false })).toHaveCount(0);
+
+  await page.goto("/app?tab=markets&city=des-moines");
+  await expect(page.getByRole("heading", { name: "Agricultural rainfall protection" })).toBeVisible();
+  await expect(page).toHaveURL(/\/app\?/);
+});
+
+test("customer screens hide protocol administration and Builder mode contains it", async ({ page }) => {
+  await page.goto("/app?tab=markets&city=des-moines");
+  await expect(page.getByRole("heading", { name: "Agricultural rainfall protection" })).toBeVisible();
   await expect(page.getByText("Live Devnet status", { exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Builder", exact: true }).click();
@@ -361,7 +372,7 @@ test("customer screens hide protocol administration and Builder mode contains it
 });
 
 test("Builder explains that owner controls appear after the admin wallet connects", async ({ page }) => {
-  await page.goto("/?tab=builders&city=des-moines");
+  await page.goto("/app?tab=builders&city=des-moines");
   await expect(page.getByRole("heading", { name: "Connect the protocol admin wallet" })).toBeVisible();
   await expect(page.getByText("Connect the protocol admin wallet to show the Devnet setup and market-seeding approvals.")).toBeVisible();
 });
@@ -383,7 +394,7 @@ test("Builder does not call an expired zero-funded Draft market ready", async ({
     checks: { settlement: { status: "manual-or-missing", scheduler: "vercel-cron", signerConfigured: false, noaaConfigured: true, cronAuthConfigured: false } },
   } }));
 
-  await page.goto("/?tab=builders&city=des-moines");
+  await page.goto("/app?tab=builders&city=des-moines");
   const marketRow = page.getByRole("heading", { name: "Des Moines market" }).locator("xpath=../..");
   await expect(marketRow.getByText("pending", { exact: true })).toBeVisible();
   await expect(marketRow.getByText("Market 0 is an expired Draft with 0 SKYT collateral; protection requires an Open, funded market.", { exact: true })).toBeVisible();
@@ -405,7 +416,7 @@ test("Builder shows that automatic oracle settlement is blocked when cron auth i
     status: "ok",
     checks: { settlement: { status: "manual-or-missing", scheduler: "vercel-cron", signerConfigured: true, noaaConfigured: true, cronAuthConfigured: false } },
   } }));
-  await page.goto("/?tab=builders&city=des-moines");
+  await page.goto("/app?tab=builders&city=des-moines");
   await expect(page.getByRole("heading", { name: "Oracle settlement worker" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "NOAA station validation" })).toBeVisible();
   await expect(page.getByText("sample only", { exact: true })).toBeVisible();
@@ -416,7 +427,7 @@ test("Builder shows that automatic oracle settlement is blocked when cron auth i
 
 test("mobile bottom navigation exposes Liquidity and Builder through More", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto("/?tab=markets&city=des-moines");
+  await page.goto("/app?tab=markets&city=des-moines");
   const mobileNavigation = page.getByRole("navigation", { name: "Mobile navigation" });
   await expect(mobileNavigation).toBeVisible();
   await mobileNavigation.getByRole("button", { name: "More" }).click();
@@ -431,7 +442,7 @@ test("mobile bottom navigation exposes Liquidity and Builder through More", asyn
 });
 
 test("uses the self-hosted Inter / Inter Tight Storm Glass system with mobile-size inputs", async ({ page }) => {
-  await page.goto("/?tab=protect&city=des-moines");
+  await page.goto("/app?tab=protect&city=des-moines");
   const typography = await page.evaluate(() => ({
     body: getComputedStyle(document.body).fontFamily,
     inputSize: getComputedStyle(document.querySelector("input")!).fontSize,

@@ -21,6 +21,7 @@ import { agriculturalMarketBySlug, AGRICULTURAL_MARKETS, calendarMonthlyWindow, 
 import { createMobileApiHandler } from "./services/mobile-api";
 import { createAdvisoryHandler } from "./services/advisory-api";
 import { extractProtectionIntent } from "./services/advisory";
+import { createWaitlistHandler } from "./services/waitlist";
 
 const provider = new NoaaRainfallProvider();
 const quotes = new RainfallQuoteEngine(provider);
@@ -45,6 +46,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
     return advisory(req, res);
   });
+
+  const waitlist = createWaitlistHandler({
+    getDb: () => db,
+    rateLimit: (key) => limiter.allow(`waitlist:${key}`),
+  });
+  app.post("/api/waitlist", (req, res) => waitlist({ method: req.method, body: req.body, headers: req.headers, ip: req.ip }, res as never));
 
   app.get("/api/health", async (_req, res) => {
     const started = Date.now();

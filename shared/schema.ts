@@ -23,3 +23,12 @@ export const settlementEvidence = pgTable("settlement_evidence", {
   evidence: jsonb("evidence").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Marketing waitlist emails from skyhedge.app. */
+export const waitlistSignups = pgTable("waitlist_signups", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  emailNormalized: text("email_normalized").notNull(),
+  source: text("source").notNull().default("landing"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("waitlist_signups_email_normalized_unique").on(table.emailNormalized)]);
