@@ -46,6 +46,8 @@ EXPO_PUBLIC_API_BASE_URL=https://skyhedge.app ./android/gradlew -p android :app:
 
 The APK is written to `android/app/build/outputs/apk/release/app-release.apk`. Verify its SHA-256 and API URL again after any source or configuration change.
 
+For waitlist mockup captures only, bake `EXPO_PUBLIC_MARKETING_SHOTS=1` so Devnet pills are omitted from the layout. Do not ship that flag on production/release APKs (omit the env var; default is off).
+
 ## App behavior
 
 - **Place-first Explore:** search the researched catalog, choose a reference place, select rainfall/wind/snowfall, then review its actual evidence and availability. Changing the place or risk clears any previous quote. The advisory guide remains optional beside search.

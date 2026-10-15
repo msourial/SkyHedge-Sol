@@ -13,12 +13,14 @@ import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } f
 import { dealSentence, payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
 import { formatOnchainMarketStatus, formatWeekLabel } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
+import { MARKETING_SHOTS } from "./marketing";
 import { balanceCheck, coverageOptions, formatSkytFixed, premiumFeeLine, premiumPer100, returnMultiple, payState, reviewReason, salesCountdown, shortAddress, shortUtcDate, trimMm, triggerSentence, utcDateTime, type CoverageOption } from "./ticket";
 
 const TAB = ["tabular-nums" as const];
 
-/** Neutral Devnet pill with a green dot (header). */
+/** Neutral Devnet pill with a green dot (header). Hidden in marketing screenshot builds. */
 export function NetworkPill({ label = "Devnet" }: { label?: string }) {
+  if (MARKETING_SHOTS) return null;
   return <View style={s.netPill} accessible accessibilityLabel={`Network: Solana ${label}`}>
     <View style={[s.dot, { backgroundColor: C.mint }]} />
     <Text style={s.netPillText}>{label}</Text>

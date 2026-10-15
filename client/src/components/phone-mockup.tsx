@@ -1,6 +1,6 @@
 type Screen = "markets" | "protect" | "wallet";
 
-/** Marketing-only screenshots: status bar cropped, Devnet badge removed. */
+/** Marketing screenshots: status bar cropped; Devnet pill never rendered (EXPO_PUBLIC_MARKETING_SHOTS capture). */
 const SCREENS: Record<Screen, { src: string; alt: string }> = {
   markets: { src: "/mockups/landing/markets.png", alt: "SkyHedge Markets screen" },
   protect: { src: "/mockups/landing/protect.png", alt: "SkyHedge Protect screen" },

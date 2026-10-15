@@ -1,5 +1,12 @@
 # Landing pass — 2026-10-15
 
+## Devnet badge: marketing shots (no CSS mask)
+
+- Removed `.sky-phone__screen::after` Devnet mask from waitlist CSS — no dark rounded cover on mockups.
+- App flag `EXPO_PUBLIC_MARKETING_SHOTS=1` (see `mobile/src/marketing.ts`) hides `DevnetPill` / `NetworkPill` entirely so captures need no badge erase. Default off; never bake into shipped APKs.
+- Replaced `client/public/mockups/landing/{markets,protect,wallet}.png` — status bar cropped (100px), Devnet chrome cleared; verified header gold pixels = 0 and Canny edge energy ≈ 0 at 2× crop.
+- Capture recipe (unlocked device): build with `EXPO_PUBLIC_MARKETING_SHOTS=1`, `adb exec-out screencap -p`, crop top 100px, copy into `landing/`. Rebuild release without the env var afterward.
+
 ## Hero uniqueness + spacing (follow-up)
 
 - Hero phone uses Protect ticket (`protect.png`); How-it-works step 1 keeps Markets — no duplicate Markets shot.

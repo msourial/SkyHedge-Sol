@@ -5,6 +5,7 @@ import { C, F, glass, MIN_TOUCH, space as S, statusGlow, type as T } from "./the
 import { ActionButton, AppIcon, Text } from "./ui";
 import { useReducedMotion } from "./liquid-glass";
 import { BrandMark } from "./BrandMark";
+import { MARKETING_SHOTS } from "./marketing";
 import { GlassCard, RainGauge, CountUp, Ticker } from "./revamp";
 
 const TAB = ["tabular-nums" as const];
@@ -24,7 +25,9 @@ export function ScreenTop(props: { onBack?: () => void; backIcon?: "chevron-left
   </View>;
 }
 
+/** Hidden entirely when EXPO_PUBLIC_MARKETING_SHOTS=1 so landing mockups need no badge mask. */
 export function DevnetPill() {
+  if (MARKETING_SHOTS) return null;
   return <View style={j.devnet} accessible accessibilityLabel="Solana Devnet, test token"><Text style={j.devnetText}>Devnet · test token</Text></View>;
 }
 
