@@ -7,6 +7,7 @@ import { api, apiUnavailable, mm, skytDisplay } from "@/lib/api";
 import { Card, EmptyState, Pill, SectionLabel, Stat } from "@/components/sky";
 import { AgriculturalAreaMap } from "@/components/sky/agricultural-area-map";
 import { AgriculturalMarketExplorerMap } from "@/components/sky/agricultural-market-explorer-map";
+import { LandingHero } from "@/components/landing-hero";
 import { cn } from "@/lib/utils";
 import { canOfferInitialization, isProtocolInitialized } from "@shared/protocol-init";
 import { approveAndConfirm, approveAndConfirmDesMoinesSeed, cancelEmptyDraftMarketTransaction, desMoinesSeedTransactions, explorerTx, initializeProtocolTransaction, isProtocolAdmin, issueSkytTransaction, protocolExists, SKYT_ISSUANCE } from "@/lib/admin";
@@ -145,7 +146,7 @@ export default function DashboardPage() {
   return <div className="grid min-w-0 gap-7 lg:grid-cols-[68px_minmax(0,1fr)]">
     <aside className="hidden lg:block"><nav aria-label="Product sections" className="sticky top-24 flex w-[68px] flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-[var(--shadow-card)]">{TABS.map(({ id, label, icon: Icon }, index) => <button key={id} type="button" title={label} aria-label={label} aria-current={tab === id ? "page" : undefined} onClick={() => switchTab(id)} className={cn("flex min-h-11 items-center justify-center rounded-lg text-sm font-medium transition-colors", index === TABS.length - 1 && "mt-3 border-t border-[var(--border)] pt-3", tab === id ? "bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]")}><Icon className="h-5 w-5" /><span className="sr-only">{label}</span></button>)}</nav></aside>
     <div className="min-w-0 space-y-6">
-      <header className="sky-page-header"><Pill tone={tab === "builders" ? "slate" : researchHazardView ? "amber" : "cyan"}>{tab === "builders" ? "Technical workspace" : researchHazardView ? "Research-only hazard" : "NOAA-settled protection"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></header>
+      {tab === "markets" ? <LandingHero /> : <header className="sky-page-header"><Pill tone={tab === "builders" ? "slate" : researchHazardView ? "amber" : "cyan"}>{tab === "builders" ? "Technical workspace" : researchHazardView ? "Research-only hazard" : "NOAA-settled protection"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></header>}
       {tab === "markets" && <Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} selectedSlug={marketId} status={devnetStatus.data} />}
       {tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") { setQuoteActive(true); setQuoteRequest((count) => count + 1); } }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" && quoteActive ? quoteQuery.error : undefined} />}
       {tab === "liquidity" && <Liquidity />}
@@ -502,7 +503,7 @@ function Markets({ hazard, setHazard, onSelect, selectedSlug, status }: { hazard
     if (event.key === "Enter" && dropdownOpen && activeOption >= 0) { event.preventDefault(); selectDropdownOption(activeOption); }
   };
 
-  return <section className="market-explorer" aria-labelledby="markets-heading">
+  return <section id="markets-workspace" className="market-explorer" aria-labelledby="markets-heading">
     <HazardSelector value={hazard} onChange={setHazard} />
     <header className="market-explorer__header">
       <div>

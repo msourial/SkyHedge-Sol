@@ -430,12 +430,16 @@ test("mobile bottom navigation exposes Liquidity and Builder through More", asyn
   await expect(page.getByRole("heading", { name: "Provide test liquidity" })).toBeVisible();
 });
 
-test("uses the self-hosted IBM Plex design system with mobile-size inputs", async ({ page }) => {
+test("uses the self-hosted Inter / Inter Tight Storm Glass system with mobile-size inputs", async ({ page }) => {
   await page.goto("/?tab=protect&city=des-moines");
   const typography = await page.evaluate(() => ({
     body: getComputedStyle(document.body).fontFamily,
     inputSize: getComputedStyle(document.querySelector("input")!).fontSize,
+    canvas: getComputedStyle(document.documentElement).getPropertyValue("--background").trim(),
+    accent: getComputedStyle(document.documentElement).getPropertyValue("--identity").trim(),
   }));
-  expect(typography.body).toContain("IBM Plex Sans");
+  expect(typography.body).toContain("Inter");
+  expect(typography.canvas.toUpperCase()).toBe("#0B1220");
+  expect(typography.accent.toUpperCase()).toBe("#7CC4FF");
   expect(Number.parseFloat(typography.inputSize)).toBeGreaterThanOrEqual(16);
 });

@@ -9,6 +9,7 @@
     "client/src/lib/*.ts",
     "shared/schema.ts",
     "shared/public-origins.ts",
+    "shared/storm-glass.ts",
     "server/services/cors.ts",
     "server/index.ts",
     "server/routes.ts",

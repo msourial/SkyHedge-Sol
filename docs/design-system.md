@@ -1,10 +1,10 @@
 # SkyHedge design system (Seeker app)
 
-Tokens live in `mobile/src/theme.ts`; motion primitives in `mobile/src/motion.tsx`.
+Shared color / glass / spacing tokens live in `shared/storm-glass.ts`. The Seeker app re-exports them from `mobile/src/theme.ts` (plus Expo font names and the type scale); motion primitives are in `mobile/src/motion.tsx`. The web client mirrors the same hex values as CSS variables in `client/src/index.css`.
 Visual direction: **Storm Glass** (frosted panes over graphite; glow only on status and selection).
 Markets reference: `docs/mockups/storm-glass-markets.png`. Protect uses the same Storm Glass tokens (graphite coverage ticket, Step 3 review reason always visible). Broader flows: `~/Documents/Codex/skyhedge-revamp-refs/opendesign/flows-v2.html` (+ `flows-v2-board.png`).
 
-The palette (graphite canvas, glacier-blue signal, gold for money, mint for verified) and the V1 umbrella logo are unchanged.
+The palette (navy canvas `#0B1220`, graphite cards `#1C2433`, glacier-blue `#7CC4FF`, amber `#FFB020` for alerts/Devnet only, gold for money, mint for verified) and the V1 umbrella logo are unchanged.
 
 ## Type scale (`type`, imported as `T`)
 
