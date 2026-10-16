@@ -97,6 +97,16 @@ export function isMarketReadyForCity(citySlug: string, status: DevnetStatus | nu
     && !!status.noaaEvidence.package?.stationId;
 }
 
+export type MarketListChipTone = "live" | "soon" | "closed" | "other";
+
+/** Green only while sales are live. Closed sales are neutral. Soon and other non-live labels are amber. */
+export function marketListChipTone(status: "live" | "ready" | "soon" | "concept", label?: string): MarketListChipTone {
+  if (label === "Sales closed") return "closed";
+  if (status === "live" && (label === undefined || label === "Live")) return "live";
+  if (status === "soon" || status === "live") return "soon";
+  return "other";
+}
+
 /** Compact status for catalog rows; detailed evidence remains in the selected place view. */
 export function catalogAvailability(market: AgriculturalMarket, status: DevnetStatus | null): { label: string; tone: "ready" | "pending" | "neutral" } {
   if (market.slug !== "des-moines") return { label: "Researching", tone: "pending" };

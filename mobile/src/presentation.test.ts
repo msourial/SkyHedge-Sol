@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { AgriculturalMarket, CityIndex, DevnetStatus } from "./api";
-import { catalogAvailability, formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, latestCompletedNoaaWeek, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets } from "./presentation.ts";
+import { catalogAvailability, formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, latestCompletedNoaaWeek, marketListChipTone, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets } from "./presentation.ts";
 
 const markets: AgriculturalMarket[] = [
   {
@@ -121,6 +121,16 @@ describe("mobile presentation behavior", () => {
       ...readyStatus,
       desMoinesMarket: { ...readyStatus.desMoinesMarket, evidenceStatus: "researching_evidence" },
     }), false);
+  });
+
+  it("keeps green for live sales and grey when sales have closed", () => {
+    assert.equal(marketListChipTone("live", "Live"), "live");
+    assert.equal(marketListChipTone("live"), "live");
+    assert.equal(marketListChipTone("live", "Sales closed"), "closed");
+    assert.equal(marketListChipTone("live", "Opens soon"), "soon");
+    assert.equal(marketListChipTone("soon"), "soon");
+    assert.equal(marketListChipTone("ready"), "other");
+    assert.equal(marketListChipTone("concept"), "other");
   });
 
   it("uses one truthful, scannable availability state for every location row", () => {

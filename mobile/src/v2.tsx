@@ -11,7 +11,7 @@ import { Enter, ProgressRail, SpringPress } from "./motion";
 import { ActionButton, AppIcon, Disclosure, Reveal, Text } from "./ui";
 import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } from "./friendly-errors";
 import { dealSentence, payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
-import { formatOnchainMarketStatus, formatWeekLabel } from "./presentation";
+import { formatOnchainMarketStatus, formatWeekLabel, marketListChipTone } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
 import { MARKETING_SHOTS } from "./marketing";
 import { balanceCheck, coverageOptions, formatSkytFixed, premiumFeeLine, premiumPer100, returnMultiple, payState, reviewReason, salesCountdown, shortAddress, shortUtcDate, trimMm, triggerSentence, utcDateTime, type CoverageOption } from "./ticket";
@@ -115,7 +115,8 @@ export function MarketsScreen(props: {
       <Text style={s.sectionLabel}>Covered zones</Text>
       {visibleRows.length ? visibleRows.map((m) => {
         const [a, b, c] = highlightParts(m.name, query);
-        const col = m.status === "live" ? C.mint : m.status === "soon" ? C.amber : C.rain;
+        const tone = marketListChipTone(m.status, m.status === "live" ? state : undefined);
+        const col = tone === "live" ? C.mint : tone === "soon" ? C.amber : tone === "closed" ? C.muted : C.rain;
         const on = highlight.has(m.code) && m.code === focusCode;
         return <SpringPress key={m.code} accessibilityRole="button" accessibilityLabel={`${m.name}, ${m.status === "live" ? state : statusLabel(m.status)}`} onPress={() => open(m)} style={[s.resultRow, on && { backgroundColor: col + "14", borderColor: col + "55" }]}>
           <View style={[s.dot, m.status === "concept" ? { borderWidth: 1.5, borderColor: col } : { backgroundColor: col }]} />
@@ -143,7 +144,7 @@ export function MarketsScreen(props: {
           <Text style={s.cardTitle}>Des Moines, IA</Text>
           <Text style={s.cardSub}>NOAA · {station}</Text>
         </View>
-        <Pill label={state} tone={live ? "live" : "warn"} />
+        <Pill label={state} tone={live ? "live" : state === "Sales closed" ? "neutral" : "warn"} />
       </View>
       <View style={s.perilRow} accessibilityRole="text" accessibilityLabel="Rain live. Wind, snow, and heat coming soon.">
         <View style={[s.perilChip, s.perilChipLive]}>

@@ -12,6 +12,7 @@ import { liquidGlassRecipe } from "./liquid-glass-config";
 import { RadarMap } from "./RadarMap";
 import { PerilSelector, ScreenTop } from "./journey";
 import { GROUP_ORDER, groupCounts, MARKETS, type CatalogMarket } from "./markets-catalog";
+import { marketListChipTone } from "./presentation";
 
 const TAB = ["tabular-nums" as const];
 
@@ -36,7 +37,8 @@ export function GlassCard({ children, style, accent, delay }: { children: React.
 }
 
 export function StatusTag({ status, label }: { status: CatalogMarket["status"]; label?: string }) {
-  const col = status === "live" ? C.mint : status === "soon" ? C.amber : C.rain;
+  const tone = marketListChipTone(status, label);
+  const col = tone === "live" ? C.mint : tone === "soon" ? C.amber : tone === "closed" ? C.muted : C.rain;
   return <View style={[g.tag, { borderColor: col + "77", backgroundColor: col + "1F", boxShadow: statusGlow(col, status === "concept") }]} accessible accessibilityLabel={label ?? statusLabel(status)}>
     {status !== "concept" ? <View style={[g.tagDot, { backgroundColor: col }]} /> : <View style={[g.tagDot, { borderWidth: 1.5, borderColor: col }]} />}
     <Text style={[g.tagText, { color: col }]}>{label ?? statusLabel(status)}</Text>
