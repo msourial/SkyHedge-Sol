@@ -19,6 +19,14 @@
       "destination": "/api/mobile?resource=claim-readiness&market=:market&wallet=:wallet"
     },
     {
+      "source": "/api/waitlist/export",
+      "destination": "/api/waitlist?action=export"
+    },
+    {
+      "source": "/api/waitlist/count",
+      "destination": "/api/waitlist?action=count"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

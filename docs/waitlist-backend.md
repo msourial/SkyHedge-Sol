@@ -93,3 +93,7 @@ Not wired. No Resend/SendGrid/Postmark keys are in this project. Next step when 
 ```bash
 npm run test:server -- --grep waitlist
 ```
+
+## Vercel Hobby function budget
+
+`/api/waitlist/export` and `/api/waitlist/count` rewrite to `/api/waitlist?action=…` so signup/export/count share one Serverless Function (Hobby limit is 12).
