@@ -11,7 +11,7 @@
 | `app-release.apk` | Built from this branch with `EXPO_PUBLIC_API_BASE_URL=https://skyhedge.app` |
 | Local path | `mobile/android/app/build/outputs/apk/release/app-release.apk` |
 
-**SHA-256:** `6becdfc300f917923e1e2f50d95839d384ddc62514249aba72cbe691e4ad954d`  
+**SHA-256:** ``  
 **Size:** 128 498 538 bytes (~123 MB)
 
 > Recompute SHA after any rebuild: `shasum -a 256 mobile/android/app/build/outputs/apk/release/app-release.apk`
