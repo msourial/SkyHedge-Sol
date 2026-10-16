@@ -105,7 +105,8 @@ export async function desMoinesSeedTransactions(
   const expiredDraft = marketState === "draft" && finalizedMarket.salesCloseAt !== null && finalizedMarket.salesCloseAt <= nowSeconds;
   if (expiredDraft) throw new Error("The expired Draft must be explicitly cancelled first. No fresh market transaction was prepared.");
   const terminal = marketState === "settled" || marketState === "data_unavailable" || marketState === "closed" || marketState === "cancelled";
-  const useExisting = hasExisting && !expiredDraft && !terminal;
+  const salesClosedOpen = marketState === "open" && finalizedMarket.salesCloseAt !== null && finalizedMarket.salesCloseAt <= nowSeconds;
+  const useExisting = hasExisting && !expiredDraft && !terminal && !salesClosedOpen;
   if (!useExisting) assertFreshMarketCounterMatches(finalizedProtocol.nextMarketId, nextMarketId);
   const marketId = useExisting ? BigInt(finalizedMarket.marketId!) : nextMarketId;
   if (useExisting && marketId >= nextMarketId) throw new Error("Finalized market status is inconsistent with the protocol market counter.");

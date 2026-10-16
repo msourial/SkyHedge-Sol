@@ -31,9 +31,11 @@ describe("Des Moines seed recovery plan", () => {
       .to.match(/expired Draft with zero vault collateral.*cancellation is not verified.*do not create another market/i);
     expect(nextDesMoinesBuilderMilestone({ ...shared, marketState: "draft", vaultBalanceBase: "2000000000", salesCloseAt: 11_000 }))
       .to.match(/funded but remains a Draft.*approve opening/i);
-    expect(nextDesMoinesBuilderMilestone({ ...shared, marketState: "open", vaultBalanceBase: "2000000000", salesCloseAt: 9_000 }))
+    expect(nextDesMoinesBuilderMilestone({ ...shared, marketState: "open", vaultBalanceBase: "2000000000", salesCloseAt: 11_000 }))
       .to.match(/open and funded.*final NOAA observation/i);
-    expect(nextDesMoinesBuilderMilestone({ ...shared, marketState: "open", vaultBalanceBase: "0", salesCloseAt: 9_000 }))
+    expect(nextDesMoinesBuilderMilestone({ ...shared, marketState: "open", vaultBalanceBase: "2000000000", salesCloseAt: 9_000 }))
+      .to.match(/still Open but sales have closed.*fresh Des Moines market ID/i);
+    expect(nextDesMoinesBuilderMilestone({ ...shared, marketState: "open", vaultBalanceBase: "0", salesCloseAt: 11_000 }))
       .to.match(/Open, but its finalized vault has no collateral.*unavailable/i);
     expect(nextDesMoinesBuilderMilestone({ ...shared, marketState: "cancelled", vaultBalanceBase: "0", salesCloseAt: 9_000 }))
       .to.match(/cancelled.*current next market ID.*fresh exact-window NOAA pricing terms/i);
@@ -48,6 +50,8 @@ describe("Des Moines seed recovery plan", () => {
     expect(desMoinesSeedActionMode({ ...base, marketState: "draft" })).to.equal("resume");
     expect(desMoinesSeedActionMode({ ...base, marketState: "draft", salesCloseAt: 1_000 })).to.equal("unavailable");
     expect(desMoinesSeedActionMode({ ...base, marketState: "open" })).to.equal("open");
+    expect(desMoinesSeedActionMode({ ...base, marketState: "open", salesCloseAt: 500, nowSeconds: 1_000 })).to.equal("fresh");
+    expect(desMoinesSeedActionMode({ ...base, marketState: "open", salesCloseAt: 500, nowSeconds: 1_000, pricingReady: false })).to.equal("unavailable");
     expect(desMoinesSeedActionMode({ ...base, marketState: "settled" })).to.equal("fresh");
     expect(desMoinesSeedActionMode({ ...base, marketState: "cancelled" })).to.equal("fresh");
     expect(desMoinesSeedActionMode({ ...base, marketReadStatus: "pending", marketState: "missing" })).to.equal("fresh");
@@ -161,9 +165,18 @@ describe("Des Moines seed recovery plan", () => {
     expect(plan.additionalFundingBase).to.equal(1_250_000_000n);
   });
 
-  it("never offers another seed when the market is already Open", () => {
+  it("never offers another seed when the market is already Open with sales still open", () => {
     const open = { ...draft, state: "open" as const, totalShares: "2000000000" };
     expect(planDesMoinesSeed(open, pricing, 1_999_000_000)).to.deep.equal({ steps: [], additionalFundingBase: 0n, alreadyOpen: true });
+  });
+
+  it("creates a fresh market ID when an Open market has closed sales", () => {
+    const openSalesClosed = { ...draft, state: "open" as const, totalShares: "2000000000", salesCloseAt: 1_000 };
+    expect(planDesMoinesSeed(openSalesClosed, pricing, 2_000)).to.deep.equal({
+      steps: ["create", "fund", "open"],
+      additionalFundingBase: DES_MOINES_SEED_LIQUIDITY_BASE,
+      alreadyOpen: false,
+    });
   });
 
   it("requires a fresh market id after an expired Draft", () => {

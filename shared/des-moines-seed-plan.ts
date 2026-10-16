@@ -114,6 +114,11 @@ export function nextDesMoinesBuilderMilestone(input: {
   if (input.marketState === "draft" && !input.pricingReady) return `Market ${input.marketId ?? "unknown"} is still a Draft, but its committed terms do not match a current complete NOAA pricing package; do not reuse or open it.`;
   if (input.marketState === "draft" && vaultBalance === 0n) return `Market ${input.marketId ?? "unknown"} is a Draft with no collateral; the admin must approve its 2,000 SKYT funding before opening it.`;
   if (input.marketState === "draft") return `Market ${input.marketId ?? "unknown"} is funded but remains a Draft; the admin must approve opening before testers can protect.`;
+  if (input.marketState === "open" && input.salesCloseAt !== null && input.salesCloseAt <= input.nowSeconds) {
+    return input.pricingReady
+      ? `Market ${input.marketId ?? "unknown"} is still Open but sales have closed. The next public proof is to create, fund, and open a fresh Des Moines market ID using current exact-window NOAA pricing terms.`
+      : `Market ${input.marketId ?? "unknown"} is still Open but sales have closed; wait for complete exact-window NOAA pricing terms before creating a fresh market.`;
+  }
   if (input.marketState === "open" && vaultBalance > 0n) return `Market ${input.marketId ?? "unknown"} is open and funded. After its immutable observation window closes, verify the final NOAA observation and on-chain settlement before enabling a claim.`;
   if (input.marketState === "open" && !hasValidVaultBalance) return `Market ${input.marketId ?? "unknown"} reports Open, but its finalized vault balance could not be verified; tester protection remains unavailable.`;
   if (input.marketState === "open") return `Market ${input.marketId ?? "unknown"} reports Open, but its finalized vault has no collateral; tester protection remains unavailable.`;
@@ -165,7 +170,13 @@ export function desMoinesSeedActionMode(input: {
   nowSeconds: number;
 }): SeedActionMode {
   if (!input.protocolReady) return "unavailable";
-  if (input.marketState === "open") return "open";
+  if (input.marketState === "open") {
+    // Sales windows are immutable. Once sales close, allow a fresh market ID for a new demo window.
+    if (input.salesCloseAt !== null && input.salesCloseAt <= input.nowSeconds) {
+      return input.pricingReady ? "fresh" : "unavailable";
+    }
+    return "open";
+  }
   if (input.marketState === "locked" || input.marketState === "awaiting_settlement") return "in_progress";
   if (input.marketState === "draft") {
     if (input.salesCloseAt === null) return "unavailable";
@@ -220,7 +231,10 @@ export function planDesMoinesSeed(
 
   if (expiredDraft) throw new Error("The expired Draft must be explicitly cancelled before a fresh market ID can be created.");
   if (market.state === "missing" || terminal) return fresh();
-  if (market.state === "open") return { steps: [], additionalFundingBase: 0n, alreadyOpen: true };
+  if (market.state === "open") {
+    if (market.salesCloseAt !== null && market.salesCloseAt <= nowSeconds) return fresh();
+    return { steps: [], additionalFundingBase: 0n, alreadyOpen: true };
+  }
   if (market.state !== "draft") throw new Error("A Des Moines market is in progress. Only a fresh finalized Draft can be resumed by this Builder flow.");
 
   const termsMatch = seedTermsMatch(market, pricing);

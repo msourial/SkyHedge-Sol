@@ -243,7 +243,10 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
     ?? (status?.desMoinesMarket.status === "pending" ? "missing" : "unknown");
   const priorDraftExpired = Boolean(status?.desMoinesMarket.onchainStatus && /draft/i.test(status.desMoinesMarket.onchainStatus)
     && status.desMoinesMarket.salesCloseAt && status.desMoinesMarket.salesCloseAt <= Math.floor(Date.now() / 1_000));
-  const seedMarketOpen = seedMarketState === "open";
+  const nowSeconds = Math.floor(Date.now() / 1_000);
+  const seedSalesStillOpen = Boolean(status?.desMoinesMarket.salesCloseAt && status.desMoinesMarket.salesCloseAt > nowSeconds);
+  const seedMarketOpen = seedMarketState === "open" && seedSalesStillOpen;
+  const seedSalesClosedOpen = seedMarketState === "open" && !seedSalesStillOpen;
   const seedDraftNeedsResume = seedMarketState === "draft" && !priorDraftExpired;
   const seedMarketInProgress = seedMarketState === "locked" || seedMarketState === "awaiting_settlement";
   const currentSeedSchedule = status?.noaaEvidence.package?.seedSchedule;
@@ -284,7 +287,7 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
     : seedDraftNeedsResume && !seedDraftTermsMatch ? "Draft terms mismatch"
             : priorDraftExpired ? canCancelEmptyDraft ? "Cancel expired empty Draft first" : "Expired Draft recovery unavailable"
             : seedCanResumeDraft ? "Resume Des Moines seed"
-              : seedActionReady ? priorDraftExpired ? "Approve fresh Des Moines seed" : "Approve Des Moines seed"
+              : seedActionReady ? seedSalesClosedOpen || priorDraftExpired ? "Approve fresh Des Moines seed" : "Approve Des Moines seed"
                 : "Actuarial pricing package unavailable";
   useEffect(() => {
     let active = true;
@@ -360,7 +363,8 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
   };
   return <section aria-labelledby="owner-console" className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-card)]">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="sky-section-label text-[var(--identity)]">Owner-only Devnet controls</p><h2 id="owner-console" className="sky-display mt-1 text-xl font-semibold">Initialize the real protocol.</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">Each action opens your connected wallet. Nothing is submitted until you approve it; final status is checked against Devnet.</p></div><Pill tone={protocolInitialized ? "green" : "amber"}>{protocolInitialized ? "Protocol finalized" : initialized === false ? "Initialization required" : "Checking Devnet"}</Pill></div>
-    {seedMarketOpen && <p role="status" className="mt-4 border border-[var(--success)]/40 p-3 text-sm text-[var(--success)]">Des Moines is already Open on finalized Devnet. The Builder will not create a duplicate market.</p>}
+    {seedMarketOpen && <p role="status" className="mt-4 border border-[var(--success)]/40 p-3 text-sm text-[var(--success)]">Des Moines is already Open on finalized Devnet with sales still open. The Builder will not create a duplicate market.</p>}
+    {seedSalesClosedOpen && seedActionReady && <p role="status" className="mt-4 border border-[var(--identity)]/40 p-3 text-sm text-[var(--muted-foreground)]">Des Moines market {status?.desMoinesMarket.marketId} is still Open, but sales closed. Approve a fresh market ID ({status?.protocol.nextMarketId ?? "next"}) using current NOAA exact-window terms for a new sales window.</p>}
     {seedDraftNeedsResume && <p role="status" className="mt-4 border border-[var(--identity)]/40 p-3 text-sm text-[var(--muted-foreground)]">{seedDraftTermsMatch ? "A Draft already exists on finalized Devnet. Its immutable observation dates and quote commitment match current NOAA pricing, so only the missing funding/open steps can resume." : canCancelEmptyDraft ? "The Draft’s immutable schedule or NOAA quote does not match valid current seed terms. No funding or opening transaction is available; use the separate cancel control only if finalized RPC confirms it has no funds or liabilities." : !status?.idl.supportsEmptyDraftCancellation ? "The existing Draft does not match current NOAA terms. Cancellation is disabled until the matching Devnet program upgrade has been verified; no funding or opening transaction is available." : `The existing Draft's immutable observation dates or NOAA quote hash do not match today's current pricing package. No funding or opening transaction is available. Wait for its sales deadline${status?.desMoinesMarket.salesCloseAt ? ` (${new Date(status.desMoinesMarket.salesCloseAt * 1_000).toISOString()} UTC)` : ""}, then request a fresh seed package.`}</p>}
     {priorDraftExpired && seedMarketState === "draft" && <p role="status" className="mt-4 border border-[var(--warning)]/40 p-3 text-sm text-[var(--warning)]">The expired Draft must be explicitly cancelled before a fresh market ID can be created. Cancellation is available only after the Devnet program upgrade is verified and only if finalized RPC confirms every balance and liability is zero.</p>}
     {seedMarketInProgress && <p role="status" className="mt-4 border border-[var(--warning)]/40 p-3 text-sm text-[var(--warning)]">A Des Moines market is already in its lifecycle; this Builder will not start a second market.</p>}
@@ -387,7 +391,9 @@ function OwnerConsole({ status }: { status?: DevnetStatus }) {
         <h3 className="mt-3 text-sm font-semibold">3. Seed Des Moines</h3>
         <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">
           {seedMarketOpen
-            ? "The market is already open and funded on finalized Devnet. No additional seed transactions are needed."
+            ? "The market is already open and funded on finalized Devnet with sales still open. No additional seed transactions are needed."
+            : seedSalesClosedOpen
+              ? `Market ${status?.desMoinesMarket.marketId} remains Open in its observation window, but sales closed. A fresh market ID (${status?.protocol.nextMarketId ?? "next"}) can be created from current NOAA exact-window terms.`
             : seedMarketInProgress
               ? "The market is already in a later lifecycle state. This Builder will not create a duplicate or attempt to reopen it."
               : seedMarketState === "unknown"
