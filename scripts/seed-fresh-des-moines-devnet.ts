@@ -27,6 +27,7 @@ import {
 } from "../shared/des-moines-seed-plan.ts";
 import { isValidImmutableMarketPricingTerms } from "../shared/market-pricing.ts";
 import { isValidDesMoinesSeedSchedule } from "../shared/des-moines-seed-plan.ts";
+import { getDesMoinesEvidencePackage } from "../server/services/des-moines-evidence.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OPS_LOG = path.join(ROOT, "docs/devnet-ops.md");
@@ -61,6 +62,12 @@ function hashBytes(value: string, name: string): Buffer {
 async function sha256Hex(text: string): Promise<Buffer> {
   return createHash("sha256").update(text).digest();
 }
+function stepPurpose(step: string, fundingBase: bigint): string {
+  if (step === "create") return "Create the market account, vault, and NOAA terms for";
+  if (step === "fund") return `Fund ${(Number(fundingBase) / 1_000_000).toLocaleString()} test SKYT into`;
+  if (step === "open") return "Open sales on";
+  return step;
+}
 function logOps(block: string) {
   appendFileSync(OPS_LOG, block.endsWith("\n") ? block : `${block}\n`);
 }
@@ -75,12 +82,23 @@ function loadAdminKeypair(): Keypair | null {
   return kp;
 }
 
+function scheduleClosingAt(salesCloseAt: number) {
+  const day = 86_400;
+  const observationStart = Math.ceil(salesCloseAt / day) * day;
+  return { salesCloseAt, observationStart, observationEnd: observationStart + 5 * day };
+}
+
 async function main() {
   const connection = new Connection(RPC, "finalized");
-  const [status, evidence] = await Promise.all([
-    fetch(`${API}/api/devnet/status`).then((r) => r.json()),
-    fetch(`${API}/api/evidence-package`).then((r) => r.json()),
-  ]);
+  const salesCloseOverride = process.env.SALES_CLOSE_AT;
+  if (salesCloseOverride !== undefined && !/^\d+$/.test(salesCloseOverride)) throw new Error("SALES_CLOSE_AT must be unix seconds");
+  const status = await fetch(`${API}/api/devnet/status`).then((r) => r.json());
+  const evidence = salesCloseOverride
+    ? await getDesMoinesEvidencePackage(undefined, undefined, scheduleClosingAt(Number(salesCloseOverride)))
+    : await fetch(`${API}/api/evidence-package`).then((r) => r.json());
+  if (salesCloseOverride) {
+    console.log(`TX schedule PRE: sales close ${new Date(evidence.seedSchedule.salesCloseAt * 1000).toISOString()}; observation ${new Date(evidence.seedSchedule.observationStart * 1000).toISOString()} to ${new Date(evidence.seedSchedule.observationEnd * 1000).toISOString()}; premium rate ${evidence.quoteTerms?.premiumRateBps ?? "missing"} bps from NOAA. No transaction sent yet.`);
+  }
   if (!evidence?.validated || !evidence.quoteTerms) throw new Error("NOAA evidence/quote package unavailable");
   if (!isValidImmutableMarketPricingTerms(evidence.quoteTerms)) throw new Error("quote terms incomplete");
   if (!isValidDesMoinesSeedSchedule(evidence.seedSchedule)) throw new Error("seed schedule invalid");
@@ -214,7 +232,7 @@ async function main() {
   const adminKp = loadAdminKeypair();
   if (adminKp) {
     for (const { step, ix } of steps) {
-      const pre = `TX ${step} PRE: Des Moines market ${marketId} ${step}; signer ${admin.toBase58()}; market ${market.toBase58()}`;
+      const pre = `TX ${step} PRE: ${stepPurpose(step, plan.additionalFundingBase)} Des Moines market ${marketId}; signer ${admin.toBase58()}; market ${market.toBase58()}`;
       console.log(pre);
       const tx = new Transaction().add(ix);
       const sig = await sendAndConfirmTransaction(connection, tx, [adminKp], { commitment: "finalized" });
@@ -224,16 +242,23 @@ async function main() {
     return;
   }
 
-  // Phantom browser signing fallback (Chrome extension holds DKA9).
-  const prepared: Array<{ step: string; base64: string }> = [];
-  for (const { step, ix } of steps) {
-    const tx = new Transaction().add(ix);
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("finalized");
-    tx.feePayer = admin;
-    tx.recentBlockhash = blockhash;
-    (tx as Transaction & { lastValidBlockHeight?: number }).lastValidBlockHeight = lastValidBlockHeight;
-    prepared.push({ step, base64: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString("base64") });
-  }
+  // Phantom browser signing fallback (Chrome/Brave extension holds DKA9).
+  // Instructions are rebuilt in-browser with a fresh blockhash at approve time.
+  const prepared = steps.map(({ step, ix }) => ({
+    step,
+    programId: ix.programId.toBase58(),
+    keys: ix.keys.map((k) => ({
+      pubkey: k.pubkey.toBase58(),
+      isSigner: k.isSigner,
+      isWritable: k.isWritable,
+    })),
+    dataBase64: Buffer.from(ix.data).toString("base64"),
+  }));
+  const payload = {
+    rpc: RPC,
+    expectedAdmin: PROTOCOL_ADMIN.toBase58(),
+    steps: prepared,
+  };
 
   const port = Number(process.env.SEED_SIGNER_PORT ?? 8765);
   const tmpDir = path.join(ROOT, ".tmp-seed-signer");
@@ -246,23 +271,19 @@ async function main() {
   );
   if (bundle.status !== 0) throw new Error(`esbuild failed: ${bundle.stderr || bundle.stdout}`);
   const bundleJs = readFileSync(bundlePath, "utf8");
-  writeFileSync(
-    path.join(tmpDir, "payload.json"),
-    JSON.stringify({ steps: prepared, expectedAdmin: PROTOCOL_ADMIN.toBase58() }),
-  );
+  writeFileSync(path.join(tmpDir, "payload.json"), JSON.stringify(payload));
   const html = `<!doctype html><meta charset="utf-8"/><title>SkyHedge Devnet seed signer</title>
 <body style="font-family:system-ui;padding:24px;background:#0b1220;color:#e8eef8;max-width:720px">
 <h1>Des Moines fresh seed (Devnet)</h1>
-<p>Unlock Phantom in this Chrome profile as <code>${PROTOCOL_ADMIN.toBase58()}</code>, then click Start and approve create → fund → open.</p>
+<p>Unlock Phantom as <code>${PROTOCOL_ADMIN.toBase58()}</code> (Devnet), then click Start and approve create → fund → open.</p>
 <button id="start" style="font-size:18px;padding:12px 20px;cursor:pointer">Start seed with Phantom</button>
 <pre id="log" style="margin-top:16px;white-space:pre-wrap"></pre>
 <script>${bundleJs}</script>
 <script>
-const payload = ${JSON.stringify({ steps: prepared, expectedAdmin: PROTOCOL_ADMIN.toBase58() })};
-const start = () => window.SkyHedgeSeedSigner.run(payload.steps, payload.expectedAdmin);
+const payload = ${JSON.stringify(payload)};
+const start = () => window.SkyHedgeSeedSigner.run(payload);
 document.getElementById("start").onclick = start;
-// Auto-start so an already-open Chrome tab only needs Phantom approvals.
-setTimeout(start, 400);
+setTimeout(start, 500);
 </script></body>`;
 
   const results: Array<{ step: string; signature: string }> = [];
@@ -303,7 +324,7 @@ setTimeout(start, 400);
     server.listen(port, "127.0.0.1", () => {
       console.log(`Open Phantom signer: http://127.0.0.1:${port}/`);
       for (const { step } of steps) {
-        console.log(`TX ${step} PRE: create/fund/open Des Moines market ${marketId} via Phantom ${PROTOCOL_ADMIN.toBase58()}`);
+        console.log(`TX ${step} PRE: ${stepPurpose(step, plan.additionalFundingBase)} Des Moines market ${marketId} via Phantom ${PROTOCOL_ADMIN.toBase58()}. Waiting for approval.`);
       }
     });
     setTimeout(() => {
