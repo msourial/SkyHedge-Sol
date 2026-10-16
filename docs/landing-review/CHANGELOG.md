@@ -89,3 +89,11 @@ Remaining **high/med** from pass 1 addressed. Residual **low**: sticky step inac
 - Never “insurance”
 - Map WIP untouched
 - Waitlist `POST /api/waitlist` unchanged
+
+## Marketing mockups — 2026-10-16
+
+- Recaptured `client/public/mockups/landing/{markets,protect,wallet}.png` with `EXPO_PUBLIC_MARKETING_SHOTS=1` (status bar cropped 100px; Devnet pill omitted).
+- **Markets:** catalog + map, no Devnet chrome.
+- **Protect:** honest closed sales window (Oct 14–18) — premium shows — until a new Devnet market is opened (ask before on-chain seed). Not a fabricated quote.
+- **Wallet:** connect CTA on fresh install (prior connected session cleared by reinstall). Reconnect on device for a connected marketing frame.
+- Normal release APK rebuilt without the marketing flag and reinstalled on Seeker.
