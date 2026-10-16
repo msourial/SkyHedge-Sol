@@ -1,6 +1,6 @@
 # Draft GitHub release notes — Seek / Encode mid-submission
 
-**Tag (suggested):** `encode-seeker-revamp-9ec83a6`  
+**Tag (suggested):** `encode-seeker-revamp-ff38c32`  
 **Branch:** `seeker-revamp`  
 **Target:** Solana Seeker / Android Devnet demo (not Play Store)
 
@@ -11,8 +11,8 @@
 | `app-release.apk` | Built from `9ec83a6`+ with `EXPO_PUBLIC_API_BASE_URL=https://skyhedge.app` (arm64-v8a) |
 | Local path | `mobile/android/app/build/outputs/apk/release/app-release.apk` |
 
-**SHA-256:** `2603032b618005b529bf62dcf16d924e7217a7941ca2e0473d52464e173546ee`  
-**Size:** 48065126 bytes
+**SHA-256:** `a10b0ed4d71a81cf28c5b038ecb5a89ab59203e4f33654b3716fccb74afcde54`  
+**Size:** 47932924 bytes
 
 > Recompute SHA after any rebuild: `shasum -a 256 mobile/android/app/build/outputs/apk/release/app-release.apk`
 
