@@ -16,9 +16,18 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
     setStatus("submitting");
     setMessage(null);
     try {
+      const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
       await api<{ ok: true; status: string }>("/api/waitlist", {
         method: "POST",
-        body: JSON.stringify({ email, company, source: "landing" }),
+        body: JSON.stringify({
+          email,
+          company,
+          source: "landing",
+          referrer: typeof document !== "undefined" ? document.referrer || null : null,
+          utmSource: params?.get("utm_source"),
+          utmMedium: params?.get("utm_medium"),
+          utmCampaign: params?.get("utm_campaign"),
+        }),
       });
       setStatus("success");
       setMessage("You're on the list. We'll email when Seeker access opens.");

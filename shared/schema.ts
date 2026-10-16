@@ -30,5 +30,11 @@ export const waitlistSignups = pgTable("waitlist_signups", {
   email: text("email").notNull(),
   emailNormalized: text("email_normalized").notNull(),
   source: text("source").notNull().default("landing"),
+  referrer: text("referrer"),
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  ipHash: text("ip_hash"),
+  userAgent: text("user_agent"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("waitlist_signups_email_normalized_unique").on(table.emailNormalized)]);

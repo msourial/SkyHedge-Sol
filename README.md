@@ -39,7 +39,7 @@
 - **Settlement:** the final NOAA observation is normalized, hashed and committed on-chain; if the trigger is hit the buyer claims the payout, and if data is unavailable premiums are refundable. Permissionless `settle_market` / `mark_data_unavailable` after gates are in the `seeker-revamp` program source (Devnet upgrade may still be pending).
 
 **Current live status (Devnet).**
-- **Website:** https://skyhedge.app — Storm Glass waitlist; product UI at `/app`. MapTiler key configured in Vercel production. Waitlist emails need `DATABASE_URL` + migration `0002_waitlist_signups.sql`.
+- **Website:** https://skyhedge.app — Storm Glass waitlist; product UI at `/app`. MapTiler key configured in Vercel production. Waitlist: `DATABASE_URL` + migrations `0002`/`0003`, plus `ADMIN_TOKEN` / `IP_HASH_SALT` for export — see `docs/waitlist-backend.md`.
 - **Des Moines, Iowa:** Devnet pilot for cumulative rainfall. Sales and observation windows move with each seeded market — check the live ticket for the active window; do not assume a fixed calendar date from this README.
 - **Chicago, New York and Miami:** ready to open; each needs on-chain market creation and funding by the admin wallet.
 - **Toronto:** opens soon (Environment Canada adapter is in the codebase). Wind gust and snowfall stay research-only in the UI.

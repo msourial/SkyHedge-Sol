@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { createDb } from "../server/db.js";
-import { createWaitlistHandler } from "../server/services/waitlist.js";
-import type { ApiRequest, ApiResponse } from "../server/services/vercel-api.js";
+import { createDb } from "../../server/db.js";
+import { createWaitlistHandler } from "../../server/services/waitlist.js";
+import type { ApiRequest, ApiResponse } from "../../server/services/vercel-api.js";
 
 const hits = new Map<string, { count: number; resetAt: number }>();
 
