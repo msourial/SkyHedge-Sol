@@ -18,8 +18,10 @@ Owner: **Miro** = needs Miro's account or decision · **On-chain** = needs an ad
 |---|---|---|
 | Mobile app audit, version 0.2.0 (3), tests passing | Done | Committed on `seeker-revamp` |
 | README header + "For judges" section for Encode | Done | This commit |
-| Push `seeker-revamp` commits to GitHub | Miro | Local only until approved |
-| Checkpoint 1: create project, confirm name, tracks, team (solo?) | Miro | Open |
+| Push `seeker-revamp` commits to GitHub | Miro | Approved — push after Encode prep status commit |
+| Checkpoint 1: project exists; confirm solo team | Miro | Confirm solo in Encode dashboard |
+| Waitlist live (Neon free + migrations + signup/CSV) | Done | 2026-10-16 — see `docs/status-report.md` |
+| Encode submission pack + deck PDF | Done | `docs/submission/` |
 | Decide whether to keep the x402 track (needs a real x402 integration to be credible) | Miro | Open |
 | Commit or drop the uncommitted map work-in-progress files, then redeploy web | Miro | Open |
 | Set `OPENROUTER_API_KEY` on Vercel (guide currently runs in offline mode) | Miro | Open |
