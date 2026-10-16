@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>SkyHedge — Encode Club Solana Hackathon 2026</title>
+  <style>
+    @page { size: landscape; margin: 0; }
+    :root {
+      --bg: #0B1220;
+      --panel: #121A2A;
+      --text: #E8EEF6;
+      --muted: #98A3B0;
+      --accent: #5EC8E8;
+      --line: rgba(232, 238, 246, 0.12);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #000; color: var(--text);
+      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; }
+    .slide {
+      width: 1280px; height: 720px; margin: 0 auto 24px; padding: 64px 72px;
+      background:
+        radial-gradient(900px 500px at 10% -10%, rgba(94, 200, 232, 0.18), transparent 55%),
+        radial-gradient(700px 420px at 100% 100%, rgba(40, 90, 140, 0.35), transparent 50%),
+        linear-gradient(160deg, #0B1220 0%, #101828 55%, #0A101C 100%);
+      position: relative; overflow: hidden;
+      page-break-after: always; break-after: page;
+    }
+    .slide:last-child { page-break-after: auto; }
+    .brand { font-size: 18px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--accent); font-family: "Avenir Next", "Segoe UI", sans-serif; margin: 0 0 28px; }
+    h1 { font-size: 56px; line-height: 1.05; margin: 0 0 20px; font-weight: 600; max-width: 18ch; }
+    h2 { font-size: 42px; line-height: 1.1; margin: 0 0 24px; font-weight: 600; }
+    p, li { font-size: 22px; line-height: 1.45; color: var(--muted);
+      font-family: "Avenir Next", "Segoe UI", sans-serif; }
+    p.lead { font-size: 26px; color: var(--text); max-width: 38ch; }
+    ul { padding-left: 1.2em; margin: 0; }
+    li { margin: 0 0 12px; }
+    .footer { position: absolute; left: 72px; right: 72px; bottom: 36px;
+      display: flex; justify-content: space-between; font-size: 14px; color: var(--muted);
+      font-family: "Avenir Next", "Segoe UI", sans-serif; border-top: 1px solid var(--line); padding-top: 14px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
+    .card { background: rgba(18, 26, 42, 0.65); border: 1px solid var(--line); padding: 22px 24px; }
+    .card h3 { margin: 0 0 10px; font-size: 20px; color: var(--text);
+      font-family: "Avenir Next", "Segoe UI", sans-serif; letter-spacing: 0.04em; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 16px; color: var(--accent); }
+    @media print {
+      body { background: none; }
+      .slide { margin: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+
+<section class="slide">
+  <p class="brand">SkyHedge</p>
+  <h1>Weather protection you buy from your phone</h1>
+  <p class="lead">Parametric rainfall coverage on Solana Mobile — quote, approve in Phantom, settle from NOAA.</p>
+  <div class="footer"><span>Encode Club Solana Hackathon 2026</span><span>skyhedge.app · Devnet</span></div>
+</section>
+
+<section class="slide">
+  <p class="brand">Problem</p>
+  <h2>Weather risk is everywhere. Cover is not.</h2>
+  <ul>
+    <li>Operators lose days to rain — flights, lifts, haul roads, events, harvests.</li>
+    <li>Traditional weather cover is slow, paperwork-heavy, and sized for big buyers.</li>
+    <li>Disputes and adjusters add delay after the storm already hit.</li>
+  </ul>
+  <div class="footer"><span>SkyHedge</span><span>2 / 9</span></div>
+</section>
+
+<section class="slide">
+  <p class="brand">Solution</p>
+  <h2>Parametric protection on Solana</h2>
+  <ul>
+    <li>Fixed payout when public weather data crosses a published trigger.</li>
+    <li>Instant quote from NOAA history + forecast; fractional coverage amounts.</li>
+    <li>Fully collateralized per-city vaults in an Anchor program — no claims desk.</li>
+  </ul>
+  <div class="footer"><span>SkyHedge</span><span>3 / 9</span></div>
+</section>
+
+<section class="slide">
+  <p class="brand">Demo</p>
+  <h2>Markets → Protect → Phantom → Wallet</h2>
+  <div class="grid2">
+    <div class="card"><h3>1–2 · Markets &amp; Protect</h3><p>Pick Des Moines rainfall, see NOAA chart, choose coverage, read the option ticket.</p></div>
+    <div class="card"><h3>3–4 · Approve &amp; Wallet</h3><p>Review in Phantom via Mobile Wallet Adapter. Position + Explorer link on Wallet.</p></div>
+  </div>
+  <p style="margin-top:28px">Native React Native Android app for Solana Seeker · SKYT Devnet test token</p>
+  <div class="footer"><span>SkyHedge</span><span>4 / 9</span></div>
+</section>
+
+<section class="slide">
+  <p class="brand">Settlement</p>
+  <h2>How settlement works</h2>
+  <ul>
+    <li>Observation window closes → settlement authority posts hashed NOAA package.</li>
+    <li>Program compares cumulative rain to the immutable trigger.</li>
+    <li>Triggered → buyer claims fixed payout from the vault. Not triggered → premiums stay for LPs.</li>
+    <li>1% protocol fee accrues in the premium; waived on data-unavailable refunds.</li>
+  </ul>
+  <div class="footer"><span>SkyHedge</span><span>5 / 9</span></div>
+</section>
+
+<section class="slide">
+  <p class="brand">Oracle failures</p>
+  <h2>Fail closed. Refund when data never arrives.</h2>
+  <ul>
+    <li>Incomplete or flagged NOAA days are rejected — never invented.</li>
+    <li>After data deadline with no observation: permissionless <span class="mono">mark_data_unavailable</span> → premium refund.</li>
+    <li>Once an observation exists: permissionless <span class="mono">settle_market</span> so settlement cannot stall.</li>
+  </ul>
+  <div class="footer"><span>SkyHedge</span><span>6 / 9</span></div>
+</section>
+
+<section class="slide">
+  <p class="brand">Traction</p>
+  <h2>Pre-launch · honest status</h2>
+  <ul>
+    <li>Live waitlist at <strong style="color:var(--text)">skyhedge.app</strong> (Neon-backed; no public count).</li>
+    <li>Devnet OpenPosition purchase proven via Seeker → Phantom (see README Explorer link).</li>
+    <li>No fabricated user or volume metrics.</li>
+  </ul>
+  <div class="footer"><span>SkyHedge</span><span>7 / 9</span></div>
+</section>
+
+<section class="slide">
+  <p class="brand">Roadmap</p>
+  <h2>Next</h2>
+  <ul>
+    <li>Upgrade Devnet program with permissionless settle / unavailable.</li>
+    <li>Open additional city markets (Chicago, New York, Miami); Toronto via Environment Canada.</li>
+    <li>Encode mid-submission: demo video, live demo, slides.</li>
+    <li>Later: real collateral path; x402 under evaluation (not integrated).</li>
+  </ul>
+  <div class="footer"><span>SkyHedge</span><span>8 / 9</span></div>
+</section>
+
+<section class="slide">
+  <p class="brand">Team</p>
+  <h2>Solo · Miro</h2>
+  <p class="lead">Encode project exists · solo team. Repo <span class="mono">msourial/SkyHedge-Sol</span> · branch <span class="mono">seeker-revamp</span>.</p>
+  <p>skyhedge.app · Solana Mobile · Best Consumer App track</p>
+  <div class="footer"><span>SkyHedge</span><span>9 / 9</span></div>
+</section>
+
+</body>
+</html>
