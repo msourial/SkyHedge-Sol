@@ -1,25 +1,21 @@
-# Device check 2026-10-16 — step 1 in progress
+# Device check 2026-10-16
 
 ## Done
 - SHA-256 verified: `6becdfc300f917923e1e2f50d95839d384ddc62514249aba72cbe691e4ad954d`
-- `adb install -r` Success on SM02G406197714
-- Package was `enabled=0` after install → `pm enable com.skyhedge.mobile` applied
-- Uninstall + reinstall also Success; still enabled
+- APK installed on Seeker `SM02G406197714` (`com.skyhedge.mobile`)
+- Device unlocked; MainActivity focused
+- Screens: `markets.png`, `protect.png`, `wallet.png`
+  - Markets: Des Moines **Sales closed**; CHI/NYC/MIA Ready to open; Toronto Opens soon
+  - Protect: sales ended; Protect disabled; ticket Oct 14–18 ≥50 mm
+  - Wallet: Connected; position waiting on weather (window ends Oct 19 UTC)
+- Waitlist `already_subscribed` UX: commit `09df16a`, pushed, prod deployed
 
-## Blocked
-- Device locked: `mScreenLocked=true`, `mDreamingLockscreen=true`, focus=`NotificationShade`, app=`FallbackHome`
-- `am start …MainActivity` → Error type 3 / ATM result -92 (activity unavailable until credential unlock / Direct Boot)
-- Notification shade stuck expanded; `cmd statusbar collapse` / BACK / HOME / SystemUI kill not permitted from shell
-- Screencaps of Markets / Protect / Wallet not taken yet
-- Web baseline for compare: https://skyhedge.app (Storm Glass waitlist; Markets→Protect→Wallet narrative; Des Moines Live; Devnet honesty)
+## Demo blocker (honest)
+- Des Moines sales closed — Phantom purchase demo needs a new on-chain market (admin wallet).
+- Wallet position still usable for settlement/refund story beats.
 
-## Web compare (skyhedge.app) — done without device
-
-- Live waitlist Storm Glass hero OK; Devnet honesty copy present; no “insurance”.
-- How-it-works: Markets → Protect → Wallet narrative matches demo script.
-- Live markets: Des Moines / NY / Miami / Chicago Live; Toronto Soon.
-- Hero phone loads `/mockups/landing/protect.png` (1080×2300); dark Storm Glass UI reads nearly empty at a glance — step 3 recapture should improve Protect (priced quote) + Wallet (connected).
-- Waitlist success/already copy not yet deployed (staged locally for step 6).
-
-## Need
-- Physical unlock: dismiss notification shade, enter PIN. Unlock watcher running; will launch app when `mScreenLocked=false`.
+## Still needs you
+- Encode dashboard: confirm solo team
+- Anchor Devnet upgrade (permissionless settle/unavailable)
+- Create/fund/open new Des Moines (or other) sales window
+- Publish GitHub Release (install `gh` or do in browser)
