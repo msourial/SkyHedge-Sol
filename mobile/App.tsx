@@ -63,6 +63,8 @@ export default function App() {
   const [walletSession, setWalletSession] = useState<AuthorizedWallet | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [walletBalances, setWalletBalances] = useState<FinalizedWalletState | null>(null);
+  const [balancesError, setBalancesError] = useState<string | null>(null);
+  const [balancesLoading, setBalancesLoading] = useState(false);
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [guideTurns, setGuideTurns] = useState<GuideTurn[]>([]);
@@ -145,15 +147,27 @@ export default function App() {
   }, [selectedCity, cities]);
 
   const loadWalletData = useCallback(async (address: string, force = false) => {
-    const [balanceResult, portfolioResult] = await Promise.allSettled([
-      readWalletStateWithFallback(address, { timeoutMs: 20_000, direct: (a) => readFinalizedWalletStateAnyRpc(a, { force }), server: (a) => getJson<FinalizedWalletState>(`/api/mobile?resource=wallet-balances&wallet=${encodeURIComponent(a)}`) }),
-      getJson<Portfolio>(`/api/mobile?resource=portfolio&wallet=${encodeURIComponent(address)}`),
-    ]);
-    setWalletBalances(balanceResult.status === "fulfilled" ? balanceResult.value : null);
-    setPortfolio(portfolioResult.status === "fulfilled" ? portfolioResult.value : null);
-    setPortfolioError(portfolioResult.status === "rejected"
-      ? portfolioResult.reason instanceof Error ? portfolioResult.reason.message : "Portfolio indexing is unavailable."
-      : null);
+    setBalancesLoading(true);
+    setBalancesError(null);
+    try {
+      const [balanceResult, portfolioResult] = await Promise.allSettled([
+        readWalletStateWithFallback(address, { timeoutMs: 20_000, direct: (a) => readFinalizedWalletStateAnyRpc(a, { force }), server: (a) => getJson<FinalizedWalletState>(`/api/mobile?resource=wallet-balances&wallet=${encodeURIComponent(a)}`) }),
+        getJson<Portfolio>(`/api/mobile?resource=portfolio&wallet=${encodeURIComponent(address)}`),
+      ]);
+      if (balanceResult.status === "fulfilled") {
+        setWalletBalances(balanceResult.value);
+        setBalancesError(null);
+      } else {
+        setWalletBalances(null);
+        setBalancesError(balanceResult.reason instanceof Error ? balanceResult.reason.message : "Couldn’t read balances from Solana.");
+      }
+      setPortfolio(portfolioResult.status === "fulfilled" ? portfolioResult.value : null);
+      setPortfolioError(portfolioResult.status === "rejected"
+        ? portfolioResult.reason instanceof Error ? portfolioResult.reason.message : "Portfolio indexing is unavailable."
+        : null);
+    } finally {
+      setBalancesLoading(false);
+    }
   }, []);
 
   const retryData = useCallback(async () => {
@@ -458,6 +472,8 @@ export default function App() {
             wallet={wallet}
             walletName={WALLET_NAME}
             balances={walletBalances}
+            balancesError={balancesError}
+            balancesLoading={balancesLoading}
             portfolio={portfolio}
             portfolioError={portfolioError}
             walletError={walletError}
@@ -467,7 +483,8 @@ export default function App() {
             observationEnd={status?.desMoinesMarket.observationEnd ?? null}
             onBrowseMarkets={() => { setTab("catalog"); setDetailCode(null); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
             onConnect={() => { void connect(); }}
-            onDisconnect={() => { setWallet(null); setWalletSession(null); setPortfolio(null); setWalletBalances(null); setPortfolioError(null); setWalletError(null); setClaimReadiness(null); setQuote(null); }}
+            onRetryBalances={() => { if (wallet) void loadWalletData(wallet, true); }}
+            onDisconnect={() => { setWallet(null); setWalletSession(null); setPortfolio(null); setWalletBalances(null); setBalancesError(null); setBalancesLoading(false); setPortfolioError(null); setWalletError(null); setClaimReadiness(null); setQuote(null); }}
           />
         ) : null}
         {!showLanding && tab === "wallet" ? (

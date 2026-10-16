@@ -556,6 +556,8 @@ export function WalletV2(props: {
   wallet: string | null;
   walletName: string;
   balances: FinalizedWalletState | null;
+  balancesError?: string | null;
+  balancesLoading?: boolean;
   portfolio: Portfolio | null;
   portfolioError: string | null;
   walletError: string | null;
@@ -565,10 +567,12 @@ export function WalletV2(props: {
   observationEnd?: number | null;
   onBrowseMarkets?: () => void;
   onConnect: () => void;
+  onRetryBalances?: () => void;
   onDisconnect: () => void;
 }) {
   const skytBase = props.balances?.skytBaseUnits ?? null;
   const stage = payoutStage(props.claimReadiness);
+  const readingBalances = !props.balances && !props.balancesError && (props.balancesLoading || props.loading);
   return <>
     <ScreenTop title="Wallet" lead="Devnet balances and positions, read from Solana." />
     {props.walletError ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>Wallet didn’t connect — try again</Text><Text style={s.noticeBody}>{friendlyError(props.walletError)}</Text></View> : null}
@@ -587,11 +591,27 @@ export function WalletV2(props: {
         </View>
         <Text style={[s.sectionLabel, { marginTop: S.lg }]}>Available</Text>
         <View style={s.baseline}>
-          <Text style={s.hugeFigure}>{skytBase ? formatSkytFixed(skytBase, 2) : "—"}</Text>
+          <Text style={s.hugeFigure}>{skytBase != null ? formatSkytFixed(skytBase, 2) : "—"}</Text>
           <Text style={s.unit}>SKYT</Text>
         </View>
-        <Text style={s.caption}>{props.balances ? `${props.balances.sol.toFixed(4)} SOL for fees` : "Reading balances from Solana…"}</Text>
-        {!props.balances && props.loading ? <View style={{ marginTop: S.md, alignItems: "flex-start" }}><ActivityIndicator color={C.rain} /></View> : null}
+        {props.balances ? (
+          <Text style={s.caption}>{props.balances.sol.toFixed(4)} SOL for fees</Text>
+        ) : props.balancesError ? (
+          <View style={{ marginTop: S.xs }} accessibilityRole="alert">
+            <Text style={s.caption}>{friendlyError(props.balancesError, "Couldn’t read balances from Solana.")}</Text>
+            {props.onRetryBalances ? (
+              <Pressable accessibilityRole="button" onPress={props.onRetryBalances} style={s.inlineBtn} disabled={props.balancesLoading}>
+                <Text style={s.link}>{props.balancesLoading ? "Retrying…" : "Retry balance read"}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : (
+          <Text style={s.caption}>{readingBalances ? "Reading balances from Solana…" : "Balances unavailable — pull to refresh or retry."}</Text>
+        )}
+        {readingBalances ? <View style={{ marginTop: S.md, alignItems: "flex-start" }}><ActivityIndicator color={C.rain} /></View> : null}
+        {!props.balances && !props.balancesError && !readingBalances && props.onRetryBalances ? (
+          <Pressable accessibilityRole="button" onPress={props.onRetryBalances} style={s.inlineBtn}><Text style={s.link}>Retry balance read</Text></Pressable>
+        ) : null}
         <View style={{ marginTop: S.md }}><ExplorerButton url={`https://explorer.solana.com/address/${encodeURIComponent(props.wallet)}?cluster=devnet`} label="Open in Explorer" /></View>
       </GlassCard>
 
