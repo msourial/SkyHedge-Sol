@@ -283,7 +283,6 @@ async function main() {
 const payload = ${JSON.stringify(payload)};
 const start = () => window.SkyHedgeSeedSigner.run(payload);
 document.getElementById("start").onclick = start;
-setTimeout(start, 500);
 </script></body>`;
 
   const results: Array<{ step: string; signature: string }> = [];
