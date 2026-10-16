@@ -1,7 +1,7 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { asc, count, eq } from "drizzle-orm";
-import { waitlistSignups } from "../../shared/schema";
+import { waitlistSignups } from "../../shared/schema.js";
 import type { Db } from "../db";
 import type { ApiRequest, ApiResponse } from "./vercel-api.js";
 import { applyCorsHeaders, isCorsPreflight } from "./cors.js";
