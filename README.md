@@ -12,7 +12,8 @@
 | Repo | [msourial/SkyHedge-Sol @ seeker-revamp](https://github.com/msourial/SkyHedge-Sol/tree/seeker-revamp) |
 | APK | See [Releases](https://github.com/msourial/SkyHedge-Sol/releases) (Devnet build; SHA-256 in the release notes). Local release path: `mobile/android/app/build/outputs/apk/release/app-release.apk` |
 | Demo | `<<DEMO_VIDEO_URL>>` · script: [docs/demo-script.md](docs/demo-script.md) |
-| Pitch deck | `<<PITCH_DECK_URL>>` (previous deck: [docs/clock-in-pitch.pdf](docs/clock-in-pitch.pdf)) |
+| Pitch deck | [docs/submission/skyhedge-encode-deck.pdf](docs/submission/skyhedge-encode-deck.pdf) · pack: [docs/submission/](docs/submission/) |
+| Encode pack | Description, problem/solution, stack, Devnet status, team, links under [docs/submission/](docs/submission/) |
 | Program (Devnet) | `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` |
 | Test token | `SKYT` mint `3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g` (Devnet, no value) |
 
@@ -26,10 +27,10 @@
 **What it is.** SkyHedge sells parametric weather protection: a fixed payout that triggers automatically when public weather data crosses a pre-set threshold (for example, at least 50 mm of rain in Des Moines over a 7-day window). There is no claims process; the data decides.
 
 **Quick start.**
-1. Open **https://skyhedge.app** for the waitlist landing, or **https://skyhedge.app/app** for the Devnet web companion. Install the Android APK on a Seeker / Android phone for the native path.
-2. Install Phantom → Settings → Developer Settings → **Testnet Mode** → Solana **Devnet**. You need Devnet SOL (fees) and SKYT (premiums).
-3. In the app: **Markets** → pick a city → **Protect** → choose coverage → **Review in wallet** → approve in Phantom.
-4. Without SKYT you can still browse markets, quotes, and live NOAA data. Full shot list: [docs/demo-script.md](docs/demo-script.md).
+1. Open **https://skyhedge.app** (waitlist) or **https://skyhedge.app/app** (Devnet product). Or install the Android APK on a Seeker / Android phone ([Releases](https://github.com/msourial/SkyHedge-Sol/releases)).
+2. Phantom → Settings → Developer Settings → **Testnet Mode** → Solana **Devnet**. Need Devnet SOL (fees) and SKYT (premiums).
+3. Demo path: **Markets** → city → **Protect** quote → **Review in wallet** → approve in Phantom → **Wallet** position → settlement/refund story. Shot list: [docs/demo-script.md](docs/demo-script.md).
+4. Without SKYT you can still browse markets, quotes, and live NOAA data.
 
 **How Solana powers it.**
 - **Anchor program** (`anchor/programs/skyhedge_protection`) holds every rule: market creation, pricing inputs, purchases, settlement, payouts and refunds.
@@ -97,7 +98,7 @@ flowchart LR
 
 - **Funding.** Any wallet can `fund_pool` while a market is Draft or Open and before sales close, up to the market's liquidity cap; LP shares are 1:1 with SKYT deposited. `withdraw_liquidity` is allowed in the same window only if the vault still covers reserved exposure.
 - **Buying.** `open_position` charges `premium = ceil(protected_amount × premium_rate_bps / 10,000)`, where `premium_rate_bps = ceil(probability_bps × 1.15) + 100`. The 1% protocol fee (1% of the protected amount) is part of the premium and is only accrued, not moved. The purchase reserves the full payout and is rejected unless the vault, including the new premium, covers all reserved exposure and stays within the market's exposure and per-wallet caps.
-- **Settlement.** The settlement authority posts one NOAA observation that must match the market's station hash, methodology hash and window and carry a non-zero source hash; `settle_market` compares it with the immutable trigger. If the trigger is not hit, premiums stay in the vault for LPs. If no valid NOAA data exists after the data deadline, `mark_data_unavailable` lets every buyer reclaim their full premium and waives the protocol fee.
+- **Settlement.** The settlement authority posts one NOAA observation that must match the market's station hash, methodology hash and window and carry a non-zero source hash. Once that observation exists, **anyone** may call `settle_market` (deterministic). If the trigger is hit, the buyer claims the payout; if not, premiums stay for LPs. After the data deadline with **no** observation, **anyone** may call `mark_data_unavailable` so buyers reclaim premiums (protocol fee waived). These permissionless paths are in `seeker-revamp` source; Devnet upgrade may still be pending.
 - **Close.** After the claim deadline the admin calls `close_market`: the accrued 1% fee moves to the protocol fee vault (zero when data was unavailable) and everything left in the vault is redeemable by LPs pro rata.
 - **Who signs.** The protocol admin wallet creates, opens (needs at least one LP share) and closes markets; the settlement authority posts observations; LPs and buyers sign their own deposits, purchases and claims. Funding is not admin-gated on chain; on Devnet the admin wallet seeds the first liquidity.
 - **Collateral.** Devnet uses the valueless six-decimal SKYT test token; no real money is involved.
@@ -181,16 +182,59 @@ shared/    IDL, methodology, optional Postgres schema
 docs/      demo script, pitch deck, submission draft, plans, takeover log
 ```
 
+## Architecture (high level)
+
+```mermaid
+flowchart TB
+  subgraph clients [Clients]
+    Seeker["Seeker app RN Android"]
+    Web["skyhedge.app waitlist plus /app"]
+  end
+  subgraph api [Vercel API]
+    Quote["Quote engine NOAA ECCC"]
+    Unsigned["Unsigned tx builder"]
+    Waitlist["Waitlist Neon Postgres"]
+  end
+  subgraph chain [Solana Devnet]
+    Prog["Anchor skyhedge_protection"]
+    Vault["Per-city SKYT vault PDA"]
+    Obs["Settlement observation PDA"]
+  end
+  Seeker --> Quote
+  Seeker --> Unsigned
+  Web --> Waitlist
+  Unsigned --> Seeker
+  Seeker -->|"MWA Phantom approve"| Prog
+  Prog --> Vault
+  Quote --> Seeker
+  Prog --> Obs
+```
+
+## Oracle failure handling
+
+| Failure | Behavior |
+| --- | --- |
+| Incomplete / flagged NOAA days | Rejected off-chain; never synthesized into rainfall |
+| No valid observation by `data_deadline` | `mark_data_unavailable` (permissionless after deadline) → buyers `claim_premium_refund` |
+| Observation posted but settle stalled | `settle_market` permissionless once observation PDA exists |
+| API / parser outage | Fail-closed; cron retries; 503 guidance — no alternate settlement source |
+| NOAA revises after settle | Settled markets are final (7-day data grace before deadline; no reopen path in V1) |
+
+Details: [docs/oracle-failure-plan.md](docs/oracle-failure-plan.md).
+
 ## Tests
 
-- `cd mobile && npm run test:mobile`: mobile suites (wallet auth/send, ticket, chain fallback, network resilience, Storm Glass tokens, and more)
-- `npm run test:server`: server suite (quote engine, NOAA/ECCC providers, settlement)
-- `npm run test:ui`: Playwright UI reliability (install browsers once with `npx playwright install`)
-- `npm run check`: typecheck for root; `cd mobile && npm run check` for the app
+```bash
+npm run check                 # root typecheck
+npm run test:server           # quote, NOAA/ECCC, waitlist, settlement
+npm run test:ui               # Playwright (npx playwright install chromium once)
+cd mobile && npm run check && npm run test:mobile
+npm run solana:test           # cargo-build-sbf + Anchor Rust tests (incl. permissionless_resolution)
+```
 
 ## Status & honesty
 
-Devnet only. SKYT is a test token. SkyHedge is a parametric weather hedge and not a regulated product. No traction numbers are claimed.
+Devnet only. SKYT is a test token. SkyHedge is a parametric weather hedge and not a regulated product. No traction numbers are claimed. Encode team: **solo**.
 
 ## License
 
