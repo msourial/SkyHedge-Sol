@@ -362,13 +362,17 @@
 .wl-form__submit:disabled { opacity: .6; cursor: wait; }
 .wl-form__honeypot { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
 .wl-form__error { margin: .7rem 0 0; color: var(--destructive); font-size: .875rem; }
-.wl-form--success { border: 1px solid color-mix(in srgb, var(--success) 35%, transparent); border-radius: var(--radius-glass); background: color-mix(in srgb, var(--success-dim) 80%, transparent); padding: 1.1rem 1.2rem; }
-.wl-form__success-title { margin: 0; font-family: var(--font-display); font-weight: 700; color: var(--success); }
-.wl-form__success-body { margin: .35rem 0 0; color: var(--wl-body); font-size: .9rem; line-height: 1.45; }
+.wl-form--success { border: 1px solid color-mix(in srgb, var(--success) 35%, transparent); border-radius: var(--radius-glass); background: color-mix(in srgb, var(--success-dim) 80%, transparent); padding: 1.1rem 1.2rem; width: 100%; max-width: 100%; box-sizing: border-box; }
+.wl-form--already { border-color: color-mix(in srgb, var(--identity) 40%, transparent); background: color-mix(in srgb, var(--surface-1) 88%, transparent); }
+.wl-form--already .wl-form__success-title { color: var(--foreground); }
+.wl-form__success-title { margin: 0; font-family: var(--font-display); font-weight: 700; color: var(--success); font-size: clamp(1.05rem, 2.8vw, 1.25rem); line-height: 1.25; text-wrap: balance; }
+.wl-form__success-body { margin: .45rem 0 0; color: var(--wl-body); font-size: .9rem; line-height: 1.5; text-wrap: pretty; }
 .wl-form--compact { max-width: 28rem; }
 @media (max-width: 520px) {
-  .wl-form__pill { flex-direction: column; border-radius: var(--radius-glass); padding: .75rem; }
+  .wl-form__pill { flex-direction: column; border-radius: var(--radius-glass); padding: .75rem; gap: .55rem; }
+  .wl-form__input { min-height: var(--min-touch); font-size: 16px; /* avoid iOS zoom */ }
   .wl-form__submit { width: 100%; min-height: var(--min-touch); }
+  .wl-form--success { padding: 1rem 1.05rem; }
 }
 
 .wl-section { margin: 0 auto; max-width: 72rem; padding: 4.5rem 1.25rem; }

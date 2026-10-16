@@ -173,7 +173,7 @@ describe("waitlist handlers", () => {
     expect((out.body as { error: string }).error).to.equal("INVALID_EMAIL");
   });
 
-  it("returns success for duplicates without leaking an error", async () => {
+  it("returns already_subscribed for duplicates without leaking an error", async () => {
     const handler = createWaitlistHandler({
       getDb: () =>
         ({
@@ -194,7 +194,7 @@ describe("waitlist handlers", () => {
     const out = mockRes();
     await handler({ method: "POST", body: { email: "dup@example.com" }, headers: {}, ip: "1.1.1.1" }, out.res);
     expect(out.status).to.equal(200);
-    expect(out.body).to.deep.equal({ ok: true, status: "subscribed" });
+    expect(out.body).to.deep.equal({ ok: true, status: "already_subscribed" });
   });
 
   it("acks honeypot without writing", async () => {

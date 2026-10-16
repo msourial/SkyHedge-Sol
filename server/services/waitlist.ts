@@ -41,7 +41,8 @@ export type WaitlistSignupInput = {
 
 export type WaitlistResult = {
   ok: true;
-  status: "subscribed";
+  /** `already_subscribed` when the email was already on the list (still HTTP 200). */
+  status: "subscribed" | "already_subscribed";
 };
 
 function sendJson(res: ApiResponse, status: number, body: unknown) {
@@ -100,7 +101,7 @@ export async function persistWaitlistSignup(db: Db, input: WaitlistSignupInput):
     .from(waitlistSignups)
     .where(eq(waitlistSignups.emailNormalized, input.emailNormalized))
     .limit(1);
-  if (existing[0]) return { ok: true, status: "subscribed" };
+  if (existing[0]) return { ok: true, status: "already_subscribed" };
 
   try {
     await db.insert(waitlistSignups).values({
@@ -118,8 +119,8 @@ export async function persistWaitlistSignup(db: Db, input: WaitlistSignupInput):
     return { ok: true, status: "subscribed" };
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    // Unique race: treat as already subscribed (same success shape — no enumeration).
-    if (/unique|duplicate/i.test(message)) return { ok: true, status: "subscribed" };
+    // Unique race: treat as already subscribed (still HTTP 200 — no error leak).
+    if (/unique|duplicate/i.test(message)) return { ok: true, status: "already_subscribed" };
     throw error;
   }
 }

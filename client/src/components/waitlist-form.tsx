@@ -1,7 +1,7 @@
 import { useId, useState, type FormEvent } from "react";
 import { api, ApiError } from "@/lib/api";
 
-type Status = "idle" | "submitting" | "success" | "error";
+type Status = "idle" | "submitting" | "success" | "already" | "error";
 
 export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "compact"; id?: string }) {
   const fieldId = useId();
@@ -17,7 +17,7 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
     setMessage(null);
     try {
       const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-      await api<{ ok: true; status: string }>("/api/waitlist", {
+      const result = await api<{ ok: true; status: string }>("/api/waitlist", {
         method: "POST",
         body: JSON.stringify({
           email,
@@ -29,8 +29,13 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
           utmCampaign: params?.get("utm_campaign"),
         }),
       });
-      setStatus("success");
-      setMessage("You're on the list. We'll email when Seeker access opens.");
+      const already = result.status === "already_subscribed";
+      setStatus(already ? "already" : "success");
+      setMessage(
+        already
+          ? "This email is already on the list. We'll email when Seeker access opens."
+          : "You're on the list. We'll email when Seeker access opens.",
+      );
       setEmail("");
     } catch (error) {
       setStatus("error");
@@ -38,14 +43,20 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
     }
   }
 
-  if (status === "success") {
+  if (status === "success" || status === "already") {
     return (
       <div
-        className={variant === "hero" ? "wl-form wl-form--success" : "wl-form wl-form--compact wl-form--success"}
+        className={
+          variant === "hero"
+            ? `wl-form wl-form--success${status === "already" ? " wl-form--already" : ""}`
+            : `wl-form wl-form--compact wl-form--success${status === "already" ? " wl-form--already" : ""}`
+        }
         role="status"
         aria-live="polite"
       >
-        <p className="wl-form__success-title">You're on the waitlist</p>
+        <p className="wl-form__success-title">
+          {status === "already" ? "Already on the list" : "You're on the waitlist"}
+        </p>
         <p className="wl-form__success-body">{message}</p>
       </div>
     );
