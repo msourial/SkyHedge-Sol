@@ -184,7 +184,7 @@ Chicago and Miami each have four missing rungs. Each rung is create, then fund 2
 | Chicago, Miami | Monthly | 2026-11-01 00:00 (`1793491200`) | 2026-12-01 00:00 (`1796083200`) |
 | Chicago, Miami | Monthly | 2026-12-01 00:00 (`1796083200`) | 2027-01-01 00:00 (`1798761600`) |
 
-The New York dry-run in this pass hit public RPC 429 before it could list rungs. An earlier dry-run the same day returned zero missing rungs (week of Oct 19, week of Oct 26, November, December already open). Re-run the New York dry-run before signing it. Seattle, Los Angeles, Boston, and Austin use the same ladder script and were not dry-run in this pass. The strike and premium come from NOAA when the signer page loads. Stop here until those approvals are made in Phantom.
+A retried New York dry-run returned zero missing rungs: the week of Oct 19, the week of Oct 26, November, and December are already open. Do not sign New York unless a later dry-run prints new steps. Seattle, Los Angeles, Boston, and Austin use the same ladder script and were not dry-run in this pass. The strike and premium come from NOAA when the signer page loads. Stop here until those approvals are made in Phantom.
 
 Stations: Chicago `GHCND:USW00094846` (CHICAGO OHARE INTL AP), Miami `GHCND:USW00012839` (MIAMI INTL AP), Seattle `GHCND:USW00024233` (SEATTLE TACOMA AP), Los Angeles `GHCND:USW00023174` (LOS ANGELES INTL AP), Boston `GHCND:USW00014739` (BOSTON LOGAN, WMO 72509), Austin `GHCND:USW00013904` (AUSTIN BERGSTROM INTL AP).
 
