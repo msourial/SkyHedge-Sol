@@ -12,7 +12,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { DES_MOINES_SEED_LIQUIDITY_BASE } from "../shared/des-moines-seed-plan.ts";
 import { TEST_SKYT_MINT } from "../server/services/window-keeper.ts";
-import { phantomLadderPayload } from "../server/services/window-keeper-run.ts";
+import { parseKeeperCity, phantomLadderPayload } from "../server/services/window-keeper-run.ts";
 
 config();
 
@@ -21,7 +21,8 @@ const OPS_LOG = path.join(ROOT, "docs/devnet-ops.md");
 const EXPECTED_ADMIN = "DKA9RkGvaW4isyj5xdiZ2oGVUkD1UL64Ha1BazXZFD6y";
 
 async function main() {
-  const payload = await phantomLadderPayload();
+  const city = parseKeeperCity(process.argv);
+  const payload = await phantomLadderPayload(city);
   if (payload.expectedAdmin !== EXPECTED_ADMIN) {
     throw new Error(`Protocol admin is ${payload.expectedAdmin}. Expected DKA9 on Devnet.`);
   }
@@ -54,8 +55,8 @@ async function main() {
   if (bundle.status !== 0) throw new Error(bundle.stderr || bundle.stdout || "esbuild failed");
   const html = `<!doctype html><meta charset="utf-8"/><title>SkyHedge ladder signer</title>
 <body style="font-family:system-ui;padding:24px;background:#0b1220;color:#e8eef8;max-width:720px">
-<h1>Des Moines ladder (Devnet)</h1>
-<p>Unlock Phantom as <code>${EXPECTED_ADMIN}</code> on Devnet. Approve each missing rung: create, fund 2,000 SKYT, then open.</p>
+<h1>${city ?? "Live city"} ladder (Devnet)</h1>
+<p>Unlock Phantom as <code>${EXPECTED_ADMIN}</code> on Devnet. Approve each missing rung: create, fund 2,000 SKYT, then open. This page does not use a stored admin key.</p>
 <ul>${payload.summary.map((row) => `<li>${row.label}: ≥${row.thresholdMm} mm, premium ${row.premiumRateBps} bps</li>`).join("")}</ul>
 <button id="start" style="font-size:18px;padding:12px 20px;cursor:pointer">Start with Phantom</button>
 <pre id="log" style="margin-top:16px;white-space:pre-wrap"></pre>

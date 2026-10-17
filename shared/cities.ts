@@ -38,17 +38,25 @@ export interface CityIndex {
 
 export const CITY_INDEX: CityIndex[] = [
   {
-    slug: "des-moines", name: "Des Moines", country: "United States", countryCode: "US",
-    latitude: 41.534, longitude: -93.663,
-    noaaDataset: "GHCND", noaaStationId: "GHCND:USW00014933", stationName: "DES MOINES INTL AP",
-    monthlyNormalsMm: [22, 27, 55, 86, 111, 126, 111, 105, 82, 61, 45, 28],
-    coverageTier: "A",
-  },
-  {
     slug: "new-york", name: "New York", country: "United States", countryCode: "US",
     latitude: 40.7789, longitude: -73.9692,
     noaaDataset: "GHCND", noaaStationId: "GHCND:USW00094728", stationName: "NY CITY CENTRAL PARK",
     monthlyNormalsMm: [79, 76, 97, 92, 96, 96, 111, 107, 96, 89, 84, 90],
+    coverageTier: "A",
+  },
+  {
+    slug: "dallas", name: "Dallas", country: "United States", countryCode: "US",
+    latitude: 32.89744, longitude: -97.02196,
+    noaaDataset: "GHCND", noaaStationId: "GHCND:USW00003927", stationName: "DALLAS FT WORTH AP",
+    // 1991–2020 MLY-PRCP-NORMAL inches × 25.4, rounded to the nearest millimetre. Climatology prior only.
+    monthlyNormalsMm: [64, 70, 84, 82, 121, 94, 53, 55, 69, 111, 64, 72],
+    coverageTier: "A",
+  },
+  {
+    slug: "des-moines", name: "Des Moines", country: "United States", countryCode: "US",
+    latitude: 41.534, longitude: -93.663,
+    noaaDataset: "GHCND", noaaStationId: "GHCND:USW00014933", stationName: "DES MOINES INTL AP",
+    monthlyNormalsMm: [22, 27, 55, 86, 111, 126, 111, 105, 82, 61, 45, 28],
     coverageTier: "A",
   },
   {

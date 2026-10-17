@@ -3,9 +3,10 @@ import { createHash } from "node:crypto";
 export interface Station { city: string; state: string; stationId: string; latitude: number; longitude: number; dataset?: "GHCND" | "GSOD"; }
 
 /** NOAA station pins. A pin enables data retrieval; market release still requires evidence validation. */
-export const NOAA_STATIONS: Record<"des-moines" | "new-york" | "miami" | "chicago", Station> = {
-  "des-moines": { city: "Des Moines", state: "IA", stationId: "GHCND:USW00014933", latitude: 41.534, longitude: -93.663 },
+export const NOAA_STATIONS: Record<"new-york" | "dallas" | "des-moines" | "miami" | "chicago", Station> = {
   "new-york": { city: "New York", state: "NY", stationId: "GHCND:USW00094728", latitude: 40.7789, longitude: -73.9692 },
+  dallas: { city: "Dallas", state: "TX", stationId: "GHCND:USW00003927", latitude: 32.89744, longitude: -97.02196 },
+  "des-moines": { city: "Des Moines", state: "IA", stationId: "GHCND:USW00014933", latitude: 41.534, longitude: -93.663 },
   miami: { city: "Miami", state: "FL", stationId: "GHCND:USW00012839", latitude: 25.7933, longitude: -80.2906 },
   chicago: { city: "Chicago", state: "IL", stationId: "GHCND:USW00094846", latitude: 41.995, longitude: -87.9336 },
 };

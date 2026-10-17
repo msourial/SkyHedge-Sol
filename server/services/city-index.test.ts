@@ -5,9 +5,10 @@ import { searchCities } from "./city-index";
 
 describe("V1 city registry (NOAA-pinned US cities)", () => {
   it("commits Des Moines, New York, Miami, and Chicago", () => {
-    expect(CITY_INDEX.length).to.eq(4);
+    expect(CITY_INDEX.length).to.eq(5);
     const slugs = CITY_INDEX.map((c) => c.slug);
-    expect(slugs).to.have.members(["des-moines", "new-york", "miami", "chicago"]);
+    expect(slugs).to.have.members(["new-york", "dallas", "des-moines", "miami", "chicago"]);
+    expect(slugs[0]).to.eq("new-york");
     expect(new Set(slugs).size).to.eq(slugs.length);
   });
 
@@ -69,6 +70,11 @@ describe("City search index", () => {
 
   it("resolves the V1 New York alias", () => {
     expect(searchCities("nyc")[0].slug).to.eq("new-york");
+  });
+
+  it("pins Dallas to the DFW airport station", () => {
+    expect(NOAA_STATIONS.dallas.stationId).to.eq("GHCND:USW00003927");
+    expect(searchCities("dfw")[0].slug).to.eq("dallas");
   });
 
   it("resolves the Des Moines station and alias", () => {

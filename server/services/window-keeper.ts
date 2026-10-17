@@ -8,12 +8,12 @@ import { RainfallQuoteEngine } from "./quote-engine.js";
 import methodology from "../../shared/methodology-v1.json" with { type: "json" };
 import {
   historicHitBps,
-  LIVE_CITY_SLUGS,
-  planLadderRoll,
+  planCityLadders,
   priceFromSignals,
   strikeFromAnalogueTotals,
   type LadderMarketRef,
   type LadderStep,
+  type LiveCitySlug,
 } from "../../shared/window-ladder.js";
 
 export const TEST_SKYT_MINT = "3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g";
@@ -37,17 +37,25 @@ export function assertDevnetKeeperTarget(rpcUrl: string, mint: string): void {
   if (mint !== TEST_SKYT_MINT) throw new Error("Window keeper refuses any mint other than test SKYT.");
 }
 
-export function keeperPlan(markets: readonly LadderMarketRef[], nowSeconds = Math.floor(Date.now() / 1_000)): LadderStep[] {
-  return planLadderRoll(markets, nowSeconds);
+export function keeperPlan(
+  markets: readonly LadderMarketRef[],
+  nowSeconds = Math.floor(Date.now() / 1_000),
+  cities?: readonly LiveCitySlug[],
+): LadderStep[] {
+  return planCityLadders(markets, nowSeconds, cities);
 }
 
-/** Price each missing rung from NOAA. A missing analogue year skips that rung instead of inventing a strike. */
+/** Price each missing rung from that city's NOAA station. A missing analogue year skips that rung. */
 export async function priceKeeperSteps(steps: readonly LadderStep[], engine = new RainfallQuoteEngine(new NoaaRainfallProvider())): Promise<PricedLadderStep[]> {
   const priced: PricedLadderStep[] = [];
-  for (const city of LIVE_CITY_SLUGS) {
+  for (const step of steps) {
+    const city = step.city;
+    if (!city || !(city in NOAA_STATIONS)) {
+      priced.push(unpriced(step, "unknown", "Ladder step is missing a live NOAA city."));
+      continue;
+    }
     const station = NOAA_STATIONS[city];
-    for (const step of steps) {
-      const observationStart = new Date(step.window.observationStart * 1_000).toISOString().slice(0, 10);
+    const observationStart = new Date(step.window.observationStart * 1_000).toISOString().slice(0, 10);
       const observationEnd = new Date(step.window.observationEnd * 1_000).toISOString().slice(0, 10);
       const request = {
         city,
@@ -99,14 +107,13 @@ export async function priceKeeperSteps(steps: readonly LadderStep[], engine = ne
       } catch (error) {
         priced.push(unpriced(step, station.stationId, error instanceof Error ? error.message : "NOAA pricing failed."));
       }
-    }
   }
   return priced;
 }
 
-export function evidenceHashes(): { stationIdHash: string; providerHash: string; methodologyHash: string } {
+export function evidenceHashes(stationId: string): { stationIdHash: string; providerHash: string; methodologyHash: string } {
   return {
-    stationIdHash: canonicalSourceHash(NOAA_STATIONS["des-moines"].stationId),
+    stationIdHash: canonicalSourceHash(stationId),
     providerHash: canonicalSourceHash(methodology),
     methodologyHash: canonicalSourceHash(methodology.version),
   };

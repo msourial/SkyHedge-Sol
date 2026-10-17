@@ -51,7 +51,9 @@ Signer: protocol admin `DKA9…FD6y` via Phantom. Market PDA `HDJiTEYSnaeUNZWAHv
 
 Each live city keeps two weekly rain windows (Monday 00:00 UTC through the next Monday) and two calendar-month windows. Sales close when that window starts. The strike is the 8th of 10 NOAA GHCND analogue totals for those exact dates, rounded up to a whole millimetre. NWS QPF is included only when it covers every day; otherwise the premium uses the analogue history alone. Nothing is filled in.
 
-`npx tsx scripts/roll-window-ladder.ts` prints the missing rungs and does not sign. `npx tsx scripts/sign-ladder-phantom.ts` opens a page on `127.0.0.1:8765` and Phantom approves each create, fund, and open as the Devnet protocol admin. The admin key is not stored in the repo or in Vercel.
+Live rainfall cities, in order: New York (Central Park `GHCND:USW00094728`), Dallas–Fort Worth (`GHCND:USW00003927`), Des Moines (`GHCND:USW00014933`). Toronto stays closed until Environment Canada data is in. Each live city has its own ladder. A Des Moines window does not fill a New York or Dallas rung.
+
+`npx tsx scripts/roll-window-ladder.ts` prints the missing rungs and does not sign. Add `--city new-york` or `--city dallas` to plan one city. `npx tsx scripts/sign-ladder-phantom.ts --city <slug>` opens a page on `127.0.0.1:8765` and Phantom approves each create, fund, and open as the Devnet protocol admin. The keeper refuses `--sign`. The admin key is not stored in the repo or in Vercel.
 
 Vercel cron `GET /api/cron/windows` at 04:15 UTC plans the same ladder and stays a dry run. Devnet and test SKYT only.
 
@@ -104,4 +106,20 @@ A separate on-chain keeper role, limited to create, fund, and open, is proposed 
 ## TX — ladder open · monthly · December
 - **POST signature:** `6ebbCsk5c1TLUzz8YXxTAF2vnDJ4TFW8SPVcU9to4vg7hHkqw8JQTqJsF23WuQH9yZ2xc47AqbSU9tvSPt6Hz2X`
 - **Explorer:** https://explorer.solana.com/tx/6ebbCsk5c1TLUzz8YXxTAF2vnDJ4TFW8SPVcU9to4vg7hHkqw8JQTqJsF23WuQH9yZ2xc47AqbSU9tvSPt6Hz2X?cluster=devnet
+
+## Waiting for Phantom — New York and Dallas ladders
+
+Not signed. Not seeded. Devnet and test SKYT only. Each missing rung is create, then fund 2,000 SKYT, then open. The strike and premium come from NOAA when the signer page loads. Nothing below sends a transaction.
+
+New York station: `GHCND:USW00094728` (NY CITY CENTRAL PARK). Dallas station: `GHCND:USW00003927` (DALLAS FT WORTH AP).
+
+```bash
+# Dry run. Prints missing rungs. Does not sign.
+npx tsx scripts/roll-window-ladder.ts --city new-york
+npx tsx scripts/roll-window-ladder.ts --city dallas
+
+# Phantom. Unlock DKA9…FD6y on Devnet and approve each create, fund, and open.
+npx tsx scripts/sign-ladder-phantom.ts --city new-york
+npx tsx scripts/sign-ladder-phantom.ts --city dallas
+```
 

@@ -5,7 +5,9 @@ import {
   historicHitBps,
   marketsOpenLabel,
   NEXT_WINDOW_COPY,
+  LIVE_CITY_SLUGS,
   openLadder,
+  planCityLadders,
   planLadderRoll,
   priceFromSignals,
   strikeFromAnalogueTotals,
@@ -83,6 +85,16 @@ describe("rolling window ladder", () => {
     expect(historicHitBps(weeklyTotals, weeklyStrike!)).to.equal(2_000);
     expect(priceFromSignals(3_000, 10_000)).to.deep.equal({ probabilityBps: 5_100, premiumRateBps: 5_965, forecastWeight: 0.3 });
     expect(priceFromSignals(3_000, null)).to.deep.equal({ probabilityBps: 3_000, premiumRateBps: 3_550, forecastWeight: 0 });
+  });
+
+  it("keeps each live city's ladder separate, with New York first", () => {
+    expect(LIVE_CITY_SLUGS).to.deep.equal(["new-york", "dallas", "des-moines"]);
+    const [firstWeek] = openLadder(NOW);
+    const steps = planCityLadders([{ ...market(firstWeek, "open"), city: "des-moines" }], NOW);
+    expect(steps.filter((step) => step.city === "dallas")).to.have.length(4);
+    expect(steps.filter((step) => step.city === "new-york")).to.have.length(4);
+    expect(steps.filter((step) => step.city === "des-moines").map((step) => step.window.observationStart)).to.not.include(firstWeek.observationStart);
+    expect(steps[0]?.city).to.equal("new-york");
   });
 
   it("never describes an empty ladder as a closed sale", () => {

@@ -7,7 +7,7 @@ import methodology from "../../shared/methodology-v1.json" with { type: "json" }
 import { canonicalSourceHash, NOAA_STATIONS } from "./noaa.js";
 import { getDesMoinesEvidencePackage, type DesMoinesEvidencePackage } from "./des-moines-evidence.js";
 import { marketStateFromStatusJson } from "../../shared/des-moines-seed-plan.js";
-import { tenorOf, type Tenor } from "../../shared/window-ladder.js";
+import { LIVE_CITY_SLUGS, tenorOf, type LiveCitySlug, type Tenor } from "../../shared/window-ladder.js";
 
 const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
@@ -40,6 +40,7 @@ export function publicDevnetStatus<T extends { rpcUrl: string }>(status: T): Omi
 }
 
 export interface LadderMarketSnapshot {
+  city: LiveCitySlug;
   marketId: string;
   address: string;
   state: "draft" | "open" | "cancelled" | "other";
@@ -51,7 +52,7 @@ export interface LadderMarketSnapshot {
 }
 
 export interface CityWindowSnapshot {
-  city: "des-moines";
+  city: LiveCitySlug;
   tenor: Tenor;
   status: "ready";
   address: string;
@@ -181,7 +182,6 @@ export class DevnetStatusReader {
 
   private async listDesMoinesMarkets(protocol: PublicKey, decodedProtocol: Record<string, unknown>): Promise<ListedMarket[]> {
     const nextMarketId = BigInt(protocolConfigFields(decodedProtocol).nextMarketId ?? "0");
-    const targetHashes = new Set([cityHash("des-moines"), cityHash("Des Moines")]);
     const found: ListedMarket[] = [];
     const chunkSize = 100;
     for (let start = 0n; start < nextMarketId; start += BigInt(chunkSize)) {
@@ -195,11 +195,13 @@ export class DevnetStatusReader {
         if (!account) continue;
         const decoded = this.decodeAccount<Record<string, unknown>>("Market", account.data);
         const marketCityHash = bytesHex(decoded?.city_hash);
-        if (!targetHashes.has(marketCityHash)) continue;
+        const slug = slugForCityHash(marketCityHash);
+        if (!slug) continue;
         const marketAddress = addresses[index];
         const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), marketAddress.toBuffer()], this.programId);
         found.push({
           id: ids[index],
+          city: slug,
           cityHash: marketCityHash,
           status: "ready",
           address: marketAddress.toBase58(),
@@ -208,7 +210,7 @@ export class DevnetStatusReader {
           vaultBalance: await this.tokenBalance(vault),
           onchainStatus: JSON.stringify(decoded?.status ?? null),
           ...marketTermsFields(decoded),
-          evidenceStatus: hasPinnedDesMoinesEvidenceCommitment(decoded) ? "validated" : "researching_evidence",
+          evidenceStatus: hasPinnedStationEvidence(decoded, NOAA_STATIONS[slug].stationId) ? "validated" : "researching_evidence",
           targetCityHash: marketCityHash,
           raw: decoded ?? {},
         });
@@ -266,10 +268,10 @@ export function latestMatchingMarket<T extends { id: bigint; cityHash: string }>
   return latest;
 }
 
-type ListedMarket = DevnetStatus["desMoinesMarket"] & { raw: Record<string, unknown>; id: bigint; cityHash: string };
+type ListedMarket = DevnetStatus["desMoinesMarket"] & { raw: Record<string, unknown>; id: bigint; city: LiveCitySlug; cityHash: string };
 
 function marketStatus(market: ListedMarket): DevnetStatus["desMoinesMarket"] {
-  const { raw: _raw, id: _id, cityHash: _cityHash, ...status } = market;
+  const { raw: _raw, id: _id, city: _city, cityHash: _cityHash, ...status } = market;
   return status;
 }
 
@@ -279,6 +281,7 @@ function ladderSnapshot(market: ListedMarket): LadderMarketSnapshot {
     ? tenorOf(market.observationStart, market.observationEnd)
     : null;
   return {
+    city: market.city,
     marketId: market.marketId ?? market.id.toString(),
     address: market.address ?? "",
     state: state === "draft" || state === "open" || state === "cancelled" ? state : "other",
@@ -288,6 +291,14 @@ function ladderSnapshot(market: ListedMarket): LadderMarketSnapshot {
     vaultBalance: market.vaultBalance,
     tenor,
   };
+}
+
+function slugForCityHash(hash: string): LiveCitySlug | null {
+  for (const slug of LIVE_CITY_SLUGS) {
+    if (cityHash(slug) === hash) return slug;
+  }
+  if (hash === cityHash("Des Moines")) return "des-moines";
+  return null;
 }
 
 function sellingWindow(market: ListedMarket, nowSeconds: number): CityWindowSnapshot[] {
@@ -301,7 +312,7 @@ function sellingWindow(market: ListedMarket, nowSeconds: number): CityWindowSnap
   if (!market.salesCloseAt || market.salesCloseAt <= nowSeconds) return [];
   if (!market.vaultBalance || !/^\d+$/.test(market.vaultBalance) || BigInt(market.vaultBalance) === 0n) return [];
   return [{
-    city: "des-moines",
+    city: market.city,
     tenor,
     status: "ready",
     address: market.address,
@@ -388,7 +399,11 @@ export function marketTermsFields(decoded: Record<string, unknown> | null | unde
  * that package covers a different completed week after the calendar advances.
  */
 export function hasPinnedDesMoinesEvidenceCommitment(decoded: Record<string, unknown> | null | undefined): boolean {
-  if (bytesHex(decoded?.station_id_hash) !== canonicalSourceHash(NOAA_STATIONS["des-moines"].stationId)) return false;
+  return hasPinnedStationEvidence(decoded, NOAA_STATIONS["des-moines"].stationId);
+}
+
+export function hasPinnedStationEvidence(decoded: Record<string, unknown> | null | undefined, stationId: string): boolean {
+  if (bytesHex(decoded?.station_id_hash) !== canonicalSourceHash(stationId)) return false;
   if (bytesHex(decoded?.provider_hash) !== canonicalSourceHash(methodology)) return false;
   if (bytesHex(decoded?.methodology_hash) !== canonicalSourceHash(methodology.version)) return false;
   const quoteInputsHash = bytesHex(decoded?.quote_inputs_hash);

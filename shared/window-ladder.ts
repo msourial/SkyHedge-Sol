@@ -10,7 +10,8 @@ export const LADDER_DEPTH = 2;
 export const ANALOGUE_YEARS = 10;
 /** 1-based rank in the sorted analogue totals (8th of 10 is the 80th percentile). */
 export const STRIKE_RANK = 8;
-export const LIVE_CITY_SLUGS = ["des-moines"] as const;
+/** New York first, then Dallas, then Des Moines. Toronto is not live. */
+export const LIVE_CITY_SLUGS = ["new-york", "dallas", "des-moines"] as const;
 export type LiveCitySlug = (typeof LIVE_CITY_SLUGS)[number];
 export type Tenor = "weekly" | "monthly";
 
@@ -23,6 +24,7 @@ export interface LadderWindow {
 }
 
 export interface LadderMarketRef {
+  city?: LiveCitySlug;
   marketId?: string;
   address?: string;
   state: "draft" | "open" | "cancelled" | "other";
@@ -33,8 +35,8 @@ export interface LadderMarketRef {
 }
 
 export type LadderStep =
-  | { action: "create-fund-open"; window: LadderWindow }
-  | { action: "fund-open" | "open"; window: LadderWindow; marketId: string; address: string };
+  | { action: "create-fund-open"; window: LadderWindow; city?: LiveCitySlug }
+  | { action: "fund-open" | "open"; window: LadderWindow; marketId: string; address: string; city?: LiveCitySlug };
 
 const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const FULL_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -124,6 +126,22 @@ export function historicHitBps(totalsMm: readonly number[], thresholdMm: number)
  * Rungs still missing, plus draft resumes. A non-cancelled market with the same
  * observation bounds is never created again.
  */
+/**
+ * One ladder per live city. A Des Moines window does not count as a Dallas or New York window.
+ */
+export function planCityLadders(
+  markets: readonly LadderMarketRef[],
+  nowSeconds: number,
+  cities: readonly LiveCitySlug[] = LIVE_CITY_SLUGS,
+  count = LADDER_DEPTH,
+): LadderStep[] {
+  return cities.flatMap((city) => planLadderRoll(
+    markets.filter((market) => market.city === city),
+    nowSeconds,
+    count,
+  ).map((step) => ({ ...step, city })));
+}
+
 export function planLadderRoll(markets: readonly LadderMarketRef[], nowSeconds: number, count = LADDER_DEPTH): LadderStep[] {
   const steps: LadderStep[] = [];
   for (const window of openLadder(nowSeconds, count)) {

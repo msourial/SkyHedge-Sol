@@ -13,7 +13,8 @@ export interface CitySearchResult {
 /** Search-only aliases. The committed registry stays free of fuzzy terms; aliases are a query-surface concern. */
 const ALIASES: Record<string, string[]> = {
   "des-moines": ["dsm", "des moines intl", "des moines international"],
-  "new-york": ["nyc", "ny", "new york city"],
+  "new-york": ["nyc", "ny", "new york city", "central park"],
+  dallas: ["dfw", "dallas fort worth", "dallas-fort worth"],
   chicago: ["chi", "chicago o'hare", "ohare"],
   miami: ["mia"],
 };

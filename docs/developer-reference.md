@@ -14,10 +14,10 @@ Devnet Solana software for **fixed-payout cumulative-rainfall protection markets
 
 ## V1 boundaries
 
-- Catalog: 12 researched agricultural rainfall areas. Des Moines is the first Devnet activation target; the other areas remain research-gated. Wind gust and snowfall are research-only and have no quote or transaction path.
+- Catalog: 12 researched agricultural rainfall areas stay research-gated. The consumer rainfall cities are New York (Central Park `GHCND:USW00094728`), Dallas–Fort Worth (`GHCND:USW00003927`), and Des Moines (`GHCND:USW00014933`). New York is first. Toronto stays closed until Environment Canada data is in. Wind gust and snowfall are research-only and have no quote or transaction path.
 - Collateral: six-decimal `SKYT` Devnet SPL test token (`3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g`).
 - Capacity per market: 10,000 SKYT liquidity, 8,000 SKYT exposure, 500 SKYT per wallet.
-- Pricing: ten analogous NOAA windows plus a 30%-weighted NOAA forecast signal when the forecast covers every day; expected payout, 15% risk loading, and a 1% protocol fee. Each live city keeps the next two weekly (Monday–Sunday UTC) and next two calendar-month windows open. Sales close at the window start. The trigger is the 8th of those 10 analogue totals, so a month’s strike is higher only when the NOAA history is higher.
+- Pricing: ten analogous NOAA windows plus a 30%-weighted NOAA forecast signal when the forecast covers every day; expected payout, 15% risk loading, and a 1% protocol fee. Each live city (New York, Dallas, Des Moines) keeps its own next two weekly (Monday 00:00 UTC through the next Monday) and next two calendar-month windows. Sales close at the window start. The trigger is the 8th of those 10 analogue totals, so a month's strike is higher only when the NOAA history is higher. The keeper script stays a dry run; Phantom signs missing rungs (`docs/devnet-ops.md`).
 - Settlement: NOAA is the sole final source; its source hash is committed on chain. If final NOAA data is unavailable after a 7-day grace window, the market enters `DATA_UNAVAILABLE` and buyers can reclaim premiums.
 - AI advisory is advisory-only: it returns structured parameters and requires explicit user approval before an unsigned transaction can be prepared.
 
