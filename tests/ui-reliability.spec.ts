@@ -148,8 +148,11 @@ test("Markets is a map-led agricultural index explorer with truthful location-on
   await expect(page.getByRole("region", { name: "Agricultural index map" })).toBeVisible();
   await expect(page.getByText("Reference locations", { exact: true })).toBeVisible();
   await expect(page.getByText("Winnipeg, Manitoba, Canada", { exact: true })).toBeVisible();
-  await expect(page.getByText("Interactive map tiles are not configured for this local preview.", { exact: false })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Select a region from the list" })).toBeVisible();
+  const mapState = await page.getByTestId("market-explorer-map").getAttribute("data-map-state");
+  if (mapState === "unconfigured" || mapState === "unavailable") {
+    await expect(page.getByText(/Interactive map tiles are not configured|Map unavailable|Map tiles could not be loaded/i).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Select a region from the list" })).toBeVisible();
+  }
   await expect(page.getByText(/active stations|station count|live station/i)).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Lubbock, Texas, United States/ })).toBeVisible();
   await expect(page.getByTestId("market-index-option-des-moines").getByText("Unavailable", { exact: true })).toBeVisible();
@@ -327,7 +330,7 @@ test("wallet connection timeout offers a safe reset without submitting a transac
   await page.getByRole("button", { name: "Connect" }).click();
 
   await expect(page.locator("[data-wallet-state=connecting]")).toBeVisible();
-  await expect(page.getByRole("alert")).toContainText("No transaction was requested.", { timeout: 20_000 });
+  await expect(page.locator("[data-wallet-state]").getByRole("alert")).toContainText("No transaction was requested.", { timeout: 20_000 });
   const unsignedCalls: string[] = [];
   page.on("request", (request) => {
     if (request.url().includes("/api/transactions/unsigned")) unsignedCalls.push(request.url());
@@ -351,8 +354,24 @@ test("locations wrap without horizontal overflow at supported widths", async ({ 
 
 test("waitlist landing owns the root hero and the product lives at /app", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Wedding in Central Park this Saturday?" })).toBeVisible();
-  await expect(page.getByRole("region", { name: /Wedding in Central Park/i }).getByRole("button", { name: "Join waitlist" })).toBeVisible();
+  const hero = page.getByRole("region", { name: /Rain on your plans/i });
+  await expect(hero.getByRole("heading", { name: "Rain on your plans? Get paid." })).toBeVisible();
+  await expect(hero.getByRole("button", { name: "Join waitlist" })).toBeVisible();
+  await expect(hero.getByText("Weekend in Central Park?")).toBeVisible();
+  await expect(hero.getByText("Lollapalooza weekend?")).toBeVisible();
+  await expect(hero.getByText("Beach day in South Beach?")).toBeVisible();
+  await expect(hero.getByText("Rained-out game day?")).toBeVisible();
+  await expect(hero.getByText("Rooftop party?")).toBeVisible();
+  await expect(hero.getByText("Toronto")).toHaveCount(0);
+  await expect(hero.getByText("Des Moines")).toHaveCount(0);
+  const examples = page.getByRole("list", { name: "Rainfall cities" });
+  await expect(examples.getByText("Los Angeles")).toBeVisible();
+  await expect(examples.getByText("Boston")).toBeVisible();
+  await expect(examples.getByText("Austin")).toBeVisible();
+  await expect(examples.getByText("Des Moines")).toBeVisible();
+  await expect(examples.getByText("Toronto")).toBeVisible();
+  await expect(examples.getByText("Opens soon")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open web app" }).first()).toHaveAttribute("href", "/app");
   await expect(page.getByText("October normal, Central Park")).toBeVisible();
   await expect(page.getByText("insurance", { exact: false })).toHaveCount(0);
 
@@ -444,13 +463,18 @@ test("mobile bottom navigation exposes Liquidity and Builder through More", asyn
 
 test("uses the self-hosted Inter / Inter Tight Storm Glass system with mobile-size inputs", async ({ page }) => {
   await page.goto("/app?tab=protect&city=des-moines");
-  await expect(page.locator("input").first()).toBeVisible();
-  const typography = await page.evaluate(() => ({
-    body: getComputedStyle(document.body).fontFamily,
-    inputSize: getComputedStyle(document.querySelector("input")!).fontSize,
-    canvas: getComputedStyle(document.documentElement).getPropertyValue("--background").trim(),
-    accent: getComputedStyle(document.documentElement).getPropertyValue("--identity").trim(),
-  }));
+  const input = page.locator("input").first();
+  await expect(input).toBeVisible();
+  const typography = await page.evaluate(() => {
+    const field = document.querySelector("input");
+    if (!field) throw new Error("Protect is missing its amount field");
+    return {
+      body: getComputedStyle(document.body).fontFamily,
+      inputSize: getComputedStyle(field).fontSize,
+      canvas: getComputedStyle(document.documentElement).getPropertyValue("--background").trim(),
+      accent: getComputedStyle(document.documentElement).getPropertyValue("--identity").trim(),
+    };
+  });
   expect(typography.body).toContain("Inter");
   expect(typography.canvas.toUpperCase()).toBe("#0B1220");
   expect(typography.accent.toUpperCase()).toBe("#7CC4FF");

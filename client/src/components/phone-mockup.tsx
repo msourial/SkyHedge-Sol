@@ -1,4 +1,5 @@
-import { CONSUMER_CITIES } from "../../../shared/consumer-cities";
+import { heroPhoneCities } from "../../../shared/consumer-cities";
+import { useSalesChips } from "@/lib/sales-chips";
 
 type Screen = "markets" | "protect" | "wallet";
 
@@ -57,7 +58,7 @@ export function PhoneMockup({
   );
 }
 
-/** Hero phone. New York leads. New York and Des Moines have weekly and monthly windows open. */
+/** Hero phone. Five plans. A green chip only appears when that city's windows are actually selling. */
 export function PhonePlans({
   glow = false,
   parallax = false,
@@ -67,6 +68,7 @@ export function PhonePlans({
   parallax?: boolean;
   float?: boolean;
 }) {
+  const chips = useSalesChips();
   return (
     <div
       className={["sky-phone", glow ? "sky-phone--glow" : "", parallax ? "sky-phone--parallax" : "", float ? "sky-phone--float" : ""]
@@ -80,15 +82,14 @@ export function PhonePlans({
             <p className="sky-phone__kicker">Markets</p>
             <p className="sky-phone__headline">Where are your plans?</p>
             <ul>
-              {CONSUMER_CITIES.map((city) => {
-                const open = city.code === "NYC" || city.code === "DSM";
-                const label = open ? "Weekly · Monthly open" : city.status === "soon" ? "Opens soon" : "Opening shortly";
+              {heroPhoneCities().map((city) => {
+                const chip = chips[city.code] ?? { label: "Opening shortly", tone: "soon" as const };
                 return (
                   <li key={city.code}>
                     <p>{city.moment}</p>
                     <span>
                       {city.city}
-                      <em className={open ? "is-open" : "is-soon"}>{label}</em>
+                      <em className={chip.tone === "live" ? "is-open" : chip.tone === "closed" ? "is-closed" : "is-soon"}>{chip.label}</em>
                     </span>
                   </li>
                 );

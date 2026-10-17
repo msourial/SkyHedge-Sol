@@ -4,6 +4,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { PhoneMockup, PhoneMockupStack, PhonePlans } from "@/components/phone-mockup";
 import { WaitlistForm } from "@/components/waitlist-form";
 import { CONSUMER_CITIES } from "../../../shared/consumer-cities";
+import { chipClass, useSalesChips } from "@/lib/sales-chips";
 
 const STEPS = [
   {
@@ -52,12 +53,20 @@ const FAQ = [
     a: "Devnet is open for testers. Join the waitlist for Seeker and city launch notes. Nothing here has real-world value yet.",
   },
   {
-    q: "Which cities are live?",
-    a: "New York (Central Park) and Des Moines have weekly and monthly windows open on Devnet. Dallas uses the same NOAA ladder once those markets are signed. Toronto stays closed until Environment Canada data is in.",
+    q: "Which cities?",
+    a: "New York, Chicago, Miami, Dallas, Los Angeles, Seattle, Boston, Austin, and Des Moines use NOAA rainfall on the same weekly and monthly ladder. A city shows Weekly · Monthly open only while those windows are actually selling on Devnet. Toronto stays closed until Environment Canada data is in.",
   },
   {
-    q: "What happens if weather data is missing?",
-    a: "SkyHedge never invents a rainfall total. If the observation is unavailable for the window, the premium is refunded.",
+    q: "What if NOAA data is missing?",
+    a: "The premium is refunded. SkyHedge does not invent a rainfall total. If the station has no valid observation for the window, the market is marked DataUnavailable and the premium comes back.",
+  },
+  {
+    q: "Is this real money?",
+    a: "No. Devnet test SKYT only for now. It has no real-world value, and mainnet stays closed.",
+  },
+  {
+    q: "Can I pay by card?",
+    a: "Not yet. Card payments for people without a wallet are coming later, after a legal review. Today you use Devnet test SKYT in Phantom or Seeker Wallet.",
   },
   {
     q: "Do I need a Solana Seeker?",
@@ -250,6 +259,7 @@ export default function WaitlistPage() {
   useStepRise(stepRefs);
   usePauseWhenHidden(heroRef);
   const activeScreen = STEPS[active]?.screen ?? "markets";
+  const chips = useSalesChips();
 
   useEffect(() => {
     document.title = "SkyHedge — weather risk, settled on-chain";
@@ -276,9 +286,14 @@ export default function WaitlistPage() {
             <a href="#markets">Markets</a>
             <a href="#faq">FAQ</a>
           </nav>
-          <a href="#waitlist" className="wl-nav__cta">
-            Join waitlist
-          </a>
+          <div className="wl-nav__actions">
+            <Link to="/app" className="wl-cta-secondary wl-nav__app">
+              Open web app
+            </Link>
+            <a href="#waitlist" className="wl-nav__cta">
+              Join waitlist
+            </a>
+          </div>
         </div>
       </header>
 
@@ -286,14 +301,19 @@ export default function WaitlistPage() {
         <section ref={heroRef} className="wl-hero" aria-labelledby="wl-hero-title">
           <div className="wl-hero__copy">
             <h1 id="wl-hero-title" className="wl-hero__title">
-              Wedding in Central Park this Saturday?
+              Rain on your plans? Get paid.
             </h1>
             <p className="wl-hero__lead">
               Pick the city and the days. If NOAA rain at the station reaches the threshold, the payout lands in your
               wallet.
             </p>
             <div id="waitlist" className="wl-hero__form">
-              <WaitlistForm variant="hero" />
+              <div className="wl-hero__cta">
+                <WaitlistForm variant="hero" />
+                <Link to="/app" className="wl-cta-secondary">
+                  Open web app
+                </Link>
+              </div>
               <p className="wl-hero__fine">Devnet only. No spam.</p>
             </div>
           </div>
@@ -349,27 +369,18 @@ export default function WaitlistPage() {
                 Where are your plans?
               </h2>
               <p className="wl-section__lead">
-                New York first. Dallas and Des Moines stay on the same weekly and monthly rain ladder. Toronto opens
-                later.
+                New York through Des Moines sit on the same NOAA weekly and monthly ladder. Toronto opens when Environment Canada data is in. Green means both windows are selling on Devnet.
               </p>
             </div>
             <ul className="wl-markets" aria-label="Rainfall cities">
-              {CONSUMER_CITIES.map((market) => (
+              {CONSUMER_CITIES.map((market) => {
+                const chip = chips[market.code] ?? { label: "Opening shortly", tone: "soon" as const };
+                return (
                 <li key={market.code} className="wl-markets__card">
                   <div className="wl-markets__top">
                     <p className="wl-markets__city">{market.city}</p>
-                    <span
-                      className={
-                        market.code === "NYC" || market.code === "DSM"
-                          ? `wl-markets__status wl-markets__status--live${market.code === "NYC" ? " wl-markets__status--pulse" : ""}`
-                          : "wl-markets__status wl-markets__status--soon"
-                      }
-                    >
-                      {market.code === "NYC" || market.code === "DSM"
-                        ? "Weekly · Monthly open"
-                        : market.status === "soon"
-                          ? "Opens soon"
-                          : "Next window opening shortly"}
+                    <span className={chipClass(chip, market.code === "NYC" && chip.tone === "live")}>
+                      {chip.label}
                     </span>
                   </div>
                   <p className="wl-markets__peril">{market.moment}</p>
@@ -382,7 +393,8 @@ export default function WaitlistPage() {
                   ) : null}
                   <p className="wl-markets__source">{market.payout}</p>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </section>
 
@@ -427,7 +439,7 @@ export default function WaitlistPage() {
             <div className="wl-cta-row">
               <WaitlistForm variant="compact" />
               <Link to="/app" className="wl-cta-secondary">
-                Open app
+                Open web app
               </Link>
             </div>
           </section>
@@ -446,7 +458,7 @@ export default function WaitlistPage() {
             <a href="#how">How it works</a>
             <a href="#markets">Markets</a>
             <a href="#faq">FAQ</a>
-            <Link to="/app">App</Link>
+            <Link to="/app">Open web app</Link>
           </nav>
           <p className="wl-footer__legal">Devnet test assets have no real-world value. Not financial advice.</p>
         </div>
