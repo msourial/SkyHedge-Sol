@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { DevnetStatusReader, publicDevnetStatus, type DevnetStatus } from "../../server/services/devnet-status.js";
 import { applyCorsHeaders } from "../../server/services/cors.js";
+import { createWindowEvidenceHandler } from "../../server/services/window-evidence-http.js";
 
 type JsonResponse = ServerResponse & {
   status: (code: number) => JsonResponse;
@@ -14,6 +15,8 @@ const reader = new DevnetStatusReader();
 export function createDevnetStatusHandler(loadStatus: StatusLoader = () => reader.read()) {
   return async function devnetStatusHandler(req: IncomingMessage, res: JsonResponse) {
     applyCorsHeaders(req, res);
+    const url = new URL(req.url ?? "/", "http://localhost");
+    if (url.searchParams.get("resource") === "window-evidence") return createWindowEvidenceHandler()(req, res);
     try {
       const status = publicDevnetStatus(await loadStatus());
       res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=60");

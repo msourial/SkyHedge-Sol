@@ -9,7 +9,7 @@
     "api/cron/windows.ts": {
       "maxDuration": 300
     },
-    "api/window-evidence.ts": {
+    "api/devnet/status.ts": {
       "maxDuration": 120
     }
   },

@@ -99,7 +99,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  app.get("/api/devnet/status", async (_req, res) => {
+  app.get("/api/devnet/status", async (req, res) => {
+    if (req.query.resource === "window-evidence") {
+      const city = typeof req.query.city === "string" ? req.query.city : "";
+      if (!(LIVE_CITY_SLUGS as readonly string[]).includes(city)) {
+        return res.status(400).json({ error: "LIVE_CITY_REQUIRED", message: "Choose one of the live NOAA cities." });
+      }
+      try {
+        const result = await ensureCityWindowEvidence(city as LiveCitySlug);
+        return res.json({ city, packages: result.packages, unavailable: result.unavailable });
+      } catch (error) { return dataUnavailable(res, error); }
+    }
     try { return res.json(publicDevnetStatus(await devnetStatus.read())); }
     catch (error) { return res.status(503).json({ error: "DEVNET_STATUS_UNAVAILABLE", message: (error as Error).message }); }
   });

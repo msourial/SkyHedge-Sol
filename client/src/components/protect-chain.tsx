@@ -29,7 +29,7 @@ export function ProtectChain(props: { windows: readonly WindowRow[] }) {
   const active = windows.find((window) => window.address === selected) ?? windows[0] ?? null;
   const evidence = useQuery({
     queryKey: ["window-evidence", city],
-    queryFn: () => api<{ packages: WindowEvidencePackage[] }>(`/api/window-evidence?city=${encodeURIComponent(city)}`),
+    queryFn: () => api<{ packages: WindowEvidencePackage[] }>(`/api/devnet/status?resource=window-evidence&city=${encodeURIComponent(city)}`),
     retry: false,
   });
   useEffect(() => { setSelected(windows[0]?.address ?? ""); setHold(null); }, [city]);

@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { createWindowEvidenceHandler } from "../../api/window-evidence";
+import { createWindowEvidenceHandler } from "./window-evidence-http";
 import { openLadder } from "../../shared/window-ladder";
 import { clearWindowEvidenceMemory, ensureCityWindowEvidence, memoryWindowEvidence } from "./window-evidence";
 

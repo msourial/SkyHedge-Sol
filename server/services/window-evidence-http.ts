@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { LIVE_CITY_SLUGS, type LiveCitySlug } from "../shared/window-ladder.js";
-import { ensureCityWindowEvidence } from "../server/services/window-evidence.js";
-import { applyCorsHeaders } from "../server/services/cors.js";
+import { LIVE_CITY_SLUGS, type LiveCitySlug } from "../../shared/window-ladder.js";
+import { applyCorsHeaders } from "./cors.js";
+import { ensureCityWindowEvidence } from "./window-evidence.js";
 
 type JsonResponse = ServerResponse & { status: (code: number) => JsonResponse; json: (body: unknown) => void };
 
@@ -24,5 +24,3 @@ export function createWindowEvidenceHandler(load = ensureCityWindowEvidence) {
     }
   };
 }
-
-export default createWindowEvidenceHandler();

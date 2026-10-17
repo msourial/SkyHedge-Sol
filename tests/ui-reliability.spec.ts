@@ -102,7 +102,25 @@ test("rainfall protect shows an expiry chain and only prices the on-chain trigge
     { city: "new-york", tenor: "monthly", address: "NyMonthA111111111111111111111111111111111", observationStart: 1793491200, observationEnd: 1796083200, thresholdMmX100: "10200", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, salesCloseAt: 1793491200 },
     { city: "new-york", tenor: "monthly", address: "NyMonthB111111111111111111111111111111111", observationStart: 1796083200, observationEnd: 1798761600, thresholdMmX100: "16600", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, salesCloseAt: 1796083200 },
   ];
-  await page.route("**/api/devnet/status", (route) => route.fulfill({ json: {
+  await page.route("**/api/devnet/status**", (route) => {
+    if (route.request().url().includes("resource=window-evidence")) {
+      return route.fulfill({ json: {
+        city: "new-york",
+        unavailable: [],
+        packages: windows.map((window) => ({
+          validated: true,
+          city: "new-york",
+          stationId: "GHCND:USW00094728",
+          tenor: window.tenor,
+          observationStart: window.observationStart,
+          observationEnd: window.observationEnd,
+          analogueTotalsMm: [4, 8, 12, 18, 29, 40, 55, 69, 102, 166],
+          strikeMm: 69,
+          forecastCumulativeMm: null,
+        })),
+      } });
+    }
+    return route.fulfill({ json: {
     network: "devnet",
     program: { address: "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx", status: "ready", executable: true, explorerUrl: "https://explorer.solana.com" },
     idl: { status: "ready", source: "committed", instructionCount: 22, accountCount: 5, supportsEmptyDraftCancellation: false },
@@ -113,22 +131,8 @@ test("rainfall protect shows an expiry chain and only prices the on-chain trigge
     cityWindows: windows,
     noaaEvidence: { status: "pending", settlementSource: "NOAA", message: "Historical sample only", package: null },
     generatedAt: new Date().toISOString(),
-  } }));
-  await page.route("**/api/window-evidence**", (route) => route.fulfill({ json: {
-    city: "new-york",
-    unavailable: [],
-    packages: windows.map((window) => ({
-      validated: true,
-      city: "new-york",
-      stationId: "GHCND:USW00094728",
-      tenor: window.tenor,
-      observationStart: window.observationStart,
-      observationEnd: window.observationEnd,
-      analogueTotalsMm: [4, 8, 12, 18, 29, 40, 55, 69, 102, 166],
-      strikeMm: 69,
-      forecastCumulativeMm: null,
-    })),
-  } }));
+  } });
+  });
   const signed: string[] = [];
   page.on("request", (request) => {
     if (/transactions\/unsigned|phantom/i.test(request.url())) signed.push(request.url());

@@ -275,7 +275,7 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     setEvidenceLoading(true);
-    getJson<{ packages: WindowEvidencePackage[] }>(`/api/window-evidence?city=${encodeURIComponent(protectCity)}`)
+    getJson<{ packages: WindowEvidencePackage[] }>(`/api/devnet/status?resource=window-evidence&city=${encodeURIComponent(protectCity)}`)
       .then((value) => { if (!cancelled) setWindowEvidence(value.packages ?? []); })
       .catch(() => { if (!cancelled) setWindowEvidence([]); })
       .finally(() => { if (!cancelled) setEvidenceLoading(false); });
