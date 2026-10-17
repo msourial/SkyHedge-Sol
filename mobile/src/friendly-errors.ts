@@ -18,6 +18,8 @@ export function friendlyError(message: string | null | undefined, fallback = "So
 /** Hide raw station identifiers like GHCND:USW00014933 behind a human label. */
 export function stationLabel(id: string | null | undefined): string {
   if (!id) return "Station pending";
+  if (/USW00094728/.test(id)) return "Central Park";
+  if (/USW00003927/.test(id)) return "DFW Airport";
   if (/USW00014933/.test(id)) return "Des Moines Intl Airport";
   if (/6158731/.test(id)) return "Toronto Pearson";
   return "Official weather station";

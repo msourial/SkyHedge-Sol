@@ -53,7 +53,7 @@ export function MarketsScreen(props: {
   city: CityIndex | null;
   indicativeQuote: ProtectionQuote | null;
   nowSeconds: number;
-  onProtect: () => void;
+  onProtect: (code: "NYC" | "DSM") => void;
   onOpenMarket?: (m: CatalogMarket) => void;
   guide?: React.ReactNode;
 }) {
@@ -94,7 +94,7 @@ export function MarketsScreen(props: {
   };
   const open = (m: CatalogMarket) => {
     const chip = chipFor(m);
-    if (m.code === "DSM" && chip?.tone === "live") props.onProtect();
+    if ((m.code === "NYC" || m.code === "DSM") && chip?.tone === "live") props.onProtect(m.code);
     else props.onOpenMarket?.(m);
   };
 
@@ -221,7 +221,7 @@ export function MarketsScreen(props: {
       </View> : <Text style={[s.caption, { marginTop: S.md }]}>Weekly history isn’t available yet — nothing is estimated.</Text>}
 
       {live ? <Text style={[s.caption, { marginTop: S.md }]}>{nextDates}</Text> : <Text style={[s.caption, { marginTop: S.md }]}>{citySalesClosed(props.status, "des-moines", props.nowSeconds) ? "Sales closed" : NEXT_WINDOW_COPY}</Text>}
-      <View style={{ marginTop: S.lg }}><ActionButton label={live ? "View coverage" : "See markets"} icon="arrow-right" onPress={props.onProtect} /></View>
+      <View style={{ marginTop: S.lg }}><ActionButton label={live ? "View coverage" : "See markets"} icon="arrow-right" onPress={() => props.onProtect("DSM")} /></View>
     </GlassCard>
 
     {props.guide}
@@ -283,7 +283,9 @@ export function ProtectTicket(props: {
   const market = tenorWindows.find((window) => window.address === props.selectedAddress) ?? tenorWindows[0] ?? null;
   const live = !!market;
   const options = coverageOptions(props.walletSkytBase);
-  const station = stationLabel(props.status?.noaaEvidence.package?.stationId);
+  const place = market?.city === "new-york" ? "New York" : market?.city === "dallas" ? "Dallas" : "Des Moines";
+  const stationId = market?.city === "new-york" ? "USW00094728" : market?.city === "dallas" ? "USW00003927" : props.status?.noaaEvidence.package?.stationId;
+  const station = stationLabel(stationId);
   const sentence = triggerSentence({ station, thresholdMmX100: market?.thresholdMmX100, operator: market?.operator, start: market?.observationStart, end: market?.observationEnd });
   const q = props.quote && props.quote.protectedAmount === props.amountBase ? props.quote : null;
   const balance = balanceCheck(props.walletSkytBase, q?.premium);
@@ -292,7 +294,7 @@ export function ProtectTicket(props: {
   const checks: Check[] = [
     { ready: !!props.status?.program.executable && props.status.program.status === "ready", label: "Solana program is live on Devnet" },
     { ready: !!props.status?.protocol.initialized, label: "Protocol initialized" },
-    { ready: !!market?.address && isOnchainMarketOpen(market.onchainStatus ?? null), label: "Des Moines market open" },
+    { ready: !!market?.address && isOnchainMarketOpen(market.onchainStatus ?? null), label: `${place} market open` },
     { ready: !!evidenceReady, label: "NOAA station data pinned on-chain" },
     { ready: !!market?.vaultBalance && /^\d+$/.test(market.vaultBalance) && BigInt(market.vaultBalance) > 0n, label: "Payout vault funded" },
   ];
@@ -302,7 +304,7 @@ export function ProtectTicket(props: {
   const blocking = props.unavailableReason && !isExistingPosition && !(hasPosition && props.transactionSignature) && !/^Connect your Devnet wallet|finalized SKYT wallet balance/.test(props.unavailableReason) ? props.unavailableReason : null;
   const thresholdMm = market?.thresholdMmX100 != null && /^\d+$/.test(String(market.thresholdMmX100)) ? trimMm(Number(market.thresholdMmX100) / 100) : null;
   const stage = payoutStage(props.claimReadiness);
-  const deal = dealSentence({ place: "Des Moines", premiumBase: q?.premium, payoutBase: q ? props.amountBase : null, thresholdMmX100: market?.thresholdMmX100, operator: market?.operator, start: market?.observationStart, end: market?.observationEnd });
+  const deal = dealSentence({ place, premiumBase: q?.premium, payoutBase: q ? props.amountBase : null, thresholdMmX100: market?.thresholdMmX100, operator: market?.operator, start: market?.observationStart, end: market?.observationEnd });
   const pilotClose = props.status?.desMoinesMarket.salesCloseAt;
   const salesClosed = !live && typeof pilotClose === "number" && pilotClose <= props.nowSeconds;
   const pay = payState({ premiumBase: q?.premium, busy: props.quoteBusy, error: props.quoteError, live, salesClosed, walletConnected: props.walletConnected });

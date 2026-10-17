@@ -57,7 +57,7 @@ export default function App() {
   const [cities, setCities] = useState<CityIndex[]>([]);
   const [catalog, setCatalog] = useState<AgriculturalMarket[]>([]);
   const [status, setStatus] = useState<DevnetStatus | null>(null);
-  const [selectedCity, setSelectedCity] = useState("des-moines");
+  const [selectedCity, setSelectedCity] = useState("new-york");
   const [selectedHazard, setSelectedHazard] = useState<HazardId | null>("rainfall");
   const [city, setCity] = useState<CityIndex | null>(null);
   const [wallet, setWallet] = useState<string | null>(null);
@@ -247,15 +247,19 @@ export default function App() {
   };
 
   const amountBase = parseSkytAmount(protectionAmount);
-  const openWindows = sellingWindows(status, nowSeconds).filter((window) => window.city === "des-moines");
-  const nycWindows = sellingWindows(status, nowSeconds).filter((window) => window.city === "new-york");
+  const selling = sellingWindows(status, nowSeconds);
+  const nycWindows = selling.filter((window) => window.city === "new-york");
+  const protectCity = selectedCity === "des-moines" && selling.some((window) => window.city === "des-moines")
+    ? "des-moines"
+    : nycWindows.length > 0 ? "new-york" : "des-moines";
+  const openWindows = selling.filter((window) => window.city === protectCity);
   const tenorWindows = openWindows.filter((window) => window.tenor === tenor);
   const activeWindow = tenorWindows.find((window) => window.address === selectedWindow) ?? tenorWindows[0] ?? null;
   // Price from the open market's NOAA terms even before wallet connect; purchase still requires a wallet.
   const quoteUnavailableReason = selectedHazard !== "rainfall"
     ? "Choose a place and its rainfall risk in Explore. Wind gust and snowfall remain research-only."
-    : getProtectionUnavailableReason({ status, citySlug: selectedCity, walletConnected: true, walletSkytBalanceBase: walletBalances?.skytBaseUnits ?? null, amountBase, market: activeWindow });
-  const baseProtectionReason = getProtectionUnavailableReason({ status, citySlug: selectedCity, walletConnected: !!wallet, walletSkytBalanceBase: walletBalances?.skytBaseUnits ?? null, amountBase, market: activeWindow });
+    : getProtectionUnavailableReason({ status, citySlug: protectCity, walletConnected: true, walletSkytBalanceBase: walletBalances?.skytBaseUnits ?? null, amountBase, market: activeWindow });
+  const baseProtectionReason = getProtectionUnavailableReason({ status, citySlug: protectCity, walletConnected: !!wallet, walletSkytBalanceBase: walletBalances?.skytBaseUnits ?? null, amountBase, market: activeWindow });
   const positionGateReason = !wallet ? null
     : claimError ? "The current on-chain position could not be verified; refresh before requesting another position."
       : !claimReadiness ? "Checking the finalized wallet position before allowing another position."
@@ -273,7 +277,7 @@ export default function App() {
     setQuoteError(null);
     setQuote(null);
     if (quoteUnavailableReason || !status || !amountBase || !activeWindow) return;
-    const request = buildCommittedQuoteRequest(status, amountBase, activeWindow);
+    const request = buildCommittedQuoteRequest(status, amountBase, activeWindow, protectCity);
     if (!request) {
       setQuoteError("This window's terms aren't finalized yet, so it can't be priced.");
       return;
@@ -301,8 +305,8 @@ export default function App() {
   useEffect(() => {
     const indicativeWindow = openWindows[0] ?? null;
     if (!status || !indicativeWindow) { setIndicativeQuote(null); return; }
-    const reason = getProtectionUnavailableReason({ status, citySlug: "des-moines", walletConnected: true, walletSkytBalanceBase: "0", amountBase: "100000000", market: indicativeWindow });
-    const request = reason ? null : buildCommittedQuoteRequest(status, "100000000", indicativeWindow);
+    const reason = getProtectionUnavailableReason({ status, citySlug: protectCity, walletConnected: true, walletSkytBalanceBase: "0", amountBase: "100000000", market: indicativeWindow });
+    const request = reason ? null : buildCommittedQuoteRequest(status, "100000000", indicativeWindow, protectCity);
     if (!request) { setIndicativeQuote(null); return; }
     let cancelled = false;
     postJson<ProtectionQuote>("/api/quotes", request)
@@ -419,7 +423,7 @@ export default function App() {
             city={city}
             indicativeQuote={indicativeQuote}
             nowSeconds={nowSeconds}
-            onProtect={() => { if (selectedCity !== "des-moines") changeCity("des-moines"); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
+            onProtect={(code) => { changeCity(code === "DSM" ? "des-moines" : "new-york"); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
             guide={<>
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: guideOpen }} accessibilityLabel="Describe your plans and let the guide find a market" onPress={() => setGuideOpen((open) => !open)} style={styles.guideToggle}><AppIcon name="message-circle" color={C.rain} size={20} /><Text style={styles.guideToggleText}>Describe your plans instead</Text><AppIcon name={guideOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={18} /></Pressable>
               {guideOpen ? <GuidePanel turns={guideTurns} busy={guideBusy} onSend={(message) => { void askGuide(message); }} onViewMatch={(result) => { if (result.match?.slug !== "des-moines") return; changeCity("des-moines"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} /> : null}

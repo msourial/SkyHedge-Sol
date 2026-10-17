@@ -62,10 +62,14 @@ export function createQuoteHandler(dependencies: {
 
     try {
       let finalizedStatus: DevnetStatus | null = null;
-      if (request.city === "des-moines") {
+      if (request.city === "des-moines" || request.city === "new-york" || request.city === "dallas") {
         finalizedStatus = await dependencies.readStatus();
-        const reason = desMoinesQuoteUnavailableReason(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator);
-        if (reason) return sendJson(res, 409, { error: "TESTER_QUOTE_UNAVAILABLE", message: reason });
+        if (request.city === "des-moines") {
+          const reason = desMoinesQuoteUnavailableReason(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator);
+          if (reason) return sendJson(res, 409, { error: "TESTER_QUOTE_UNAVAILABLE", message: reason });
+        } else if (!matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator)) {
+          return sendJson(res, 409, { error: "TESTER_QUOTE_UNAVAILABLE", message: "That city's open window does not match this quote." });
+        }
       }
       const matched = finalizedStatus
         ? matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator)

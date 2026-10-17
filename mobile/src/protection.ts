@@ -31,8 +31,8 @@ export function buildCommittedQuoteRequest(status: DevnetStatus, amountBase: str
   observationEnd: number | null;
   thresholdMmX100: string | null;
   operator: "gt" | "gte" | "lt" | "lte" | null;
-} = status.desMoinesMarket): {
-  city: "des-moines";
+} = status.desMoinesMarket, city: "des-moines" | "new-york" | "dallas" = "des-moines"): {
+  city: "des-moines" | "new-york" | "dallas";
   observationStart: string;
   observationEnd: string;
   thresholdMm: number;
@@ -41,7 +41,7 @@ export function buildCommittedQuoteRequest(status: DevnetStatus, amountBase: str
 } | null {
   if (!market.observationStart || !market.observationEnd || !market.thresholdMmX100 || !market.operator) return null;
   return {
-    city: "des-moines",
+    city,
     observationStart: new Date(market.observationStart * 1_000).toISOString().slice(0, 10),
     observationEnd: new Date(market.observationEnd * 1_000).toISOString().slice(0, 10),
     thresholdMm: Number(market.thresholdMmX100) / 100,
@@ -83,7 +83,7 @@ export function getProtectionUnavailableReason(input: {
   if (!status.skytMint.exists) return "The SKYT test collateral mint is not available on Devnet.";
   if (status.skytMint.decimals !== TOKEN_DECIMALS) return "The configured test collateral does not use six-decimal SKYT units.";
   if (!status.protocol.collateralMint || status.protocol.collateralMint !== status.skytMint.address) return "The initialized protocol collateral does not match the verified SKYT mint.";
-  if (citySlug !== "des-moines") return "Only the Des Moines Devnet pilot is enabled; other areas remain research-only.";
+  if (citySlug !== "des-moines" && citySlug !== "new-york" && citySlug !== "dallas") return "Only the live Devnet rainfall cities are open; other areas remain research-only.";
   const market = input.market === undefined ? status.desMoinesMarket : input.market;
   if (!market) return "Next window opening shortly.";
   if (market.status !== "ready" || !market.address || !market.vault) return "The Des Moines market and its vault are not finalized on Devnet.";

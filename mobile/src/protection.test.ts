@@ -79,7 +79,7 @@ describe("Devnet protection readiness", () => {
 
   it("fails closed for other indexes, disconnected wallets, and amounts over 500 SKYT", () => {
     const status = readyStatus();
-    assert.match(getProtectionUnavailableReason({ status, citySlug: "cordoba", walletConnected: true, walletSkytBalanceBase: "100000000", amountBase: "100000000", nowSeconds: now }) ?? "", /Des Moines/i);
+    assert.match(getProtectionUnavailableReason({ status, citySlug: "cordoba", walletConnected: true, walletSkytBalanceBase: "100000000", amountBase: "100000000", nowSeconds: now }) ?? "", /research-only/i);
     assert.match(getProtectionUnavailableReason({ status, citySlug: "des-moines", walletConnected: false, walletSkytBalanceBase: "100000000", amountBase: "100000000", nowSeconds: now }) ?? "", /wallet/i);
     assert.match(getProtectionUnavailableReason({ status, citySlug: "des-moines", walletConnected: true, walletSkytBalanceBase: "100000000", amountBase: "500000001", nowSeconds: now }) ?? "", /500 SKYT/i);
     assert.equal(getProtectionUnavailableReason({ status, citySlug: "des-moines", walletConnected: true, walletSkytBalanceBase: "100000000", amountBase: "100000000", nowSeconds: now, market: null }), "Next window opening shortly.");
