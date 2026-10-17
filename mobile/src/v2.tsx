@@ -53,7 +53,7 @@ export function MarketsScreen(props: {
   city: CityIndex | null;
   indicativeQuote: ProtectionQuote | null;
   nowSeconds: number;
-  onProtect: (code: "NYC" | "DSM") => void;
+  onProtect: (code: string) => void;
   onOpenMarket?: (m: CatalogMarket) => void;
   guide?: React.ReactNode;
 }) {
@@ -94,7 +94,7 @@ export function MarketsScreen(props: {
   };
   const open = (m: CatalogMarket) => {
     const chip = chipFor(m);
-    if ((m.code === "NYC" || m.code === "DSM") && chip?.tone === "live") props.onProtect(m.code);
+    if (chip?.tone === "live") props.onProtect(m.code);
     else props.onOpenMarket?.(m);
   };
 

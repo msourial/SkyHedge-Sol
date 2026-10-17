@@ -1,10 +1,10 @@
 /**
- * Consumer-facing rainfall cities. Payout copy names the NOAA station threshold
- * and never invents a rainfall total.
+ * Consumer-facing rainfall cities. Payout copy names the NOAA station
+ * and never invents a rainfall total. Toronto stays closed.
  */
 export interface ConsumerCity {
-  code: "NYC" | "DFW" | "DSM" | "YYZ";
-  slug: "new-york" | "dallas" | "des-moines" | "toronto";
+  code: "NYC" | "ORD" | "MIA" | "DFW" | "LAX" | "SEA" | "BOS" | "AUS" | "DSM" | "YYZ";
+  slug: "new-york" | "chicago" | "miami" | "dallas" | "los-angeles" | "seattle" | "boston" | "austin" | "des-moines" | "toronto";
   city: string;
   region: string;
   moment: string;
@@ -20,10 +20,32 @@ export const CONSUMER_CITIES: readonly ConsumerCity[] = [
     slug: "new-york",
     city: "New York",
     region: "NY",
-    moment: "Wedding in Central Park this Saturday?",
+    moment: "Weekend in Central Park?",
     source: "NOAA Central Park",
     stationId: "GHCND:USW00094728",
     payout: "Payout if Central Park rain reaches that window's NOAA threshold.",
+    status: "live",
+  },
+  {
+    code: "ORD",
+    slug: "chicago",
+    city: "Chicago",
+    region: "IL",
+    moment: "Lollapalooza weekend?",
+    source: "NOAA O'Hare",
+    stationId: "GHCND:USW00094846",
+    payout: "Payout if O'Hare rain reaches that window's NOAA threshold.",
+    status: "live",
+  },
+  {
+    code: "MIA",
+    slug: "miami",
+    city: "Miami",
+    region: "FL",
+    moment: "Beach day in South Beach?",
+    source: "NOAA Miami Intl",
+    stationId: "GHCND:USW00012839",
+    payout: "Payout if Miami Intl rain reaches that window's NOAA threshold.",
     status: "live",
   },
   {
@@ -35,6 +57,50 @@ export const CONSUMER_CITIES: readonly ConsumerCity[] = [
     source: "NOAA DFW",
     stationId: "GHCND:USW00003927",
     payout: "Payout if DFW rain reaches that window's NOAA threshold.",
+    status: "live",
+  },
+  {
+    code: "LAX",
+    slug: "los-angeles",
+    city: "Los Angeles",
+    region: "CA",
+    moment: "Evening on the pier?",
+    source: "NOAA Los Angeles Intl",
+    stationId: "GHCND:USW00023174",
+    payout: "Payout if Los Angeles Intl rain reaches that window's NOAA threshold.",
+    status: "live",
+  },
+  {
+    code: "SEA",
+    slug: "seattle",
+    city: "Seattle",
+    region: "WA",
+    moment: "Rooftop party?",
+    source: "NOAA Seattle-Tacoma",
+    stationId: "GHCND:USW00024233",
+    payout: "Payout if Seattle-Tacoma rain reaches that window's NOAA threshold.",
+    status: "live",
+  },
+  {
+    code: "BOS",
+    slug: "boston",
+    city: "Boston",
+    region: "MA",
+    moment: "Afternoon on the Common?",
+    source: "NOAA Boston Logan",
+    stationId: "GHCND:USW00014739",
+    payout: "Payout if Boston Logan rain reaches that window's NOAA threshold.",
+    status: "live",
+  },
+  {
+    code: "AUS",
+    slug: "austin",
+    city: "Austin",
+    region: "TX",
+    moment: "Show on the lawn?",
+    source: "NOAA Austin Bergstrom",
+    stationId: "GHCND:USW00013904",
+    payout: "Payout if Austin Bergstrom rain reaches that window's NOAA threshold.",
     status: "live",
   },
   {
@@ -61,8 +127,15 @@ export const CONSUMER_CITIES: readonly ConsumerCity[] = [
   },
 ];
 
-export const CONSUMER_LEAD_CODES = ["NYC", "DFW", "DSM", "YYZ"] as const;
+export const CONSUMER_LEAD_CODES = ["NYC", "ORD", "MIA", "DFW", "LAX", "SEA", "BOS", "AUS", "DSM", "YYZ"] as const;
+
+/** Hero phone shows five plans. The full ladder is the markets list. */
+export const HERO_PHONE_CODES = ["NYC", "ORD", "MIA", "DFW", "SEA"] as const;
 
 export function consumerCityByCode(code: string): ConsumerCity | undefined {
   return CONSUMER_CITIES.find((city) => city.code === code);
+}
+
+export function heroPhoneCities(): ConsumerCity[] {
+  return HERO_PHONE_CODES.map((code) => consumerCityByCode(code)!);
 }

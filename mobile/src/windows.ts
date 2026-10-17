@@ -1,5 +1,5 @@
 import type { DevnetStatus } from "./api";
-import { expiryLabel, marketsOpenLabel, NEXT_WINDOW_COPY, STRIKE_BASIS, tenorOf, type Tenor } from "../../shared/window-ladder.ts";
+import { expiryLabel, marketsOpenLabel, NEXT_WINDOW_COPY, salesChip, STRIKE_BASIS, tenorOf, type Tenor } from "../../shared/window-ladder.ts";
 import { isOnchainMarketOpen } from "./protection.ts";
 
 export type { Tenor };
@@ -68,18 +68,18 @@ export function windowsForCity(windows: readonly SellingWindow[], city: SellingW
 
 /** True when this city's latest market exists and its sales have already closed. */
 export function citySalesClosed(status: DevnetStatus | null, city: SellingWindow["city"], nowSeconds: number): boolean {
+  if (windowsForCity(sellingWindows(status, nowSeconds), city).length > 0) return false;
+  const ladder = (status?.ladderMarkets ?? []).filter((market) => market.city === city && market.state !== "cancelled" && market.salesCloseAt != null);
+  const latest = ladder.sort((left, right) => (right.salesCloseAt ?? 0) - (left.salesCloseAt ?? 0))[0];
+  if (latest?.salesCloseAt != null) return latest.salesCloseAt <= nowSeconds;
   if (city !== "des-moines") return false;
   const market = status?.desMoinesMarket;
   if (!market?.salesCloseAt || market.salesCloseAt > nowSeconds) return false;
-  return windowsForCity(sellingWindows(status, nowSeconds), city).length === 0;
+  return true;
 }
 
 export function cityChip(windows: readonly SellingWindow[], salesClosed: boolean): { label: string; tone: "live" | "soon" | "closed" } {
-  if (windows.length > 0) {
-    const label = liveMarketLabel(windows);
-    return { label, tone: label === NEXT_WINDOW_COPY ? "soon" : "live" };
-  }
-  return salesClosed ? { label: "Sales closed", tone: "closed" } : { label: NEXT_WINDOW_COPY, tone: "soon" };
+  return salesChip(windows.map((window) => window.tenor), salesClosed);
 }
 
 export function positionLabel(marketAddress: string, windows: readonly SellingWindow[], fallbackAddress: string | null): string | null {

@@ -12,7 +12,7 @@ M=[ # code,name,region,country,lat,lon,source,status
 ("SDF","Louisville","Kentucky","US",38.174,-85.736,"NOAA","concept"),
 ("DTW","Detroit","Michigan","US",42.212,-83.353,"NOAA","concept"),
 ("DEN","Denver","Colorado","US",39.856,-104.674,"NOAA","concept"),
-("DFW","Dallas–Fort Worth","Texas","US",32.900,-97.040,"NOAA","concept"),
+("DFW","Dallas–Fort Worth","Texas","US",32.900,-97.040,"NOAA","live"),
 ("ATL","Atlanta","Georgia","US",33.641,-84.428,"NOAA","concept"),
 ("YOW","Ottawa","Ontario","CA",45.322,-75.667,"Environment Canada","concept"),
 ("YUL","Montréal","Québec","CA",45.470,-73.741,"Environment Canada","concept"),
@@ -43,8 +43,12 @@ M=[ # code,name,region,country,lat,lon,source,status
 ("SGN","Ho Chi Minh City","Ho Chi Minh City","VN",10.819,106.652,"NCHMF","concept"),
 ("MNL","Manila","Metro Manila","PH",14.509,121.020,"PAGASA","concept"),
 ("CGK","Jakarta","Banten","ID",-6.126,106.656,"BMKG","concept"),
-("NYC","New York (Central Park)","New York","US",40.779,-73.969,"NOAA","ready"),
+("NYC","New York (Central Park)","New York","US",40.779,-73.969,"NOAA","live"),
 ("MIA","Miami","Florida","US",25.793,-80.291,"NOAA","ready"),
+("LAX","Los Angeles","California","US",33.9381,-118.3867,"NOAA","ready"),
+("SEA","Seattle","Washington","US",47.4447,-122.3144,"NOAA","ready"),
+("BOS","Boston","Massachusetts","US",42.3606,-71.0097,"NOAA","ready"),
+("AUS","Austin","Texas","US",30.1831,-97.6800,"NOAA","ready"),
 ("MCI","Kansas City","Missouri","US",39.297,-94.714,"NOAA","concept"),
 ("OMA","Omaha","Nebraska","US",41.303,-95.894,"NOAA","concept"),
 ("MEM","Memphis","Tennessee","US",35.042,-89.977,"NOAA","concept"),
@@ -78,10 +82,10 @@ M=[ # code,name,region,country,lat,lon,source,status
 ("AKL","Auckland","Auckland","NZ",-37.008,174.792,"MetService","concept"),
 ]
 # NOAA GHCND stations already in shared/cities.ts + methodology-v1.json (data pipeline exists; no Devnet market account yet)
-STATIONS={"DSM":"GHCND:USW00014933","ORD":"GHCND:USW00094846","NYC":"GHCND:USW00094728","MIA":"GHCND:USW00012839"}
+STATIONS={"DSM":"GHCND:USW00014933","ORD":"GHCND:USW00094846","NYC":"GHCND:USW00094728","MIA":"GHCND:USW00012839","DFW":"GHCND:USW00003927","LAX":"GHCND:USW00023174","SEA":"GHCND:USW00024233","BOS":"GHCND:USW00014739","AUS":"GHCND:USW00013904"}
 # Short map labels (default: full name). Keep <= ~11 chars so they fit beside a pin.
 SHORT={"YYZ":"Toronto","MSP":"Minneapolis","ORD":"Chicago","DFW":"Dallas","MEX":"CDMX","EZE":"BA","GIG":"Rio","JNB":"Joburg","SGN":"HCMC",
- "NYC":"NYC","MCI":"KC","YQB":"Québec","ADD":"Addis","DAR":"Dar","KUL":"KL","LHR":"London","CDG":"Paris","HND":"Tokyo","ICN":"Seoul"}
+ "NYC":"NYC","LAX":"LA","SEA":"Seattle","BOS":"Boston","AUS":"Austin","MCI":"KC","YQB":"Québec","ADD":"Addis","DAR":"Dar","KUL":"KL","LHR":"London","CDG":"Paris","HND":"Tokyo","ICN":"Seoul"}
 GROUP={"US":"North America","CA":"North America","MX":"Latin America","CO":"Latin America","PE":"Latin America","AR":"Latin America","BR":"Latin America","CL":"Latin America","EC":"Latin America",
  "NG":"Africa","GH":"Africa","KE":"Africa","ZA":"Africa","EG":"Africa","MA":"Africa","ET":"Africa","TZ":"Africa","AE":"Middle East","SA":"Middle East",
  "IN":"South Asia","BD":"South Asia","PK":"South Asia","LK":"South Asia","VN":"Southeast Asia","PH":"Southeast Asia","ID":"Southeast Asia","TH":"Southeast Asia","MY":"Southeast Asia",

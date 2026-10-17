@@ -1,9 +1,8 @@
 /**
  * SkyHedge market catalogue for the Seeker app.
- * - New York (Central Park), Dallas (DFW), and Des Moines are the live rainfall cities.
- *   New York is first. Des Moines stays live. Dallas uses NOAA GHCND:USW00003927.
+ * - NOAA rainfall cities, in order: New York, Chicago, Miami, Dallas, Los Angeles,
+ *   Seattle, Boston, Austin, Des Moines. A green chip requires an open on-chain window.
  * - Toronto Pearson (YYZ) is "Opens soon" until Environment Canada data is in.
- * - Chicago O'Hare and Miami are "Ready to open": the NOAA station is pinned, and no Devnet market exists yet.
  * - Everything else is a non-tradable Concept pin. No prices, triggers, or rainfall figures are shown.
  * Rows live in markets-data.ts, generated (with map positions) by tools/gen_geo.py.
  */
@@ -54,7 +53,12 @@ export function searchMarkets(query: string, scope: "region" | "global" | "all" 
     .filter((m) => scope === "all" || (scope === "region" ? m.group === "North America" : true))
     .filter((m) => !group || m.group === group)
     .filter((m) => !q || [m.name, m.code, m.region, m.source, m.country].some((f) => norm(f).includes(q)))
-    .sort((a, b) => rank[a.status] - rank[b.status] || lead(a.code) - lead(b.code));
+    .sort((a, b) => {
+      const aLead = lead(a.code) < CONSUMER_LEAD_CODES.length;
+      const bLead = lead(b.code) < CONSUMER_LEAD_CODES.length;
+      if (aLead && bLead) return lead(a.code) - lead(b.code);
+      return rank[a.status] - rank[b.status] || lead(a.code) - lead(b.code);
+    });
 }
 
 export function groupCounts(): Array<{ group: MarketGroup; count: number; sources: string[] }> {

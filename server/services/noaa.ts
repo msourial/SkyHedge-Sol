@@ -3,12 +3,16 @@ import { createHash } from "node:crypto";
 export interface Station { city: string; state: string; stationId: string; latitude: number; longitude: number; dataset?: "GHCND" | "GSOD"; }
 
 /** NOAA station pins. A pin enables data retrieval; market release still requires evidence validation. */
-export const NOAA_STATIONS: Record<"new-york" | "dallas" | "des-moines" | "miami" | "chicago", Station> = {
+export const NOAA_STATIONS: Record<"new-york" | "chicago" | "miami" | "dallas" | "los-angeles" | "seattle" | "boston" | "austin" | "des-moines", Station> = {
   "new-york": { city: "New York", state: "NY", stationId: "GHCND:USW00094728", latitude: 40.7789, longitude: -73.9692 },
-  dallas: { city: "Dallas", state: "TX", stationId: "GHCND:USW00003927", latitude: 32.89744, longitude: -97.02196 },
-  "des-moines": { city: "Des Moines", state: "IA", stationId: "GHCND:USW00014933", latitude: 41.534, longitude: -93.663 },
-  miami: { city: "Miami", state: "FL", stationId: "GHCND:USW00012839", latitude: 25.7933, longitude: -80.2906 },
   chicago: { city: "Chicago", state: "IL", stationId: "GHCND:USW00094846", latitude: 41.995, longitude: -87.9336 },
+  miami: { city: "Miami", state: "FL", stationId: "GHCND:USW00012839", latitude: 25.7933, longitude: -80.2906 },
+  dallas: { city: "Dallas", state: "TX", stationId: "GHCND:USW00003927", latitude: 32.89744, longitude: -97.02196 },
+  "los-angeles": { city: "Los Angeles", state: "CA", stationId: "GHCND:USW00023174", latitude: 33.9381, longitude: -118.3867 },
+  seattle: { city: "Seattle", state: "WA", stationId: "GHCND:USW00024233", latitude: 47.4447, longitude: -122.3144 },
+  boston: { city: "Boston", state: "MA", stationId: "GHCND:USW00014739", latitude: 42.3606, longitude: -71.0097 },
+  austin: { city: "Austin", state: "TX", stationId: "GHCND:USW00013904", latitude: 30.1831, longitude: -97.68 },
+  "des-moines": { city: "Des Moines", state: "IA", stationId: "GHCND:USW00014933", latitude: 41.534, longitude: -93.663 },
 };
 
 export type SkyHedgeCity = keyof typeof NOAA_STATIONS;

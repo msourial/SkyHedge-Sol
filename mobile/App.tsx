@@ -35,6 +35,7 @@ import { BlurTargetView } from "expo-blur";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 import { GlassTargetContext } from "./src/liquid-glass";
 import { formatSkytFixed, shortAddress } from "./src/ticket";
+import { consumerCityByCode } from "../shared/consumer-cities.ts";
 import { marketByCode, type CatalogMarket } from "./src/markets-catalog";
 import { LinearGradient } from "expo-linear-gradient";
 import { APP_BUILD, APP_VERSION } from "./src/version";
@@ -45,7 +46,7 @@ type AmountMode = "usd-preview" | "devnet-test";
 /** MWA does not report the wallet's name without changing the auth flow, so copy stays generic. */
 const WALLET_NAME = "Your wallet";
 
-const CITY_ORDER = ["des-moines", "chicago", "new-york", "miami"];
+const CITY_ORDER = ["new-york", "chicago", "miami", "dallas", "los-angeles", "seattle", "boston", "austin", "des-moines"];
 
 export default function App() {
   const scrollRef = useRef<ScrollView>(null);
@@ -423,7 +424,7 @@ export default function App() {
             city={city}
             indicativeQuote={indicativeQuote}
             nowSeconds={nowSeconds}
-            onProtect={(code) => { changeCity(code === "DSM" ? "des-moines" : "new-york"); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
+            onProtect={(code) => { const slug = consumerCityByCode(code)?.slug; if (!slug || slug === "toronto") return; changeCity(slug); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
             guide={<>
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: guideOpen }} accessibilityLabel="Describe your plans and let the guide find a market" onPress={() => setGuideOpen((open) => !open)} style={styles.guideToggle}><AppIcon name="message-circle" color={C.rain} size={20} /><Text style={styles.guideToggleText}>Describe your plans instead</Text><AppIcon name={guideOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={18} /></Pressable>
               {guideOpen ? <GuidePanel turns={guideTurns} busy={guideBusy} onSend={(message) => { void askGuide(message); }} onViewMatch={(result) => { if (result.match?.slug !== "des-moines") return; changeCity("des-moines"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} /> : null}

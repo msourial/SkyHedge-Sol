@@ -73,6 +73,38 @@ export const CITY_INDEX: CityIndex[] = [
     monthlyNormalsMm: [41, 52, 61, 73, 137, 246, 165, 226, 250, 161, 86, 52],
     coverageTier: "A",
   },
+  {
+    slug: "seattle", name: "Seattle", country: "United States", countryCode: "US",
+    latitude: 47.4447, longitude: -122.3144,
+    noaaDataset: "GHCND", noaaStationId: "GHCND:USW00024233", stationName: "SEATTLE TACOMA AP",
+    // 1991–2020 MLY-PRCP-NORMAL inches × 25.4, rounded to the nearest millimetre. Climatology prior only.
+    monthlyNormalsMm: [147, 96, 106, 81, 48, 37, 15, 25, 41, 99, 160, 145],
+    coverageTier: "A",
+  },
+  {
+    slug: "los-angeles", name: "Los Angeles", country: "United States", countryCode: "US",
+    latitude: 33.9381, longitude: -118.3867,
+    noaaDataset: "GHCND", noaaStationId: "GHCND:USW00023174", stationName: "LOS ANGELES INTL AP",
+    // 1991–2020 MLY-PRCP-NORMAL inches × 25.4, rounded to the nearest millimetre. August is 0.00 inches. Climatology prior only.
+    monthlyNormalsMm: [73, 76, 44, 15, 7, 2, 1, 0, 3, 12, 21, 57],
+    coverageTier: "A",
+  },
+  {
+    slug: "boston", name: "Boston", country: "United States", countryCode: "US",
+    latitude: 42.3606, longitude: -71.0097,
+    noaaDataset: "GHCND", noaaStationId: "GHCND:USW00014739", stationName: "BOSTON LOGAN",
+    // 1991–2020 MLY-PRCP-NORMAL inches × 25.4, rounded to the nearest millimetre. Climatology prior only.
+    monthlyNormalsMm: [86, 82, 106, 92, 83, 99, 83, 82, 90, 102, 93, 109],
+    coverageTier: "A",
+  },
+  {
+    slug: "austin", name: "Austin", country: "United States", countryCode: "US",
+    latitude: 30.1831, longitude: -97.68,
+    noaaDataset: "GHCND", noaaStationId: "GHCND:USW00013904", stationName: "AUSTIN BERGSTROM INTL AP",
+    // 1991–2020 MLY-PRCP-NORMAL inches × 25.4, rounded to the nearest millimetre. Climatology prior only.
+    monthlyNormalsMm: [72, 48, 74, 61, 127, 86, 55, 63, 77, 108, 68, 66],
+    coverageTier: "A",
+  },
 ];
 
 export const cityBySlug = (slug: string): CityIndex | undefined => CITY_INDEX.find((c) => c.slug === slug);

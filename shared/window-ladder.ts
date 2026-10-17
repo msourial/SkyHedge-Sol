@@ -10,8 +10,18 @@ export const LADDER_DEPTH = 2;
 export const ANALOGUE_YEARS = 10;
 /** 1-based rank in the sorted analogue totals (8th of 10 is the 80th percentile). */
 export const STRIKE_RANK = 8;
-/** New York first, then Dallas, then Des Moines. Toronto is not live. */
-export const LIVE_CITY_SLUGS = ["new-york", "dallas", "des-moines"] as const;
+/** NOAA rainfall cities on one weekly + monthly ladder. Toronto is not live. */
+export const LIVE_CITY_SLUGS = [
+  "new-york",
+  "chicago",
+  "miami",
+  "dallas",
+  "los-angeles",
+  "seattle",
+  "boston",
+  "austin",
+  "des-moines",
+] as const;
 export type LiveCitySlug = (typeof LIVE_CITY_SLUGS)[number];
 export type Tenor = "weekly" | "monthly";
 
@@ -87,7 +97,28 @@ export function marketsOpenLabel(tenors: readonly Tenor[]): string {
   return "Next window opening shortly";
 }
 
+export type SalesChipTone = "live" | "soon" | "closed";
+
+/** Green only when a weekly or monthly rung is actually selling. Closed sales stay neutral. */
+export function salesChip(tenors: readonly Tenor[], salesClosed: boolean): { label: string; tone: SalesChipTone } {
+  if (tenors.length > 0) {
+    const label = marketsOpenLabel(tenors);
+    return { label, tone: label === NEXT_WINDOW_COPY ? "soon" : "live" };
+  }
+  return salesClosed
+    ? { label: "Sales closed", tone: "closed" }
+    : { label: NEXT_WINDOW_COPY, tone: "soon" };
+}
+
 export const NEXT_WINDOW_COPY = "Next window opening shortly";
+/** Landing and Markets examples. Not a rainfall total. */
+export const OPENING_SHORTLY = "Opening shortly";
+
+/** Green only when both a weekly and a monthly rung are selling. Otherwise the city is not open. */
+export function windowsOpenChip(tenors: readonly Tenor[]): { label: string; tone: "live" | "soon" } {
+  if (tenors.includes("weekly") && tenors.includes("monthly")) return { label: "Weekly · Monthly open", tone: "live" };
+  return { label: OPENING_SHORTLY, tone: "soon" };
+}
 export const STRIKE_BASIS = "NOAA GHCND · 8th of 10 analogue years";
 
 /**

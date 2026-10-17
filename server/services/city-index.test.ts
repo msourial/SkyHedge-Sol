@@ -4,10 +4,10 @@ import { NOAA_STATIONS } from "./noaa";
 import { searchCities } from "./city-index";
 
 describe("V1 city registry (NOAA-pinned US cities)", () => {
-  it("commits Des Moines, New York, Miami, and Chicago", () => {
-    expect(CITY_INDEX.length).to.eq(5);
+  it("commits the NOAA rainfall cities, New York first", () => {
+    expect(CITY_INDEX.length).to.eq(9);
     const slugs = CITY_INDEX.map((c) => c.slug);
-    expect(slugs).to.have.members(["new-york", "dallas", "des-moines", "miami", "chicago"]);
+    expect(slugs).to.have.members(["new-york", "dallas", "des-moines", "miami", "chicago", "seattle", "los-angeles", "boston", "austin"]);
     expect(slugs[0]).to.eq("new-york");
     expect(new Set(slugs).size).to.eq(slugs.length);
   });
@@ -75,6 +75,17 @@ describe("City search index", () => {
   it("pins Dallas to the DFW airport station", () => {
     expect(NOAA_STATIONS.dallas.stationId).to.eq("GHCND:USW00003927");
     expect(searchCities("dfw")[0].slug).to.eq("dallas");
+  });
+
+  it("pins the added NOAA airport stations", () => {
+    expect(NOAA_STATIONS.chicago.stationId).to.eq("GHCND:USW00094846");
+    expect(NOAA_STATIONS.miami.stationId).to.eq("GHCND:USW00012839");
+    expect(NOAA_STATIONS.seattle.stationId).to.eq("GHCND:USW00024233");
+    expect(NOAA_STATIONS["los-angeles"].stationId).to.eq("GHCND:USW00023174");
+    expect(NOAA_STATIONS.boston.stationId).to.eq("GHCND:USW00014739");
+    expect(NOAA_STATIONS.austin.stationId).to.eq("GHCND:USW00013904");
+    expect(searchCities("lax")[0].slug).to.eq("los-angeles");
+    expect(searchCities("logan")[0].slug).to.eq("boston");
   });
 
   it("resolves the Des Moines station and alias", () => {

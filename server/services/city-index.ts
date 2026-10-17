@@ -15,8 +15,12 @@ const ALIASES: Record<string, string[]> = {
   "des-moines": ["dsm", "des moines intl", "des moines international"],
   "new-york": ["nyc", "ny", "new york city", "central park"],
   dallas: ["dfw", "dallas fort worth", "dallas-fort worth"],
-  chicago: ["chi", "chicago o'hare", "ohare"],
+  chicago: ["chi", "ord", "chicago o'hare", "ohare"],
   miami: ["mia"],
+  seattle: ["sea", "seattle tacoma", "sea-tac"],
+  "los-angeles": ["lax", "la", "los angeles intl"],
+  boston: ["bos", "logan"],
+  austin: ["aus", "bergstrom"],
 };
 
 interface IndexedCity {

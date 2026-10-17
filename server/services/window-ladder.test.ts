@@ -6,6 +6,8 @@ import {
   marketsOpenLabel,
   NEXT_WINDOW_COPY,
   LIVE_CITY_SLUGS,
+  OPENING_SHORTLY,
+  windowsOpenChip,
   openLadder,
   planCityLadders,
   planLadderRoll,
@@ -88,13 +90,21 @@ describe("rolling window ladder", () => {
   });
 
   it("keeps each live city's ladder separate, with New York first", () => {
-    expect(LIVE_CITY_SLUGS).to.deep.equal(["new-york", "dallas", "des-moines"]);
+    expect(LIVE_CITY_SLUGS).to.deep.equal([
+      "new-york", "chicago", "miami", "dallas", "los-angeles", "seattle", "boston", "austin", "des-moines",
+    ]);
     const [firstWeek] = openLadder(NOW);
     const steps = planCityLadders([{ ...market(firstWeek, "open"), city: "des-moines" }], NOW);
     expect(steps.filter((step) => step.city === "dallas")).to.have.length(4);
     expect(steps.filter((step) => step.city === "new-york")).to.have.length(4);
     expect(steps.filter((step) => step.city === "des-moines").map((step) => step.window.observationStart)).to.not.include(firstWeek.observationStart);
     expect(steps[0]?.city).to.equal("new-york");
+  });
+
+  it("paints Weekly · Monthly open only when both rungs are present", () => {
+    expect(windowsOpenChip(["weekly", "monthly"])).to.deep.equal({ label: "Weekly · Monthly open", tone: "live" });
+    expect(windowsOpenChip(["weekly"])).to.deep.equal({ label: OPENING_SHORTLY, tone: "soon" });
+    expect(windowsOpenChip([])).to.deep.equal({ label: OPENING_SHORTLY, tone: "soon" });
   });
 
   it("never describes an empty ladder as a closed sale", () => {

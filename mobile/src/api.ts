@@ -1,3 +1,5 @@
+import type { LiveCitySlug } from "../../shared/window-ladder.ts";
+
 export type CityIndex = {
   slug: string;
   name: string;
@@ -60,8 +62,13 @@ export type DevnetStatus = {
     evidenceStatus: "researching_evidence" | "validated";
     targetCityHash: string;
   };
+  ladderMarkets?: Array<{
+    city: LiveCitySlug;
+    state: "draft" | "open" | "cancelled" | "other";
+    salesCloseAt: number | null;
+  }>;
   cityWindows?: Array<{
-    city: "new-york" | "dallas" | "des-moines";
+    city: LiveCitySlug;
     tenor: "weekly" | "monthly";
     status: "ready";
     address: string;
