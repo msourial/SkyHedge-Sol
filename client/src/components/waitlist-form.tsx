@@ -54,9 +54,14 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
         role="status"
         aria-live="polite"
       >
-        <p className="wl-form__success-title">
-          {status === "already" ? "Already on the list" : "You're on the waitlist"}
-        </p>
+        <div className="wl-form__success-head">
+          <svg className="wl-form__check" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+            <path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <p className="wl-form__success-title">
+            {status === "already" ? "Already on the list" : "You're on the waitlist"}
+          </p>
+        </div>
         <p className="wl-form__success-body">{message}</p>
       </div>
     );

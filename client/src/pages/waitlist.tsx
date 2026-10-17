@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BrandMark } from "@/components/brand-mark";
 import { PhoneMockup, PhoneMockupStack, PhonePlans } from "@/components/phone-mockup";
@@ -53,7 +53,7 @@ const FAQ = [
   },
   {
     q: "Which cities are live?",
-    a: "New York (Central Park), Dallas (DFW), and Des Moines are the rainfall cities. Des Moines already has weekly and monthly windows. New York and Dallas use the same NOAA ladder once you sign those Devnet markets. Toronto stays closed until Environment Canada data is in.",
+    a: "New York (Central Park) and Des Moines have weekly and monthly windows open on Devnet. Dallas uses the same NOAA ladder once those markets are signed. Toronto stays closed until Environment Canada data is in.",
   },
   {
     q: "What happens if weather data is missing?",
@@ -65,45 +65,81 @@ const FAQ = [
   },
 ] as const;
 
+/**
+ * October rainfall normal for NY CITY CENTRAL PARK, millimetres.
+ * Source: CITY_INDEX `new-york` monthlyNormalsMm[9] in shared/cities.ts.
+ * Climatology prior (1991–2020), not a live station total.
+ */
+const NYC_OCTOBER_NORMAL_MM = 89;
+
 function prefersReducedMotion() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-/** Content stays readable; motion only lifts opacity/transform slightly when in view. */
-function useReveal(threshold = 0.12) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(true);
+/** Count a known figure once. The DOM already shows the final number if this never runs. */
+function RainCount({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const node = ref.current;
-    if (!node) return;
-    if (prefersReducedMotion()) {
-      setVisible(true);
-      return;
-    }
-    setVisible(false);
+    if (!node || prefersReducedMotion() || typeof IntersectionObserver !== "function") return;
+    let frame = 0;
+    let played = false;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry?.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
+        if (!entry?.isIntersecting || played) return;
+        played = true;
+        observer.disconnect();
+        const start = performance.now();
+        const duration = 600;
+        const tick = (now: number) => {
+          const t = Math.min(1, (now - start) / duration);
+          const eased = 1 - (1 - t) ** 3;
+          node.textContent = String(Math.round(value * eased));
+          if (t < 1) frame = requestAnimationFrame(tick);
+          else node.textContent = String(value);
+        };
+        frame = requestAnimationFrame(tick);
       },
-      { threshold, rootMargin: "0px 0px -8% 0px" },
+      { threshold: 0.5 },
     );
     observer.observe(node);
-    // If already in view on mount (fast scroll / short viewport), reveal immediately.
-    const rect = node.getBoundingClientRect();
-    if (rect.top < window.innerHeight * 0.92) setVisible(true);
-    return () => observer.disconnect();
-  }, [threshold]);
-  return { ref, visible };
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      node.textContent = String(value);
+    };
+  }, [value]);
+  return (
+    <span ref={ref} className="wl-markets__rain-value">
+      {value}
+    </span>
+  );
 }
 
-function Reveal({ children, className = "" }: { children: ReactNode; className?: string }) {
-  const { ref, visible } = useReveal();
+function HeroWeather() {
   return (
-    <div ref={ref} className={`wl-reveal ${visible ? "wl-reveal--in" : ""} ${className}`.trim()}>
-      {children}
+    <div className="wl-hero__weather" aria-hidden="true">
+      <svg className="wl-hero__sky" viewBox="0 0 360 640" preserveAspectRatio="xMidYMid slice">
+        <g className="wl-cloud wl-cloud--a" fill="currentColor">
+          <ellipse cx="78" cy="108" rx="86" ry="18" />
+          <ellipse cx="132" cy="98" rx="42" ry="16" />
+        </g>
+        <g className="wl-cloud wl-cloud--b" fill="currentColor">
+          <ellipse cx="248" cy="196" rx="96" ry="16" />
+          <ellipse cx="304" cy="186" rx="38" ry="14" />
+        </g>
+        <g className="wl-rain" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <path d="M48 40 v28" />
+          <path d="M96 70 v22" />
+          <path d="M150 28 v26" />
+          <path d="M210 64 v24" />
+          <path d="M268 36 v30" />
+          <path d="M318 78 v20" />
+          <path d="M70 150 v24" />
+          <path d="M188 120 v28" />
+          <path d="M340 150 v22" />
+        </g>
+      </svg>
     </div>
   );
 }
@@ -122,8 +158,10 @@ function usePhoneParallax(enabled: boolean) {
         const rect = node.getBoundingClientRect();
         const view = window.innerHeight || 1;
         const progress = (rect.top + rect.height * 0.35) / view;
-        const offset = Math.max(-18, Math.min(18, (0.45 - progress) * 36));
+        const offset = Math.max(-14, Math.min(14, (0.45 - progress) * 28));
+        const tilt = Math.max(-2.2, Math.min(2.2, (0.42 - progress) * 4.4));
         node.style.setProperty("--wl-parallax", `${offset.toFixed(2)}px`);
+        node.style.setProperty("--wl-tilt", `${tilt.toFixed(2)}deg`);
       });
     };
     onScroll();
@@ -162,9 +200,55 @@ function useStickyStepScreen() {
   return { active, stepRefs };
 }
 
+/** Steps stay fully readable. Motion only adds a rise after an observer exists. */
+function useStepRise(stepRefs: { current: (HTMLLIElement | null)[] }) {
+  useEffect(() => {
+    if (prefersReducedMotion() || typeof IntersectionObserver !== "function") return;
+    const nodes = stepRefs.current.filter(Boolean) as HTMLLIElement[];
+    if (!nodes.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("wl-step--in");
+          entry.target.classList.remove("wl-step--wait");
+          observer.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.18, rootMargin: "0px 0px -6% 0px" },
+    );
+    nodes.forEach((node, index) => {
+      node.style.setProperty("--wl-stagger", `${index * 70}ms`);
+      const rect = node.getBoundingClientRect();
+      if (rect.top < window.innerHeight * 0.9 && rect.bottom > 0) node.classList.add("wl-step--in");
+      else {
+        node.classList.add("wl-step--wait");
+        observer.observe(node);
+      }
+    });
+    return () => observer.disconnect();
+  }, [stepRefs]);
+}
+
+function usePauseWhenHidden(ref: { current: HTMLElement | null }) {
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || prefersReducedMotion() || typeof IntersectionObserver !== "function") return;
+    const observer = new IntersectionObserver(
+      ([entry]) => node.classList.toggle("is-quiet", !entry?.isIntersecting),
+      { threshold: 0 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [ref]);
+}
+
 export default function WaitlistPage() {
+  const heroRef = useRef<HTMLElement>(null);
   const heroPhoneRef = usePhoneParallax(true);
   const { active, stepRefs } = useStickyStepScreen();
+  useStepRise(stepRefs);
+  usePauseWhenHidden(heroRef);
   const activeScreen = STEPS[active]?.screen ?? "markets";
 
   useEffect(() => {
@@ -184,7 +268,7 @@ export default function WaitlistPage() {
       <header className="wl-nav">
         <div className="wl-nav__inner">
           <Link to="/" className="wl-nav__brand" aria-label="SkyHedge home">
-            <BrandMark size={34} />
+            <BrandMark size={34} settle />
             <span>SkyHedge</span>
           </Link>
           <nav className="wl-nav__links" aria-label="Primary">
@@ -199,7 +283,7 @@ export default function WaitlistPage() {
       </header>
 
       <main>
-        <section className="wl-hero" aria-labelledby="wl-hero-title">
+        <section ref={heroRef} className="wl-hero" aria-labelledby="wl-hero-title">
           <div className="wl-hero__copy">
             <h1 id="wl-hero-title" className="wl-hero__title">
               Wedding in Central Park this Saturday?
@@ -214,12 +298,12 @@ export default function WaitlistPage() {
             </div>
           </div>
           <div ref={heroPhoneRef} className="wl-hero__phone wl-hero__phone--enter">
+            <HeroWeather />
             <PhonePlans glow parallax float />
           </div>
         </section>
 
-        <Reveal>
-          <section id="how" className="wl-section wl-section--how" aria-labelledby="wl-how-title">
+        <section id="how" className="wl-section wl-section--how" aria-labelledby="wl-how-title">
             <div className="wl-section__head">
               <h2 id="wl-how-title" className="wl-section__title">
                 How it works
@@ -258,10 +342,8 @@ export default function WaitlistPage() {
               </div>
             </div>
           </section>
-        </Reveal>
 
-        <Reveal>
-          <section id="markets" className="wl-section" aria-labelledby="wl-markets-title">
+        <section id="markets" className="wl-section" aria-labelledby="wl-markets-title">
             <div className="wl-section__head">
               <h2 id="wl-markets-title" className="wl-section__title">
                 Where are your plans?
@@ -278,24 +360,33 @@ export default function WaitlistPage() {
                     <p className="wl-markets__city">{market.city}</p>
                     <span
                       className={
-                        market.code === "DSM"
-                          ? "wl-markets__status wl-markets__status--live"
+                        market.code === "NYC" || market.code === "DSM"
+                          ? `wl-markets__status wl-markets__status--live${market.code === "NYC" ? " wl-markets__status--pulse" : ""}`
                           : "wl-markets__status wl-markets__status--soon"
                       }
                     >
-                      {market.code === "DSM" ? "Weekly · Monthly open" : market.status === "soon" ? "Opens soon" : "Next window opening shortly"}
+                      {market.code === "NYC" || market.code === "DSM"
+                        ? "Weekly · Monthly open"
+                        : market.status === "soon"
+                          ? "Opens soon"
+                          : "Next window opening shortly"}
                     </span>
                   </div>
                   <p className="wl-markets__peril">{market.moment}</p>
+                  {market.code === "NYC" ? (
+                    <p className="wl-markets__rain" aria-label={`${NYC_OCTOBER_NORMAL_MM} millimetres, October normal at Central Park`}>
+                      <RainCount value={NYC_OCTOBER_NORMAL_MM} />
+                      <span className="wl-markets__rain-unit">mm</span>
+                      <span className="wl-markets__rain-note">October normal, Central Park</span>
+                    </p>
+                  ) : null}
                   <p className="wl-markets__source">{market.payout}</p>
                 </li>
               ))}
             </ul>
           </section>
-        </Reveal>
 
-        <Reveal>
-          <section id="trust" className="wl-section" aria-labelledby="wl-trust-title">
+        <section id="trust" className="wl-section" aria-labelledby="wl-trust-title">
             <div className="wl-section__head">
               <h2 id="wl-trust-title" className="wl-section__title">
                 Built on evidence
@@ -311,10 +402,8 @@ export default function WaitlistPage() {
               ))}
             </ul>
           </section>
-        </Reveal>
 
-        <Reveal>
-          <section id="faq" className="wl-section" aria-labelledby="wl-faq-title">
+        <section id="faq" className="wl-section" aria-labelledby="wl-faq-title">
             <div className="wl-section__head">
               <h2 id="wl-faq-title" className="wl-section__title">
                 FAQ
@@ -329,10 +418,8 @@ export default function WaitlistPage() {
               ))}
             </div>
           </section>
-        </Reveal>
 
-        <Reveal>
-          <section className="wl-section wl-section--cta" aria-labelledby="wl-cta-title">
+        <section className="wl-section wl-section--cta" aria-labelledby="wl-cta-title">
             <h2 id="wl-cta-title" className="wl-section__title">
               Join the waitlist
             </h2>
@@ -344,7 +431,6 @@ export default function WaitlistPage() {
               </Link>
             </div>
           </section>
-        </Reveal>
       </main>
 
       <footer className="wl-footer">

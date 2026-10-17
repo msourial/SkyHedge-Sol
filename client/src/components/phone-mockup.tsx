@@ -47,9 +47,8 @@ export function PhoneMockup({
             alt={asset.alt}
             width={390}
             height={844}
-            loading="eager"
+            loading="lazy"
             decoding="async"
-            fetchPriority={screen === "protect" ? "high" : "auto"}
             draggable={false}
           />
         </div>
@@ -58,7 +57,7 @@ export function PhoneMockup({
   );
 }
 
-/** Hero phone. New York leads. Statuses match the live ladder: only Des Moines is open. */
+/** Hero phone. New York leads. New York and Des Moines have weekly and monthly windows open. */
 export function PhonePlans({
   glow = false,
   parallax = false,
@@ -82,7 +81,7 @@ export function PhonePlans({
             <p className="sky-phone__headline">Where are your plans?</p>
             <ul>
               {CONSUMER_CITIES.map((city) => {
-                const open = city.code === "DSM";
+                const open = city.code === "NYC" || city.code === "DSM";
                 const label = open ? "Weekly · Monthly open" : city.status === "soon" ? "Opens soon" : "Opening shortly";
                 return (
                   <li key={city.code}>
@@ -125,7 +124,7 @@ export function PhoneMockupStack({
                 alt=""
                 width={390}
                 height={844}
-                loading="eager"
+                loading="lazy"
                 decoding="async"
                 draggable={false}
                 className={id === active ? "is-active" : undefined}

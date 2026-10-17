@@ -1,16 +1,34 @@
 import { brandMark } from "../../../shared/storm-glass";
 
 /** Web isometric umbrella — geometry matches mobile/src/BrandMark.tsx. */
-export function BrandMark({ size = 34, tile = true, className }: { size?: number; tile?: boolean; className?: string }) {
+export function BrandMark({
+  size = 34,
+  tile = true,
+  settle = false,
+  className,
+}: {
+  size?: number;
+  tile?: boolean;
+  /** Draw the handle and settle the canopy once. Landing nav only. */
+  settle?: boolean;
+  className?: string;
+}) {
   const glyphSize = tile ? size * 0.8 : size;
   const glyph = (
-    <svg width={glyphSize} height={glyphSize} viewBox={brandMark.viewBox} aria-hidden="true" focusable="false">
-      <path d="M512 230 L262 520 L387 490Z" fill={brandMark.panel1} />
-      <path d="M512 230 L387 490 L512 520Z" fill={brandMark.panel2} />
-      <path d="M512 230 L512 520 L637 490Z" fill={brandMark.panel3} />
-      <path d="M512 230 L637 490 L762 520Z" fill={brandMark.panel4} />
-      <path d="M512 520 L512 720 Q512 760 472 760" fill="none" stroke={brandMark.handle} strokeWidth={40} strokeLinecap="round" />
-      <circle cx={512} cy={225} r={24} fill={brandMark.tip} />
+    <svg
+      className={settle ? "brand-mark brand-mark--settle" : "brand-mark"}
+      width={glyphSize}
+      height={glyphSize}
+      viewBox={brandMark.viewBox}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path className="brand-mark__panel" d="M512 230 L262 520 L387 490Z" fill={brandMark.panel1} />
+      <path className="brand-mark__panel" d="M512 230 L387 490 L512 520Z" fill={brandMark.panel2} />
+      <path className="brand-mark__panel" d="M512 230 L512 520 L637 490Z" fill={brandMark.panel3} />
+      <path className="brand-mark__panel" d="M512 230 L637 490 L762 520Z" fill={brandMark.panel4} />
+      <path className="brand-mark__handle" d="M512 520 L512 720 Q512 760 472 760" fill="none" stroke={brandMark.handle} strokeWidth={40} strokeLinecap="round" />
+      <circle className="brand-mark__tip" cx={512} cy={225} r={24} fill={brandMark.tip} />
     </svg>
   );
   if (!tile) return <span className={className} style={{ display: "inline-flex", lineHeight: 0 }}>{glyph}</span>;

@@ -351,8 +351,9 @@ test("locations wrap without horizontal overflow at supported widths", async ({ 
 
 test("waitlist landing owns the root hero and the product lives at /app", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Weather risk, settled on-chain." })).toBeVisible();
-  await expect(page.getByRole("region", { name: /Weather risk/i }).getByRole("button", { name: "Join the waitlist" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Wedding in Central Park this Saturday?" })).toBeVisible();
+  await expect(page.getByRole("region", { name: /Wedding in Central Park/i }).getByRole("button", { name: "Join waitlist" })).toBeVisible();
+  await expect(page.getByText("October normal, Central Park")).toBeVisible();
   await expect(page.getByText("insurance", { exact: false })).toHaveCount(0);
 
   await page.goto("/app?tab=markets&city=des-moines");
@@ -443,6 +444,7 @@ test("mobile bottom navigation exposes Liquidity and Builder through More", asyn
 
 test("uses the self-hosted Inter / Inter Tight Storm Glass system with mobile-size inputs", async ({ page }) => {
   await page.goto("/app?tab=protect&city=des-moines");
+  await expect(page.locator("input").first()).toBeVisible();
   const typography = await page.evaluate(() => ({
     body: getComputedStyle(document.body).fontFamily,
     inputSize: getComputedStyle(document.querySelector("input")!).fontSize,

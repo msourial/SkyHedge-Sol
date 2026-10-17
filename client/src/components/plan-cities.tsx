@@ -10,7 +10,7 @@ export function PlanCities() {
       </div>
       <ul className="plan-cities__grid">
         {CONSUMER_CITIES.map((city) => {
-          const open = city.code === "DSM";
+          const open = city.code === "NYC" || city.code === "DSM";
           const soon = city.status === "soon";
           const label = open ? "Weekly · Monthly open" : soon ? "Opens soon" : "Next window opening shortly";
           return (

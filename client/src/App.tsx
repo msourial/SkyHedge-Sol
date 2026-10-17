@@ -1,23 +1,11 @@
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { ConnectionProvider, WalletProvider, type ConnectionProviderProps } from "@solana/wallet-adapter-react";
-import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
-import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
-import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import { useEffect, type FC, type ReactNode } from "react";
 import { queryClient } from "./lib/queryClient";
-import { RPC_URL } from "./lib/solana";
-import Layout from "@/components/layout";
-import DashboardPage from "@/pages/dashboard";
 import WaitlistPage from "@/pages/waitlist";
-import { WalletStatusProvider, useWalletStatus } from "@/components/wallet-button";
 
-const WALLETS = [
-  new PhantomWalletAdapter(),
-  new SolflareWalletAdapter(),
-];
-
-const SafeConnectionProvider = ConnectionProvider as unknown as FC<ConnectionProviderProps & { children?: ReactNode }>;
+const AppShell = lazy(() => import("@/pages/app-shell"));
+const AppDashboard = lazy(() => import("@/pages/app-shell").then((mod) => ({ default: mod.AppDashboard })));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -41,27 +29,6 @@ function RootEntry() {
   return <WaitlistPage />;
 }
 
-function WalletRuntime({ children }: { children: ReactNode }) {
-  const { reportError } = useWalletStatus();
-  return (
-    <WalletProvider wallets={WALLETS} autoConnect={false} onError={reportError}>
-      <WalletModalProvider>{children}</WalletModalProvider>
-    </WalletProvider>
-  );
-}
-
-function AppShell() {
-  return (
-    <SafeConnectionProvider endpoint={RPC_URL}>
-      <WalletStatusProvider>
-        <WalletRuntime>
-          <Layout />
-        </WalletRuntime>
-      </WalletStatusProvider>
-    </SafeConnectionProvider>
-  );
-}
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -69,8 +36,22 @@ function App() {
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<RootEntry />} />
-          <Route path="/app" element={<AppShell />}>
-            <Route index element={<DashboardPage />} />
+          <Route
+            path="/app"
+            element={
+              <Suspense fallback={null}>
+                <AppShell />
+              </Suspense>
+            }
+          >
+            <Route
+              index
+              element={
+                <Suspense fallback={null}>
+                  <AppDashboard />
+                </Suspense>
+              }
+            />
           </Route>
           <Route path="/liquidity" element={<Navigate to="/app?tab=liquidity" replace />} />
           <Route path="/staking" element={<Navigate to="/app?tab=liquidity" replace />} />
