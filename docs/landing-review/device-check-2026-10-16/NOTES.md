@@ -10,12 +10,12 @@
   - Wallet: Connected; position waiting on weather (window ends Oct 19 UTC)
 - Waitlist `already_subscribed` UX: commit `09df16a`, pushed, prod deployed
 
-## Demo blocker (honest)
-- Des Moines sales closed — Phantom purchase demo needs a new on-chain market (admin wallet).
-- Wallet position still usable for settlement/refund story beats.
+## Seed + priced Protect (same day)
+- Market 2 create/fund/open finalized — see `docs/devnet-ops.md` (sigs `3BKexk…`, `5Uqswf…`, `5Gbdau…`).
+- Protect quote-gate: price without wallet; CTA still Connect. Captures `60-protect.png`–`62-protect-lower.png`: **You pay 9.05** / get 100 SKYT, Oct 19–23, ≥50 mm.
+- Markets: Des Moines **Live** (`59-markets-live.png`).
 
-## Still needs you
-- Encode dashboard: confirm solo team
-- Anchor Devnet upgrade (permissionless settle/unavailable)
-- Create/fund/open new Des Moines (or other) sales window
-- Publish GitHub Release (install `gh` or do in browser)
+## Still open
+- Marketing mockups (step 4) + production screenshots (step 5) on the demo plan.
+- Optional: Phantom purchase on a wallet without an existing Des Moines position.
+- Encode dashboard / GitHub Release as before.

@@ -1,0 +1,74 @@
+import type { DevnetStatus } from "./api";
+import { expiryLabel, marketsOpenLabel, NEXT_WINDOW_COPY, STRIKE_BASIS, tenorOf, type Tenor } from "../../shared/window-ladder.ts";
+import { isOnchainMarketOpen } from "./protection.ts";
+
+export type { Tenor };
+export { expiryLabel, marketsOpenLabel, NEXT_WINDOW_COPY, STRIKE_BASIS };
+
+export type SellingWindow = NonNullable<DevnetStatus["cityWindows"]>[number];
+
+/** Open, funded weekly and monthly windows whose sales have not closed. */
+export function sellingWindows(status: DevnetStatus | null, nowSeconds: number): SellingWindow[] {
+  const fromApi = (status?.cityWindows ?? [])
+    .filter((window) => !!window.address && !!window.salesCloseAt && window.salesCloseAt > nowSeconds)
+    .slice()
+    .sort((left, right) => left.observationStart - right.observationStart);
+  if (fromApi.length > 0) return fromApi;
+  // Compat: a live desMoinesMarket still sells while the weekly/monthly ladder is being seeded.
+  return legacyDesMoinesWindow(status, nowSeconds);
+}
+
+/** Map the pilot desMoinesMarket into a selling window when cityWindows is empty or undeployed. */
+function legacyDesMoinesWindow(status: DevnetStatus | null, nowSeconds: number): SellingWindow[] {
+  const market = status?.desMoinesMarket;
+  if (!market?.address || !market.marketId || !market.vault) return [];
+  if (market.status !== "ready" || market.evidenceStatus !== "validated") return [];
+  if (!isOnchainMarketOpen(market.onchainStatus)) return [];
+  if (!market.salesCloseAt || market.salesCloseAt <= nowSeconds) return [];
+  if (!market.observationStart || !market.observationEnd || market.observationEnd <= market.observationStart) return [];
+  if (!market.vaultBalance || !/^\d+$/.test(market.vaultBalance) || BigInt(market.vaultBalance) === 0n) return [];
+  if (!market.thresholdMmX100 || !market.operator || market.quoteProbabilityBps == null || market.premiumRateBps == null || !market.quoteInputsHash) return [];
+  const tenor = tenorOf(market.observationStart, market.observationEnd) ?? "weekly";
+  return [{
+    city: "des-moines",
+    tenor,
+    status: "ready",
+    address: market.address,
+    marketId: market.marketId,
+    vault: market.vault,
+    vaultBalance: market.vaultBalance,
+    onchainStatus: market.onchainStatus,
+    salesCloseAt: market.salesCloseAt,
+    observationStart: market.observationStart,
+    observationEnd: market.observationEnd,
+    thresholdMmX100: market.thresholdMmX100,
+    operator: market.operator,
+    quoteProbabilityBps: market.quoteProbabilityBps,
+    premiumRateBps: market.premiumRateBps,
+    quoteInputsHash: market.quoteInputsHash,
+    evidenceStatus: market.evidenceStatus,
+  }];
+}
+
+export function windowsForTenor(windows: readonly SellingWindow[], tenor: Tenor): SellingWindow[] {
+  return windows.filter((window) => window.tenor === tenor);
+}
+
+export function soonestWindow(windows: readonly SellingWindow[], tenor: Tenor): SellingWindow | null {
+  return windowsForTenor(windows, tenor)[0] ?? null;
+}
+
+export function liveMarketLabel(windows: readonly SellingWindow[]): string {
+  return marketsOpenLabel(windows.map((window) => window.tenor));
+}
+
+export function positionLabel(marketAddress: string, windows: readonly SellingWindow[], fallbackAddress: string | null): string | null {
+  const match = windows.find((window) => window.address === marketAddress);
+  if (match) return `Des Moines · ${expiryLabel(match)}`;
+  if (fallbackAddress && marketAddress === fallbackAddress) return "Des Moines · Rain";
+  return null;
+}
+
+export function basisLine(station: string, tenor: Tenor): string {
+  return `Basis · NOAA ${station} · ${STRIKE_BASIS} · ${tenor}`;
+}

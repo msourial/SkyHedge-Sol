@@ -43,6 +43,23 @@ describe("Devnet tester protection readiness", () => {
     expect(desMoinesQuoteUnavailableReason(window, "2033-05-19", "2033-05-26", 51, "gte", 1_999_999_999)).to.match(/threshold/i);
     expect(desMoinesQuoteUnavailableReason(window, "2033-05-19", "2033-05-26", 50, "lte", 1_999_999_999)).to.match(/direction/i);
   });
+
+  it("prices a second open ladder window without requiring it to be the latest market", () => {
+    const later = {
+      ...ready.desMoinesMarket,
+      address: "Market222222222222222222222222222222222",
+      observationStart: 2_000_691_200,
+      observationEnd: 2_001_296_000,
+      thresholdMmX100: "8100",
+      quoteProbabilityBps: 1_800,
+      premiumRateBps: 2_170,
+      quoteInputsHash: "cd".repeat(32),
+    };
+    const ladder = { ...ready, cityWindows: [later] };
+    expect(testerProtectionUnavailableReason(ladder, later.address, "1000000", 1_999_999_999)).to.equal(null);
+    expect(desMoinesQuoteUnavailableReason(ladder, "2033-05-26", "2033-06-02", 81, "gte", 1_999_999_999)).to.equal(null);
+    expect(desMoinesQuoteUnavailableReason(ladder, "2033-05-26", "2033-06-02", 81, "gte", 1_999_999_999)).to.equal(null);
+  });
 });
 
 describe("initial Devnet SKYT issuance", () => {

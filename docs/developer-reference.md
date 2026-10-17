@@ -17,7 +17,7 @@ Devnet Solana software for **fixed-payout cumulative-rainfall protection markets
 - Catalog: 12 researched agricultural rainfall areas. Des Moines is the first Devnet activation target; the other areas remain research-gated. Wind gust and snowfall are research-only and have no quote or transaction path.
 - Collateral: six-decimal `SKYT` Devnet SPL test token (`3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g`).
 - Capacity per market: 10,000 SKYT liquidity, 8,000 SKYT exposure, 500 SKYT per wallet.
-- Pricing: ten analogous NOAA windows plus a 30%-weighted NOAA forecast signal; expected payout, 15% risk loading, and a 1% protocol fee.
+- Pricing: ten analogous NOAA windows plus a 30%-weighted NOAA forecast signal when the forecast covers every day; expected payout, 15% risk loading, and a 1% protocol fee. Each live city keeps the next two weekly (Monday–Sunday UTC) and next two calendar-month windows open. Sales close at the window start. The trigger is the 8th of those 10 analogue totals, so a month’s strike is higher only when the NOAA history is higher.
 - Settlement: NOAA is the sole final source; its source hash is committed on chain. If final NOAA data is unavailable after a 7-day grace window, the market enters `DATA_UNAVAILABLE` and buyers can reclaim premiums.
 - AI advisory is advisory-only: it returns structured parameters and requires explicit user approval before an unsigned transaction can be prepared.
 

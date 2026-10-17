@@ -26,6 +26,7 @@ import { friendlyError, isNetworkError, stationLabel } from "./src/friendly-erro
 import { ScreenTransition, TactilePressable } from "./src/liquid-glass";
 import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
 import { marketIsLive, MarketsScreen, ProtectTicket, StickyCta, WalletV2 } from "./src/v2";
+import { liveMarketLabel, sellingWindows, type Tenor } from "./src/windows";
 import { buyCta, coverageOptions, type CoverageOption } from "./src/ticket";
 import { Landing, MarketDetail } from "./src/revamp";
 import { CollectPayoutView, ReceiptView } from "./src/journey";
@@ -76,6 +77,8 @@ export default function App() {
   const [amountMode] = useState<AmountMode>("devnet-test");
   const [protectionAmount, setProtectionAmount] = useState("100");
   const [coverageId, setCoverageId] = useState<CoverageOption["id"]>("100");
+  const [tenor, setTenor] = useState<Tenor>("weekly");
+  const [selectedWindow, setSelectedWindow] = useState<string | null>(null);
   const [quoteBusy, setQuoteBusy] = useState(false);
   const [indicativeQuote, setIndicativeQuote] = useState<ProtectionQuote | null>(null);
   const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1_000));
@@ -244,7 +247,14 @@ export default function App() {
   };
 
   const amountBase = parseSkytAmount(protectionAmount);
-  const baseProtectionReason = getProtectionUnavailableReason({ status, citySlug: selectedCity, walletConnected: !!wallet, walletSkytBalanceBase: walletBalances?.skytBaseUnits ?? null, amountBase });
+  const openWindows = sellingWindows(status, nowSeconds);
+  const tenorWindows = openWindows.filter((window) => window.tenor === tenor);
+  const activeWindow = tenorWindows.find((window) => window.address === selectedWindow) ?? tenorWindows[0] ?? null;
+  // Price from the open market's NOAA terms even before wallet connect; purchase still requires a wallet.
+  const quoteUnavailableReason = selectedHazard !== "rainfall"
+    ? "Choose a place and its rainfall risk in Explore. Wind gust and snowfall remain research-only."
+    : getProtectionUnavailableReason({ status, citySlug: selectedCity, walletConnected: true, walletSkytBalanceBase: walletBalances?.skytBaseUnits ?? null, amountBase, market: activeWindow });
+  const baseProtectionReason = getProtectionUnavailableReason({ status, citySlug: selectedCity, walletConnected: !!wallet, walletSkytBalanceBase: walletBalances?.skytBaseUnits ?? null, amountBase, market: activeWindow });
   const positionGateReason = !wallet ? null
     : claimError ? "The current on-chain position could not be verified; refresh before requesting another position."
       : !claimReadiness ? "Checking the finalized wallet position before allowing another position."
@@ -261,8 +271,8 @@ export default function App() {
     const id = ++quoteRequestId.current;
     setQuoteError(null);
     setQuote(null);
-    if (protectionUnavailableReason || !status || !amountBase) return;
-    const request = buildCommittedQuoteRequest(status, amountBase);
+    if (quoteUnavailableReason || !status || !amountBase || !activeWindow) return;
+    const request = buildCommittedQuoteRequest(status, amountBase, activeWindow);
     if (!request) {
       setQuoteError("This window's terms aren't finalized yet, so it can't be priced.");
       return;
@@ -281,23 +291,24 @@ export default function App() {
 
   // Re-price automatically whenever coverage changes or the market becomes quotable.
   useEffect(() => {
-    if (tab !== "protect" || protectionUnavailableReason || !amountBase) { quoteRequestId.current++; setQuoteBusy(false); return; }
+    if (tab !== "protect" || quoteUnavailableReason || !amountBase) { quoteRequestId.current++; setQuoteBusy(false); return; }
     void requestProtectionQuote();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, amountBase, protectionUnavailableReason, status?.desMoinesMarket.quoteInputsHash]);
+  }, [tab, amountBase, quoteUnavailableReason, activeWindow?.address, activeWindow?.quoteInputsHash]);
 
   // Indicative "From X SKYT per 100" for the Markets hero: a real NOAA quote for 100 SKYT, no wallet needed.
   useEffect(() => {
-    if (!status) { setIndicativeQuote(null); return; }
-    const reason = getProtectionUnavailableReason({ status, citySlug: "des-moines", walletConnected: true, walletSkytBalanceBase: "0", amountBase: "100000000" });
-    const request = reason ? null : buildCommittedQuoteRequest(status, "100000000");
+    const indicativeWindow = openWindows[0] ?? null;
+    if (!status || !indicativeWindow) { setIndicativeQuote(null); return; }
+    const reason = getProtectionUnavailableReason({ status, citySlug: "des-moines", walletConnected: true, walletSkytBalanceBase: "0", amountBase: "100000000", market: indicativeWindow });
+    const request = reason ? null : buildCommittedQuoteRequest(status, "100000000", indicativeWindow);
     if (!request) { setIndicativeQuote(null); return; }
     let cancelled = false;
     postJson<ProtectionQuote>("/api/quotes", request)
       .then((value) => { if (!cancelled && value.protectedAmount === "100000000" && value.source === "NOAA") setIndicativeQuote(value); })
       .catch(() => { if (!cancelled) setIndicativeQuote(null); });
     return () => { cancelled = true; };
-  }, [status?.desMoinesMarket.quoteInputsHash, status?.desMoinesMarket.salesCloseAt, status]);
+  }, [openWindows[0]?.address, openWindows[0]?.quoteInputsHash, status]);
 
   const chooseCoverage = (option: CoverageOption) => {
     if (!option.enabled || !option.amountBase) return;
@@ -318,14 +329,14 @@ export default function App() {
     setTransactionMessage(action === "open_position" ? "Preparing your protection…" : "Preparing your claim…");
     setTransactionSignature(null);
     try {
-      if (!walletSession || !wallet || !status?.desMoinesMarket.address) throw new Error("Connect the wallet and refresh finalized market status before continuing.");
+      if (!walletSession || !wallet || !activeWindow?.address) throw new Error("Connect the wallet and refresh finalized market status before continuing.");
       if (action === "open_position" && (amountMode !== "devnet-test" || protectionUnavailableReason || !quote || !amountBase || quotePaymentReason)) throw new Error(protectionUnavailableReason ?? quotePaymentReason ?? "Enter Devnet test mode and request a valid SKYT quote before approving a protection position.");
       if (action.startsWith("claim_") && selectedCity !== "des-moines") throw new Error("Select Des Moines to review this market’s claim status.");
       if (action.startsWith("claim_") && (claimReadiness?.state !== "claimable" || claimReadiness.action !== action)) throw new Error("The finalized claim-readiness API does not currently allow this claim.");
       const unsigned = await postJson<UnsignedTransaction>("/api/transactions/unsigned", {
-        action, market: status.desMoinesMarket.address, wallet, ...(action === "open_position" ? { amount: amountBase } : {}), approved: true,
+        action, market: activeWindow.address, wallet, ...(action === "open_position" ? { amount: amountBase } : {}), approved: true,
       });
-      if (unsigned.network !== "devnet" || unsigned.market !== status.desMoinesMarket.address || unsigned.wallet !== wallet) throw new Error("The prepared transaction does not match this wallet, market, or Devnet.");
+      if (unsigned.network !== "devnet" || unsigned.market !== activeWindow.address || unsigned.wallet !== wallet) throw new Error("The prepared transaction does not match this wallet, market, or Devnet.");
       setTransactionMessage("Approve it in your wallet…");
       const signature = await signAndConfirmDevnetTransaction({ transactionBase64: unsigned.base64, wallet: walletSession, rpcUrl: DEVNET_RPC_URL });
       setTransactionSignature(signature);
@@ -333,8 +344,8 @@ export default function App() {
       setQuote(null);
       await loadHome();
       await loadWalletData(wallet, true);
-      if (status.desMoinesMarket.address) {
-        const readiness = await getJson<ClaimReadiness>(claimReadinessPath(status.desMoinesMarket.address, wallet));
+      if (activeWindow.address) {
+        const readiness = await getJson<ClaimReadiness>(claimReadinessPath(activeWindow.address, wallet));
         setClaimReadiness(readiness);
       }
     } catch (reason) {
@@ -346,17 +357,17 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!wallet || !status?.desMoinesMarket.address) {
+    if (!wallet || !activeWindow?.address) {
       setClaimReadiness(null);
       setClaimError(null);
       return;
     }
     let cancelled = false;
-    getJson<ClaimReadiness>(claimReadinessPath(status.desMoinesMarket.address, wallet))
+    getJson<ClaimReadiness>(claimReadinessPath(activeWindow.address, wallet))
       .then((value) => { if (!cancelled) { setClaimReadiness(value); setClaimError(null); } })
       .catch((reason) => { if (!cancelled) setClaimError(reason instanceof NotAvailableYetError ? "Position status is not available yet." : reason instanceof Error ? reason.message : "Claim status is unavailable."); });
     return () => { cancelled = true; };
-  }, [wallet, status?.desMoinesMarket.address]);
+  }, [wallet, activeWindow?.address]);
 
   if (!fontsLoaded && !fontError) return <SafeAreaProvider><SafeAreaView style={styles.fontLoading}><StatusBar barStyle="light-content" backgroundColor={C.canvas} /><ActivityIndicator color={C.green} /></SafeAreaView></SafeAreaProvider>;
 
@@ -389,7 +400,7 @@ export default function App() {
         {error ? <ErrorBanner message={error} onRetry={() => { void retryData(); }} /> : null}
         {!showLanding && homeLoading && cities.length === 0 && catalog.length === 0 ? <View style={styles.loadingPanel} accessibilityLabel="Loading"><ActivityIndicator color={C.rain} /><Text style={styles.emptyText}>Loading finalized weather, market catalog, and Devnet readiness…</Text></View> : null}
         {showLanding ? (
-          <Landing live={!!status && marketIsLive(status, nowSeconds)} busy={loading} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect().then(() => setShowLanding(false)); }} />
+          <Landing live={openWindows.length > 0} openLabel={liveMarketLabel(openWindows)} busy={loading} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect().then(() => setShowLanding(false)); }} />
         ) : null}
         {!showLanding && tab === "catalog" && detailCode && marketByCode(detailCode) ? (
           <MarketDetail
@@ -426,7 +437,7 @@ export default function App() {
         {!showLanding && tab === "protect" && !demo && claimReadiness?.state === "claimable" && claimReadiness.action === "claim_payout" ? (
           <CollectPayoutView
             observedMm={claimReadiness.observation ? Number(claimReadiness.observation.rainfallMmX100) / 100 : null}
-            triggerMm={status?.desMoinesMarket.thresholdMmX100 && /^\d+$/.test(status.desMoinesMarket.thresholdMmX100) ? Number(status.desMoinesMarket.thresholdMmX100) / 100 : null}
+            triggerMm={activeWindow?.thresholdMmX100 && /^\d+$/.test(activeWindow.thresholdMmX100) ? Number(activeWindow.thresholdMmX100) / 100 : null}
             source={`NOAA · ${stationLabel(status?.noaaEvidence.package?.stationId)}`} windowLabel={null}
             amountLabel={claimReadiness.amount ? formatSkytFixed(claimReadiness.amount, 0) : null}
             walletLabel={wallet ? shortAddress(wallet) : null}
@@ -464,6 +475,11 @@ export default function App() {
               observedMm={city?.slug === "des-moines" ? city.cumulativeMm : null}
               onProtectAgain={() => { setTransactionSignature(null); setTransactionMessage(null); setTransactionError(null); scrollRef.current?.scrollTo({ y: 0, animated: true }); }}
               onBackToMarkets={() => { setTransactionSignature(null); setTab("catalog"); setDetailCode(null); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
+              tenor={tenor}
+              onTenor={(next) => { setTenor(next); setSelectedWindow(null); setQuote(null); }}
+              windows={openWindows}
+              selectedAddress={activeWindow?.address ?? null}
+              onSelectWindow={(address) => { setSelectedWindow(address); setQuote(null); }}
             />
           )
         ) : null}
@@ -479,6 +495,7 @@ export default function App() {
             walletError={walletError}
             loading={loading}
             marketAddress={status?.desMoinesMarket.address ?? null}
+            windows={openWindows}
             claimReadiness={claimReadiness}
             observationEnd={status?.desMoinesMarket.observationEnd ?? null}
             onBrowseMarkets={() => { setTab("catalog"); setDetailCode(null); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}

@@ -101,7 +101,7 @@ export function Ticker({ items }: { items: string[] }) {
 }
 
 /* ───────────── Landing ───────────── */
-export function Landing(props: { onConnect: () => void; onBrowse: () => void; busy: boolean; live: boolean }) {
+export function Landing(props: { onConnect: () => void; onBrowse: () => void; busy: boolean; live: boolean; openLabel?: string }) {
   const reduced = useReducedMotion();
   const fade = useRef(new Animated.Value(reduced ? 1 : 0)).current;
   useEffect(() => {
@@ -120,7 +120,7 @@ export function Landing(props: { onConnect: () => void; onBrowse: () => void; bu
       </Enter>)}
     </GlassCard>
     <GlassCard>
-      <View style={g.marketLine}><View style={[g.tagDot, { backgroundColor: C.mint }]} /><Text style={g.marketName}>Des Moines, IA</Text><StatusTag status={props.live ? "live" : "soon"} label={props.live ? "Open now" : "Not selling now"} /></View>
+      <View style={g.marketLine}><View style={[g.tagDot, { backgroundColor: C.mint }]} /><Text style={g.marketName}>Des Moines, IA</Text><StatusTag status={props.live ? "live" : "soon"} label={props.live ? (props.openLabel ?? "Weekly open") : "Next window opening shortly"} /></View>
       <Text style={g.caption}>{MARKETS.filter((m) => m.status === "ready").length} more cities opening soon · {concepts} preview cities across {GROUP_ORDER.length} regions</Text>
     </GlassCard>
     <RadarMap scope="region" onScope={() => props.onBrowse()} focusCode="DSM" highlight={new Set()} onSelect={() => props.onBrowse()} />

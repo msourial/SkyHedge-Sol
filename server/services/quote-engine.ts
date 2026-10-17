@@ -71,6 +71,37 @@ export class RainfallQuoteEngine {
     return { probabilityBps, premiumRateBps, premium, protocolFee, inputsHash, modelVersion: "noaa-rain-v1", historicalWindows: 10, forecastWeight: 0.3 };
   }
 
+  /** Ten NOAA analogue cumulative totals for this exact window. Throws if any year is incomplete. */
+  async analogueTotals(request: QuoteRequest): Promise<number[]> {
+    validateQuoteRequest(request);
+    const totals: number[] = [];
+    for (let yearsAgo = 1; yearsAgo <= 10; yearsAgo++) {
+      totals.push((await this.analogueWindow(request, yearsAgo)).totalMm);
+    }
+    return totals;
+  }
+
+  /**
+   * NWS QPF cumulative mm when every day is covered.
+   * Returns null when the forecast does not cover the window. Does not invent days.
+   */
+  async forecastCumulativeOrNull(request: QuoteRequest): Promise<number | null> {
+    validateQuoteRequest(request);
+    try {
+      const records = validateDailyWindow(
+        await retryNoaaRateLimit(() => this.provider.forecastRainfall(request.city, request.observationStart, request.observationEnd)),
+        request.observationStart,
+        request.observationEnd,
+      );
+      return cumulativeMillimeters(records);
+    } catch (error) {
+      if (error instanceof DataUnavailableError) return null;
+      const message = error instanceof Error ? error.message : "";
+      if (/do not cover every day|out-of-window/i.test(message)) return null;
+      throw error;
+    }
+  }
+
   private async analogueWindow(request: QuoteRequest, yearsAgo: number): Promise<{ yearsAgo: number; start: string; endExclusive: string; records: DailyRainfall[]; totalMm: number }> {
     const start = withYear(request.observationStart, new Date(request.observationStart).getUTCFullYear() - yearsAgo);
     const endExclusive = withYear(request.observationEnd, new Date(request.observationEnd).getUTCFullYear() - yearsAgo);

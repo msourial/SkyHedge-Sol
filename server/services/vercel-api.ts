@@ -3,7 +3,7 @@ import { z } from "zod";
 import { PublicKey } from "@solana/web3.js";
 import { DataUnavailableError, NOAA_STATIONS, type SkyHedgeCity } from "./noaa.js";
 import { MARKET_LIMITS, quoteFromCommittedMarketTerms, type Quote, type TriggerOperator } from "./quote-engine.js";
-import { desMoinesQuoteUnavailableReason, testerProtectionUnavailableReason } from "./tester-readiness.js";
+import { desMoinesQuoteUnavailableReason, matchingOpenWindow, testerProtectionUnavailableReason } from "./tester-readiness.js";
 import type { DevnetStatus } from "./devnet-status";
 import { ClaimUnavailableError, type ClaimReadiness, type TxAction, type UnsignedTransactionBuilder, type UnsignedTxResult } from "./unsigned-tx.js";
 import { applyCorsHeaders } from "./cors.js";
@@ -67,12 +67,15 @@ export function createQuoteHandler(dependencies: {
         const reason = desMoinesQuoteUnavailableReason(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator);
         if (reason) return sendJson(res, 409, { error: "TESTER_QUOTE_UNAVAILABLE", message: reason });
       }
-      const quote = request.city === "des-moines" && finalizedStatus
+      const matched = finalizedStatus
+        ? matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator)
+        : null;
+      const quote = matched
         ? quoteFromCommittedMarketTerms({
           protectedAmount: amount,
-          probabilityBps: finalizedStatus.desMoinesMarket.quoteProbabilityBps!,
-          premiumRateBps: finalizedStatus.desMoinesMarket.premiumRateBps!,
-          inputsHash: finalizedStatus.desMoinesMarket.quoteInputsHash!,
+          probabilityBps: matched.quoteProbabilityBps!,
+          premiumRateBps: matched.premiumRateBps!,
+          inputsHash: matched.quoteInputsHash!,
         })
         : await dependencies.quote({
           ...request,

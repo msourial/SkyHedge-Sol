@@ -6,6 +6,8 @@ import committedIdl from "../../shared/idl/skyhedge_protection.json" with { type
 import methodology from "../../shared/methodology-v1.json" with { type: "json" };
 import { canonicalSourceHash, NOAA_STATIONS } from "./noaa.js";
 import { getDesMoinesEvidencePackage, type DesMoinesEvidencePackage } from "./des-moines-evidence.js";
+import { marketStateFromStatusJson } from "../../shared/des-moines-seed-plan.js";
+import { tenorOf, type Tenor } from "../../shared/window-ladder.js";
 
 const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
@@ -23,6 +25,10 @@ export interface DevnetStatus {
   feeVault: { address: string; status: Status; exists: boolean; balance: string | null };
   skytMint: { address: string; status: Status; exists: boolean; decimals: number | null; supply: string | null; mintAuthority: string | null };
   desMoinesMarket: { status: Status; address: string | null; marketId: string | null; vault: string | null; vaultBalance: string | null; onchainStatus: string | null; salesCloseAt: number | null; observationStart: number | null; observationEnd: number | null; thresholdMmX100: string | null; operator: "gt" | "gte" | "lt" | "lte" | null; quoteProbabilityBps: number | null; premiumRateBps: number | null; quoteInputsHash: string | null; evidenceStatus: "researching_evidence" | "validated"; targetCityHash: string };
+  /** Non-cancelled Des Moines markets, including drafts, so the keeper can avoid duplicates. */
+  ladderMarkets: LadderMarketSnapshot[];
+  /** Weekly and monthly windows that are open, funded, and still selling. */
+  cityWindows: CityWindowSnapshot[];
   noaaEvidence: { status: EvidenceStatus; settlementSource: "NOAA"; message: string; package: Pick<DesMoinesEvidencePackage, "stationId" | "stationIdHash" | "providerHash" | "methodologyHash" | "seedSchedule" | "quoteTerms" | "evidence"> | null };
   generatedAt: string;
 }
@@ -31,6 +37,37 @@ export interface DevnetStatus {
 export function publicDevnetStatus<T extends { rpcUrl: string }>(status: T): Omit<T, "rpcUrl"> {
   const { rpcUrl: _rpcUrl, ...publicStatus } = status;
   return publicStatus;
+}
+
+export interface LadderMarketSnapshot {
+  marketId: string;
+  address: string;
+  state: "draft" | "open" | "cancelled" | "other";
+  salesCloseAt: number | null;
+  observationStart: number | null;
+  observationEnd: number | null;
+  vaultBalance: string | null;
+  tenor: Tenor | null;
+}
+
+export interface CityWindowSnapshot {
+  city: "des-moines";
+  tenor: Tenor;
+  status: "ready";
+  address: string;
+  marketId: string;
+  vault: string;
+  vaultBalance: string | null;
+  onchainStatus: string | null;
+  salesCloseAt: number | null;
+  observationStart: number;
+  observationEnd: number;
+  thresholdMmX100: string | null;
+  operator: "gt" | "gte" | "lt" | "lte" | null;
+  quoteProbabilityBps: number | null;
+  premiumRateBps: number | null;
+  quoteInputsHash: string | null;
+  evidenceStatus: "researching_evidence" | "validated";
 }
 
 export function noaaStationValidationMessage(windowStart: string, windowEnd: string): string {
@@ -63,7 +100,11 @@ export class DevnetStatusReader {
     const protocolInfo = await this.connection.getAccountInfo(protocolAddress, "finalized");
     const decodedProtocol = protocolInfo ? this.decodeAccount<Record<string, unknown>>("ProtocolConfig", protocolInfo.data) : null;
     const feeVaultBalance = await this.tokenBalance(feeVaultAddress);
-    const market = decodedProtocol ? await this.findDesMoinesMarket(protocolAddress, decodedProtocol) : null;
+    const markets = decodedProtocol ? await this.listDesMoinesMarkets(protocolAddress, decodedProtocol) : [];
+    const market = latestMatchingMarket(markets, new Set([cityHash("des-moines"), cityHash("Des Moines")]));
+    const ladderMarkets = markets.map((item) => ladderSnapshot(item));
+    const cityWindows = markets.flatMap((item) => sellingWindow(item, Math.floor(Date.now() / 1_000)))
+      .sort((left, right) => left.observationStart - right.observationStart);
 
     return {
       network: process.env.SOLANA_NETWORK ?? "devnet",
@@ -123,6 +164,8 @@ export class DevnetStatusReader {
         evidenceStatus: "researching_evidence",
         targetCityHash: cityHash("des-moines"),
       },
+      ladderMarkets,
+      cityWindows,
       noaaEvidence,
       generatedAt: new Date().toISOString(),
     };
@@ -136,45 +179,42 @@ export class DevnetStatusReader {
     }
   }
 
-  private async findDesMoinesMarket(protocol: PublicKey, decodedProtocol: Record<string, unknown>): Promise<(DevnetStatus["desMoinesMarket"] & { raw: Record<string, unknown> }) | null> {
+  private async listDesMoinesMarkets(protocol: PublicKey, decodedProtocol: Record<string, unknown>): Promise<ListedMarket[]> {
     const nextMarketId = BigInt(protocolConfigFields(decodedProtocol).nextMarketId ?? "0");
     const targetHashes = new Set([cityHash("des-moines"), cityHash("Des Moines")]);
+    const found: ListedMarket[] = [];
     const chunkSize = 100;
-    for (let end = nextMarketId; end > 0n;) {
-      const start = end > BigInt(chunkSize) ? end - BigInt(chunkSize) : 0n;
+    for (let start = 0n; start < nextMarketId; start += BigInt(chunkSize)) {
+      const end = start + BigInt(chunkSize) < nextMarketId ? start + BigInt(chunkSize) : nextMarketId;
       const ids: bigint[] = [];
-      for (let id = end - 1n; id >= start; id--) ids.push(id);
+      for (let id = start; id < end; id++) ids.push(id);
       const addresses = ids.map((id) => PublicKey.findProgramAddressSync([Buffer.from("market"), protocol.toBuffer(), u64Le(id)], this.programId)[0]);
       const accounts = await this.connection.getMultipleAccountsInfo(addresses, "finalized");
-      const candidates: Array<{ id: bigint; cityHash: string; address: string; raw: Record<string, unknown> }> = [];
       for (let index = 0; index < accounts.length; index++) {
         const account = accounts[index];
         if (!account) continue;
-        const market = this.decodeAccount<Record<string, unknown>>("Market", account.data);
-        const marketCityHash = bytesHex(market?.city_hash);
+        const decoded = this.decodeAccount<Record<string, unknown>>("Market", account.data);
+        const marketCityHash = bytesHex(decoded?.city_hash);
         if (!targetHashes.has(marketCityHash)) continue;
-        candidates.push({ id: ids[index], cityHash: marketCityHash, address: addresses[index].toBase58(), raw: market ?? {} });
-      }
-      const latest = latestMatchingMarket(candidates, targetHashes);
-      if (latest) {
-        const marketAddress = new PublicKey(latest.address);
+        const marketAddress = addresses[index];
         const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), marketAddress.toBuffer()], this.programId);
-        return {
+        found.push({
+          id: ids[index],
+          cityHash: marketCityHash,
           status: "ready",
-          address: latest.address,
-          marketId: latest.id.toString(),
+          address: marketAddress.toBase58(),
+          marketId: ids[index].toString(),
           vault: vault.toBase58(),
           vaultBalance: await this.tokenBalance(vault),
-          onchainStatus: JSON.stringify(latest.raw.status ?? null),
-          ...marketTermsFields(latest.raw),
-          evidenceStatus: hasPinnedDesMoinesEvidenceCommitment(latest.raw) ? "validated" : "researching_evidence",
-          targetCityHash: latest.cityHash,
-          raw: latest.raw,
-        };
+          onchainStatus: JSON.stringify(decoded?.status ?? null),
+          ...marketTermsFields(decoded),
+          evidenceStatus: hasPinnedDesMoinesEvidenceCommitment(decoded) ? "validated" : "researching_evidence",
+          targetCityHash: marketCityHash,
+          raw: decoded ?? {},
+        });
       }
-      end = start;
     }
-    return null;
+    return found;
   }
 
   private async readNoaaEvidence(): Promise<DevnetStatus["noaaEvidence"]> {
@@ -226,9 +266,60 @@ export function latestMatchingMarket<T extends { id: bigint; cityHash: string }>
   return latest;
 }
 
-function marketStatus(market: DevnetStatus["desMoinesMarket"] & { raw: Record<string, unknown> }): DevnetStatus["desMoinesMarket"] {
-  const { raw: _raw, ...status } = market;
+type ListedMarket = DevnetStatus["desMoinesMarket"] & { raw: Record<string, unknown>; id: bigint; cityHash: string };
+
+function marketStatus(market: ListedMarket): DevnetStatus["desMoinesMarket"] {
+  const { raw: _raw, id: _id, cityHash: _cityHash, ...status } = market;
   return status;
+}
+
+function ladderSnapshot(market: ListedMarket): LadderMarketSnapshot {
+  const state = marketStateFromStatusJson(market.onchainStatus);
+  const tenor = market.observationStart != null && market.observationEnd != null
+    ? tenorOf(market.observationStart, market.observationEnd)
+    : null;
+  return {
+    marketId: market.marketId ?? market.id.toString(),
+    address: market.address ?? "",
+    state: state === "draft" || state === "open" || state === "cancelled" ? state : "other",
+    salesCloseAt: market.salesCloseAt,
+    observationStart: market.observationStart,
+    observationEnd: market.observationEnd,
+    vaultBalance: market.vaultBalance,
+    tenor,
+  };
+}
+
+function sellingWindow(market: ListedMarket, nowSeconds: number): CityWindowSnapshot[] {
+  // Demo / pilot windows may not match Mon–Mon or calendar-month bounds; still surface them as weekly for sales.
+  const tenor = market.observationStart != null && market.observationEnd != null
+    ? (tenorOf(market.observationStart, market.observationEnd) ?? "weekly")
+    : null;
+  const open = Boolean(market.onchainStatus && /"open"\s*:/i.test(market.onchainStatus));
+  if (!tenor || !open || !market.address || !market.marketId || !market.vault) return [];
+  if (market.evidenceStatus !== "validated") return [];
+  if (market.quoteProbabilityBps == null || market.premiumRateBps == null || !market.quoteInputsHash) return [];
+  if (!market.salesCloseAt || market.salesCloseAt <= nowSeconds) return [];
+  if (!market.vaultBalance || !/^\d+$/.test(market.vaultBalance) || BigInt(market.vaultBalance) === 0n) return [];
+  return [{
+    city: "des-moines",
+    tenor,
+    status: "ready",
+    address: market.address,
+    marketId: market.marketId,
+    vault: market.vault,
+    vaultBalance: market.vaultBalance,
+    onchainStatus: market.onchainStatus,
+    salesCloseAt: market.salesCloseAt,
+    observationStart: market.observationStart!,
+    observationEnd: market.observationEnd!,
+    thresholdMmX100: market.thresholdMmX100,
+    operator: market.operator,
+    quoteProbabilityBps: market.quoteProbabilityBps,
+    premiumRateBps: market.premiumRateBps,
+    quoteInputsHash: market.quoteInputsHash,
+    evidenceStatus: market.evidenceStatus,
+  }];
 }
 
 function cityHash(value: string): string {

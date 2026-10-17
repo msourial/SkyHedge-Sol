@@ -126,6 +126,8 @@ describe("mobile presentation behavior", () => {
   it("keeps green for live sales and grey when sales have closed", () => {
     assert.equal(marketListChipTone("live", "Live"), "live");
     assert.equal(marketListChipTone("live"), "live");
+    assert.equal(marketListChipTone("live", "Weekly · Monthly open"), "live");
+    assert.equal(marketListChipTone("live", "Next window opening shortly"), "soon");
     assert.equal(marketListChipTone("live", "Sales closed"), "closed");
     assert.equal(marketListChipTone("live", "Opens soon"), "soon");
     assert.equal(marketListChipTone("soon"), "soon");

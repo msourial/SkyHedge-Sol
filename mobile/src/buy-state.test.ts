@@ -8,10 +8,14 @@ describe("pay state", () => {
     assert.deepEqual(payState({ ...base, premiumBase: "3480000" }), { kind: "priced", label: "3.48" });
     assert.equal(payState({ ...base, premiumBase: null }).kind, "blocked");
   });
+  it("prices from a real premium before wallet connect", () => {
+    assert.deepEqual(payState({ ...base, premiumBase: "9050000", walletConnected: false }), { kind: "priced", label: "9.05" });
+  });
   it("explains loading, errors and closed sales instead of a dash", () => {
     assert.equal(payState({ ...base, premiumBase: null, busy: true }).label, "Pricing…");
     assert.equal(payState({ ...base, premiumBase: null, error: "x" }).label, "Price unavailable");
     assert.equal(payState({ ...base, premiumBase: null, live: false, salesClosed: true }).label, "Sales closed");
+    assert.equal(payState({ ...base, premiumBase: null, live: false, salesClosed: false }).label, "Next window opening shortly");
     assert.equal(payState({ ...base, premiumBase: null, walletConnected: false }).label, "Connect wallet");
   });
 });

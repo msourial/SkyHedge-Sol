@@ -3,11 +3,14 @@ import { isValidImmutableMarketPricingTerms } from "../../shared/market-pricing.
 
 export const TESTER_PROTECTION_CAP = 500_000_000n;
 
+type PricedMarket = { status: string; address: string | null; vaultBalance: string | null; onchainStatus: string | null; salesCloseAt?: number | null; observationStart?: number | null; observationEnd?: number | null; thresholdMmX100?: string | null; operator?: "gt" | "gte" | "lt" | "lte" | null; quoteProbabilityBps?: number | null; premiumRateBps?: number | null; quoteInputsHash?: string | null; evidenceStatus?: "researching_evidence" | "validated" };
+
 type Readiness = {
   program: { executable: boolean };
   idl: { status: string };
   protocol: { initialized: boolean };
-  desMoinesMarket: { status: string; address: string | null; vaultBalance: string | null; onchainStatus: string | null; salesCloseAt?: number | null; observationStart?: number | null; observationEnd?: number | null; thresholdMmX100?: string | null; operator?: "gt" | "gte" | "lt" | "lte" | null; quoteProbabilityBps?: number | null; premiumRateBps?: number | null; quoteInputsHash?: string | null; evidenceStatus?: "researching_evidence" | "validated" };
+  desMoinesMarket: PricedMarket;
+  cityWindows?: PricedMarket[];
   noaaEvidence: { status: string };
 };
 
@@ -19,9 +22,9 @@ export function testerProtectionUnavailableReason(status: Readiness, market: str
   if (!status.program.executable) return "The Devnet program is not executable.";
   if (status.idl.status !== "ready") return "The deployed program IDL is not available.";
   if (!status.protocol.initialized) return "The Devnet protocol is not initialized.";
-  const seeded = status.desMoinesMarket;
+  const seeded = pricedMarkets(status).find((candidate) => candidate.address === market);
+  if (!seeded) return "Only the finalized Des Moines test market is available to testers.";
   if (seeded.evidenceStatus !== "validated") return "The immutable NOAA evidence commitment has not been verified for this market.";
-  if (!seeded.address || seeded.address !== market) return "Only the finalized Des Moines test market is available to testers.";
   if (seeded.status !== "ready" || !isOpenMarket(seeded.onchainStatus)) return "The Des Moines test market is not open.";
   if (!hasValidCommittedPricing(seeded)) return "The finalized market does not contain valid, auditable pricing terms.";
   if (!seeded.salesCloseAt || nowSeconds >= seeded.salesCloseAt) return "The immutable Des Moines sales window is closed.";
@@ -39,7 +42,24 @@ export function isOpenMarket(status: string | null): boolean {
  * Quotes for the seeded market must use the dates committed in the Market PDA.
  * The caller can display a friendly refusal rather than price a different window.
  */
+/** The open window whose committed dates, trigger, and direction match the quote request. */
+export function matchingOpenWindow(status: Readiness, observationStart: string, observationEnd: string, thresholdMm: number, operator: "gt" | "gte" | "lt" | "lte", nowSeconds = Math.floor(Date.now() / 1_000)): PricedMarket | null {
+  return pricedMarkets(status).find((market) => market.evidenceStatus === "validated"
+    && market.status === "ready"
+    && !!market.address
+    && isOpenMarket(market.onchainStatus)
+    && hasValidCommittedPricing(market)
+    && !!market.vaultBalance && BigInt(market.vaultBalance) > 0n
+    && !!market.salesCloseAt && nowSeconds < market.salesCloseAt
+    && !!market.observationStart && !!market.observationEnd
+    && observationStart === utcDate(market.observationStart)
+    && observationEnd === utcDate(market.observationEnd)
+    && !!market.thresholdMmX100 && Number(market.thresholdMmX100) === Math.round(thresholdMm * 100)
+    && market.operator === operator) ?? null;
+}
+
 export function desMoinesQuoteUnavailableReason(status: Readiness, observationStart: string, observationEnd: string, thresholdMm: number, operator: "gt" | "gte" | "lt" | "lte", nowSeconds = Math.floor(Date.now() / 1_000)): string | null {
+  if (matchingOpenWindow(status, observationStart, observationEnd, thresholdMm, operator, nowSeconds)) return null;
   if (!status.program.executable) return "The Devnet program is not executable.";
   if (status.idl.status !== "ready") return "The deployed program IDL is not available.";
   if (!status.protocol.initialized) return "The Devnet protocol is not initialized.";
@@ -56,7 +76,11 @@ export function desMoinesQuoteUnavailableReason(status: Readiness, observationSt
   return null;
 }
 
-function hasValidCommittedPricing(market: Readiness["desMoinesMarket"]): boolean {
+function pricedMarkets(status: Readiness): PricedMarket[] {
+  return [status.desMoinesMarket, ...(status.cityWindows ?? [])];
+}
+
+function hasValidCommittedPricing(market: PricedMarket): boolean {
   return isValidImmutableMarketPricingTerms({ probabilityBps: market.quoteProbabilityBps, premiumRateBps: market.premiumRateBps, inputsHash: market.quoteInputsHash });
 }
 

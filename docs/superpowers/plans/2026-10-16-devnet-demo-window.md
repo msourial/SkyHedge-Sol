@@ -29,8 +29,8 @@
 
 ## Steps
 
-1. **Upgrade.** Already landed. Signature `5fWW9j1wKpN7bLuHaHV1JMHVV2aLPAU3fokxivLuoMEQ7fDPsGBX7UV6h9DJBLcmqJr8rDYDzVmdrhRkHCXr5jgP` upgraded the program at slot 511854561. Local ELF is the prefix of the dump; trailing bytes are zeros. Deployed IDL matches `shared/idl/skyhedge_protection.json`. `settle_market` and `mark_data_unavailable` signers have no settlement-authority relation. Record the check. Do not upgrade again.
-2. **Des Moines window.** Prefer sales open through Sunday 2026-10-18 19:00 America/New_York (`salesCloseAt` 2026-10-18T23:00:00Z, observation 2026-10-19 through 2026-10-24 UTC) only if `getDesMoinesEvidencePackage` returns `quoteTerms`. QPF currently ends 2026-10-24T06:00:00Z. If that quote fails, use the production 24-hour package. Fund 2,000 SKYT from the admin wallet (balance is about 347,998 SKYT). Three transactions: create, fund, open. Chicago stays closed.
-3. **Chip.** `marketListChipTone` in `mobile/src/presentation.ts`. "Sales closed" is neutral. "Live" is mint. "Opens soon" and catalog `soon` are amber. Ready and concept stay glacier. Cover the Markets list chip, its row dot, and the Des Moines card pill.
-4. **Mockups.** Marketing APK, Seeker `SM02G406197714`. Markets at the top, Protect with the open market and the real premium, Wallet connected. Crop 100px. Replace `client/public/mockups/landing/{markets,protect,wallet}.png`. Reinstall the normal release.
-5. **Production.** Deploy, screenshot https://skyhedge.app at 1440 and 390, update `docs/status-report.md`, push `seeker-revamp`.
+1. **Upgrade.** Done. Signature `5fWW9j1wKpN7bLuHaHV1JMHVV2aLPAU3fokxivLuoMEQ7fDPsGBX7UV6h9DJBLcmqJr8rDYDzVmdrhRkHCXr5jgP`. Do not upgrade again.
+2. **Des Moines window.** Done. Market 2 create `3BKexk…` / fund `5Uqswf…` / open `5Gbdau…` (see `docs/devnet-ops.md`). Sales close `2026-10-18T23:00:00Z`, observation Oct 19–24 UTC, 2,000 SKYT vault. Chicago stays closed.
+3. **Chip.** Done. `marketListChipTone`: Live / Weekly open mint; Sales closed neutral; soon amber. Seeker shows Des Moines **Weekly open**.
+4. **Mockups.** Done (Wallet is connect CTA — session cleared; Protect shows real **~9.05** SKYT). Cropped into `client/public/mockups/landing/{markets,protect,wallet}.png`. Normal APK reinstalled.
+5. **Production.** Deploy + screenshots + `docs/status-report.md` + push `seeker-revamp` (this step).

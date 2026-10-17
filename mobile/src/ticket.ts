@@ -118,7 +118,7 @@ export function payState(input: { premiumBase: string | null | undefined; busy: 
   if (input.premiumBase && /^\d+$/.test(input.premiumBase)) return { kind: "priced", label: formatSkytFixed(input.premiumBase, 2) };
   if (input.busy) return { kind: "pricing", label: "Pricing…" };
   if (input.error) return { kind: "error", label: "Price unavailable" };
-  if (!input.live) return { kind: "blocked", label: input.salesClosed ? "Sales closed" : "Not selling now" };
+  if (!input.live) return { kind: "blocked", label: input.salesClosed ? "Sales closed" : "Next window opening shortly" };
   if (!input.walletConnected) return { kind: "blocked", label: "Connect wallet" };
   return { kind: "blocked", label: "Not priced yet" };
 }

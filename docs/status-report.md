@@ -7,7 +7,7 @@ Live URL: https://skyhedge.app
 
 ## Verdict
 
-Seeker release APK installed and exercised on SM02G406197714. Markets / Protect / Wallet screencaps + bug list committed. Wallet endless “Reading balances…” fixed (error + Retry); APK rebuilt (arm64) and reinstalled. Landing mockups refreshed from marketing captures (Devnet pill off). Waitlist success / already-subscribed UX is **live on production**. Draft GitHub release created (not published). Demo recording checklist is on the branch. **Des Moines sales window is closed** — priced Protect quote and full 2:30 purchase path need a new Devnet market (ask before on-chain seed). Never say insurance; no fake numbers.
+Des Moines market **2** is open on Devnet (create `3BKexk…`, fund `5Uqswf…`, open `5Gbdau…` — `docs/devnet-ops.md`). Seeker Protect shows a real NOAA premium **9.05 SKYT** per 100 SKYT without wallet connect; purchase CTA still requires Connect. Markets chip is mint for **Weekly open**. Landing mockups refreshed (priced Protect, Weekly open Markets; Wallet is connect CTA — session cleared). Weekly/monthly ladder code is on the branch with a pilot-window compat fallback; next Mon–Mon / calendar-month rungs need a separate admin seed (ask first). Never say insurance; no fake numbers.
 
 ## Commits (this session, selected)
 
@@ -18,60 +18,46 @@ Seeker release APK installed and exercised on SM02G406197714. Markets / Protect 
 | `7e228b5` | 3 | Landing mockups from `EXPO_PUBLIC_MARKETING_SHOTS=1` captures |
 | `09df16a` | 4 / 6 | Recording checklist + waitlist already-subscribed UI |
 | `8a6df88` | 5 | Release notes SHA for current arm64 APK |
+| (this push) | seed + ladder | Devnet ops log, quote without wallet, ladder compat, mockups |
 
 ## Per-task results
 
-### 1. adb install + screencaps
+### Devnet seed (market 2)
 
-- SHA at install time matched prior notes; later rebuilds updated SHA (see release notes).
-- Package sometimes installs `enabled=0` → `pm enable` required; Play Protect “Don’t send” can block `pm install`.
-- Captures: `docs/landing-review/device-check-2026-10-16/{markets,protect,wallet}.png`
-- Bugs: closed Des Moines window; Wallet balance hang (fixed); landing “Live” vs app lifecycle labels.
+- Program upgrade already landed (`5fWW9j1w…`). Create / fund / open signed by Phantom `DKA9…`.
+- Sales close `2026-10-18T23:00:00Z`, observation Oct 19–24 UTC, premium 905 bps / probability 700 bps, vault 2,000 SKYT.
+- API quote: premium `9050000` (9.05 SKYT incl. 1% fee).
 
-### 2. Device fix + rebuild
+### Seeker Protect priced quote
 
-- Wallet: failed balance reads no longer sit on “Reading balances…” forever.
-- `npm run test:mobile`: 113 pass. Release APK arm64-only (~46 MB) for Seeker.
-- Current APK SHA-256: `a10b0ed4d71a81cf28c5b038ecb5a89ab59203e4f33654b3716fccb74afcde54`
+- Quote fetch no longer requires wallet; StickyCta stays Connect until MWA.
+- Captures: `docs/landing-review/device-check-2026-10-16/60-protect.png`–`65-protect-priced.png`.
+- Markets: Des Moines **Weekly open** (green).
 
-### 3. Marketing mockups
+### Chip + ladder
 
-- Built with `EXPO_PUBLIC_MARKETING_SHOTS=1`, captured, cropped 100px, wrote `client/public/mockups/landing/*`.
-- Protect is **closed-window honest** (no fabricated premium). Wallet shot is connect CTA after reinstall (session cleared).
-- Normal APK (flag off) rebuilt and reinstalled.
+- `marketListChipTone`: Live / Weekly open → mint; Sales closed → neutral; soon → amber.
+- `sellingWindows` falls back to open `desMoinesMarket` when `cityWindows` is empty (demo window is not Mon–Mon).
+- Server maps unrecognized open tenors into `cityWindows` as weekly for deploy.
 
-### 4. Recording checklist
+### Marketing mockups
 
-- `docs/submission/recording-checklist.md` — scrcpy window title `Seeker`, DND, SKYT wallet, 2:30 timing.
+- `EXPO_PUBLIC_MARKETING_SHOTS=1`, crop 100px → `client/public/mockups/landing/{markets,protect,wallet}.png`.
+- Protect shows **~9.05** SKYT; Markets **Weekly open**; Wallet is connect CTA (fresh install).
+- Normal APK (flag off) rebuilt and reinstalled on Seeker.
 
-### 5. Draft GitHub release
+### Waitlist
 
-- Tag: `encode-seeker-revamp-8a6df88`
-- **Draft** (unpublished): https://github.com/msourial/SkyHedge-Sol/releases/tag/untagged-71d2d81a4b1d38b12955
-- Asset: `app-release.apk` (digest matches SHA above).
-
-### 6. Waitlist polish
-
-- Success + **Already on the list** (`already_subscribed`) verified on https://skyhedge.app (`POST /api/waitlist`).
-- Mobile form layout tweaks in CSS. Production already serving the API status; mockup static assets need the deploy from this push.
-
-### 7. Encode / push
-
-- Encode project exists; confirm **solo** team in dashboard if prompted.
-- `git push origin seeker-revamp` after this status commit (user-approved).
+- Success + **Already on the list** verified on https://skyhedge.app.
 
 ## Needs your approval / action
 
-1. **Open/seed a new Des Moines Devnet window** (on-chain) so Protect can show a real priced quote and the demo purchase path works.
-2. On Seeker: **Connect wallet** in the app, then we can recapture Wallet (and Protect quote) marketing frames if you want.
-3. Confirm solo team in Encode UI.
-4. Optional: delete test waitlist row `already-check-nonexistent-xyz@example.com` (ask first — not deleted).
-5. Publish the GitHub release when ready; fill `<<DEMO_VIDEO_URL>>` after recording.
+1. Seed next **weekly/monthly ladder** rungs via `planLadderRoll` (admin Phantom) — ask before txs.
+2. Optional: Phantom purchase on a wallet **without** an existing Des Moines position (DKA9 already waiting).
+3. Confirm solo team in Encode UI; publish GitHub release when ready.
 
 ## Blocked / not done
 
-- Priced Protect marketing frame (sales closed).
-- Connected Wallet marketing frame (fresh install cleared session; MWA needs on-device approve).
+- Connected Wallet marketing frame (MWA unlock on device).
 - Map WIP still uncommitted (intentional).
-- Anchor Devnet program upgrade not run.
 - x402 not integrated.

@@ -26,7 +26,12 @@ export function formatSkyt(baseUnits: string | null | undefined): string {
   return fraction ? `${whole}.${fraction}` : whole.toString();
 }
 
-export function buildCommittedQuoteRequest(status: DevnetStatus, amountBase: string): {
+export function buildCommittedQuoteRequest(status: DevnetStatus, amountBase: string, market: {
+  observationStart: number | null;
+  observationEnd: number | null;
+  thresholdMmX100: string | null;
+  operator: "gt" | "gte" | "lt" | "lte" | null;
+} = status.desMoinesMarket): {
   city: "des-moines";
   observationStart: string;
   observationEnd: string;
@@ -34,7 +39,6 @@ export function buildCommittedQuoteRequest(status: DevnetStatus, amountBase: str
   operator: "gt" | "gte" | "lt" | "lte";
   protectedAmount: string;
 } | null {
-  const market = status.desMoinesMarket;
   if (!market.observationStart || !market.observationEnd || !market.thresholdMmX100 || !market.operator) return null;
   return {
     city: "des-moines",
@@ -53,6 +57,22 @@ export function getProtectionUnavailableReason(input: {
   walletSkytBalanceBase: string | null;
   amountBase: string | null;
   nowSeconds?: number;
+  market?: {
+    status: string;
+    address: string | null;
+    vault?: string | null;
+    vaultBalance: string | null;
+    onchainStatus: string | null;
+    salesCloseAt: number | null;
+    observationStart: number | null;
+    observationEnd: number | null;
+    thresholdMmX100: string | null;
+    operator: "gt" | "gte" | "lt" | "lte" | null;
+    quoteProbabilityBps: number | null;
+    premiumRateBps: number | null;
+    quoteInputsHash: string | null;
+    evidenceStatus: "researching_evidence" | "validated";
+  } | null;
 }): string | null {
   const { status, citySlug, walletConnected, amountBase } = input;
   if (!status) return "Finalized Devnet status is still loading.";
@@ -64,10 +84,12 @@ export function getProtectionUnavailableReason(input: {
   if (status.skytMint.decimals !== TOKEN_DECIMALS) return "The configured test collateral does not use six-decimal SKYT units.";
   if (!status.protocol.collateralMint || status.protocol.collateralMint !== status.skytMint.address) return "The initialized protocol collateral does not match the verified SKYT mint.";
   if (citySlug !== "des-moines") return "Only the Des Moines Devnet pilot is enabled; other areas remain research-only.";
-  const market = status.desMoinesMarket;
+  const market = input.market === undefined ? status.desMoinesMarket : input.market;
+  if (!market) return "Next window opening shortly.";
   if (market.status !== "ready" || !market.address || !market.vault) return "The Des Moines market and its vault are not finalized on Devnet.";
   if (!isOnchainMarketOpen(market.onchainStatus)) return "The Des Moines market is not open for protection positions.";
-  if (market.evidenceStatus !== "validated" || market.targetCityHash.length === 0) return "The market does not have its pinned NOAA evidence commitment.";
+  if (market.evidenceStatus !== "validated") return "The market does not have its pinned NOAA evidence commitment.";
+  if ("targetCityHash" in market && typeof market.targetCityHash === "string" && market.targetCityHash.length === 0) return "The market does not have its pinned NOAA evidence commitment.";
   if (status.noaaEvidence.status !== "ready" || status.noaaEvidence.settlementSource !== "NOAA" || !status.noaaEvidence.package?.stationId) return "A validated NOAA evidence package is not available.";
   if (!market.vaultBalance || !/^\d+$/.test(market.vaultBalance) || BigInt(market.vaultBalance) === 0n) return "The market vault has no finalized SKYT collateral.";
   const now = input.nowSeconds ?? Math.floor(Date.now() / 1_000);

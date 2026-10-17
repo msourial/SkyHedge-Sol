@@ -82,6 +82,7 @@ describe("Devnet protection readiness", () => {
     assert.match(getProtectionUnavailableReason({ status, citySlug: "cordoba", walletConnected: true, walletSkytBalanceBase: "100000000", amountBase: "100000000", nowSeconds: now }) ?? "", /Des Moines/i);
     assert.match(getProtectionUnavailableReason({ status, citySlug: "des-moines", walletConnected: false, walletSkytBalanceBase: "100000000", amountBase: "100000000", nowSeconds: now }) ?? "", /wallet/i);
     assert.match(getProtectionUnavailableReason({ status, citySlug: "des-moines", walletConnected: true, walletSkytBalanceBase: "100000000", amountBase: "500000001", nowSeconds: now }) ?? "", /500 SKYT/i);
+    assert.equal(getProtectionUnavailableReason({ status, citySlug: "des-moines", walletConnected: true, walletSkytBalanceBase: "100000000", amountBase: "100000000", nowSeconds: now, market: null }), "Next window opening shortly.");
   });
 
   it("fails closed if executable code, the protocol, or the collateral mint is not verified", () => {

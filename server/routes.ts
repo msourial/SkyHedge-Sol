@@ -15,7 +15,7 @@ import { ClaimUnavailableError, UnsignedTransactionBuilder, type TxAction } from
 import { WeatherXmProvider } from "./services/weatherxm";
 import { DevnetStatusReader, publicDevnetStatus } from "./services/devnet-status";
 import { finalizedEvidenceWindow, getDesMoinesEvidencePackage } from "./services/des-moines-evidence";
-import { desMoinesQuoteUnavailableReason, testerProtectionUnavailableReason } from "./services/tester-readiness";
+import { desMoinesQuoteUnavailableReason, matchingOpenWindow, testerProtectionUnavailableReason } from "./services/tester-readiness";
 import { settlementWorkerReadiness } from "./services/settlement-config";
 import { agriculturalMarketBySlug, AGRICULTURAL_MARKETS, calendarMonthlyWindow, weeklyFridayWindow } from "../shared/agricultural-markets";
 import { createMobileApiHandler } from "./services/mobile-api";
@@ -301,8 +301,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const reason = desMoinesQuoteUnavailableReason(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator);
         if (reason) return res.status(409).json({ error: "TESTER_QUOTE_UNAVAILABLE", message: reason });
       }
-      const quote = request.city === "des-moines" && finalizedStatus
-        ? quoteFromCommittedMarketTerms({ protectedAmount: BigInt(request.protectedAmount), probabilityBps: finalizedStatus.desMoinesMarket.quoteProbabilityBps!, premiumRateBps: finalizedStatus.desMoinesMarket.premiumRateBps!, inputsHash: finalizedStatus.desMoinesMarket.quoteInputsHash! })
+      const matched = finalizedStatus
+        ? matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator)
+        : null;
+      const quote = matched
+        ? quoteFromCommittedMarketTerms({ protectedAmount: BigInt(request.protectedAmount), probabilityBps: matched.quoteProbabilityBps!, premiumRateBps: matched.premiumRateBps!, inputsHash: matched.quoteInputsHash! })
         : await quotes.quote({ ...request, stationId: NOAA_STATIONS[request.city].stationId, protectedAmount: BigInt(request.protectedAmount), operator: request.operator as TriggerOperator });
       return res.json({ ...quote, premium: quote.premium.toString(), protocolFee: quote.protocolFee.toString(), protectedAmount: request.protectedAmount, source: "NOAA", explicitApprovalRequired: true });
     } catch (error) { return dataUnavailable(res, error); }

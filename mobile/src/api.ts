@@ -60,6 +60,25 @@ export type DevnetStatus = {
     evidenceStatus: "researching_evidence" | "validated";
     targetCityHash: string;
   };
+  cityWindows?: Array<{
+    city: "des-moines";
+    tenor: "weekly" | "monthly";
+    status: "ready";
+    address: string;
+    marketId: string;
+    vault: string;
+    vaultBalance: string | null;
+    onchainStatus: string | null;
+    salesCloseAt: number | null;
+    observationStart: number;
+    observationEnd: number;
+    thresholdMmX100: string | null;
+    operator: "gt" | "gte" | "lt" | "lte" | null;
+    quoteProbabilityBps: number | null;
+    premiumRateBps: number | null;
+    quoteInputsHash: string | null;
+    evidenceStatus: "researching_evidence" | "validated";
+  }>;
   noaaEvidence: {
     status: "ready" | "pending" | "unavailable";
     settlementSource: "NOAA";

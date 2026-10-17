@@ -11,10 +11,11 @@ import { Enter, ProgressRail, SpringPress } from "./motion";
 import { ActionButton, AppIcon, Disclosure, Reveal, Text } from "./ui";
 import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } from "./friendly-errors";
 import { dealSentence, payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
-import { formatOnchainMarketStatus, formatWeekLabel, marketListChipTone } from "./presentation";
+import { formatWeekLabel, marketListChipTone } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
+import { basisLine, expiryLabel, liveMarketLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, type SellingWindow, type Tenor } from "./windows";
 import { MARKETING_SHOTS } from "./marketing";
-import { balanceCheck, coverageOptions, formatSkytFixed, premiumFeeLine, premiumPer100, returnMultiple, payState, reviewReason, salesCountdown, shortAddress, shortUtcDate, trimMm, triggerSentence, utcDateTime, type CoverageOption } from "./ticket";
+import { balanceCheck, coverageOptions, formatSkytFixed, premiumFeeLine, premiumPer100, returnMultiple, payState, reviewReason, shortAddress, shortUtcDate, trimMm, triggerSentence, utcDateTime, type CoverageOption } from "./ticket";
 
 const TAB = ["tabular-nums" as const];
 
@@ -41,10 +42,7 @@ function Row({ label, value, gold }: { label: string; value: string; gold?: bool
 }
 
 export function marketIsLive(status: DevnetStatus | null, nowSeconds: number): boolean {
-  const m = status?.desMoinesMarket;
-  return !!m?.address && m.status === "ready" && isOnchainMarketOpen(m.onchainStatus)
-    && !!m.vaultBalance && /^\d+$/.test(m.vaultBalance) && BigInt(m.vaultBalance) > 0n
-    && !!m.salesCloseAt && m.salesCloseAt > nowSeconds;
+  return sellingWindows(status, nowSeconds).length > 0;
 }
 
 /* ───────────────────────────── Markets ───────────────────────────── */
@@ -62,9 +60,10 @@ export function MarketsScreen(props: {
   const [scope, setScope] = useState<MapScope>("region");
   const [group, setGroup] = useState<MarketGroup | null>(null);
   const pickGroup = (grp: MarketGroup | null) => { setGroup(grp); setScope(grp === "North America" ? "region" : "global"); };
-  const market = props.status?.desMoinesMarket;
+  const windows = sellingWindows(props.status, props.nowSeconds);
+  const market = windows[0] ?? null;
   const city = props.city?.slug === "des-moines" ? props.city : null;
-  const live = marketIsLive(props.status, props.nowSeconds);
+  const live = windows.length > 0;
   const thresholdMm = market?.thresholdMmX100 && /^\d+$/.test(market.thresholdMmX100) ? Number(market.thresholdMmX100) / 100 : null;
   const below = market?.operator === "lt" || market?.operator === "lte";
   const symbol = market?.operator === "gt" ? ">" : market?.operator === "lt" ? "<" : below ? "≤" : "≥";
@@ -74,9 +73,9 @@ export function MarketsScreen(props: {
   const lastKnown = values.reduce<number>((acc, v, i) => (v != null ? i : acc), -1);
   const CHART_H = 96;
   const per100 = props.indicativeQuote ? premiumPer100(props.indicativeQuote.premium, props.indicativeQuote.protectedAmount) : null;
-  const countdown = salesCountdown(market?.salesCloseAt, props.nowSeconds);
   const station = stationLabel(props.status?.noaaEvidence.package?.stationId ?? "USW00014933");
-  const state = live ? "Live" : market?.onchainStatus ? (countdown === "Sales closed" ? "Sales closed" : formatOnchainMarketStatus(market.onchainStatus)) : "Opens soon";
+  const state = liveMarketLabel(windows);
+  const nextDates = windows.map((window) => expiryLabel(window)).join(" · ");
 
   const results = searchMarkets(query, group || query.trim() ? "all" : scope === "region" ? "region" : "global", group);
   const filtering = !!query.trim() || !!group;
@@ -144,7 +143,7 @@ export function MarketsScreen(props: {
           <Text style={s.cardTitle}>Des Moines, IA</Text>
           <Text style={s.cardSub}>NOAA · {station}</Text>
         </View>
-        <Pill label={state} tone={live ? "live" : state === "Sales closed" ? "neutral" : "warn"} />
+        <Pill label={state} tone={live ? "live" : "warn"} />
       </View>
       <View style={s.perilRow} accessibilityRole="text" accessibilityLabel="Rain live. Wind, snow, and heat coming soon.">
         <View style={[s.perilChip, s.perilChipLive]}>
@@ -186,8 +185,8 @@ export function MarketsScreen(props: {
         <View style={s.between}><Text style={s.caption}>{history.length}-week rainfall · NOAA · mm</Text>{thresholdMm != null ? <Text style={[s.caption, { color: C.payout }]}>– – trigger</Text> : null}</View>
       </View> : <Text style={[s.caption, { marginTop: S.md }]}>Weekly history isn’t available yet — nothing is estimated.</Text>}
 
-      {countdown ? <View style={[s.between, { marginTop: S.md }]}><Text style={s.caption}>Sales window</Text><Pill label={countdown} tone="neutral" /></View> : null}
-      <View style={{ marginTop: S.lg }}><ActionButton label={live ? "View coverage" : "See this window"} icon="arrow-right" onPress={props.onProtect} /></View>
+      {live ? <Text style={[s.caption, { marginTop: S.md }]}>{nextDates}</Text> : <Text style={[s.caption, { marginTop: S.md }]}>{NEXT_WINDOW_COPY}</Text>}
+      <View style={{ marginTop: S.lg }}><ActionButton label={live ? "View coverage" : "See markets"} icon="arrow-right" onPress={props.onProtect} /></View>
     </GlassCard>
 
     <Pressable accessibilityRole="button" accessibilityLabel="Toronto Pearson, Ontario. Environment Canada rain data. Opens soon." onPress={() => { const t = MARKETS.find((m) => m.code === "YYZ"); if (t) props.onOpenMarket?.(t); }}>
@@ -245,10 +244,18 @@ export function ProtectTicket(props: {
   observedMm?: number | null;
   onProtectAgain?: () => void;
   onBackToMarkets?: () => void;
+  tenor?: Tenor;
+  onTenor?: (tenor: Tenor) => void;
+  windows?: SellingWindow[];
+  selectedAddress?: string | null;
+  onSelectWindow?: (address: string) => void;
 }) {
   const [verifyOpen, setVerifyOpen] = useState(false);
-  const market = props.status?.desMoinesMarket;
-  const live = marketIsLive(props.status, props.nowSeconds);
+  const windows = props.windows ?? sellingWindows(props.status, props.nowSeconds);
+  const tenor = props.tenor ?? "weekly";
+  const tenorWindows = windows.filter((window) => window.tenor === tenor);
+  const market = tenorWindows.find((window) => window.address === props.selectedAddress) ?? tenorWindows[0] ?? null;
+  const live = !!market;
   const options = coverageOptions(props.walletSkytBase);
   const station = stationLabel(props.status?.noaaEvidence.package?.stationId);
   const sentence = triggerSentence({ station, thresholdMmX100: market?.thresholdMmX100, operator: market?.operator, start: market?.observationStart, end: market?.observationEnd });
@@ -270,7 +277,7 @@ export function ProtectTicket(props: {
   const thresholdMm = market?.thresholdMmX100 != null && /^\d+$/.test(String(market.thresholdMmX100)) ? trimMm(Number(market.thresholdMmX100) / 100) : null;
   const stage = payoutStage(props.claimReadiness);
   const deal = dealSentence({ place: "Des Moines", premiumBase: q?.premium, payoutBase: q ? props.amountBase : null, thresholdMmX100: market?.thresholdMmX100, operator: market?.operator, start: market?.observationStart, end: market?.observationEnd });
-  const salesClosed = salesCountdown(market?.salesCloseAt, props.nowSeconds) === "Sales closed";
+  const salesClosed = false;
   const pay = payState({ premiumBase: q?.premium, busy: props.quoteBusy, error: props.quoteError, live, salesClosed, walletConnected: props.walletConnected });
   const selectedOption = options.find((o) => o.id === props.coverageId);
   const maxOption = options.find((o) => o.id === "max");
@@ -287,20 +294,37 @@ export function ProtectTicket(props: {
   return <>
     <ScreenTop onBack={props.onBackToMarkets} eyebrow={`NOAA · ${station}`} title="Des Moines, IA" />
     <Enter index={0}><PerilSelector value="rain" available={["rain"]} /></Enter>
+    <View style={s.chipRow} accessibilityRole="tablist">
+      {(["weekly", "monthly"] as const).map((choice) => {
+        const on = tenor === choice;
+        return <Pressable key={choice} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => props.onTenor?.(choice)} style={[s.regionChip, on && s.regionChipOn]}>
+          <Text style={[s.regionChipText, on && s.regionChipTextOn]}>{choice === "weekly" ? "Weekly" : "Monthly"}</Text>
+        </Pressable>;
+      })}
+    </View>
+    <View style={s.chipRow} accessibilityRole="radiogroup" accessibilityLabel="Expiry">
+      {tenorWindows.length ? tenorWindows.map((window) => {
+        const on = window.address === market?.address;
+        return <Pressable key={window.address} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => props.onSelectWindow?.(window.address)} style={[s.regionChip, on && s.regionChipOn]}>
+          <Text style={[s.regionChipText, on && s.regionChipTextOn]}>{expiryLabel(window)}</Text>
+        </Pressable>;
+      }) : <Text style={s.caption}>{NEXT_WINDOW_COPY}</Text>}
+    </View>
     {showTicket ? null : stage ? <PayoutStatusCard stage={stage} dates={trackerDates(market, props.claimReadiness)} /> : <StepBar step={props.walletConnected && q ? 3 : 2} reason={reviewWhy} />}
 
-    {!live ? <View style={[s.notice, s.noticeWarn, { marginTop: S.sm }]} accessibilityRole="alert">
-      <Text style={s.noticeTitle}>This window isn’t selling right now</Text>
-      <Text style={s.noticeBody}>Pricing appears as soon as the next Des Moines window opens. Pull down or tap refresh to check again.</Text>
+    {!live ? <View style={[s.notice, { marginTop: S.sm }]} accessibilityRole="text">
+      <Text style={s.noticeTitle}>{NEXT_WINDOW_COPY}</Text>
+      <Text style={s.noticeBody}>The next {tenor} expiry is added as soon as the previous one closes. Pull down or tap refresh.</Text>
       <Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh status</Text></Pressable>
     </View> : null}
 
     {!showTicket ? <>
-      <Enter index={1}><CoverageHero live={live} stateLabel={live ? "Live" : salesCountdown(market?.salesCloseAt, props.nowSeconds) === "Sales closed" ? "Sales closed" : "Not open"} windowLabel={market?.observationStart && market?.observationEnd ? `${shortUtcDate(market.observationStart)}–${shortUtcDate(market.observationEnd - 1)}` : null} observedMm={props.observedMm ?? null} triggerMm={thresholdMm != null ? Number(thresholdMm) : null} triggerSymbol={triggerSym} source="NOAA" /></Enter>
-      <Enter index={2}><StatPair leftLabel="Coverage" left={props.amountBase ? formatSkytFixed(props.amountBase, 0) : "—"} leftUnit="SKYT" rightLabel="Premium" right={q ? `~${formatSkytFixed(q.premium, 2)}` : props.quoteBusy ? "…" : "—"} rightUnit={q ? "SKYT incl. 1% fee" : props.walletConnected ? "Pricing…" : "Connect wallet to price"} /></Enter>
+      <Enter index={1}><CoverageHero live={live} stateLabel={live ? "Open" : NEXT_WINDOW_COPY} windowLabel={market ? expiryLabel(market) : null} observedMm={props.observedMm ?? null} triggerMm={thresholdMm != null ? Number(thresholdMm) : null} triggerSymbol={triggerSym} source="NOAA" /></Enter>
+      <Enter index={2}><StatPair leftLabel="Coverage" left={props.amountBase ? formatSkytFixed(props.amountBase, 0) : "—"} leftUnit="SKYT" rightLabel="Premium" right={q ? `~${formatSkytFixed(q.premium, 2)}` : props.quoteBusy ? "…" : "—"} rightUnit={q ? "SKYT incl. 1% fee" : props.quoteBusy ? "Pricing…" : "Live NOAA price"} /></Enter>
       <Enter index={3}><FactRows rows={[
         { k: "Window", v: windowLabel },
         { k: "Trigger", v: thresholdMm ? `${triggerLabel} cumulative` : "Pending", tone: "gold" },
+        { k: "Basis", v: basisLine(station, tenor) },
         { k: "Payout", v: "Automatic · from official NOAA data" },
         { k: "Ready checks", v: `${readyCount === checks.length ? "✓ " : ""}${readyCount} of ${checks.length} passed`, tone: readyCount === checks.length ? "mint" : "gold" },
       ]} /></Enter>
@@ -342,7 +366,8 @@ export function ProtectTicket(props: {
               <Row label="Premium + 1% fee" value={q ? premiumFeeLine(q.premium, q.protocolFee) ?? `${formatSkytFixed(q.premium)}` : "—"} />
               <Row label="Settles" value={endDate ? `After ${endDate} · NOAA final` : "NOAA final data"} />
             </View>
-            {!props.walletConnected ? <Text style={s.caption}>Connect your wallet to get a live price.</Text> : null}
+            {!props.walletConnected && q ? <Text style={s.caption}>Connect your wallet to buy this priced coverage.</Text> : null}
+            {!props.walletConnected && !q ? <Text style={s.caption}>Connect your wallet to protect once a live price appears.</Text> : null}
           </View>
         </GlassCard>
       </View>
@@ -564,6 +589,7 @@ export function WalletV2(props: {
   walletError: string | null;
   loading: boolean;
   marketAddress: string | null;
+  windows?: SellingWindow[];
   claimReadiness?: ClaimReadiness | null;
   observationEnd?: number | null;
   onBrowseMarkets?: () => void;
@@ -620,7 +646,7 @@ export function WalletV2(props: {
       <Text style={s.overline}>Positions</Text>
       <GlassCard delay={2 * motion.stagger}>
         {props.portfolio?.indexed && props.portfolio.protections.length ? props.portfolio.protections.map((p) => <View key={p.address} style={[s.between, s.positionRow]}>
-          <View style={{ flex: 1 }}><Text style={s.cardTitleSm}>{p.market === props.marketAddress ? "Des Moines · Rain" : `Market ${shortAddress(p.market)}`}</Text><Text style={s.caption}>Paid {formatSkytFixed(p.premiumPaid, 2)} SKYT</Text></View>
+          <View style={{ flex: 1 }}><Text style={s.cardTitleSm}>{positionLabel(p.market, props.windows ?? [], props.marketAddress) ?? `Market ${shortAddress(p.market)}`}</Text><Text style={s.caption}>Paid {formatSkytFixed(p.premiumPaid, 2)} SKYT</Text></View>
           <View style={{ alignItems: "flex-end" }}><Text style={[s.rowValue, { ...T.amountS, fontSize: 18, lineHeight: 24, color: C.payout }]}>{formatSkytFixed(p.protectedAmount, 0)}</Text><Text style={s.caption}>potential</Text></View>
         </View>) : props.portfolio?.indexed ? <View style={s.emptyCard}>
           <AppIcon name="umbrella" color={C.rain} size={22} />

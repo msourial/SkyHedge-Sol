@@ -5,12 +5,19 @@
   "functions": {
     "api/cron/settlement.ts": {
       "maxDuration": 300
+    },
+    "api/cron/windows.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [
     {
       "path": "/api/cron/settlement",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/windows",
+      "schedule": "15 4 * * *"
     }
   ],
   "rewrites": [

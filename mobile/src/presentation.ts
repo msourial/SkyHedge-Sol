@@ -101,6 +101,8 @@ export type MarketListChipTone = "live" | "soon" | "closed" | "other";
 
 /** Green only while sales are live. Closed sales are neutral. Soon and other non-live labels are amber. */
 export function marketListChipTone(status: "live" | "ready" | "soon" | "concept", label?: string): MarketListChipTone {
+  if (label === "Weekly · Monthly open" || label === "Weekly open" || label === "Monthly open") return "live";
+  if (label === "Next window opening shortly") return "soon";
   if (label === "Sales closed") return "closed";
   if (status === "live" && (label === undefined || label === "Live")) return "live";
   if (status === "soon" || status === "live") return "soon";

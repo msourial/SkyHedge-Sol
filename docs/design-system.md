@@ -73,7 +73,7 @@ final state with no movement.
 ## Component states
 
 - **Coverage chips:** 50 / 100 / 250 on row one, Max full-width on row two (app and board match). States: default, pressed (blue tint), selected (blue border + glow), not-enough-balance (amber border, inline amber message under the chips), disabled (dashed, dimmed; Max when the wallet has no SKYT, with an inline note).
-- **You pay:** shows the real quote premium only. While pricing: skeleton + spinner. Quote error: "Price unavailable" + retry notice. Not sellable: "Sales closed" / "Not selling now" / "Connect wallet". Never a fabricated number.
+- **You pay:** shows the real quote premium only. While pricing: skeleton + spinner. Quote error: "Price unavailable" + retry notice. No open expiry: "Next window opening shortly". Never a fabricated number.
 - **Sticky buy button:** "Protect for X SKYT" once a live quote exists; otherwise "Protect", disabled, with the reason as a hint above it.
 - **Payout tracker:** shown only when a real position exists (Protect and Wallet). Step dates come from `observationEnd`, the on-chain observation record and `claimDeadline`; steps with no known time show no date. Inactive steps use `C.muted` (well above 4.5:1 on the card).
 - **Wallet empty state:** umbrella icon, "No positions yet", and a "Browse markets →" link.
