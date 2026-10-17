@@ -1,12 +1,12 @@
 /**
- * Reads Devnet markets and, only when explicitly asked, signs create/fund/open
- * with the protocol admin key. Never creates a keypair and never touches mainnet.
+ * Devnet ladder planner. Always a dry run.
+ * The admin key is never read, written, or sent to Vercel.
+ * Missing rungs are signed only through scripts/sign-ladder-phantom.ts.
  */
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { Connection, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { Connection, PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { DES_MOINES_SEED_LIQUIDITY_BASE } from "../../shared/des-moines-seed-plan.js";
+import { expiryLabel } from "../../shared/window-ladder.js";
 import { DevnetStatusReader } from "./devnet-status.js";
 import { assertDevnetKeeperTarget, cityHashBytes, evidenceHashes, keeperPlan, priceKeeperSteps, TEST_SKYT_MINT, type PricedLadderStep } from "./window-keeper.js";
 
@@ -15,12 +15,72 @@ const CREATE = Buffer.from([103, 226, 97, 235, 200, 188, 251, 254]);
 const FUND = Buffer.from([36, 57, 233, 176, 181, 20, 87, 159]);
 const OPEN = Buffer.from([116, 19, 123, 75, 217, 244, 69, 44]);
 
-export async function runWindowKeeper(options: { sign: boolean; nowSeconds?: number } = { sign: false }) {
+export async function runWindowKeeper(options: { sign?: boolean; nowSeconds?: number } = {}) {
+  if (options.sign) {
+    throw new Error("The keeper stays a dry run. Sign missing rungs in Phantom with scripts/sign-ladder-phantom.ts.");
+  }
+  const { status, steps } = await readLadder(options.nowSeconds);
+  return { signed: false, mode: "dry-run", network: "devnet", admin: status.protocol.admin, steps, priced: null as PricedLadderStep[] | null };
+}
+
+export type PhantomLadderStep = {
+  step: string;
+  programId: string;
+  keys: Array<{ pubkey: string; isSigner: boolean; isWritable: boolean }>;
+  dataBase64: string;
+};
+
+/** Prices missing rungs and returns unsigned instructions. No key material. */
+export async function phantomLadderPayload() {
+  const { rpcUrl, status, steps } = await readLadder();
+  const adminAddress = status.protocol.admin;
+  if (!adminAddress || !status.protocol.address) throw new Error("Devnet protocol admin is missing.");
+  const priced = await priceKeeperSteps(steps);
+  const admin = new PublicKey(adminAddress);
+  const protocol = new PublicKey(status.protocol.address);
+  const mint = new PublicKey(TEST_SKYT_MINT);
+  let marketId = BigInt(status.protocol.nextMarketId ?? "0");
+  const hashes = evidenceHashes();
+  const prepared: PhantomLadderStep[] = [];
+  const summary: Array<Record<string, unknown>> = [];
+  const skipped: string[] = [];
+  for (const step of priced) {
+    const label = `${step.window.tenor} · ${expiryLabel(step.window)}`;
+    if (step.skipReason || step.thresholdMm == null || step.probabilityBps == null || !step.inputsHash) {
+      skipped.push(`${label}: ${step.skipReason ?? "missing price"}`);
+      continue;
+    }
+    const id = step.action === "create-fund-open" ? marketId : BigInt(step.marketId);
+    const [market] = PublicKey.findProgramAddressSync([Buffer.from("market"), protocol.toBuffer(), u64(id)], PROGRAM_ID);
+    const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), market.toBuffer()], PROGRAM_ID);
+    const [liquidity] = PublicKey.findProgramAddressSync([Buffer.from("liquidity"), market.toBuffer(), admin.toBuffer()], PROGRAM_ID);
+    const adminAta = getAssociatedTokenAddressSync(mint, admin);
+    const ixs: Array<{ name: string; ix: TransactionInstruction }> = [];
+    if (step.action === "create-fund-open") ixs.push({ name: "create", ix: createIx(admin, protocol, market, vault, mint, hashes, step) });
+    if (step.action !== "open") ixs.push({ name: "fund", ix: fundIx(admin, protocol, market, vault, adminAta, liquidity, mint) });
+    ixs.push({ name: "open", ix: openIx(admin, protocol, market) });
+    for (const item of ixs) prepared.push({ step: `${item.name} · ${label}`, ...serialize(item.ix) });
+    summary.push({
+      label,
+      action: step.action,
+      marketId: id.toString(),
+      thresholdMm: step.thresholdMm,
+      probabilityBps: step.probabilityBps,
+      premiumRateBps: step.premiumRateBps,
+      forecastIncluded: step.forecastIncluded,
+      observationStart: new Date(step.window.observationStart * 1_000).toISOString(),
+      observationEnd: new Date(step.window.observationEnd * 1_000).toISOString(),
+    });
+    if (step.action === "create-fund-open") marketId += 1n;
+  }
+  return { rpc: rpcUrl, expectedAdmin: adminAddress, steps: prepared, summary, skipped };
+}
+
+async function readLadder(nowSeconds?: number) {
   const rpcUrl = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
   const mint = process.env.SKYT_MINT ?? TEST_SKYT_MINT;
   assertDevnetKeeperTarget(rpcUrl, mint);
-  const reader = new DevnetStatusReader(new Connection(rpcUrl, "finalized"));
-  const status = await reader.read();
+  const status = await new DevnetStatusReader(new Connection(rpcUrl, "finalized")).read();
   if (status.network.toLowerCase() !== "devnet") throw new Error("Window keeper refuses a non-Devnet status network.");
   const steps = keeperPlan(status.ladderMarkets.map((market) => ({
     marketId: market.marketId,
@@ -30,64 +90,16 @@ export async function runWindowKeeper(options: { sign: boolean; nowSeconds?: num
     observationStart: market.observationStart,
     observationEnd: market.observationEnd,
     vaultBalanceBase: market.vaultBalance,
-  })), options.nowSeconds);
-  if (!options.sign) {
-    return { signed: false, network: "devnet", admin: status.protocol.admin, steps, priced: null as PricedLadderStep[] | null };
-  }
-  if (process.env.KEEPER_SIGN !== "yes") throw new Error("Refusing to sign until KEEPER_SIGN=yes.");
-  const admin = loadKeeperKeypair();
-  if (!status.protocol.admin || admin.publicKey.toBase58() !== status.protocol.admin) {
-    throw new Error("Keeper signer must be the current Devnet protocol admin. A new key cannot create markets.");
-  }
-  const priced = await priceKeeperSteps(steps);
-  const signatures = await sendPricedSteps(new Connection(rpcUrl, "finalized"), admin, status.protocol.address, status.protocol.nextMarketId, priced);
-  return { signed: true, network: "devnet", admin: admin.publicKey.toBase58(), steps, priced: publicPriced(priced), signatures };
+  })), nowSeconds);
+  return { rpcUrl, status, steps };
 }
 
-function publicPriced(steps: PricedLadderStep[]) {
-  return steps.map((step) => ({
-    action: step.action,
-    tenor: step.window.tenor,
-    observationStart: new Date(step.window.observationStart * 1_000).toISOString(),
-    observationEnd: new Date(step.window.observationEnd * 1_000).toISOString(),
-    thresholdMm: step.thresholdMm,
-    probabilityBps: step.probabilityBps,
-    premiumRateBps: step.premiumRateBps,
-    forecastIncluded: step.forecastIncluded,
-    stationId: step.stationId,
-    skipReason: step.skipReason,
-  }));
-}
-
-async function sendPricedSteps(connection: Connection, admin: Keypair, protocolAddress: string, nextMarketId: string | null, steps: PricedLadderStep[]) {
-  const protocol = new PublicKey(protocolAddress);
-  const mint = new PublicKey(TEST_SKYT_MINT);
-  let marketId = BigInt(nextMarketId ?? "0");
-  const signatures: Array<{ action: string; signature: string }> = [];
-  const hashes = evidenceHashes();
-  for (const step of steps) {
-    if (step.skipReason || step.thresholdMm == null || step.probabilityBps == null || !step.inputsHash) continue;
-    const id = step.action === "create-fund-open" ? marketId : BigInt(step.marketId);
-    const [market] = PublicKey.findProgramAddressSync([Buffer.from("market"), protocol.toBuffer(), u64(id)], PROGRAM_ID);
-    const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), market.toBuffer()], PROGRAM_ID);
-    const [liquidity] = PublicKey.findProgramAddressSync([Buffer.from("liquidity"), market.toBuffer(), admin.publicKey.toBuffer()], PROGRAM_ID);
-    const adminAta = getAssociatedTokenAddressSync(mint, admin.publicKey);
-    const ixs: TransactionInstruction[] = [];
-    if (step.action === "create-fund-open") {
-      ixs.push(createIx(admin.publicKey, protocol, market, vault, mint, hashes, step));
-    }
-    if (step.action === "create-fund-open" || step.action === "fund-open") {
-      ixs.push(fundIx(admin.publicKey, protocol, market, vault, adminAta, liquidity, mint));
-    }
-    ixs.push(openIx(admin.publicKey, protocol, market));
-    for (const ix of ixs) {
-      const tx = new Transaction().add(ix);
-      const signature = await sendAndConfirmTransaction(connection, tx, [admin], { commitment: "finalized" });
-      signatures.push({ action: step.action, signature });
-    }
-    if (step.action === "create-fund-open") marketId += 1n;
-  }
-  return signatures;
+function serialize(ix: TransactionInstruction): Omit<PhantomLadderStep, "step"> {
+  return {
+    programId: ix.programId.toBase58(),
+    keys: ix.keys.map((key) => ({ pubkey: key.pubkey.toBase58(), isSigner: key.isSigner, isWritable: key.isWritable })),
+    dataBase64: Buffer.from(ix.data).toString("base64"),
+  };
 }
 
 function createIx(admin: PublicKey, protocol: PublicKey, market: PublicKey, vault: PublicKey, mint: PublicKey, hashes: ReturnType<typeof evidenceHashes>, step: PricedLadderStep) {

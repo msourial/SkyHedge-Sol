@@ -4,16 +4,15 @@ import { runWindowKeeper } from "../../server/services/window-keeper-run.js";
 
 type JsonResponse = ServerResponse & { status: (code: number) => JsonResponse; json: (body: unknown) => void };
 
-/** Plans the Devnet ladder. Signs only when KEEPER_SIGN=yes. */
-export function createWindowCronHandler(options: { run?: typeof runWindowKeeper; cronSecret?: string; sign?: boolean } = {}) {
+/** Plans the Devnet ladder. Never signs and never reads an admin key. */
+export function createWindowCronHandler(options: { run?: typeof runWindowKeeper; cronSecret?: string } = {}) {
   return async function windowCronHandler(req: IncomingMessage, res: JsonResponse) {
     if (req.method && req.method !== "GET") return res.status(405).json({ error: "METHOD_NOT_ALLOWED" });
     const secret = options.cronSecret ?? process.env.CRON_SECRET;
     if (!secret || secret.length < 16) return res.status(503).json({ error: "WINDOW_CRON_UNCONFIGURED" });
     if (!hasValidBearer(req.headers.authorization, secret)) return res.status(401).json({ error: "UNAUTHORIZED" });
-    const sign = options.sign ?? process.env.KEEPER_SIGN === "yes";
     try {
-      const result = await (options.run ?? runWindowKeeper)({ sign });
+      const result = await (options.run ?? runWindowKeeper)({ sign: false });
       res.setHeader("Cache-Control", "no-store");
       return res.status(200).json({ ok: true, result });
     } catch (error) {

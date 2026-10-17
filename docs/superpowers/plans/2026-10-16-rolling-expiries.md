@@ -29,7 +29,7 @@ Copy date rules into `shared/window-ladder.ts`. Weekly is Monday 00:00 UTC throu
 
 **How this serves the primary goal:** When one expiry’s sales close, the far rung is created with the existing create, fund, and open instructions so Protect never waits on a manual seed.
 
-`scripts/roll-window-ladder.ts` and `GET /api/cron/windows` plan the gaps. Signing stays off unless `KEEPER_SIGN=yes`. The signer must be the current Devnet protocol admin, the RPC must be Devnet, and the mint must be test SKYT. Do not generate a key in this change.
+`scripts/roll-window-ladder.ts` and `GET /api/cron/windows` plan the gaps and stay dry runs. Missing rungs are signed in Phantom as the current Devnet protocol admin. The admin key is not stored. A scoped keeper role is proposed in `docs/keeper-role.md` for after the hackathon.
 
 ## Phase 3: App
 

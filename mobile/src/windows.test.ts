@@ -43,7 +43,7 @@ describe("selling windows", () => {
     assert.equal(basisLine("Des Moines Intl", "monthly").includes("8th of 10"), true);
   });
 
-  it("falls back to an open desMoinesMarket when cityWindows is missing", () => {
+  it("does not count the five-day pilot as a weekly rung", () => {
     const status = {
       desMoinesMarket: {
         status: "ready",
@@ -52,7 +52,7 @@ describe("selling windows", () => {
         vault: "vault",
         vaultBalance: "2000000000",
         onchainStatus: '{"Open":{}}',
-        salesCloseAt: 1_900_000_000,
+        salesCloseAt: 1_790_000_000,
         observationStart: 1_792_368_000,
         observationEnd: 1_792_800_000,
         thresholdMmX100: "5000",
@@ -65,9 +65,7 @@ describe("selling windows", () => {
       },
     } as DevnetStatus;
     const open = sellingWindows(status, 1_792_200_000);
-    assert.equal(open.length, 1);
-    assert.equal(open[0]?.address, "HDJi");
-    assert.equal(open[0]?.tenor, "weekly");
-    assert.equal(liveMarketLabel(open), "Weekly open");
+    assert.equal(open.length, 0);
+    assert.equal(liveMarketLabel(open), NEXT_WINDOW_COPY);
   });
 });

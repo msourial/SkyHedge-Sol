@@ -14,11 +14,10 @@ export function sellingWindows(status: DevnetStatus | null, nowSeconds: number):
     .slice()
     .sort((left, right) => left.observationStart - right.observationStart);
   if (fromApi.length > 0) return fromApi;
-  // Compat: a live desMoinesMarket still sells while the weekly/monthly ladder is being seeded.
   return legacyDesMoinesWindow(status, nowSeconds);
 }
 
-/** Map the pilot desMoinesMarket into a selling window when cityWindows is empty or undeployed. */
+/** Use a legacy market only when its bounds are a real weekly or monthly rung. */
 function legacyDesMoinesWindow(status: DevnetStatus | null, nowSeconds: number): SellingWindow[] {
   const market = status?.desMoinesMarket;
   if (!market?.address || !market.marketId || !market.vault) return [];
@@ -28,7 +27,8 @@ function legacyDesMoinesWindow(status: DevnetStatus | null, nowSeconds: number):
   if (!market.observationStart || !market.observationEnd || market.observationEnd <= market.observationStart) return [];
   if (!market.vaultBalance || !/^\d+$/.test(market.vaultBalance) || BigInt(market.vaultBalance) === 0n) return [];
   if (!market.thresholdMmX100 || !market.operator || market.quoteProbabilityBps == null || market.premiumRateBps == null || !market.quoteInputsHash) return [];
-  const tenor = tenorOf(market.observationStart, market.observationEnd) ?? "weekly";
+  const tenor = tenorOf(market.observationStart, market.observationEnd);
+  if (!tenor) return [];
   return [{
     city: "des-moines",
     tenor,

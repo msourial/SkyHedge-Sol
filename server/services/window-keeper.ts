@@ -1,7 +1,6 @@
 /**
- * Devnet-only ladder keeper. Dry-run by default.
- * Signing requires KEEPER_SIGN=yes and the existing protocol admin key.
- * This file never creates a keypair.
+ * Devnet-only ladder planner. Prices missing rungs from NOAA.
+ * This file never creates a keypair and never signs.
  */
 import { createHash } from "node:crypto";
 import { canonicalSourceHash, NOAA_STATIONS, NoaaRainfallProvider } from "./noaa.js";

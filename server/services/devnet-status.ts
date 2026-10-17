@@ -291,9 +291,8 @@ function ladderSnapshot(market: ListedMarket): LadderMarketSnapshot {
 }
 
 function sellingWindow(market: ListedMarket, nowSeconds: number): CityWindowSnapshot[] {
-  // Demo / pilot windows may not match Mon–Mon or calendar-month bounds; still surface them as weekly for sales.
   const tenor = market.observationStart != null && market.observationEnd != null
-    ? (tenorOf(market.observationStart, market.observationEnd) ?? "weekly")
+    ? tenorOf(market.observationStart, market.observationEnd)
     : null;
   const open = Boolean(market.onchainStatus && /"open"\s*:/i.test(market.onchainStatus));
   if (!tenor || !open || !market.address || !market.marketId || !market.vault) return [];
