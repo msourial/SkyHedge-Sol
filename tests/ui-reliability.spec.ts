@@ -354,19 +354,23 @@ test("locations wrap without horizontal overflow at supported widths", async ({ 
 
 test("waitlist landing owns the root hero and the product lives at /app", async ({ page }) => {
   await page.goto("/");
-  const hero = page.getByRole("region", { name: /Wedding in Central Park/i });
-  await expect(hero.getByRole("heading", { name: "Wedding in Central Park this Saturday?" })).toBeVisible();
+  const hero = page.getByRole("region", { name: /Rain on your plans/i });
+  await expect(hero.getByRole("heading", { name: "Rain on your plans? Get paid." })).toBeVisible();
   await expect(hero.getByRole("button", { name: "Join waitlist" })).toBeVisible();
+  await expect(hero.getByText("Weekend in Central Park?")).toBeVisible();
   await expect(hero.getByText("Lollapalooza weekend?")).toBeVisible();
-  await expect(hero.getByText("Beach day?")).toBeVisible();
+  await expect(hero.getByText("Beach day in South Beach?")).toBeVisible();
   await expect(hero.getByText("Rained-out game day?")).toBeVisible();
   await expect(hero.getByText("Rooftop party?")).toBeVisible();
   await expect(hero.getByText("Toronto")).toHaveCount(0);
   await expect(hero.getByText("Des Moines")).toHaveCount(0);
   const examples = page.getByRole("list", { name: "Rainfall cities" });
-  await expect(examples.getByText("Toronto")).toHaveCount(0);
-  await expect(examples.getByText("Des Moines")).toHaveCount(0);
-  await expect(examples.getByText("Los Angeles")).toHaveCount(0);
+  await expect(examples.getByText("Los Angeles")).toBeVisible();
+  await expect(examples.getByText("Boston")).toBeVisible();
+  await expect(examples.getByText("Austin")).toBeVisible();
+  await expect(examples.getByText("Des Moines")).toBeVisible();
+  await expect(examples.getByText("Toronto")).toBeVisible();
+  await expect(examples.getByText("Opens soon")).toBeVisible();
   await expect(page.getByRole("link", { name: "Open web app" }).first()).toHaveAttribute("href", "/app");
   await expect(page.getByText("October normal, Central Park")).toBeVisible();
   await expect(page.getByText("insurance", { exact: false })).toHaveCount(0);

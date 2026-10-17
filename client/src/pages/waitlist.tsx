@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { BrandMark } from "@/components/brand-mark";
 import { PhoneMockup, PhoneMockupStack, PhonePlans } from "@/components/phone-mockup";
 import { WaitlistForm } from "@/components/waitlist-form";
-import { heroPhoneCities } from "../../../shared/consumer-cities";
+import { CONSUMER_CITIES } from "../../../shared/consumer-cities";
 import { chipClass, useSalesChips } from "@/lib/sales-chips";
 
 const STEPS = [
@@ -301,7 +301,7 @@ export default function WaitlistPage() {
         <section ref={heroRef} className="wl-hero" aria-labelledby="wl-hero-title">
           <div className="wl-hero__copy">
             <h1 id="wl-hero-title" className="wl-hero__title">
-              Wedding in Central Park this Saturday?
+              Rain on your plans? Get paid.
             </h1>
             <p className="wl-hero__lead">
               Pick the city and the days. If NOAA rain at the station reaches the threshold, the payout lands in your
@@ -369,11 +369,11 @@ export default function WaitlistPage() {
                 Where are your plans?
               </h2>
               <p className="wl-section__lead">
-                New York, Chicago, Miami, Dallas, and Seattle. Green means weekly and monthly windows are open on Devnet.
+                New York through Des Moines sit on the same NOAA weekly and monthly ladder. Toronto opens when Environment Canada data is in. Green means both windows are selling on Devnet.
               </p>
             </div>
             <ul className="wl-markets" aria-label="Rainfall cities">
-              {heroPhoneCities().map((market) => {
+              {CONSUMER_CITIES.map((market) => {
                 const chip = chips[market.code] ?? { label: "Opening shortly", tone: "soon" as const };
                 return (
                 <li key={market.code} className="wl-markets__card">
