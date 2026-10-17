@@ -1,5 +1,6 @@
 import type { DevnetStatus } from "./api";
-import { expiryLabel, marketsOpenLabel, NEXT_WINDOW_COPY, salesChip, STRIKE_BASIS, tenorOf, type Tenor } from "../../shared/window-ladder.ts";
+import { consumerCityName } from "../../shared/consumer-cities.ts";
+import { expiryLabel, LIVE_CITY_SLUGS, marketsOpenLabel, NEXT_WINDOW_COPY, salesChip, STRIKE_BASIS, tenorOf, type Tenor } from "../../shared/window-ladder.ts";
 import { isOnchainMarketOpen } from "./protection.ts";
 
 export type { Tenor };
@@ -66,6 +67,12 @@ export function windowsForCity(windows: readonly SellingWindow[], city: SellingW
   return windows.filter((window) => window.city === city);
 }
 
+/** Keep the selected live city, even when it has no open window yet. */
+export function protectCityFor(selectedCity: string, windows: readonly SellingWindow[]): SellingWindow["city"] {
+  if ((LIVE_CITY_SLUGS as readonly string[]).includes(selectedCity)) return selectedCity as SellingWindow["city"];
+  return windows[0]?.city ?? "new-york";
+}
+
 /** True when this city's latest market exists and its sales have already closed. */
 export function citySalesClosed(status: DevnetStatus | null, city: SellingWindow["city"], nowSeconds: number): boolean {
   if (windowsForCity(sellingWindows(status, nowSeconds), city).length > 0) return false;
@@ -84,7 +91,7 @@ export function cityChip(windows: readonly SellingWindow[], salesClosed: boolean
 
 export function positionLabel(marketAddress: string, windows: readonly SellingWindow[], fallbackAddress: string | null): string | null {
   const match = windows.find((window) => window.address === marketAddress);
-  if (match) return `Des Moines · ${expiryLabel(match)}`;
+  if (match) return `${consumerCityName(match.city)} · ${expiryLabel(match)}`;
   if (fallbackAddress && marketAddress === fallbackAddress) return "Des Moines · Rain";
   return null;
 }

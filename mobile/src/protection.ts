@@ -1,4 +1,6 @@
 import type { DevnetStatus } from "./api";
+import { consumerCityName } from "../../shared/consumer-cities.ts";
+import { LIVE_CITY_SLUGS, type LiveCitySlug } from "../../shared/window-ladder.ts";
 
 const TESTER_LIMIT_BASE_UNITS = 500_000_000n;
 const TOKEN_DECIMALS = 6;
@@ -31,8 +33,8 @@ export function buildCommittedQuoteRequest(status: DevnetStatus, amountBase: str
   observationEnd: number | null;
   thresholdMmX100: string | null;
   operator: "gt" | "gte" | "lt" | "lte" | null;
-} = status.desMoinesMarket, city: "des-moines" | "new-york" | "dallas" = "des-moines"): {
-  city: "des-moines" | "new-york" | "dallas";
+} = status.desMoinesMarket, city: LiveCitySlug = "des-moines"): {
+  city: LiveCitySlug;
   observationStart: string;
   observationEnd: string;
   thresholdMm: number;
@@ -83,11 +85,12 @@ export function getProtectionUnavailableReason(input: {
   if (!status.skytMint.exists) return "The SKYT test collateral mint is not available on Devnet.";
   if (status.skytMint.decimals !== TOKEN_DECIMALS) return "The configured test collateral does not use six-decimal SKYT units.";
   if (!status.protocol.collateralMint || status.protocol.collateralMint !== status.skytMint.address) return "The initialized protocol collateral does not match the verified SKYT mint.";
-  if (citySlug !== "des-moines" && citySlug !== "new-york" && citySlug !== "dallas") return "Only the live Devnet rainfall cities are open; other areas remain research-only.";
+  if (!(LIVE_CITY_SLUGS as readonly string[]).includes(citySlug)) return "Only the live Devnet rainfall cities are open; other areas remain research-only.";
+  const cityName = consumerCityName(citySlug);
   const market = input.market === undefined ? status.desMoinesMarket : input.market;
   if (!market) return "Next window opening shortly.";
-  if (market.status !== "ready" || !market.address || !market.vault) return "The Des Moines market and its vault are not finalized on Devnet.";
-  if (!isOnchainMarketOpen(market.onchainStatus)) return "The Des Moines market is not open for protection positions.";
+  if (market.status !== "ready" || !market.address || !market.vault) return `The ${cityName} market and its vault are not finalized on Devnet.`;
+  if (!isOnchainMarketOpen(market.onchainStatus)) return `The ${cityName} market is not open for protection positions.`;
   if (market.evidenceStatus !== "validated") return "The market does not have its pinned NOAA evidence commitment.";
   if ("targetCityHash" in market && typeof market.targetCityHash === "string" && market.targetCityHash.length === 0) return "The market does not have its pinned NOAA evidence commitment.";
   if (status.noaaEvidence.status !== "ready" || status.noaaEvidence.settlementSource !== "NOAA" || !status.noaaEvidence.package?.stationId) return "A validated NOAA evidence package is not available.";
@@ -101,6 +104,12 @@ export function getProtectionUnavailableReason(input: {
   if (!amountBase || !/^\d+$/.test(amountBase) || BigInt(amountBase) <= 0n) return "Enter a valid protection amount greater than zero.";
   if (BigInt(amountBase) > TESTER_LIMIT_BASE_UNITS) return "The Devnet tester limit is 500 SKYT per wallet.";
   return null;
+}
+
+/** Blocks a second position on the selected window only. A position in another city does not match. */
+export function duplicatePositionReason(cityName: string, state: string | null | undefined): string | null {
+  if (!state || state === "no_position") return null;
+  return `This wallet already has a ${cityName} position or a pending outcome on this window. A second position on the same window is not available.`;
 }
 
 export function isOnchainMarketOpen(onchainStatus: string | null): boolean {

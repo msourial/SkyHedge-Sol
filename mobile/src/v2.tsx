@@ -14,7 +14,7 @@ import { dealSentence, payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } fro
 import { compactRowChip, formatWeekLabel } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
 import { basisLine, cityChip, citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
-import { CONSUMER_LEAD_CODES, consumerCityByCode } from "../../shared/consumer-cities.ts";
+import { CONSUMER_LEAD_CODES, consumerCityByCode, consumerCityBySlug } from "../../shared/consumer-cities.ts";
 import { MARKETING_SHOTS } from "./marketing";
 import { balanceCheck, coverageOptions, formatSkytFixed, premiumFeeLine, premiumPer100, returnMultiple, payState, reviewReason, shortAddress, shortUtcDate, trimMm, triggerSentence, utcDateTime, type CoverageOption } from "./ticket";
 
@@ -277,8 +277,10 @@ export function ProtectTicket(props: {
   const market = tenorWindows.find((window) => window.address === props.selectedAddress) ?? tenorWindows[0] ?? null;
   const live = !!market;
   const options = coverageOptions(props.walletSkytBase);
-  const place = market?.city === "new-york" ? "New York" : market?.city === "dallas" ? "Dallas" : "Des Moines";
-  const stationId = market?.city === "new-york" ? "USW00094728" : market?.city === "dallas" ? "USW00003927" : props.status?.noaaEvidence.package?.stationId;
+  const consumer = consumerCityBySlug(market?.city ?? "");
+  const place = consumer?.city ?? "Des Moines";
+  const region = consumer?.region ?? "IA";
+  const stationId = consumer?.stationId?.replace(/^GHCND:/, "") ?? props.status?.noaaEvidence.package?.stationId;
   const station = stationLabel(stationId);
   const sentence = triggerSentence({ station, thresholdMmX100: market?.thresholdMmX100, operator: market?.operator, start: market?.observationStart, end: market?.observationEnd });
   const q = props.quote && props.quote.protectedAmount === props.amountBase ? props.quote : null;
@@ -315,7 +317,7 @@ export function ProtectTicket(props: {
   const payoutLabel = props.amountBase ? `${formatSkytFixed(props.amountBase, 0)} SKYT` : "—";
 
   return <>
-    <ScreenTop onBack={props.onBackToMarkets} eyebrow={`NOAA · ${station}`} title={`${place}${market?.city === "new-york" ? ", NY" : market?.city === "dallas" ? ", TX" : ", IA"}`} />
+    <ScreenTop onBack={props.onBackToMarkets} eyebrow={`NOAA · ${station}`} title={`${place}, ${region}`} />
     <Enter index={0}><PerilSelector value="rain" available={["rain"]} /></Enter>
     <View style={s.chipRow} accessibilityRole="tablist">
       {(["weekly", "monthly"] as const).map((choice) => {

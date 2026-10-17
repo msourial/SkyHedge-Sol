@@ -136,6 +136,14 @@ export function consumerCityByCode(code: string): ConsumerCity | undefined {
   return CONSUMER_CITIES.find((city) => city.code === code);
 }
 
+export function consumerCityBySlug(slug: string): ConsumerCity | undefined {
+  return CONSUMER_CITIES.find((city) => city.slug === slug);
+}
+
+export function consumerCityName(slug: string): string {
+  return consumerCityBySlug(slug)?.city ?? "This city";
+}
+
 export function heroPhoneCities(): ConsumerCity[] {
   return HERO_PHONE_CODES.map((code) => consumerCityByCode(code)!);
 }

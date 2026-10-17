@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildCommittedQuoteRequest, getProtectionUnavailableReason, isOnchainMarketOpen, parseSkytAmount } from "./protection.ts";
+import { buildCommittedQuoteRequest, duplicatePositionReason, getProtectionUnavailableReason, isOnchainMarketOpen, parseSkytAmount } from "./protection.ts";
 import type { DevnetStatus } from "./api.ts";
 
 const now = 1_800_000_000;
@@ -75,6 +75,15 @@ describe("Devnet protection readiness", () => {
       mutate(status);
       assert.notEqual(getProtectionUnavailableReason({ status, citySlug: "des-moines", walletConnected: true, walletSkytBalanceBase: "100000000", amountBase: "100000000", nowSeconds: now }), null);
     }
+  });
+
+  it("prices New York from its own window and only blocks a duplicate on that window", () => {
+    const status = readyStatus();
+    const market = { ...status.desMoinesMarket, address: "nyc-market" };
+    assert.equal(getProtectionUnavailableReason({ status, citySlug: "new-york", walletConnected: true, walletSkytBalanceBase: "100000000", amountBase: "100000000", nowSeconds: now, market }), null);
+    assert.equal(duplicatePositionReason("New York", "no_position"), null);
+    assert.match(duplicatePositionReason("New York", "pending") ?? "", /New York position/);
+    assert.doesNotMatch(duplicatePositionReason("Des Moines", "pending") ?? "", /New York/);
   });
 
   it("fails closed for other indexes, disconnected wallets, and amounts over 500 SKYT", () => {

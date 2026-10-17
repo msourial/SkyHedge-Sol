@@ -18,7 +18,7 @@ describe("Devnet tester protection readiness", () => {
   it("rejects a missing NOAA package, unopened market, wrong market, and excess amount", () => {
     expect(testerProtectionUnavailableReason({ ...ready, desMoinesMarket: { ...ready.desMoinesMarket, evidenceStatus: "researching_evidence" } }, ready.desMoinesMarket.address, "1000000")).to.match(/NOAA/);
     expect(testerProtectionUnavailableReason({ ...ready, desMoinesMarket: { ...ready.desMoinesMarket, onchainStatus: JSON.stringify({ draft: {} }) } }, ready.desMoinesMarket.address, "1000000")).to.match(/open/);
-    expect(testerProtectionUnavailableReason(ready, "Other1111111111111111111111111111111111", "1000000")).to.match(/Des Moines/);
+    expect(testerProtectionUnavailableReason(ready, "Other1111111111111111111111111111111111", "1000000")).to.match(/open finalized city window/);
     expect(testerProtectionUnavailableReason(ready, ready.desMoinesMarket.address, "500000001")).to.match(/500 SKYT/);
   });
 

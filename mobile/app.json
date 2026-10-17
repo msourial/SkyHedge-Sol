@@ -6,7 +6,8 @@
     "orientation": "portrait",
     "scheme": "skyhedge",
     "plugins": [
-      "@maplibre/maplibre-react-native"
+      "@maplibre/maplibre-react-native",
+      "expo-secure-store"
     ],
     "android": {
       "package": "com.skyhedge.mobile",
@@ -16,7 +17,7 @@
         "backgroundColor": "#12151A"
       },
       "permissions": [],
-      "versionCode": 3
+      "versionCode": 4
     },
     "icon": "./assets/icon.png"
   }

@@ -60,6 +60,17 @@ describe("Vercel production API routes", () => {
     expect(allowed.body).to.include({ probabilityBps: 2_000, premiumRateBps: 2_400, premium: "240000", protocolFee: "10000", inputsHash: "b".repeat(64), explicitApprovalRequired: true });
   });
 
+  it("refuses a Chicago quote until that city has a matching open window", async () => {
+    let quoteCalls = 0;
+    const handler = createQuoteHandler({ readStatus: async () => status, quote: async () => { quoteCalls++; throw new Error("live quote"); } });
+    const response = new ResponseStub();
+    const observationStart = new Date(Number(status.desMoinesMarket.observationStart) * 1_000).toISOString().slice(0, 10);
+    const observationEnd = new Date(Number(status.desMoinesMarket.observationEnd) * 1_000).toISOString().slice(0, 10);
+    await handler(request("POST", { city: "chicago", observationStart, observationEnd, thresholdMm: 50, operator: "gte", protectedAmount: "1000000" }), response as unknown as ServerResponse);
+    expect(response.code).to.equal(409);
+    expect(quoteCalls).to.equal(0);
+  });
+
   it("refuses unsigned protection transactions unless approval and finalized market prerequisites are present", async () => {
     let buildCalls = 0;
     const handler = createUnsignedTransactionHandler({

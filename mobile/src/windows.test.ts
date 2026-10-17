@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { DevnetStatus } from "./api.ts";
-import { basisLine, liveMarketLabel, NEXT_WINDOW_COPY, sellingWindows, soonestWindow, windowsForTenor } from "./windows.ts";
+import { basisLine, liveMarketLabel, NEXT_WINDOW_COPY, positionLabel, protectCityFor, sellingWindows, soonestWindow, windowsForTenor } from "./windows.ts";
 
 const week = {
   city: "des-moines" as const,
@@ -41,6 +41,14 @@ describe("selling windows", () => {
     assert.equal(NEXT_WINDOW_COPY.includes("isn't selling"), false);
     assert.equal(NEXT_WINDOW_COPY.includes("Sales closed"), false);
     assert.equal(basisLine("Des Moines Intl", "monthly").includes("8th of 10"), true);
+  });
+
+  it("keeps a selected city and names that city on a position", () => {
+    const nyc = { ...week, city: "new-york" as const, address: "nyc" };
+    assert.equal(protectCityFor("chicago", [week, nyc]), "chicago");
+    assert.equal(protectCityFor("new-york", [week, nyc]), "new-york");
+    assert.match(positionLabel("nyc", [week, nyc], week.address) ?? "", /^New York · /);
+    assert.match(positionLabel(week.address, [week, nyc], null) ?? "", /^Des Moines · /);
   });
 
   it("does not count the five-day pilot as a weekly rung", () => {

@@ -61,19 +61,14 @@ export function createQuoteHandler(dependencies: {
     }
 
     try {
-      let finalizedStatus: DevnetStatus | null = null;
-      if (request.city === "des-moines" || request.city === "new-york" || request.city === "dallas") {
-        finalizedStatus = await dependencies.readStatus();
-        if (request.city === "des-moines") {
-          const reason = desMoinesQuoteUnavailableReason(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator);
-          if (reason) return sendJson(res, 409, { error: "TESTER_QUOTE_UNAVAILABLE", message: reason });
-        } else if (!matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator)) {
-          return sendJson(res, 409, { error: "TESTER_QUOTE_UNAVAILABLE", message: "That city's open window does not match this quote." });
-        }
+      const finalizedStatus = await dependencies.readStatus();
+      if (request.city === "des-moines") {
+        const reason = desMoinesQuoteUnavailableReason(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator);
+        if (reason) return sendJson(res, 409, { error: "TESTER_QUOTE_UNAVAILABLE", message: reason });
+      } else if (!matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator, Math.floor(Date.now() / 1_000), request.city)) {
+        return sendJson(res, 409, { error: "TESTER_QUOTE_UNAVAILABLE", message: "That city's open window does not match this quote." });
       }
-      const matched = finalizedStatus
-        ? matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator)
-        : null;
+      const matched = matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator, Math.floor(Date.now() / 1_000), request.city);
       const quote = matched
         ? quoteFromCommittedMarketTerms({
           protectedAmount: amount,

@@ -295,19 +295,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!parsed.success) return res.status(400).json({ error: "Invalid protection parameters", details: parsed.error.flatten() });
     try {
       const request = parsed.data;
-      let finalizedStatus: Awaited<ReturnType<typeof devnetStatus.read>> | null = null;
-      if (request.city === "des-moines" || request.city === "new-york" || request.city === "dallas") {
-        finalizedStatus = await devnetStatus.read();
-        if (request.city === "des-moines") {
-          const reason = desMoinesQuoteUnavailableReason(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator);
-          if (reason) return res.status(409).json({ error: "TESTER_QUOTE_UNAVAILABLE", message: reason });
-        } else if (!matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator)) {
-          return res.status(409).json({ error: "TESTER_QUOTE_UNAVAILABLE", message: "That city's open window does not match this quote." });
-        }
+      const finalizedStatus = await devnetStatus.read();
+      if (request.city === "des-moines") {
+        const reason = desMoinesQuoteUnavailableReason(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator);
+        if (reason) return res.status(409).json({ error: "TESTER_QUOTE_UNAVAILABLE", message: reason });
+      } else if (!matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator, Math.floor(Date.now() / 1_000), request.city)) {
+        return res.status(409).json({ error: "TESTER_QUOTE_UNAVAILABLE", message: "That city's open window does not match this quote." });
       }
-      const matched = finalizedStatus
-        ? matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator)
-        : null;
+      const matched = matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator, Math.floor(Date.now() / 1_000), request.city);
       const quote = matched
         ? quoteFromCommittedMarketTerms({ protectedAmount: BigInt(request.protectedAmount), probabilityBps: matched.quoteProbabilityBps!, premiumRateBps: matched.premiumRateBps!, inputsHash: matched.quoteInputsHash! })
         : await quotes.quote({ ...request, stationId: NOAA_STATIONS[request.city].stationId, protectedAmount: BigInt(request.protectedAmount), operator: request.operator as TriggerOperator });
