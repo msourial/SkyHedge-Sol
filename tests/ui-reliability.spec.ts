@@ -84,9 +84,71 @@ test("research-only hazard selection on Protect hides rainfall inputs and blocks
   expect(apiRequests).toEqual([]);
 
   await page.getByRole("button", { name: "Rainfall" }).click();
-  await expect(page.getByText("Rainfall threshold (mm / in)")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Request NOAA quote" })).toBeVisible();
+  const legacyQuote = page.getByRole("button", { name: "Request NOAA quote" });
+  const expiry = page.getByRole("radiogroup", { name: "Expiry" });
+  if (await expiry.count()) await expect(expiry).toBeVisible();
+  else {
+    await expect(page.getByText("Rainfall threshold (mm / in)")).toBeVisible();
+    await expect(legacyQuote).toBeVisible();
+  }
   expect(apiRequests).toEqual([]);
+});
+
+test("rainfall protect shows an expiry chain and only prices the on-chain trigger", async ({ page }) => {
+  const week = 1792368000;
+  const windows = [
+    { city: "new-york", tenor: "weekly", address: "NyWeekA1111111111111111111111111111111111", observationStart: week, observationEnd: week + 7 * 86_400, thresholdMmX100: "2900", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, salesCloseAt: week },
+    { city: "new-york", tenor: "weekly", address: "NyWeekB1111111111111111111111111111111111", observationStart: week + 7 * 86_400, observationEnd: week + 14 * 86_400, thresholdMmX100: "6900", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, salesCloseAt: week + 7 * 86_400 },
+    { city: "new-york", tenor: "monthly", address: "NyMonthA111111111111111111111111111111111", observationStart: 1793491200, observationEnd: 1796083200, thresholdMmX100: "10200", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, salesCloseAt: 1793491200 },
+    { city: "new-york", tenor: "monthly", address: "NyMonthB111111111111111111111111111111111", observationStart: 1796083200, observationEnd: 1798761600, thresholdMmX100: "16600", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, salesCloseAt: 1796083200 },
+  ];
+  await page.route("**/api/devnet/status", (route) => route.fulfill({ json: {
+    network: "devnet",
+    program: { address: "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx", status: "ready", executable: true, explorerUrl: "https://explorer.solana.com" },
+    idl: { status: "ready", source: "committed", instructionCount: 22, accountCount: 5, supportsEmptyDraftCancellation: false },
+    protocol: { address: "Protocol111111111111111111111111111111111", status: "ready", initialized: true, admin: null, settlementAuthority: null, collateralMint: null, nextMarketId: "1" },
+    feeVault: { address: "Fee1111111111111111111111111111111111111", status: "ready", exists: true, balance: "0" },
+    skytMint: { address: "Mint1111111111111111111111111111111111111", status: "ready", exists: true, decimals: 6, supply: "350000000000", mintAuthority: null },
+    desMoinesMarket: { status: "ready", address: "Market11111111111111111111111111111111111", marketId: "1", vault: "Vault111111111111111111111111111111111111", vaultBalance: "2000000000", onchainStatus: "{\"open\":{}}", salesCloseAt: week, observationStart: week, observationEnd: week + 7 * 86_400, thresholdMmX100: "2900", operator: "gte", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, quoteInputsHash: "ab".repeat(32), evidenceStatus: "validated", targetCityHash: "" },
+    cityWindows: windows,
+    noaaEvidence: { status: "pending", settlementSource: "NOAA", message: "Historical sample only", package: null },
+    generatedAt: new Date().toISOString(),
+  } }));
+  await page.route("**/api/window-evidence**", (route) => route.fulfill({ json: {
+    city: "new-york",
+    unavailable: [],
+    packages: windows.map((window) => ({
+      validated: true,
+      city: "new-york",
+      stationId: "GHCND:USW00094728",
+      tenor: window.tenor,
+      observationStart: window.observationStart,
+      observationEnd: window.observationEnd,
+      analogueTotalsMm: [4, 8, 12, 18, 29, 40, 55, 69, 102, 166],
+      strikeMm: 69,
+      forecastCumulativeMm: null,
+    })),
+  } }));
+  const signed: string[] = [];
+  page.on("request", (request) => {
+    if (/transactions\/unsigned|phantom/i.test(request.url())) signed.push(request.url());
+  });
+  await page.setViewportSize({ width: 1200, height: 2670 });
+  await page.goto("/app?tab=protect");
+  await page.addStyleTag({ content: "html { font-size: 130%; }" });
+  await expect(page.getByText("NOAA Central Park · settles after expiry from NOAA final data")).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Oct 25 · W/ })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Nov 1 · W/ })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Nov 30 · M/ })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Dec 31 · M/ })).toBeVisible();
+  await page.getByRole("radio", { name: /Nov 30 · M/ }).click();
+  await expect(page.getByRole("row", { name: /≥ 102 mm/ })).toContainText("24.00");
+  await expect(page.getByText("Coming soon").first()).toBeVisible();
+  await page.getByLabel("Protect chain").getByRole("button", { name: "Protect" }).click();
+  await expect(page.getByText(/One Phantom approval/)).toBeVisible();
+  expect(signed).toEqual([]);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  expect(overflow).toBe(false);
 });
 
 test("switching hazards clears an earlier rainfall quote until a new quote is requested", async ({ page }) => {

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildCommittedQuoteRequest, duplicatePositionReason, getProtectionUnavailableReason, isOnchainMarketOpen, parseSkytAmount } from "./protection.ts";
+import type { WindowEvidencePackage } from "../../shared/window-chain.ts";
 import type { DevnetStatus } from "./api.ts";
 
 const now = 1_800_000_000;
@@ -57,6 +58,19 @@ describe("Devnet protection readiness", () => {
     });
     status.desMoinesMarket.thresholdMmX100 = null;
     assert.equal(buildCommittedQuoteRequest(status, "100000000"), null);
+  });
+
+  it("prices only the expiry whose own NOAA analogue package validated", () => {
+    const status = readyStatus();
+    const market = status.desMoinesMarket;
+    const pkg: WindowEvidencePackage = {
+      validated: true, city: "des-moines", stationId: "GHCND:USW00014933", tenor: "weekly",
+      observationStart: market.observationStart!, observationEnd: market.observationEnd!,
+      analogueTotalsMm: [1, 2, 3, 4, 5, 6, 7, 8, 9, 20], strikeMm: 8, forecastCumulativeMm: null,
+    };
+    const input = { status, citySlug: "des-moines" as const, walletConnected: true, walletSkytBalanceBase: "100000000", amountBase: "100000000", nowSeconds: now };
+    assert.equal(getProtectionUnavailableReason({ ...input, windowEvidence: [pkg] }), null);
+    assert.match(getProtectionUnavailableReason({ ...input, windowEvidence: [{ ...pkg, observationStart: pkg.observationStart + 7 * 86_400 }] }) ?? "", /evidence package/i);
   });
 
   it("fails closed when the NOAA package or market evidence is missing", () => {

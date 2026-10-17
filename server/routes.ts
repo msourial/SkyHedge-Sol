@@ -15,6 +15,8 @@ import { ClaimUnavailableError, UnsignedTransactionBuilder, type TxAction } from
 import { WeatherXmProvider } from "./services/weatherxm";
 import { DevnetStatusReader, publicDevnetStatus } from "./services/devnet-status";
 import { finalizedEvidenceWindow, getDesMoinesEvidencePackage } from "./services/des-moines-evidence";
+import { ensureCityWindowEvidence } from "./services/window-evidence";
+import { LIVE_CITY_SLUGS, type LiveCitySlug } from "../shared/window-ladder";
 import { desMoinesQuoteUnavailableReason, matchingOpenWindow, testerProtectionUnavailableReason } from "./services/tester-readiness";
 import { settlementWorkerReadiness } from "./services/settlement-config";
 import { agriculturalMarketBySlug, AGRICULTURAL_MARKETS, calendarMonthlyWindow, weeklyFridayWindow } from "../shared/agricultural-markets";
@@ -219,6 +221,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   app.get("/api/evidence-package", sendDesMoinesEvidencePackage);
   app.get("/api/markets/des-moines/evidence-package", sendDesMoinesEvidencePackage);
+  app.get("/api/window-evidence", async (req, res) => {
+    const city = typeof req.query.city === "string" ? req.query.city : "";
+    if (!(LIVE_CITY_SLUGS as readonly string[]).includes(city)) {
+      return res.status(400).json({ error: "LIVE_CITY_REQUIRED", message: "Choose one of the live NOAA cities." });
+    }
+    try {
+      const result = await ensureCityWindowEvidence(city as LiveCitySlug);
+      return res.json({ city, packages: result.packages, unavailable: result.unavailable });
+    } catch (error) { return dataUnavailable(res, error); }
+  });
 
   app.get("/api/cities", async (_req, res) => {
     try {

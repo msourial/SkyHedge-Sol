@@ -13,6 +13,8 @@ import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } f
 import { dealSentence, payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
 import { compactRowChip, formatWeekLabel } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
+import { matchingWindowPackage, type WindowEvidencePackage } from "../../shared/window-chain.ts";
+import { ProtectChain } from "./protect-chain";
 import { basisLine, cityChip, citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
 import { CONSUMER_LEAD_CODES, consumerCityByCode, consumerCityBySlug } from "../../shared/consumer-cities.ts";
 import { MARKETING_SHOTS } from "./marketing";
@@ -269,12 +271,13 @@ export function ProtectTicket(props: {
   windows?: SellingWindow[];
   selectedAddress?: string | null;
   onSelectWindow?: (address: string) => void;
+  windowEvidence?: readonly WindowEvidencePackage[] | null;
+  evidenceLoading?: boolean;
 }) {
   const [verifyOpen, setVerifyOpen] = useState(false);
   const windows = props.windows ?? sellingWindows(props.status, props.nowSeconds);
   const tenor = props.tenor ?? "weekly";
-  const tenorWindows = windows.filter((window) => window.tenor === tenor);
-  const market = tenorWindows.find((window) => window.address === props.selectedAddress) ?? tenorWindows[0] ?? null;
+  const market = windows.find((window) => window.address === props.selectedAddress) ?? windows[0] ?? null;
   const live = !!market;
   const options = coverageOptions(props.walletSkytBase);
   const consumer = consumerCityBySlug(market?.city ?? "");
@@ -286,7 +289,7 @@ export function ProtectTicket(props: {
   const q = props.quote && props.quote.protectedAmount === props.amountBase ? props.quote : null;
   const balance = balanceCheck(props.walletSkytBase, q?.premium);
   const endDate = shortUtcDate(market?.observationEnd ? market.observationEnd - 1 : null);
-  const evidenceReady = market?.evidenceStatus === "validated" && props.status?.noaaEvidence.status === "ready";
+  const evidenceReady = !!market && market.evidenceStatus === "validated" && !!matchingWindowPackage(props.windowEvidence, market.city, market.observationStart, market.observationEnd);
   const checks: Check[] = [
     { ready: !!props.status?.program.executable && props.status.program.status === "ready", label: "Solana program is live on Devnet" },
     { ready: !!props.status?.protocol.initialized, label: "Protocol initialized" },
@@ -317,24 +320,9 @@ export function ProtectTicket(props: {
   const payoutLabel = props.amountBase ? `${formatSkytFixed(props.amountBase, 0)} SKYT` : "—";
 
   return <>
-    <ScreenTop onBack={props.onBackToMarkets} eyebrow={`NOAA · ${station}`} title={`${place}, ${region}`} />
+    <ScreenTop onBack={props.onBackToMarkets} title={`${place}, ${region}`} />
     <Enter index={0}><PerilSelector value="rain" available={["rain"]} /></Enter>
-    <View style={s.chipRow} accessibilityRole="tablist">
-      {(["weekly", "monthly"] as const).map((choice) => {
-        const on = tenor === choice;
-        return <Pressable key={choice} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => props.onTenor?.(choice)} style={[s.regionChip, on && s.regionChipOn]}>
-          <Text style={[s.regionChipText, on && s.regionChipTextOn]}>{choice === "weekly" ? "Weekly" : "Monthly"}</Text>
-        </Pressable>;
-      })}
-    </View>
-    <View style={s.chipRow} accessibilityRole="radiogroup" accessibilityLabel="Expiry">
-      {tenorWindows.length ? tenorWindows.map((window) => {
-        const on = window.address === market?.address;
-        return <Pressable key={window.address} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => props.onSelectWindow?.(window.address)} style={[s.regionChip, on && s.regionChipOn]}>
-          <Text style={[s.regionChipText, on && s.regionChipTextOn]}>{expiryLabel(window)}</Text>
-        </Pressable>;
-      }) : <Text style={s.caption}>{NEXT_WINDOW_COPY}</Text>}
-    </View>
+    <ProtectChain city={market?.city ?? props.windows?.[0]?.city ?? "new-york"} windows={windows} selectedAddress={market?.address ?? null} nowSeconds={props.nowSeconds} evidence={props.windowEvidence ?? null} evidenceLoading={!!props.evidenceLoading} onSelectWindow={(address) => props.onSelectWindow?.(address)} />
     {showTicket ? null : stage ? <PayoutStatusCard stage={stage} dates={trackerDates(market, props.claimReadiness)} /> : <StepBar step={props.walletConnected && q ? 3 : 2} reason={reviewWhy} />}
 
     {!live ? <View style={[s.notice, { marginTop: S.sm }]} accessibilityRole="text">
@@ -349,7 +337,7 @@ export function ProtectTicket(props: {
       <Enter index={3}><FactRows rows={[
         { k: "Window", v: windowLabel },
         { k: "Trigger", v: thresholdMm ? `${triggerLabel} cumulative` : "Pending", tone: "gold" },
-        { k: "Basis", v: basisLine(station, tenor) },
+        { k: "Basis", v: basisLine(station, market?.tenor ?? tenor) },
         { k: "Payout", v: "Automatic · from official NOAA data" },
         { k: "Ready checks", v: `${readyCount === checks.length ? "✓ " : ""}${readyCount} of ${checks.length} passed`, tone: readyCount === checks.length ? "mint" : "gold" },
       ]} /></Enter>
@@ -361,11 +349,6 @@ export function ProtectTicket(props: {
       </View>
       {maxOption && !maxOption.enabled ? <Text style={[s.chipMsg, { color: C.muted }]}>Max is unavailable: this wallet has no SKYT yet.</Text> : null}
       {balance === "short" && q && selectedOption ? <Text style={[s.chipMsg, { color: C.coral }]} accessibilityRole="alert">Not enough SKYT: you need {formatSkytFixed(q.premium, 2)} SKYT. Pick less coverage or top up your wallet.</Text> : null}
-      <Text style={s.overline}>Rain limit</Text>
-      <View style={s.chipRow} accessible accessibilityLabel={thresholdMm ? `Rain trigger: ${market?.operator === "gt" ? "more than" : market?.operator === "lt" ? "less than" : market?.operator === "lte" ? "at most" : "at least"} ${thresholdMm} millimetres` : "Rain trigger pending"}>
-        <View style={s.chip}><Text style={s.chipText}>{thresholdMm ? `Trigger ${triggerLabel} rain` : "Trigger pending"}</Text></View>
-      </View>
-
       <View accessibilityLabel="Protection ticket">
         <GlassCard style={{ padding: 0, overflow: "hidden" }} delay={4 * motion.stagger}>
           <View style={s.split}>

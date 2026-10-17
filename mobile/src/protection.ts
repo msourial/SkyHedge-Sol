@@ -1,5 +1,6 @@
 import type { DevnetStatus } from "./api";
 import { consumerCityName } from "../../shared/consumer-cities.ts";
+import { matchingWindowPackage, type WindowEvidencePackage } from "../../shared/window-chain.ts";
 import { LIVE_CITY_SLUGS, type LiveCitySlug } from "../../shared/window-ladder.ts";
 
 const TESTER_LIMIT_BASE_UNITS = 500_000_000n;
@@ -59,6 +60,8 @@ export function getProtectionUnavailableReason(input: {
   walletSkytBalanceBase: string | null;
   amountBase: string | null;
   nowSeconds?: number;
+  /** When present, this expiry must have its own validated analogue package. */
+  windowEvidence?: readonly WindowEvidencePackage[] | null;
   market?: {
     status: string;
     address: string | null;
@@ -93,7 +96,9 @@ export function getProtectionUnavailableReason(input: {
   if (!isOnchainMarketOpen(market.onchainStatus)) return `The ${cityName} market is not open for protection positions.`;
   if (market.evidenceStatus !== "validated") return "The market does not have its pinned NOAA evidence commitment.";
   if ("targetCityHash" in market && typeof market.targetCityHash === "string" && market.targetCityHash.length === 0) return "The market does not have its pinned NOAA evidence commitment.";
-  if (status.noaaEvidence.status !== "ready" || status.noaaEvidence.settlementSource !== "NOAA" || !status.noaaEvidence.package?.stationId) return "A validated NOAA evidence package is not available.";
+  if (input.windowEvidence) {
+    if (!matchingWindowPackage(input.windowEvidence, citySlug, market.observationStart, market.observationEnd)) return "A validated NOAA evidence package is not available.";
+  } else if (status.noaaEvidence.status !== "ready" || status.noaaEvidence.settlementSource !== "NOAA" || !status.noaaEvidence.package?.stationId) return "A validated NOAA evidence package is not available.";
   if (!market.vaultBalance || !/^\d+$/.test(market.vaultBalance) || BigInt(market.vaultBalance) === 0n) return "The market vault has no finalized SKYT collateral.";
   const now = input.nowSeconds ?? Math.floor(Date.now() / 1_000);
   if (!market.salesCloseAt || market.salesCloseAt <= now) return "The market’s sales window has ended.";

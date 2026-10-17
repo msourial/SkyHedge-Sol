@@ -1,4 +1,5 @@
 import type { LiveCitySlug } from "../../shared/window-ladder.ts";
+import type { WindowEvidencePackage } from "../../shared/window-chain.ts";
 
 export type CityIndex = {
   slug: string;
@@ -86,6 +87,7 @@ export type DevnetStatus = {
     quoteInputsHash: string | null;
     evidenceStatus: "researching_evidence" | "validated";
   }>;
+  windowEvidence?: WindowEvidencePackage[];
   noaaEvidence: {
     status: "ready" | "pending" | "unavailable";
     settlementSource: "NOAA";

@@ -8,6 +8,8 @@ import { canonicalSourceHash, NOAA_STATIONS } from "./noaa.js";
 import { getDesMoinesEvidencePackage, type DesMoinesEvidencePackage } from "./des-moines-evidence.js";
 import { marketStateFromStatusJson } from "../../shared/des-moines-seed-plan.js";
 import { LIVE_CITY_SLUGS, tenorOf, type LiveCitySlug, type Tenor } from "../../shared/window-ladder.js";
+import type { WindowEvidencePackage } from "../../shared/window-chain.js";
+import { readStoredWindowEvidence } from "./window-evidence.js";
 
 const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
@@ -30,6 +32,8 @@ export interface DevnetStatus {
   /** Weekly and monthly windows that are open, funded, and still selling. */
   cityWindows: CityWindowSnapshot[];
   noaaEvidence: { status: EvidenceStatus; settlementSource: "NOAA"; message: string; package: Pick<DesMoinesEvidencePackage, "stationId" | "stationIdHash" | "providerHash" | "methodologyHash" | "seedSchedule" | "quoteTerms" | "evidence"> | null };
+  /** Validated NOAA analogue packages for open ladder windows. Empty until the keeper or city route builds them. */
+  windowEvidence: WindowEvidencePackage[];
   generatedAt: string;
 }
 
@@ -90,10 +94,11 @@ export class DevnetStatusReader {
   }
 
   async read(): Promise<DevnetStatus> {
-    const [programInfo, mintAccountInfo, noaaEvidence] = await Promise.all([
+    const [programInfo, mintAccountInfo, noaaEvidence, windowEvidence] = await Promise.all([
       this.connection.getAccountInfo(this.programId, "finalized"),
       this.connection.getAccountInfo(this.mint, "finalized"),
       this.readNoaaEvidence(),
+      readStoredWindowEvidence().catch(() => [] as WindowEvidencePackage[]),
     ]);
     const mintInfo = mintAccountInfo ? await getMint(this.connection, this.mint, "finalized") : null;
     const [protocolAddress] = PublicKey.findProgramAddressSync([Buffer.from("protocol")], this.programId);
@@ -168,6 +173,7 @@ export class DevnetStatusReader {
       ladderMarkets,
       cityWindows,
       noaaEvidence,
+      windowEvidence,
       generatedAt: new Date().toISOString(),
     };
   }

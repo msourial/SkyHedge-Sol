@@ -117,7 +117,7 @@ async function retryNoaaRateLimit<T>(read: () => Promise<T>): Promise<T> {
     try { return await read(); }
     catch (error) {
       const message = error instanceof Error ? error.message : "";
-      if (!/\b429\b|rate.?limit/i.test(message) || attempt >= 2) throw error;
+      if (!/\b429\b|rate.?limit|request failed|\b502\b|\b503\b|\b504\b/i.test(message) || attempt >= 4) throw error;
       await new Promise((resolve) => setTimeout(resolve, 400 * (2 ** attempt)));
     }
   }

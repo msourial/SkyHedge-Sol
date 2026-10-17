@@ -29,6 +29,7 @@ import { ScreenTransition, TactilePressable } from "./src/liquid-glass";
 import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
 import { marketIsLive, MarketsScreen, ProtectTicket, StickyCta, WalletV2 } from "./src/v2";
 import { liveMarketLabel, protectCityFor, sellingWindows, windowsForCity, type Tenor } from "./src/windows";
+import { matchingWindowPackage, sortByExpiry, type WindowEvidencePackage } from "../shared/window-chain.ts";
 import { buyCta, coverageOptions, type CoverageOption } from "./src/ticket";
 import { Landing, MarketDetail } from "./src/revamp";
 import { CollectPayoutView, ReceiptView } from "./src/journey";
@@ -82,6 +83,8 @@ export default function App() {
   const [coverageId, setCoverageId] = useState<CoverageOption["id"]>("100");
   const [tenor, setTenor] = useState<Tenor>("weekly");
   const [selectedWindow, setSelectedWindow] = useState<string | null>(null);
+  const [windowEvidence, setWindowEvidence] = useState<WindowEvidencePackage[] | null>(null);
+  const [evidenceLoading, setEvidenceLoading] = useState(true);
   const [quoteBusy, setQuoteBusy] = useState(false);
   const [indicativeQuote, setIndicativeQuote] = useState<ProtectionQuote | null>(null);
   const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1_000));
@@ -266,14 +269,25 @@ export default function App() {
   const selling = sellingWindows(status, nowSeconds);
   const nycWindows = windowsForCity(selling, "new-york");
   const protectCity = protectCityFor(selectedCity, selling);
-  const openWindows = windowsForCity(selling, protectCity);
-  const tenorWindows = openWindows.filter((window) => window.tenor === tenor);
-  const activeWindow = tenorWindows.find((window) => window.address === selectedWindow) ?? tenorWindows[0] ?? null;
+  const openWindows = sortByExpiry(windowsForCity(selling, protectCity));
+  const activeWindow = openWindows.find((window) => window.address === selectedWindow) ?? openWindows[0] ?? null;
+  const activePackage = matchingWindowPackage(windowEvidence, protectCity, activeWindow?.observationStart, activeWindow?.observationEnd);
+  useEffect(() => {
+    let cancelled = false;
+    setEvidenceLoading(true);
+    getJson<{ packages: WindowEvidencePackage[] }>(`/api/window-evidence?city=${encodeURIComponent(protectCity)}`)
+      .then((value) => { if (!cancelled) setWindowEvidence(value.packages ?? []); })
+      .catch(() => { if (!cancelled) setWindowEvidence([]); })
+      .finally(() => { if (!cancelled) setEvidenceLoading(false); });
+    return () => { cancelled = true; };
+  }, [protectCity]);
   // Price from the open market's NOAA terms even before wallet connect; purchase still requires a wallet.
   const quoteUnavailableReason = selectedHazard !== "rainfall"
     ? "Choose a place and its rainfall risk in Explore. Wind gust and snowfall remain research-only."
-    : getProtectionUnavailableReason({ status, citySlug: protectCity, walletConnected: true, walletSkytBalanceBase: walletBalances?.skytBaseUnits ?? null, amountBase, market: activeWindow });
-  const baseProtectionReason = getProtectionUnavailableReason({ status, citySlug: protectCity, walletConnected: !!wallet, walletSkytBalanceBase: walletBalances?.skytBaseUnits ?? null, amountBase, market: activeWindow });
+    : evidenceLoading
+      ? null
+      : getProtectionUnavailableReason({ status, citySlug: protectCity, walletConnected: true, walletSkytBalanceBase: walletBalances?.skytBaseUnits ?? null, amountBase, market: activeWindow, windowEvidence });
+  const baseProtectionReason = evidenceLoading ? null : getProtectionUnavailableReason({ status, citySlug: protectCity, walletConnected: !!wallet, walletSkytBalanceBase: walletBalances?.skytBaseUnits ?? null, amountBase, market: activeWindow, windowEvidence });
   const positionGateReason = !wallet ? null
     : claimError ? "The current on-chain position could not be verified; refresh before requesting another position."
       : !claimReadiness ? "Checking the finalized wallet position before allowing another position."
@@ -309,10 +323,10 @@ export default function App() {
 
   // Re-price automatically whenever coverage changes or the market becomes quotable.
   useEffect(() => {
-    if (tab !== "protect" || quoteUnavailableReason || !amountBase) { quoteRequestId.current++; setQuoteBusy(false); return; }
+    if (tab !== "protect" || evidenceLoading || !activePackage || quoteUnavailableReason || !amountBase) { quoteRequestId.current++; setQuoteBusy(false); return; }
     void requestProtectionQuote();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, amountBase, quoteUnavailableReason, activeWindow?.address, activeWindow?.quoteInputsHash]);
+  }, [tab, amountBase, quoteUnavailableReason, evidenceLoading, activePackage?.observationStart, activeWindow?.address, activeWindow?.quoteInputsHash]);
 
   // Indicative "From X SKYT per 100" for the Markets hero: a real NOAA quote for 100 SKYT, no wallet needed.
   useEffect(() => {
@@ -497,6 +511,8 @@ export default function App() {
               windows={openWindows}
               selectedAddress={activeWindow?.address ?? null}
               onSelectWindow={(address) => { setSelectedWindow(address); setQuote(null); }}
+              windowEvidence={windowEvidence}
+              evidenceLoading={evidenceLoading}
             />
           )
         ) : null}
