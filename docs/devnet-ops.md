@@ -43,17 +43,65 @@ Signer: protocol admin `DKA9…FD6y` via Phantom. Market PDA `HDJiTEYSnaeUNZWAHv
   - Protect: **You pay 9.05** SKYT / **You get if it rains 100** SKYT; 7.0% · 11.0x · 8.05+1.00; wallet Not connected; CTA Connect wallet.
 - Phantom purchase on a wallet without an existing Des Moines position remains optional follow-up (admin DKA9 already shows a waiting position on Wallet).
 
-## Weekly / monthly ladder (compat)
-- Market 2 observation Oct 19–24 is a demo-length window, not a Mon–Mon weekly or calendar month. `tenorOf` returns null for it.
-- Mobile `sellingWindows` falls back to open `desMoinesMarket` when `cityWindows` is empty/undeployed so Protect stays priced.
-- Server `sellingWindow` maps unrecognized open tenors to `weekly` so deployed `cityWindows` still lists the pilot.
-- Next ladder seed: `planLadderRoll` in `shared/window-ladder.ts` for the next 2 weekly + 2 monthly rungs (ask before sending admin txs).
+## Weekly / monthly ladder
+- Market 2 (`HDJiTEYSnaeUNZWAHvgWrMaefKemFq61S32bE2RVyiEZ`, tx `3BKexktWwPXnhUakASBud586FiiLWCARVkLnQ3qAfzxyZ3MV1r8Z3xVNER3jSDevXky3szz9RbaVo9UqDE3FNTfU`) is open. Sales close `2026-10-18T23:00:00Z`. Observation `2026-10-19T00:00:00Z` through `2026-10-24T00:00:00Z` (5 days, trigger ≥50 mm). It is not a Monday-to-Monday week and not a calendar month, so it is not one of the four rungs.
+- Only windows whose bounds match a weekly or monthly rung appear in the Protect picker.
 
 ## Rolling expiries
 
 Each live city keeps two weekly rain windows (Monday 00:00 UTC through the next Monday) and two calendar-month windows. Sales close when that window starts. The strike is the 8th of 10 NOAA GHCND analogue totals for those exact dates, rounded up to a whole millimetre. NWS QPF is included only when it covers every day; otherwise the premium uses the analogue history alone. Nothing is filled in.
 
-`npx tsx scripts/roll-window-ladder.ts` prints the missing rungs and does not sign. Signing needs `KEEPER_SIGN=yes` plus `KEEPER_KEYPAIR` for the current Devnet protocol admin (`DKA9…`). Create and open reject any other signer. A new key cannot seed until that admin proposes it and the new key accepts, which also transfers every admin power. Do not create that key or send the first ladder transaction without an explicit yes.
+`npx tsx scripts/roll-window-ladder.ts` prints the missing rungs and does not sign. `npx tsx scripts/sign-ladder-phantom.ts` opens a page on `127.0.0.1:8765` and Phantom approves each create, fund, and open as the Devnet protocol admin. The admin key is not stored in the repo or in Vercel.
 
-Vercel cron `GET /api/cron/windows` at 04:15 UTC plans the same ladder. It signs only when `KEEPER_SIGN=yes`. Devnet and test SKYT only.
+Vercel cron `GET /api/cron/windows` at 04:15 UTC plans the same ladder and stays a dry run. Devnet and test SKYT only.
+
+A separate on-chain keeper role, limited to create, fund, and open, is proposed in `docs/keeper-role.md` for after the hackathon.
+
+## TX — ladder create · weekly · Week of Oct 19
+- **POST signature:** `26AytfRMXtdPwci7hHXka4RAoDG5Ukv7kKyypCqhdmEnfG2qd9KZJ2Wr4y7ixMS9XQU5Dzpjo7gRfWjfimLxHcSU`
+- **Explorer:** https://explorer.solana.com/tx/26AytfRMXtdPwci7hHXka4RAoDG5Ukv7kKyypCqhdmEnfG2qd9KZJ2Wr4y7ixMS9XQU5Dzpjo7gRfWjfimLxHcSU?cluster=devnet
+
+## TX — ladder fund · weekly · Week of Oct 19
+- **POST signature:** `4AC221Mt1ZBh6AWWhgZroTL5ZrYgdGkebd3rkWvJniC9ktwLZRuD79Cb4zZxWvAu4WVb83ycNZQfWsAdteEkJGMi`
+- **Explorer:** https://explorer.solana.com/tx/4AC221Mt1ZBh6AWWhgZroTL5ZrYgdGkebd3rkWvJniC9ktwLZRuD79Cb4zZxWvAu4WVb83ycNZQfWsAdteEkJGMi?cluster=devnet
+
+## TX — ladder open · weekly · Week of Oct 19
+- **POST signature:** `XFu49apPtRQ4KEWkiNZtxKaqEhwq5XhdxXFVyzUS2HhskceaZYXt8bzda4hm1Fzp3qWzrw9b93svzPrf8ZCDrX3`
+- **Explorer:** https://explorer.solana.com/tx/XFu49apPtRQ4KEWkiNZtxKaqEhwq5XhdxXFVyzUS2HhskceaZYXt8bzda4hm1Fzp3qWzrw9b93svzPrf8ZCDrX3?cluster=devnet
+
+## TX — ladder create · weekly · Week of Oct 26
+- **POST signature:** `c1snSwPNqP6cBTGCgasHQv2DF7q6e2V9m9EJrskXXo4ry5hPFbd17giK88bLCe6ZzsMnTi1Rywoz1nBARi3ENSa`
+- **Explorer:** https://explorer.solana.com/tx/c1snSwPNqP6cBTGCgasHQv2DF7q6e2V9m9EJrskXXo4ry5hPFbd17giK88bLCe6ZzsMnTi1Rywoz1nBARi3ENSa?cluster=devnet
+
+## TX — ladder fund · weekly · Week of Oct 26
+- **POST signature:** `3kJePbHs5mQXT8pN84WHWKQtSCnaJEpsBwpvQuqKoiSjNXLu3J3JDgAFa8yY4htocjEgwu33is1uFjBF6Gj16Pov`
+- **Explorer:** https://explorer.solana.com/tx/3kJePbHs5mQXT8pN84WHWKQtSCnaJEpsBwpvQuqKoiSjNXLu3J3JDgAFa8yY4htocjEgwu33is1uFjBF6Gj16Pov?cluster=devnet
+
+## TX — ladder open · weekly · Week of Oct 26
+- **POST signature:** `5hP1i364ZTyKwKTysJtvwqBk5RWPAiXfiK6eMJzKa48UHqgMmKAYtx5DpQDf1cr94ZqN4NFyiYKscTWbBPxhYHok`
+- **Explorer:** https://explorer.solana.com/tx/5hP1i364ZTyKwKTysJtvwqBk5RWPAiXfiK6eMJzKa48UHqgMmKAYtx5DpQDf1cr94ZqN4NFyiYKscTWbBPxhYHok?cluster=devnet
+
+## TX — ladder create · monthly · November
+- **POST signature:** `2scBmC57u1Mp5pShb57sU1msj6W44LFe2CjWyeNx6cxEQNHxqvWzj2Bv6LcAeT5xJRrkiCqUsqyUncmYyoEish2q`
+- **Explorer:** https://explorer.solana.com/tx/2scBmC57u1Mp5pShb57sU1msj6W44LFe2CjWyeNx6cxEQNHxqvWzj2Bv6LcAeT5xJRrkiCqUsqyUncmYyoEish2q?cluster=devnet
+
+## TX — ladder fund · monthly · November
+- **POST signature:** `2ju4BHGqnWkbsHL8h1T7oBWVpQAKbcbKK6zs5Pxm6sUNpxFevdTQ6Nv8Ude8oMezQ8BL2yR1UcuSQgeRZqsdPhwu`
+- **Explorer:** https://explorer.solana.com/tx/2ju4BHGqnWkbsHL8h1T7oBWVpQAKbcbKK6zs5Pxm6sUNpxFevdTQ6Nv8Ude8oMezQ8BL2yR1UcuSQgeRZqsdPhwu?cluster=devnet
+
+## TX — ladder open · monthly · November
+- **POST signature:** `4QNNuUNb6esQvhfZw7SgR6nqZLMRcZATqQj2MuFbTaxVU5tYrN64h4AyBAVbWEjBJfueuM72yv2Hosm1W8MvpQdu`
+- **Explorer:** https://explorer.solana.com/tx/4QNNuUNb6esQvhfZw7SgR6nqZLMRcZATqQj2MuFbTaxVU5tYrN64h4AyBAVbWEjBJfueuM72yv2Hosm1W8MvpQdu?cluster=devnet
+
+## TX — ladder create · monthly · December
+- **POST signature:** `613GaEH3yDJUxMCjiuG7N8qATHR6v4EX7U3rhWnuRoJs1JFLQ25pTfQr8DAYkVaUUxhQq5z9DNmbs1yQ7e8DnpcV`
+- **Explorer:** https://explorer.solana.com/tx/613GaEH3yDJUxMCjiuG7N8qATHR6v4EX7U3rhWnuRoJs1JFLQ25pTfQr8DAYkVaUUxhQq5z9DNmbs1yQ7e8DnpcV?cluster=devnet
+
+## TX — ladder fund · monthly · December
+- **POST signature:** `4iqr9a4X79GMMwJ8Z9EQD7Z7Xof5WnRaRh4hu9uDm44uo2oMaBCMVmQoshTy68tTuzr51kM3hj17RHgvgbehy2aG`
+- **Explorer:** https://explorer.solana.com/tx/4iqr9a4X79GMMwJ8Z9EQD7Z7Xof5WnRaRh4hu9uDm44uo2oMaBCMVmQoshTy68tTuzr51kM3hj17RHgvgbehy2aG?cluster=devnet
+
+## TX — ladder open · monthly · December
+- **POST signature:** `6ebbCsk5c1TLUzz8YXxTAF2vnDJ4TFW8SPVcU9to4vg7hHkqw8JQTqJsF23WuQH9yZ2xc47AqbSU9tvSPt6Hz2X`
+- **Explorer:** https://explorer.solana.com/tx/6ebbCsk5c1TLUzz8YXxTAF2vnDJ4TFW8SPVcU9to4vg7hHkqw8JQTqJsF23WuQH9yZ2xc47AqbSU9tvSPt6Hz2X?cluster=devnet
 
