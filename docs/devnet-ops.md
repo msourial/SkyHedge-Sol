@@ -51,7 +51,7 @@ Signer: protocol admin `DKA9…FD6y` via Phantom. Market PDA `HDJiTEYSnaeUNZWAHv
 
 Each live city keeps two weekly rain windows (Monday 00:00 UTC through the next Monday) and two calendar-month windows. Sales close when that window starts. The strike is the 8th of 10 NOAA GHCND analogue totals for those exact dates, rounded up to a whole millimetre. NWS QPF is included only when it covers every day; otherwise the premium uses the analogue history alone. Nothing is filled in.
 
-Live rainfall cities, in order: New York (Central Park `GHCND:USW00094728`), Dallas–Fort Worth (`GHCND:USW00003927`), Des Moines (`GHCND:USW00014933`). Toronto stays closed until Environment Canada data is in. Each live city has its own ladder. A Des Moines window does not fill a New York or Dallas rung.
+Live rainfall cities, in order: New York (Central Park `GHCND:USW00094728`), Chicago O'Hare (`GHCND:USW00094846`), Miami Intl (`GHCND:USW00012839`), Dallas–Fort Worth (`GHCND:USW00003927`), Los Angeles Intl (`GHCND:USW00023174`), Seattle-Tacoma (`GHCND:USW00024233`), Boston Logan (`GHCND:USW00014739`), Austin Bergstrom (`GHCND:USW00013904`), Des Moines Intl (`GHCND:USW00014933`). Toronto stays closed until Environment Canada data is in. Each live city has its own ladder. A Des Moines window does not fill a New York or Chicago rung.
 
 `npx tsx scripts/roll-window-ladder.ts` prints the missing rungs and does not sign. Add `--city new-york` or `--city dallas` to plan one city. `npx tsx scripts/sign-ladder-phantom.ts --city <slug>` opens a page on `127.0.0.1:8765` and Phantom approves each create, fund, and open as the Devnet protocol admin. The keeper refuses `--sign`. The admin key is not stored in the repo or in Vercel.
 
@@ -170,4 +170,39 @@ npx tsx scripts/sign-ladder-phantom.ts --city dallas
 ## TX — ladder open · new-york · monthly · December
 - **POST signature:** `4tkP56SKjuNou8YztCjCcrGytpFr3BzkoFtcAMQxUZKcv7TdeQRz5CNi3NvfdVyYKDzpWjCouvoVmjpJycFkq1BU`
 - **Explorer:** https://explorer.solana.com/tx/4tkP56SKjuNou8YztCjCcrGytpFr3BzkoFtcAMQxUZKcv7TdeQRz5CNi3NvfdVyYKDzpWjCouvoVmjpJycFkq1BU?cluster=devnet
+
+## Waiting for Phantom — new NOAA city ladders
+
+Not signed in this pass. Devnet test SKYT only. Dry-run on 2026-10-17 against public Devnet, `signed: false`.
+
+Chicago and Miami each have four missing rungs. Each rung is create, then fund 2,000 SKYT, then open. That is 12 Phantom approvals per city, 24 in total. Signer is the Devnet protocol admin `DKA9RkGvaW4isyj5xdiZ2oGVUkD1UL64Ha1BazXZFD6y`.
+
+| City | Tenor | Observation start (UTC) | Observation end (UTC) |
+| --- | --- | --- | --- |
+| Chicago, Miami | Weekly | 2026-10-19 00:00 (`1792368000`) | 2026-10-26 00:00 (`1792972800`) |
+| Chicago, Miami | Weekly | 2026-10-26 00:00 (`1792972800`) | 2026-11-02 00:00 (`1793577600`) |
+| Chicago, Miami | Monthly | 2026-11-01 00:00 (`1793491200`) | 2026-12-01 00:00 (`1796083200`) |
+| Chicago, Miami | Monthly | 2026-12-01 00:00 (`1796083200`) | 2027-01-01 00:00 (`1798761600`) |
+
+The New York dry-run in this pass hit public RPC 429 before it could list rungs. An earlier dry-run the same day returned zero missing rungs (week of Oct 19, week of Oct 26, November, December already open). Re-run the New York dry-run before signing it. Seattle, Los Angeles, Boston, and Austin use the same ladder script and were not dry-run in this pass. The strike and premium come from NOAA when the signer page loads. Stop here until those approvals are made in Phantom.
+
+Stations: Chicago `GHCND:USW00094846` (CHICAGO OHARE INTL AP), Miami `GHCND:USW00012839` (MIAMI INTL AP), Seattle `GHCND:USW00024233` (SEATTLE TACOMA AP), Los Angeles `GHCND:USW00023174` (LOS ANGELES INTL AP), Boston `GHCND:USW00014739` (BOSTON LOGAN, WMO 72509), Austin `GHCND:USW00013904` (AUSTIN BERGSTROM INTL AP).
+
+```bash
+# Dry run. Prints missing rungs. Does not sign.
+npx tsx scripts/roll-window-ladder.ts --city chicago
+npx tsx scripts/roll-window-ladder.ts --city miami
+npx tsx scripts/roll-window-ladder.ts --city seattle
+npx tsx scripts/roll-window-ladder.ts --city los-angeles
+npx tsx scripts/roll-window-ladder.ts --city boston
+npx tsx scripts/roll-window-ladder.ts --city austin
+
+# Phantom. Unlock DKA9…FD6y on Devnet and approve each create, fund, and open.
+npx tsx scripts/sign-ladder-phantom.ts --city chicago
+npx tsx scripts/sign-ladder-phantom.ts --city miami
+npx tsx scripts/sign-ladder-phantom.ts --city seattle
+npx tsx scripts/sign-ladder-phantom.ts --city los-angeles
+npx tsx scripts/sign-ladder-phantom.ts --city boston
+npx tsx scripts/sign-ladder-phantom.ts --city austin
+```
 
