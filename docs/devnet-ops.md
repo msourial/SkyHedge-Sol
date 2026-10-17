@@ -109,7 +109,7 @@ A separate on-chain keeper role, limited to create, fund, and open, is proposed 
 
 ## Waiting for Phantom — New York and Dallas ladders
 
-Not signed. Not seeded. Devnet and test SKYT only. Each missing rung is create, then fund 2,000 SKYT, then open. The strike and premium come from NOAA when the signer page loads. Nothing below sends a transaction.
+Not signed for Dallas. New York is signed and open on Devnet. Test SKYT only. Each Dallas rung is still create, then fund 2,000 SKYT, then open. The strike and premium come from NOAA when the signer page loads.
 
 New York station: `GHCND:USW00094728` (NY CITY CENTRAL PARK). Dallas station: `GHCND:USW00003927` (DALLAS FT WORTH AP).
 
@@ -122,4 +122,52 @@ npx tsx scripts/roll-window-ladder.ts --city dallas
 npx tsx scripts/sign-ladder-phantom.ts --city new-york
 npx tsx scripts/sign-ladder-phantom.ts --city dallas
 ```
+
+## TX — ladder create · new-york · weekly · Week of Oct 19
+- **POST signature:** `2oDDqcr6bnxEYP32HRPixiLuq1Xe9ckwHpzmXtjjaC83FDbMb5jpRsdsB1aP1LoTUSPPtccES3VS7GL135CVqKiS`
+- **Explorer:** https://explorer.solana.com/tx/2oDDqcr6bnxEYP32HRPixiLuq1Xe9ckwHpzmXtjjaC83FDbMb5jpRsdsB1aP1LoTUSPPtccES3VS7GL135CVqKiS?cluster=devnet
+
+## TX — ladder fund · new-york · weekly · Week of Oct 19
+- **POST signature:** `4Ae9MTWtHHPgsmScix5DgVLeJ29GSXJTMJpLphQTBWZ8Jcyi3U1To2W5hYMcMRqLRTunovWzuHvZ88QaQDVkAgGN`
+- **Explorer:** https://explorer.solana.com/tx/4Ae9MTWtHHPgsmScix5DgVLeJ29GSXJTMJpLphQTBWZ8Jcyi3U1To2W5hYMcMRqLRTunovWzuHvZ88QaQDVkAgGN?cluster=devnet
+
+## TX — ladder open · new-york · weekly · Week of Oct 19
+- **POST signature:** `5927oSTS6DLYffeagG1iWY4mnkvDXLor3mj3eKmNuVxL5LHEXZBiMScbejL91uDGyJnzrcgakwFJR6MwWgpRJA5S`
+- **Explorer:** https://explorer.solana.com/tx/5927oSTS6DLYffeagG1iWY4mnkvDXLor3mj3eKmNuVxL5LHEXZBiMScbejL91uDGyJnzrcgakwFJR6MwWgpRJA5S?cluster=devnet
+
+## TX — ladder create · new-york · weekly · Week of Oct 26
+- **POST signature:** `3Jusw7jHSJBZgfkLQTjCFFTmhAHdkHB8B7NZafR9ZGNKhLxmoV8NfVMoRwNkam5oTatfQP8hD1hMbk9nx3VnCgVm`
+- **Explorer:** https://explorer.solana.com/tx/3Jusw7jHSJBZgfkLQTjCFFTmhAHdkHB8B7NZafR9ZGNKhLxmoV8NfVMoRwNkam5oTatfQP8hD1hMbk9nx3VnCgVm?cluster=devnet
+
+## TX — ladder fund · new-york · weekly · Week of Oct 26
+- **POST signature:** `5mxq19EsjZucYvrDPotPvtPp72QhWXtApAWu9zHGwBVSkMMKuPep7J4zV1YsRyC7Q7ggvbWz1ntPdLPDLZMA8jLm`
+- **Explorer:** https://explorer.solana.com/tx/5mxq19EsjZucYvrDPotPvtPp72QhWXtApAWu9zHGwBVSkMMKuPep7J4zV1YsRyC7Q7ggvbWz1ntPdLPDLZMA8jLm?cluster=devnet
+
+## TX — ladder open · new-york · weekly · Week of Oct 26
+- **POST signature:** `51UAm18sxwRWAXET3L6TnspecryMdYw6UePAXduCyseM1WsMcWj5ymW5F8YFgpEpGh9qbspmmpiap5yUWWBrDhLj`
+- **Explorer:** https://explorer.solana.com/tx/51UAm18sxwRWAXET3L6TnspecryMdYw6UePAXduCyseM1WsMcWj5ymW5F8YFgpEpGh9qbspmmpiap5yUWWBrDhLj?cluster=devnet
+
+## TX — ladder create · new-york · monthly · November
+- **POST signature:** `Sva1wUEYch98AbVuM1GGomx9umBVXn3xCmuZAZ7JyHrJudg5TV85vvXheijMWppXLjfb1xUsJba394F2JsZLnts`
+- **Explorer:** https://explorer.solana.com/tx/Sva1wUEYch98AbVuM1GGomx9umBVXn3xCmuZAZ7JyHrJudg5TV85vvXheijMWppXLjfb1xUsJba394F2JsZLnts?cluster=devnet
+
+## TX — ladder fund · new-york · monthly · November
+- **POST signature:** `2KMUiKSZYtFrJ3vRP49afvmkPfcNPQzZxZBHxhv8NuuanhAmZNPPXcprbt2urMXS4nztCFVeAnUXEZkjyDHEyFRA`
+- **Explorer:** https://explorer.solana.com/tx/2KMUiKSZYtFrJ3vRP49afvmkPfcNPQzZxZBHxhv8NuuanhAmZNPPXcprbt2urMXS4nztCFVeAnUXEZkjyDHEyFRA?cluster=devnet
+
+## TX — ladder open · new-york · monthly · November
+- **POST signature:** `4DWuQnmVxnDhvHkfSR4bin7K1T36XnEGrEF3ZGCAjFgdKnH7uKCQfrcrTgrHAMpTN2kVxf1QsVhtraakTjT2encv`
+- **Explorer:** https://explorer.solana.com/tx/4DWuQnmVxnDhvHkfSR4bin7K1T36XnEGrEF3ZGCAjFgdKnH7uKCQfrcrTgrHAMpTN2kVxf1QsVhtraakTjT2encv?cluster=devnet
+
+## TX — ladder create · new-york · monthly · December
+- **POST signature:** `4EpqTXqPvMdzLb5wZ5MBHXgTzp5imZDMGmx5tkF1aMsGCZ6pGMd5zxMvSsJPaeEXdhkmCzE7RgziphbYU12UBryM`
+- **Explorer:** https://explorer.solana.com/tx/4EpqTXqPvMdzLb5wZ5MBHXgTzp5imZDMGmx5tkF1aMsGCZ6pGMd5zxMvSsJPaeEXdhkmCzE7RgziphbYU12UBryM?cluster=devnet
+
+## TX — ladder fund · new-york · monthly · December
+- **POST signature:** `8aGUFQXBNsbZw6aWP6wYm87aDwE63V5hSmjNQya8HNhpurimKsZh84EkMaJc5zAunVxyMmdGDujU1HrG8ac9LTe`
+- **Explorer:** https://explorer.solana.com/tx/8aGUFQXBNsbZw6aWP6wYm87aDwE63V5hSmjNQya8HNhpurimKsZh84EkMaJc5zAunVxyMmdGDujU1HrG8ac9LTe?cluster=devnet
+
+## TX — ladder open · new-york · monthly · December
+- **POST signature:** `4tkP56SKjuNou8YztCjCcrGytpFr3BzkoFtcAMQxUZKcv7TdeQRz5CNi3NvfdVyYKDzpWjCouvoVmjpJycFkq1BU`
+- **Explorer:** https://explorer.solana.com/tx/4tkP56SKjuNou8YztCjCcrGytpFr3BzkoFtcAMQxUZKcv7TdeQRz5CNi3NvfdVyYKDzpWjCouvoVmjpJycFkq1BU?cluster=devnet
 
