@@ -33,4 +33,4 @@
 2. **Des Moines window.** Done. Market 2 create `3BKexk…` / fund `5Uqswf…` / open `5Gbdau…` (see `docs/devnet-ops.md`). Sales close `2026-10-18T23:00:00Z`, observation Oct 19–24 UTC, 2,000 SKYT vault. Chicago stays closed.
 3. **Chip.** Done. `marketListChipTone`: Live / Weekly open mint; Sales closed neutral; soon amber. Seeker shows Des Moines **Weekly open**.
 4. **Mockups.** Done (Wallet is connect CTA — session cleared; Protect shows real **~9.05** SKYT). Cropped into `client/public/mockups/landing/{markets,protect,wallet}.png`. Normal APK reinstalled.
-5. **Production.** Deploy + screenshots + `docs/status-report.md` + push `seeker-revamp` (this step).
+5. **Production.** Done. `vercel deploy --prod` → https://skyhedge.app (`dpl_FE4mJ3i7NU6rSUf2nboygLGQPxu6`). Screenshots `docs/landing-review/skyhedge-prod-{1440,390}.png`. Push `1dae994`.
