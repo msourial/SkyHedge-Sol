@@ -120,7 +120,10 @@ export function Landing(props: { onConnect: () => void; onBrowse: () => void; bu
       </Enter>)}
     </GlassCard>
     <GlassCard>
-      <View style={g.marketLine}><View style={[g.tagDot, { backgroundColor: props.live ? C.mint : C.muted }]} /><Text style={g.marketName}>New York, NY</Text><StatusTag status={props.live ? "live" : "soon"} label={props.live ? (props.openLabel ?? "Weekly · Monthly open") : props.openLabel === "Sales closed" ? "Sales closed" : "Next window opening shortly"} /></View>
+      <View style={g.marketLine}>
+        <Text style={g.marketName} android_hyphenationFrequency="none">New York, NY</Text>
+        <StatusTag status={props.live ? "live" : "soon"} label={props.live ? "Open" : "Soon"} />
+      </View>
       <Text style={g.caption}>{MARKETS.filter((m) => m.status === "ready").length} more cities opening soon · {concepts} preview cities across {GROUP_ORDER.length} regions</Text>
     </GlassCard>
     <RadarMap scope="region" onScope={() => props.onBrowse()} focusCode="NYC" highlight={new Set()} onSelect={() => props.onBrowse()} />
@@ -210,7 +213,7 @@ const g = StyleSheet.create({
   testNoteText: { ...T.label, fontFamily: F.body, flex: 1, color: C.amber },
   card: { backgroundColor: glass.fill, borderColor: glass.border, borderWidth: 1, borderRadius: glass.radius, padding: S.lg, marginBottom: S.lg, overflow: "hidden", boxShadow: glass.shadow },
   cardEdge: { position: "absolute", top: 0, left: 24, right: 24, height: 1 },
-  tag: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 14, paddingHorizontal: 11, minHeight: 28, alignSelf: "center" },
+  tag: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 6, borderWidth: 1, borderRadius: 14, paddingHorizontal: 11, minHeight: 28 },
   tagDot: { width: 7, height: 7, borderRadius: 4 },
   tagText: { fontFamily: F.bodyBold, fontSize: 12, letterSpacing: 0.3 },
   gauge: { width: 52, borderRadius: 16, boxShadow: "inset 0px 2px 8px rgba(0,0,0,0.6)", borderWidth: 1, borderColor: C.border, backgroundColor: C.canvas, overflow: "hidden", justifyContent: "flex-end" },
@@ -227,8 +230,8 @@ const g = StyleSheet.create({
   devnetText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 12 },
   hero: { ...T.hero, color: C.ink, marginTop: S.xs },
   heroLead: { ...T.lead, color: C.muted, marginTop: S.md },
-  marketLine: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 40 },
-  marketName: { ...T.bodyStrong, flex: 1, color: C.ink },
+  marketLine: { alignItems: "flex-start", gap: 8 },
+  marketName: { ...T.bodyStrong, color: C.ink, alignSelf: "stretch" },
   steps: { flexDirection: "row", gap: 8 },
   step: { flex: 1, padding: 12 },
   stepN: { color: C.rain, fontFamily: F.mono, fontSize: 13, fontWeight: "700" },

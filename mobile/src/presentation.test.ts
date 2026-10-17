@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { AgriculturalMarket, CityIndex, DevnetStatus } from "./api";
-import { catalogAvailability, formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, latestCompletedNoaaWeek, marketListChipTone, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets } from "./presentation.ts";
+import { catalogAvailability, compactRowChip, formatOnchainMarketStatus, formatUsdPreview, isMarketReadyForCity, latestCompletedNoaaWeek, marketListChipTone, rainfallBarPercent, recentNoaaHistoryForArea, researchLocationLabel, resolveSelectedNoaaCity, riskChoiceForArea, searchAgriculturalMarkets } from "./presentation.ts";
+import { CONSUMER_CITIES, CONSUMER_LEAD_CODES } from "../../shared/consumer-cities.ts";
 
 const markets: AgriculturalMarket[] = [
   {
@@ -127,12 +128,27 @@ describe("mobile presentation behavior", () => {
     assert.equal(marketListChipTone("live", "Live"), "live");
     assert.equal(marketListChipTone("live"), "live");
     assert.equal(marketListChipTone("live", "Weekly · Monthly open"), "live");
+    assert.equal(marketListChipTone("live", "Open"), "live");
     assert.equal(marketListChipTone("live", "Next window opening shortly"), "soon");
+    assert.equal(marketListChipTone("soon", "Soon"), "soon");
     assert.equal(marketListChipTone("live", "Sales closed"), "closed");
     assert.equal(marketListChipTone("live", "Opens soon"), "soon");
     assert.equal(marketListChipTone("soon"), "soon");
     assert.equal(marketListChipTone("ready"), "other");
     assert.equal(marketListChipTone("concept"), "other");
+  });
+
+  it("uses the landing moments and short Open or Soon chips on city rows", () => {
+    const moment = Object.fromEntries(CONSUMER_CITIES.map((city) => [city.code, city.moment]));
+    assert.equal(moment.NYC, "Weekend in Central Park?");
+    assert.equal(moment.ORD, "Lollapalooza weekend?");
+    assert.equal(moment.MIA, "Beach day in South Beach?");
+    assert.equal(moment.DFW, "Rained-out game day?");
+    assert.equal(moment.SEA, "Rooftop party?");
+    assert.equal(CONSUMER_CITIES.some((city) => /wedding/i.test(city.moment)), false);
+    assert.deepEqual([...CONSUMER_LEAD_CODES], ["NYC", "ORD", "MIA", "DFW", "LAX", "SEA", "BOS", "AUS", "DSM", "YYZ"]);
+    assert.deepEqual(compactRowChip(true), { label: "Open", tone: "live" });
+    assert.deepEqual(compactRowChip(false), { label: "Soon", tone: "soon" });
   });
 
   it("uses one truthful, scannable availability state for every location row", () => {

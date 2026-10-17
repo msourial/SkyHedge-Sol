@@ -101,12 +101,17 @@ export type MarketListChipTone = "live" | "soon" | "closed" | "other";
 
 /** Green only while sales are live. Closed sales are neutral. Soon and other non-live labels are amber. */
 export function marketListChipTone(status: "live" | "ready" | "soon" | "concept", label?: string): MarketListChipTone {
-  if (label === "Weekly · Monthly open" || label === "Weekly open" || label === "Monthly open") return "live";
-  if (label === "Next window opening shortly") return "soon";
+  if (label === "Open" || label === "Weekly · Monthly open" || label === "Weekly open" || label === "Monthly open") return "live";
+  if (label === "Soon" || label === "Next window opening shortly") return "soon";
   if (label === "Sales closed") return "closed";
   if (status === "live" && (label === undefined || label === "Live")) return "live";
   if (status === "soon" || status === "live") return "soon";
   return "other";
+}
+
+/** City rows stay readable: a selling window is Open, everything else is Soon. */
+export function compactRowChip(open: boolean): { label: "Open" | "Soon"; tone: "live" | "soon" } {
+  return open ? { label: "Open", tone: "live" } : { label: "Soon", tone: "soon" };
 }
 
 /** Compact status for catalog rows; detailed evidence remains in the selected place view. */

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Easing, Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { RadarMap, type MapScope } from "./RadarMap";
-import { CountUp, GlassCard, GlobalGroups, StatusTag, statusLabel } from "./revamp";
+import { CountUp, GlassCard, GlobalGroups } from "./revamp";
 import { GROUP_ORDER, highlightParts, MARKETS, searchMarkets, type CatalogMarket, type MarketGroup } from "./markets-catalog";
 import { useReducedMotion } from "./liquid-glass";
 import { CoverageHero, FactRows, PerilSelector, ScreenTop, StatPair } from "./journey";
@@ -11,10 +11,10 @@ import { Enter, ProgressRail, SpringPress } from "./motion";
 import { ActionButton, AppIcon, Disclosure, Reveal, Text } from "./ui";
 import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } from "./friendly-errors";
 import { dealSentence, payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
-import { formatWeekLabel, marketListChipTone } from "./presentation";
+import { compactRowChip, formatWeekLabel } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
-import { basisLine, cityChip, citySalesClosed, expiryLabel, liveMarketLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
-import { CONSUMER_CITIES, consumerCityByCode } from "../../shared/consumer-cities.ts";
+import { basisLine, cityChip, citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
+import { CONSUMER_LEAD_CODES, consumerCityByCode } from "../../shared/consumer-cities.ts";
 import { MARKETING_SHOTS } from "./marketing";
 import { balanceCheck, coverageOptions, formatSkytFixed, premiumFeeLine, premiumPer100, returnMultiple, payState, reviewReason, shortAddress, shortUtcDate, trimMm, triggerSentence, utcDateTime, type CoverageOption } from "./ticket";
 
@@ -29,6 +29,15 @@ export function NetworkPill({ label = "Devnet" }: { label?: string }) {
   </View>;
 }
 
+function CompactChip({ label, tone }: { label: "Open" | "Soon"; tone: "live" | "soon" }) {
+  const col = tone === "live" ? C.mint : C.amber;
+  const bg = tone === "live" ? C.mintSoft : C.amberSoft;
+  return <View style={[s.compactChip, { borderColor: col + "77", backgroundColor: bg }]} accessibilityLabel={label}>
+    <View style={[s.dot, { backgroundColor: col }]} />
+    <Text style={[s.compactChipText, { color: col }]}>{label}</Text>
+  </View>;
+}
+
 function Pill({ label, tone }: { label: string; tone: "live" | "neutral" | "warn" | "gold" }) {
   const fg = tone === "live" ? C.mint : tone === "warn" ? C.amber : tone === "gold" ? C.payout : C.muted;
   const bg = tone === "live" ? C.mintSoft : tone === "warn" ? C.amberSoft : tone === "gold" ? C.payoutSoft : C.mutedSurface;
@@ -39,7 +48,10 @@ function Pill({ label, tone }: { label: string; tone: "live" | "neutral" | "warn
 }
 
 function Row({ label, value, gold }: { label: string; value: string; gold?: boolean }) {
-  return <View style={s.row}><Text style={s.rowLabel}>{label}</Text><Text style={[s.rowValue, gold && { color: C.payout }]}>{value}</Text></View>;
+  return <View style={s.row}>
+    <Text style={s.rowLabel} android_hyphenationFrequency="none">{label}</Text>
+    <Text style={[s.rowValue, { flex: 1, flexShrink: 1, textAlign: "right" }, gold && { color: C.payout }]} android_hyphenationFrequency="none">{value}</Text>
+  </View>;
 }
 
 export function marketIsLive(status: DevnetStatus | null, nowSeconds: number): boolean {
@@ -60,6 +72,7 @@ export function MarketsScreen(props: {
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<MapScope>("region");
   const [group, setGroup] = useState<MarketGroup | null>(null);
+  const [browseAll, setBrowseAll] = useState(false);
   const pickGroup = (grp: MarketGroup | null) => { setGroup(grp); setScope(grp === "North America" ? "region" : "global"); };
   const allWindows = sellingWindows(props.status, props.nowSeconds);
   const windows = windowsForCity(allWindows, "des-moines");
@@ -76,27 +89,33 @@ export function MarketsScreen(props: {
   const CHART_H = 96;
   const per100 = props.indicativeQuote ? premiumPer100(props.indicativeQuote.premium, props.indicativeQuote.protectedAmount) : null;
   const station = stationLabel(props.status?.noaaEvidence.package?.stationId ?? "USW00014933");
-  const state = liveMarketLabel(windows);
   const nextDates = windows.map((window) => expiryLabel(window)).join(" · ");
+  const dsmChip = compactRowChip(cityChip(windows, citySalesClosed(props.status, "des-moines", props.nowSeconds)).tone === "live");
 
-  const results = searchMarkets(query, group || query.trim() ? "all" : scope === "region" ? "region" : "global", group);
-  const filtering = !!query.trim() || !!group;
-  const highlight = new Set(filtering ? results.map((r) => r.code) : []);
-  const focusCode = filtering && results[0] ? results[0].code : "NYC";
-  const visibleRows = query.trim() ? results.slice(0, 6) : group ? results : results.filter((m) => m.status !== "concept");
-  const moreConcepts = filtering ? Math.max(0, results.length - visibleRows.length) : results.filter((m) => m.status === "concept").length;
-  const mapScope: MapScope = filtering && results[0] && results[0].group !== "North America" ? "global" : scope;
-  const chipFor = (m: CatalogMarket) => {
-    const consumer = consumerCityByCode(m.code);
-    if (!consumer || consumer.status !== "live" || consumer.slug === "toronto") return null;
-    const cityWindows = windowsForCity(allWindows, consumer.slug);
-    return cityChip(cityWindows, citySalesClosed(props.status, consumer.slug, props.nowSeconds));
+  const featured = CONSUMER_LEAD_CODES.map((code) => MARKETS.find((market) => market.code === code)).filter((market): market is CatalogMarket => !!market);
+  const catalogResults = searchMarkets(query, group || query.trim() ? "all" : scope === "region" ? "region" : "global", group);
+  const needle = query.trim().toLowerCase();
+  const featuredResults = featured.filter((market) => {
+    if (!needle) return true;
+    const moment = consumerCityByCode(market.code)?.moment ?? "";
+    return [market.name, market.code, market.region, market.country, market.source, moment].some((field) => field.toLowerCase().includes(needle));
+  });
+  const visibleRows = browseAll ? catalogResults : featuredResults;
+  const filtering = browseAll && (!!query.trim() || !!group);
+  const highlight = new Set(filtering ? catalogResults.map((market) => market.code) : []);
+  const focusCode = filtering && catalogResults[0] ? catalogResults[0].code : "NYC";
+  const mapScope: MapScope = filtering && catalogResults[0] && catalogResults[0].group !== "North America" ? "global" : scope;
+  const rowChip = (market: CatalogMarket) => {
+    const slug = consumerCityByCode(market.code)?.slug;
+    const selling = !!slug && slug !== "toronto" && cityChip(windowsForCity(allWindows, slug), citySalesClosed(props.status, slug, props.nowSeconds)).tone === "live";
+    return compactRowChip(selling);
   };
-  const open = (m: CatalogMarket) => {
-    const chip = chipFor(m);
-    if (chip?.tone === "live") props.onProtect(m.code);
-    else props.onOpenMarket?.(m);
+  const open = (market: CatalogMarket) => {
+    if (rowChip(market).tone === "live") props.onProtect(market.code);
+    else props.onOpenMarket?.(market);
   };
+  const showFeatured = () => { setBrowseAll(false); setGroup(null); setQuery(""); };
+  const showAllZones = () => { setBrowseAll(true); setGroup(null); setScope("global"); setQuery(""); };
 
   return <>
     <StepBar step={1} />
@@ -110,7 +129,7 @@ export function MarketsScreen(props: {
       </View>
     </Enter>
 
-    <Enter index={1}>
+    {browseAll ? <Enter index={1}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: S.md, flexGrow: 0 }} contentContainerStyle={{ gap: S.sm, paddingRight: S.sm }} accessibilityRole="tablist">
         {([null, ...GROUP_ORDER] as Array<MarketGroup | null>).map((grp) => {
           const on = group === grp;
@@ -120,65 +139,40 @@ export function MarketsScreen(props: {
           </SpringPress>;
         })}
       </ScrollView>
-    </Enter>
+    </Enter> : null}
 
     <GlassCard style={{ paddingVertical: S.sm, paddingHorizontal: S.md }} delay={2 * motion.stagger}>
-      <Text style={s.sectionLabel}>Covered zones</Text>
+      <Text style={s.sectionLabel}>{browseAll ? "All zones" : "Cities"}</Text>
       {visibleRows.length ? visibleRows.map((m) => {
         const [a, b, c] = highlightParts(m.name, query);
-        const chip = chipFor(m);
-        const tone = chip?.tone ?? marketListChipTone(m.status, m.status === "live" ? state : undefined);
-        const col = tone === "live" ? C.mint : tone === "soon" ? C.amber : tone === "closed" ? C.muted : C.rain;
+        const chip = rowChip(m);
+        const col = chip.tone === "live" ? C.mint : C.amber;
         const moment = consumerCityByCode(m.code)?.moment;
         const on = highlight.has(m.code) && m.code === focusCode;
-        return <SpringPress key={m.code} accessibilityRole="button" accessibilityLabel={`${m.name}, ${m.status === "live" ? state : statusLabel(m.status)}`} onPress={() => open(m)} style={[s.resultRow, on && { backgroundColor: col + "14", borderColor: col + "55" }]}>
-          <View style={[s.dot, m.status === "concept" ? { borderWidth: 1.5, borderColor: col } : { backgroundColor: col }]} />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={s.resultName}>{a}<Text style={{ fontFamily: F.bodyBold, color: col }}>{b}</Text>{c}{m.code === "DSM" ? ", IA" : ""}</Text>
-            {moment ? <Text style={s.caption}>{moment}</Text> : null}
-            {filtering || m.status === "ready" || m.status === "soon" || m.status === "live" ? <Text style={s.caption}>{m.code} · {m.country} · {m.source}</Text> : null}
+        return <SpringPress key={m.code} accessibilityRole="button" accessibilityLabel={`${m.name}. ${moment ?? `${m.region}, ${m.source}`}. ${chip.label}`} onPress={() => open(m)} style={[s.resultRow, on && { backgroundColor: col + "14", borderColor: col + "55" }]}>
+          <View style={s.resultCopy}>
+            <Text style={s.resultName} android_hyphenationFrequency="none">{a}<Text style={{ fontFamily: F.bodyBold, color: col }}>{b}</Text>{c}</Text>
+            <Text style={s.resultSub} android_hyphenationFrequency="none">{moment ?? `${m.region} · ${m.source}`}</Text>
+            <CompactChip label={chip.label} tone={chip.tone} />
           </View>
-          <StatusTag status={m.status} label={chip?.label ?? (m.status === "live" ? state : undefined)} />
           <AppIcon name="chevron-right" color={C.quiet} size={16} />
         </SpringPress>;
       }) : <Text style={[s.caption, { padding: 10 }]}>No covered zone matches “{query}”.</Text>}
-      {moreConcepts ? <Pressable accessibilityRole="button" onPress={() => { if (filtering) { setQuery(""); return; } setScope(scope === "region" ? "global" : "region"); }} style={s.moreRow}>
-        <Text style={s.caption}>○  +{moreConcepts} {filtering ? "more matches" : `concept markets ${scope === "region" ? "in North America" : "worldwide"}`}</Text>
-        <Text style={s.link}>{scope === "region" ? "Global →" : "Region →"}</Text>
-      </Pressable> : null}
     </GlassCard>
 
-    <RadarMap scope={mapScope} onScope={setScope} focusCode={focusCode} highlight={highlight} onSelect={open} />
+    <Pressable accessibilityRole="button" accessibilityLabel={browseAll ? "Featured cities" : "Browse all zones"} onPress={browseAll ? showFeatured : showAllZones} style={s.browseLink}>
+      <Text style={s.link}>{browseAll ? "Featured cities" : "Browse all zones"}</Text>
+    </Pressable>
 
-    {scope === "global" && !filtering ? <GlobalGroups onPick={pickGroup} /> : null}
+    {browseAll ? <RadarMap scope={mapScope} onScope={setScope} focusCode={focusCode} highlight={highlight} onSelect={open} /> : null}
 
-    {CONSUMER_CITIES.map((city) => {
-      const catalog = MARKETS.find((market) => market.code === city.code);
-      const cityWindows = city.slug === "toronto" ? [] : windowsForCity(allWindows, city.slug);
-      const chip = city.slug === "toronto"
-        ? { label: "Opens soon", tone: "soon" as const }
-        : cityChip(cityWindows, citySalesClosed(props.status, city.slug, props.nowSeconds));
-      return <Pressable key={city.code} accessibilityRole="button" accessibilityLabel={`${city.moment} ${city.city}. ${chip.label}`} onPress={() => { if (catalog) open(catalog); }}>
-        <GlassCard accent={chip.tone === "live" ? C.mint : chip.tone === "closed" ? C.muted : C.amber}>
-          <View style={s.between}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.cardTitleSm}>{city.moment}</Text>
-              <Text style={s.cardSub}>{city.city}, {city.region} · {city.source}</Text>
-            </View>
-            <Pill label={chip.label} tone={chip.tone === "live" ? "live" : chip.tone === "closed" ? "neutral" : "warn"} />
-          </View>
-          <Text style={[s.caption, { marginTop: S.sm }]}>{city.payout}</Text>
-        </GlassCard>
-      </Pressable>;
-    })}
+    {browseAll && scope === "global" && !filtering ? <GlobalGroups onPick={pickGroup} /> : null}
 
     <GlassCard accent={live ? C.mint : undefined} delay={4 * motion.stagger}>
-      <View style={s.between}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.cardTitle}>Des Moines, IA</Text>
-          <Text style={s.cardSub}>NOAA · {station}</Text>
-        </View>
-        <Pill label={cityChip(windows, citySalesClosed(props.status, "des-moines", props.nowSeconds)).label} tone={live ? "live" : citySalesClosed(props.status, "des-moines", props.nowSeconds) ? "neutral" : "warn"} />
+      <View style={s.resultCopy}>
+        <Text style={s.cardTitle} android_hyphenationFrequency="none">Des Moines, IA</Text>
+        <Text style={s.cardSub}>NOAA · {station}</Text>
+        <CompactChip label={dsmChip.label} tone={dsmChip.tone} />
       </View>
       <View style={s.perilRow} accessibilityRole="text" accessibilityLabel="Rain live. Wind, snow, and heat coming soon.">
         <View style={[s.perilChip, s.perilChipLive]}>
@@ -508,9 +502,9 @@ function CoverageTicket(props: {
   const pillCol = pillTone === "live" ? C.mint : pillTone === "warn" ? C.amber : pillTone === "gold" ? C.payout : C.muted;
 
   return <GlassCard accent={pillCol} style={{ marginBottom: S.lg }}>
-    <View style={s.between}>
-      <Text style={s.cardTitleSm}>Coverage ticket</Text>
-      <View style={[s.statusPill, { borderColor: pillCol + "77", backgroundColor: pillCol + "1F", boxShadow: statusGlow(pillCol) }]} accessible accessibilityLabel={props.status.label}>
+    <View style={s.resultCopy}>
+      <Text style={s.cardTitleSm} android_hyphenationFrequency="none">Coverage ticket</Text>
+      <View style={[s.statusPill, s.compactChip, { borderColor: pillCol + "77", backgroundColor: pillCol + "1F", boxShadow: statusGlow(pillCol) }]} accessible accessibilityLabel={props.status.label}>
         <View style={[s.dot, { backgroundColor: pillCol }]} />
         <Text style={[s.pillText, { color: pillCol }]}>{props.status.label}</Text>
       </View>
@@ -639,15 +633,18 @@ export function WalletV2(props: {
     </GlassCard></Enter> : <>
       <GlassCard accent={C.rain} delay={0}>
         <View style={s.between}>
-          <View style={s.baseline}>
+          <View style={[s.baseline, { flex: 1, minWidth: 0 }]}>
             <View style={s.avatar}><AppIcon name="credit-card" color={C.rain} size={18} /></View>
-            <View style={{ marginLeft: S.md }}><Text style={s.cardTitleSm}>{props.walletName}</Text><Text style={s.caption} accessibilityLabel={`Address ${props.wallet}`}>{shortAddress(props.wallet)}</Text></View>
+            <View style={{ flex: 1, minWidth: 0, marginLeft: S.md }}>
+              <Text style={s.cardTitleSm} android_hyphenationFrequency="none">{props.walletName}</Text>
+              <Text style={s.caption} accessibilityLabel={`Address ${props.wallet}`}>{shortAddress(props.wallet)}</Text>
+            </View>
           </View>
           <Pill label="Connected" tone="live" />
         </View>
         <Text style={[s.sectionLabel, { marginTop: S.lg }]}>Available</Text>
         <View style={s.baseline}>
-          <Text style={s.hugeFigure}>{skytBase != null ? formatSkytFixed(skytBase, 2) : "—"}</Text>
+          <Text style={s.hugeFigure} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{skytBase != null ? formatSkytFixed(skytBase, 2) : "—"}</Text>
           <Text style={s.unit}>SKYT</Text>
         </View>
         {props.balances ? (
@@ -675,7 +672,7 @@ export function WalletV2(props: {
       <Text style={s.overline}>Positions</Text>
       <GlassCard delay={2 * motion.stagger}>
         {props.portfolio?.indexed && props.portfolio.protections.length ? props.portfolio.protections.map((p) => <View key={p.address} style={[s.between, s.positionRow]}>
-          <View style={{ flex: 1 }}><Text style={s.cardTitleSm}>{positionLabel(p.market, props.windows ?? [], props.marketAddress) ?? `Market ${shortAddress(p.market)}`}</Text><Text style={s.caption}>Paid {formatSkytFixed(p.premiumPaid, 2)} SKYT</Text></View>
+          <View style={{ flex: 1, minWidth: 0 }}><Text style={s.cardTitleSm} android_hyphenationFrequency="none">{positionLabel(p.market, props.windows ?? [], props.marketAddress) ?? `Market ${shortAddress(p.market)}`}</Text><Text style={s.caption}>Paid {formatSkytFixed(p.premiumPaid, 2)} SKYT</Text></View>
           <View style={{ alignItems: "flex-end" }}><Text style={[s.rowValue, { ...T.amountS, fontSize: 18, lineHeight: 24, color: C.payout }]}>{formatSkytFixed(p.protectedAmount, 0)}</Text><Text style={s.caption}>potential</Text></View>
         </View>) : props.portfolio?.indexed ? <View style={s.emptyCard}>
           <AppIcon name="umbrella" color={C.rain} size={22} />
@@ -715,8 +712,13 @@ const s = StyleSheet.create({
   regionChipTextOn: { color: C.actionText, fontFamily: F.bodySemi },
   regionChipN: { fontFamily: F.mono, fontSize: 12, color: C.quiet, fontVariant: TAB },
   regionChipNOn: { color: C.actionText },
-  resultRow: { minHeight: 60, flexDirection: "row", alignItems: "center", gap: S.md, paddingHorizontal: S.md, paddingVertical: S.sm, borderRadius: 16, borderWidth: 1, borderColor: "transparent", marginBottom: S.xs },
-  resultName: { ...T.bodyStrong, color: C.ink, fontFamily: F.bodyMedium },
+  resultRow: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: S.md, paddingHorizontal: S.sm, paddingVertical: S.sm, borderRadius: 16, borderWidth: 1, borderColor: "transparent", marginBottom: S.xs },
+  resultCopy: { flex: 1, minWidth: 0, alignItems: "flex-start", gap: 2 },
+  resultName: { ...T.bodyStrong, color: C.ink, fontFamily: F.bodyMedium, alignSelf: "stretch" },
+  resultSub: { ...T.caption, color: C.muted, alignSelf: "stretch" },
+  compactChip: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 14, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4 },
+  compactChipText: { fontFamily: F.bodyBold, fontSize: 12, lineHeight: 16 },
+  browseLink: { minHeight: MIN_TOUCH, justifyContent: "center", alignSelf: "flex-start", marginTop: -S.sm, marginBottom: S.lg },
   moreRow: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: S.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
   triggerBig: { ...T.amountL, color: C.payout, textShadowColor: C.payout + "73", textShadowRadius: 14 },
   fromFigure: { ...T.amountM, fontSize: 30, lineHeight: 38, color: C.ink },
@@ -775,8 +777,8 @@ const s = StyleSheet.create({
   split: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: C.border },
   splitCell: { flex: 1, padding: S.lg },
   splitFigure: { ...T.amountM, fontSize: 34, lineHeight: 42, color: C.ink, marginTop: S.xs },
-  row: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
-  rowLabel: { ...T.body, color: C.muted },
+  row: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: S.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
+  rowLabel: { ...T.body, color: C.muted, flexShrink: 0 },
   rowValue: { ...T.bodyStrong, color: C.ink, fontVariant: TAB },
   notice: { backgroundColor: C.redSoft, borderColor: C.coral, borderWidth: 1, borderRadius: glass.radius - 10, padding: S.lg, marginBottom: S.md },
   noticeWarn: { backgroundColor: C.amberSoft, borderColor: C.amber + "88" },
@@ -788,7 +790,7 @@ const s = StyleSheet.create({
   sticky: { paddingHorizontal: S.lg + 2, paddingTop: S.md, paddingBottom: S.md, backgroundColor: C.canvas + "EB", borderTopWidth: 1, borderTopColor: glass.border },
   netPill: { minHeight: 32, flexDirection: "row", alignItems: "center", gap: S.sm, borderWidth: 1, borderColor: C.border, borderRadius: 16, paddingHorizontal: S.md, backgroundColor: C.surface },
   netPillText: { ...T.label, fontSize: 12, lineHeight: 16, color: C.ink },
-  pill: { minHeight: 28, flexDirection: "row", alignItems: "center", gap: S.sm - 2, borderRadius: 14, paddingHorizontal: S.md - 2 },
+  pill: { minHeight: 28, flexShrink: 0, flexDirection: "row", alignItems: "center", gap: S.sm - 2, borderRadius: 14, paddingHorizontal: S.md - 2 },
   pillText: { ...T.label, fontSize: 12, lineHeight: 16 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.rainSoft, alignItems: "center", justifyContent: "center" },

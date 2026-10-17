@@ -20,7 +20,7 @@ export function ScreenTop(props: { onBack?: () => void; backIcon?: "chevron-left
       <DevnetPill />
     </View>
     {props.eyebrow ? <Text style={j.eyebrow}>{props.eyebrow}</Text> : null}
-    {props.title ? <Text accessibilityRole="header" style={j.title}>{props.title}</Text> : null}
+    {props.title ? <Text accessibilityRole="header" style={j.title} android_hyphenationFrequency="none">{props.title}</Text> : null}
     {props.lead ? <Text style={j.lead}>{props.lead}</Text> : null}
   </View>;
 }
@@ -73,7 +73,7 @@ export function LivePill({ label, tone = "live" }: { label: string; tone?: "live
 export function CoverageHero(props: { live: boolean; stateLabel: string; windowLabel: string | null; observedMm: number | null; triggerMm: number | null; triggerSymbol: string; source: string; updated?: string | null }) {
   const toGo = props.observedMm != null && props.triggerMm != null ? Math.max(0, props.triggerMm - props.observedMm) : null;
   return <GlassCard accent={props.live ? C.mint : undefined}>
-    <View style={j.rowCenter}><LivePill label={props.stateLabel} tone={props.stateLabel === "Sales closed" ? "closed" : props.live ? "live" : "warn"} />{props.windowLabel ? <Text style={j.caption}>  Window {props.windowLabel}</Text> : null}</View>
+    <View style={j.rowCenter}><LivePill label={props.stateLabel} tone={props.stateLabel === "Sales closed" ? "closed" : props.live ? "live" : "warn"} />{props.windowLabel ? <Text style={[j.caption, { flex: 1, minWidth: 0 }]} android_hyphenationFrequency="none">Window {props.windowLabel}</Text> : null}</View>
     <View style={{ flexDirection: "row", gap: S.lg + 2, marginTop: S.lg, alignItems: "flex-end" }}>
       <RainGauge observedMm={props.observedMm} triggerMm={props.triggerMm} height={170} />
       <View style={{ flex: 1 }}>
@@ -98,10 +98,10 @@ export function FactRows({ rows, mono = false }: { rows: Array<{ k: string; v: s
   return <GlassCard style={{ paddingVertical: S.xs }}>
     {rows.map((r, i) => {
       const col = r.tone === "gold" ? C.payout : r.tone === "mint" ? C.mint : r.tone === "rain" ? C.rain : C.ink;
-      const V = <Text style={[mono ? j.factVMono : j.factV, { color: col }]}>{r.v}</Text>;
+      const V = <Text style={[mono ? j.factVMono : j.factV, { color: col, textAlign: "right" }]} android_hyphenationFrequency="none">{r.v}</Text>;
       return <View key={r.k} style={[j.fact, i > 0 && j.factBorder]}>
         <Text style={mono ? j.factKMono : j.factK}>{r.k}</Text>
-        {r.onPress ? <Pressable accessibilityRole="link" onPress={r.onPress} hitSlop={8}>{V}</Pressable> : V}
+        <View style={j.factValue}>{r.onPress ? <Pressable accessibilityRole="link" onPress={r.onPress} hitSlop={8}>{V}</Pressable> : V}</View>
       </View>;
     })}
   </GlassCard>;
@@ -202,9 +202,10 @@ const j = StyleSheet.create({
   monoSm: { color: C.muted, fontFamily: F.mono, fontSize: 13 },
   caption: { ...T.caption, color: C.quiet },
   stat: { ...T.amountM, fontSize: 36, lineHeight: 44, color: C.ink },
-  fact: { minHeight: MIN_TOUCH, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  fact: { minHeight: MIN_TOUCH, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: S.md, paddingVertical: S.sm },
   factBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: glass.border },
-  factK: { ...T.body, color: C.muted },
+  factValue: { flex: 1, minWidth: 0, alignItems: "flex-end" },
+  factK: { ...T.body, color: C.muted, flexShrink: 0, paddingTop: 2 },
   factV: { ...T.bodyStrong },
   factKMono: { color: C.quiet, fontFamily: F.mono, fontSize: 13, letterSpacing: 0.8, textTransform: "uppercase" },
   factVMono: { fontFamily: F.mono, fontSize: 14, fontVariant: TAB },
