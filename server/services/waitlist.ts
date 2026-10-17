@@ -5,6 +5,7 @@ import { waitlistSignups } from "../../shared/schema.js";
 import type { Db } from "../db";
 import type { ApiRequest, ApiResponse } from "./vercel-api.js";
 import { applyCorsHeaders, isCorsPreflight } from "./cors.js";
+import { scheduleWaitlistTelegram, type WaitlistSignupNotice } from "./waitlist-telegram.js";
 
 const optionalAttr = z.string().trim().max(512).optional().nullable().transform((v) => (v && v.length > 0 ? v : null));
 
@@ -215,6 +216,8 @@ export function createWaitlistHandler(dependencies: {
   getDb: () => Db | null;
   rateLimit?: (key: string) => boolean;
   ipHashSalt?: string;
+  /** Defaults to a fire-and-forget Telegram notice. Must not block or throw. */
+  notifyNewSignup?: (notice: WaitlistSignupNotice) => void;
 }) {
   return async function waitlistHandler(
     req: Pick<ApiRequest, "method" | "body" | "headers"> & { ip?: string },
@@ -265,6 +268,22 @@ export function createWaitlistHandler(dependencies: {
         ipHash,
         userAgent,
       });
+      if (result.status === "subscribed") {
+        try {
+          const notify = dependencies.notifyNewSignup ?? scheduleWaitlistTelegram;
+          notify({
+            email: validated.emailNormalized,
+            source: validated.source,
+            referrer: validated.referrer,
+            utmSource: validated.utmSource,
+            utmMedium: validated.utmMedium,
+            utmCampaign: validated.utmCampaign,
+            count: () => countWaitlistSignups(db),
+          });
+        } catch {
+          // The row is saved. A notifier bug must not fail the request.
+        }
+      }
       return sendJson(res, 200, result);
     } catch {
       return sendJson(res, 503, {

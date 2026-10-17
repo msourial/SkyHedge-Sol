@@ -10,6 +10,13 @@ import {
   validateWaitlistBody,
   waitlistRowsToCsv,
 } from "./waitlist";
+import {
+  deliverWaitlistTelegram,
+  formatWaitlistNotifySource,
+  maskWaitlistEmail,
+  scheduleWaitlistTelegram,
+  type WaitlistSignupNotice,
+} from "./waitlist-telegram";
 import type { ApiResponse } from "./vercel-api.js";
 
 function mockRes() {
@@ -252,6 +259,91 @@ describe("waitlist handlers", () => {
     expect(allowed.headers.get("content-type")).to.match(/text\/csv/);
   });
 
+  it("notifies only for a new signup and does not wait on it", async () => {
+    let calls = 0;
+    let finished = false;
+    const handler = createWaitlistHandler({
+      getDb: () =>
+        ({
+          select: () => ({
+            from: () => ({
+              where: () => ({
+                limit: async () => [],
+              }),
+            }),
+          }),
+          insert: () => ({
+            values: async () => {},
+          }),
+        }) as never,
+      notifyNewSignup: () => {
+        calls += 1;
+        return new Promise<void>((resolve) => {
+          setTimeout(() => {
+            finished = true;
+            resolve();
+          }, 40);
+        });
+      },
+    });
+    const out = mockRes();
+    await handler(
+      {
+        method: "POST",
+        body: { email: "jane@gmail.com", utmSource: "twitter", referrer: "https://x.com/skyhedge" },
+        headers: {},
+        ip: "1.1.1.1",
+      },
+      out.res,
+    );
+    expect(out.status).to.equal(200);
+    expect(out.body).to.deep.equal({ ok: true, status: "subscribed" });
+    expect(calls).to.equal(1);
+    expect(finished).to.equal(false);
+  });
+
+  it("does not notify duplicates or honeypots", async () => {
+    let calls = 0;
+    const duplicate = createWaitlistHandler({
+      getDb: () =>
+        ({
+          select: () => ({
+            from: () => ({
+              where: () => ({
+                limit: async () => [{ id: "existing" }],
+              }),
+            }),
+          }),
+        }) as never,
+      notifyNewSignup: () => {
+        calls += 1;
+      },
+    });
+    const dupOut = mockRes();
+    await duplicate({ method: "POST", body: { email: "dup@example.com" }, headers: {}, ip: "1.1.1.1" }, dupOut.res);
+    expect(dupOut.body).to.deep.equal({ ok: true, status: "already_subscribed" });
+
+    const honeypot = createWaitlistHandler({
+      getDb: () =>
+        ({
+          insert: () => ({
+            values: async () => {
+              throw new Error("should not insert");
+            },
+          }),
+        }) as never,
+      notifyNewSignup: () => {
+        calls += 1;
+      },
+    });
+    const hpOut = mockRes();
+    await honeypot(
+      { method: "POST", body: { email: "bot@example.com", company: "Spam Co" }, headers: {}, ip: "1.1.1.1" },
+      hpOut.res,
+    );
+    expect(calls).to.equal(0);
+  });
+
   it("requires admin token for count", async () => {
     const handler = createWaitlistCountHandler({
       getDb: () =>
@@ -270,5 +362,134 @@ describe("waitlist handlers", () => {
     await handler({ method: "GET", headers: { "x-admin-token": "admin-token-16chars" } }, allowed.res);
     expect(allowed.status).to.equal(200);
     expect(allowed.body).to.deep.equal({ count: 3 });
+  });
+});
+
+function notice(overrides: Partial<WaitlistSignupNotice> = {}): WaitlistSignupNotice {
+  return {
+    email: "jane@gmail.com",
+    source: "landing",
+    referrer: null,
+    utmSource: null,
+    utmMedium: null,
+    utmCampaign: null,
+    count: async () => 4,
+    ...overrides,
+  };
+}
+
+describe("waitlist telegram", () => {
+  const previousToken = process.env.TELEGRAM_BOT_TOKEN;
+  const previousChat = process.env.TELEGRAM_CHAT_ID;
+
+  afterEach(() => {
+    if (previousToken === undefined) delete process.env.TELEGRAM_BOT_TOKEN;
+    else process.env.TELEGRAM_BOT_TOKEN = previousToken;
+    if (previousChat === undefined) delete process.env.TELEGRAM_CHAT_ID;
+    else process.env.TELEGRAM_CHAT_ID = previousChat;
+  });
+
+  it("masks the local part and keeps the domain", () => {
+    expect(maskWaitlistEmail("Jane.Doe@Gmail.com")).to.equal("j***@gmail.com");
+    expect(maskWaitlistEmail("a@b.co")).to.equal("a***@b.co");
+  });
+
+  it("formats utm, then referrer, then source", () => {
+    expect(
+      formatWaitlistNotifySource(
+        notice({ utmSource: "twitter", utmMedium: "social", utmCampaign: "seeker", referrer: "https://x.com/skyhedge" }),
+      ),
+    ).to.equal("twitter/social/seeker / https://x.com/skyhedge");
+    expect(formatWaitlistNotifySource(notice({ referrer: "https://x.com/skyhedge" }))).to.equal("https://x.com/skyhedge");
+    expect(formatWaitlistNotifySource(notice())).to.equal("landing");
+  });
+
+  it("skips silently when env vars are missing", async () => {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_CHAT_ID;
+    let counted = false;
+    let fetched = false;
+    await deliverWaitlistTelegram(
+      notice({
+        count: async () => {
+          counted = true;
+          return 1;
+        },
+      }),
+      {
+        fetchImpl: async () => {
+          fetched = true;
+          return new Response(null, { status: 200 });
+        },
+      },
+    );
+    expect(counted).to.equal(false);
+    expect(fetched).to.equal(false);
+  });
+
+  it("sends a masked notice and ignores Telegram failures", async () => {
+    const bodies: string[] = [];
+    await deliverWaitlistTelegram(notice({ utmSource: "twitter" }), {
+      token: "123456:TEST",
+      chatId: "99",
+      fetchImpl: async (_url, init) => {
+        bodies.push(String(init?.body));
+        return new Response(JSON.stringify({ ok: true, result: { message_id: 7 } }), { status: 200 });
+      },
+    });
+    expect(bodies).to.have.length(1);
+    expect(bodies[0]).to.include("New SkyHedge waitlist signup: j***@gmail.com, total: 4, source: twitter");
+    expect(bodies[0]).to.not.include("jane@gmail.com");
+
+    await deliverWaitlistTelegram(notice(), {
+      token: "123456:TEST",
+      chatId: "99",
+      fetchImpl: async () => {
+        throw new Error("telegram down");
+      },
+    });
+  });
+
+  it("aborts Telegram after the timeout", async () => {
+    const started = Date.now();
+    await deliverWaitlistTelegram(notice(), {
+      token: "123456:TEST",
+      chatId: "99",
+      timeoutMs: 40,
+      fetchImpl: (_url, init) =>
+        new Promise((_resolve, reject) => {
+          const abort = () => reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+          if (init?.signal?.aborted) abort();
+          else init?.signal?.addEventListener("abort", abort, { once: true });
+        }),
+    });
+    expect(Date.now() - started).to.be.lessThan(1000);
+  });
+
+  it("schedules delivery without waiting for the count", async () => {
+    process.env.TELEGRAM_BOT_TOKEN = "123456:TEST";
+    process.env.TELEGRAM_CHAT_ID = "99";
+    let release: (value: number) => void = () => {};
+    const gate = new Promise<number>((resolve) => {
+      release = resolve;
+    });
+    let fetched = false;
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      fetched = true;
+      return new Response(JSON.stringify({ ok: true, result: { message_id: 1 } }), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const started = Date.now();
+      scheduleWaitlistTelegram(notice({ count: () => gate }));
+      expect(Date.now() - started).to.be.lessThan(50);
+      expect(fetched).to.equal(false);
+      release(8);
+      await gate;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(fetched).to.equal(true);
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 });

@@ -73,6 +73,7 @@
     "@solana/web3.js": "^1.98.4",
     "@tanstack/react-query": "^5.60.5",
     "@types/bn.js": "^5.1.5",
+    "@vercel/functions": "^3.10.1",
     "bn.js": "^5.2.1",
     "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",

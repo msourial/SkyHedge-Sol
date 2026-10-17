@@ -8,6 +8,7 @@ How skyhedge.app stores waitlist signups and how you export the list.
 2. The Vercel function (`api/waitlist/index.ts`) validates with zod, rejects filled honeypots with a fake success (no DB write), rate-limits by **hashed** IP (`IP_HASH_SALT` + IP → SHA-256), and upserts into Neon Postgres via Drizzle.
 3. Duplicate emails return the same success JSON as new signups (`{ ok: true, status: "subscribed" }`) so the UI never errors and the API does not help email enumeration.
 4. Rows live in `waitlist_signups` (see `shared/schema.ts` and migrations `0002` / `0003`).
+5. After a new row is saved, the function fires a Telegram message (`New SkyHedge waitlist signup: j***@gmail.com, total: N, source: …`) and returns without waiting. The email is masked. Duplicates, honeypots, and a missing `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` send nothing. Telegram errors and the 3s timeout never change the signup response.
 
 CORS allowlist: `https://skyhedge.app`, `https://www.skyhedge.app`, `https://skyhedge.vercel.app`.
 
@@ -34,6 +35,8 @@ Add for **Production** (and Preview if you test there):
 | `DATABASE_URL` | Signups | Neon Postgres connection string |
 | `ADMIN_TOKEN` | Export / count | ≥16 char random secret |
 | `IP_HASH_SALT` | Rate limit + stored hash | Random salt; changing it resets rate-limit buckets and changes new `ip_hash` values |
+| `TELEGRAM_BOT_TOKEN` | Signup notices | Bot API token. If either Telegram var is missing, notices are skipped |
+| `TELEGRAM_CHAT_ID` | Signup notices | Chat that receives new signups. Duplicates are not sent |
 
 Never commit real values. Generate locally, e.g.:
 
