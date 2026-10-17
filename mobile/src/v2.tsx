@@ -321,7 +321,7 @@ export function ProtectTicket(props: {
   const payoutLabel = props.amountBase ? `${formatSkytFixed(props.amountBase, 0)} SKYT` : "—";
 
   return <>
-    <ScreenTop onBack={props.onBackToMarkets} eyebrow={`NOAA · ${station}`} title="Des Moines, IA" />
+    <ScreenTop onBack={props.onBackToMarkets} eyebrow={`NOAA · ${station}`} title={`${place}${market?.city === "new-york" ? ", NY" : market?.city === "dallas" ? ", TX" : ", IA"}`} />
     <Enter index={0}><PerilSelector value="rain" available={["rain"]} /></Enter>
     <View style={s.chipRow} accessibilityRole="tablist">
       {(["weekly", "monthly"] as const).map((choice) => {
