@@ -1,3 +1,5 @@
+import { CONSUMER_CITIES } from "../../../shared/consumer-cities";
+
 type Screen = "markets" | "protect" | "wallet";
 
 /** Marketing screenshots: status bar cropped; Devnet pill never rendered (EXPO_PUBLIC_MARKETING_SHOTS capture). */
@@ -50,6 +52,50 @@ export function PhoneMockup({
             fetchPriority={screen === "protect" ? "high" : "auto"}
             draggable={false}
           />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Hero phone. New York leads. Statuses match the live ladder: only Des Moines is open. */
+export function PhonePlans({
+  glow = false,
+  parallax = false,
+  float = false,
+}: {
+  glow?: boolean;
+  parallax?: boolean;
+  float?: boolean;
+}) {
+  return (
+    <div
+      className={["sky-phone", glow ? "sky-phone--glow" : "", parallax ? "sky-phone--parallax" : "", float ? "sky-phone--float" : ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <div className="sky-phone__bezel">
+        <div className="sky-phone__speaker" aria-hidden="true" />
+        <div className="sky-phone__screen">
+          <div className="sky-phone__plans">
+            <p className="sky-phone__kicker">Markets</p>
+            <p className="sky-phone__headline">Where are your plans?</p>
+            <ul>
+              {CONSUMER_CITIES.map((city) => {
+                const open = city.code === "DSM";
+                const label = open ? "Weekly · Monthly open" : city.status === "soon" ? "Opens soon" : "Opening shortly";
+                return (
+                  <li key={city.code}>
+                    <p>{city.moment}</p>
+                    <span>
+                      {city.city}
+                      <em className={open ? "is-open" : "is-soon"}>{label}</em>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </div>
       </div>
     </div>

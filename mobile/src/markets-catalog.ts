@@ -1,15 +1,14 @@
 /**
  * SkyHedge market catalogue for the Seeker app.
- * - Des Moines (DSM) is the only Live market and the only one with pricing or on-chain actions.
- * - Toronto Pearson (YYZ) is "Opens soon".
- * - Everything else is a non-tradable Concept pin: real airport coordinates + the national met service
- *   that would supply the data. No prices, triggers or rainfall figures exist for concepts and none are shown.
- * - "Ready to open" (Chicago O'Hare, New York Central Park, Miami): the NOAA GHCND station is already in the
- *   settlement pipeline (shared/cities.ts, methodology-v1.json) but no Devnet market account exists yet, so
- *   nothing is priced or tradable until the admin signs create_market and the API serves the market.
+ * - New York (Central Park), Dallas (DFW), and Des Moines are the live rainfall cities.
+ *   New York is first. Des Moines stays live. Dallas uses NOAA GHCND:USW00003927.
+ * - Toronto Pearson (YYZ) is "Opens soon" until Environment Canada data is in.
+ * - Chicago O'Hare and Miami are "Ready to open": the NOAA station is pinned, and no Devnet market exists yet.
+ * - Everything else is a non-tradable Concept pin. No prices, triggers, or rainfall figures are shown.
  * Rows live in markets-data.ts, generated (with map positions) by tools/gen_geo.py.
  */
 import { MARKET_DATA } from "./markets-data.ts";
+import { CONSUMER_LEAD_CODES } from "../../shared/consumer-cities.ts";
 export type MarketStatus = "live" | "ready" | "soon" | "concept";
 export type MarketGroup = "North America" | "Latin America" | "Africa" | "Middle East" | "South Asia" | "Southeast Asia" | "East Asia" | "Europe" | "Oceania";
 export type CatalogMarket = {
@@ -47,11 +46,15 @@ export const statusTone = (s: MarketStatus): "mint" | "rain" | "amber" => (s ===
 export function searchMarkets(query: string, scope: "region" | "global" | "all" = "all", group: MarketGroup | null = null): CatalogMarket[] {
   const q = norm(query);
   const rank = { live: 0, ready: 1, soon: 2, concept: 3 } as const;
+  const lead = (code: string) => {
+    const index = CONSUMER_LEAD_CODES.indexOf(code as (typeof CONSUMER_LEAD_CODES)[number]);
+    return index === -1 ? CONSUMER_LEAD_CODES.length : index;
+  };
   return MARKETS
     .filter((m) => scope === "all" || (scope === "region" ? m.group === "North America" : true))
     .filter((m) => !group || m.group === group)
     .filter((m) => !q || [m.name, m.code, m.region, m.source, m.country].some((f) => norm(f).includes(q)))
-    .sort((a, b) => rank[a.status] - rank[b.status]);
+    .sort((a, b) => rank[a.status] - rank[b.status] || lead(a.code) - lead(b.code));
 }
 
 export function groupCounts(): Array<{ group: MarketGroup; count: number; sources: string[] }> {

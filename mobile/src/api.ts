@@ -61,7 +61,7 @@ export type DevnetStatus = {
     targetCityHash: string;
   };
   cityWindows?: Array<{
-    city: "des-moines";
+    city: "new-york" | "dallas" | "des-moines";
     tenor: "weekly" | "monthly";
     status: "ready";
     address: string;

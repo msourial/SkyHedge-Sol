@@ -13,7 +13,8 @@ import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } f
 import { dealSentence, payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
 import { formatWeekLabel, marketListChipTone } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
-import { basisLine, expiryLabel, liveMarketLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, type SellingWindow, type Tenor } from "./windows";
+import { basisLine, cityChip, citySalesClosed, expiryLabel, liveMarketLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
+import { CONSUMER_CITIES, consumerCityByCode } from "../../shared/consumer-cities.ts";
 import { MARKETING_SHOTS } from "./marketing";
 import { balanceCheck, coverageOptions, formatSkytFixed, premiumFeeLine, premiumPer100, returnMultiple, payState, reviewReason, shortAddress, shortUtcDate, trimMm, triggerSentence, utcDateTime, type CoverageOption } from "./ticket";
 
@@ -60,7 +61,8 @@ export function MarketsScreen(props: {
   const [scope, setScope] = useState<MapScope>("region");
   const [group, setGroup] = useState<MarketGroup | null>(null);
   const pickGroup = (grp: MarketGroup | null) => { setGroup(grp); setScope(grp === "North America" ? "region" : "global"); };
-  const windows = sellingWindows(props.status, props.nowSeconds);
+  const allWindows = sellingWindows(props.status, props.nowSeconds);
+  const windows = windowsForCity(allWindows, "des-moines");
   const market = windows[0] ?? null;
   const city = props.city?.slug === "des-moines" ? props.city : null;
   const live = windows.length > 0;
@@ -80,11 +82,21 @@ export function MarketsScreen(props: {
   const results = searchMarkets(query, group || query.trim() ? "all" : scope === "region" ? "region" : "global", group);
   const filtering = !!query.trim() || !!group;
   const highlight = new Set(filtering ? results.map((r) => r.code) : []);
-  const focusCode = filtering && results[0] ? results[0].code : "DSM";
+  const focusCode = filtering && results[0] ? results[0].code : "NYC";
   const visibleRows = query.trim() ? results.slice(0, 6) : group ? results : results.filter((m) => m.status !== "concept");
   const moreConcepts = filtering ? Math.max(0, results.length - visibleRows.length) : results.filter((m) => m.status === "concept").length;
   const mapScope: MapScope = filtering && results[0] && results[0].group !== "North America" ? "global" : scope;
-  const open = (m: CatalogMarket) => { if (m.status === "live") props.onProtect(); else props.onOpenMarket?.(m); };
+  const chipFor = (m: CatalogMarket) => {
+    const consumer = consumerCityByCode(m.code);
+    if (!consumer || consumer.status !== "live" || consumer.slug === "toronto") return null;
+    const cityWindows = windowsForCity(allWindows, consumer.slug);
+    return cityChip(cityWindows, citySalesClosed(props.status, consumer.slug, props.nowSeconds));
+  };
+  const open = (m: CatalogMarket) => {
+    const chip = chipFor(m);
+    if (m.code === "DSM" && chip?.tone === "live") props.onProtect();
+    else props.onOpenMarket?.(m);
+  };
 
   return <>
     <StepBar step={1} />
@@ -114,16 +126,19 @@ export function MarketsScreen(props: {
       <Text style={s.sectionLabel}>Covered zones</Text>
       {visibleRows.length ? visibleRows.map((m) => {
         const [a, b, c] = highlightParts(m.name, query);
-        const tone = marketListChipTone(m.status, m.status === "live" ? state : undefined);
+        const chip = chipFor(m);
+        const tone = chip?.tone ?? marketListChipTone(m.status, m.status === "live" ? state : undefined);
         const col = tone === "live" ? C.mint : tone === "soon" ? C.amber : tone === "closed" ? C.muted : C.rain;
+        const moment = consumerCityByCode(m.code)?.moment;
         const on = highlight.has(m.code) && m.code === focusCode;
         return <SpringPress key={m.code} accessibilityRole="button" accessibilityLabel={`${m.name}, ${m.status === "live" ? state : statusLabel(m.status)}`} onPress={() => open(m)} style={[s.resultRow, on && { backgroundColor: col + "14", borderColor: col + "55" }]}>
           <View style={[s.dot, m.status === "concept" ? { borderWidth: 1.5, borderColor: col } : { backgroundColor: col }]} />
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={s.resultName}>{a}<Text style={{ fontFamily: F.bodyBold, color: col }}>{b}</Text>{c}{m.code === "DSM" ? ", IA" : ""}</Text>
+            {moment ? <Text style={s.caption}>{moment}</Text> : null}
             {filtering || m.status === "ready" || m.status === "soon" || m.status === "live" ? <Text style={s.caption}>{m.code} · {m.country} · {m.source}</Text> : null}
           </View>
-          <StatusTag status={m.status} label={m.status === "live" ? state : undefined} />
+          <StatusTag status={m.status} label={chip?.label ?? (m.status === "live" ? state : undefined)} />
           <AppIcon name="chevron-right" color={C.quiet} size={16} />
         </SpringPress>;
       }) : <Text style={[s.caption, { padding: 10 }]}>No covered zone matches “{query}”.</Text>}
@@ -137,13 +152,33 @@ export function MarketsScreen(props: {
 
     {scope === "global" && !filtering ? <GlobalGroups onPick={pickGroup} /> : null}
 
+    {CONSUMER_CITIES.map((city) => {
+      const catalog = MARKETS.find((market) => market.code === city.code);
+      const cityWindows = city.slug === "toronto" ? [] : windowsForCity(allWindows, city.slug);
+      const chip = city.slug === "toronto"
+        ? { label: "Opens soon", tone: "soon" as const }
+        : cityChip(cityWindows, citySalesClosed(props.status, city.slug, props.nowSeconds));
+      return <Pressable key={city.code} accessibilityRole="button" accessibilityLabel={`${city.moment} ${city.city}. ${chip.label}`} onPress={() => { if (catalog) open(catalog); }}>
+        <GlassCard accent={chip.tone === "live" ? C.mint : chip.tone === "closed" ? C.muted : C.amber}>
+          <View style={s.between}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.cardTitleSm}>{city.moment}</Text>
+              <Text style={s.cardSub}>{city.city}, {city.region} · {city.source}</Text>
+            </View>
+            <Pill label={chip.label} tone={chip.tone === "live" ? "live" : chip.tone === "closed" ? "neutral" : "warn"} />
+          </View>
+          <Text style={[s.caption, { marginTop: S.sm }]}>{city.payout}</Text>
+        </GlassCard>
+      </Pressable>;
+    })}
+
     <GlassCard accent={live ? C.mint : undefined} delay={4 * motion.stagger}>
       <View style={s.between}>
         <View style={{ flex: 1 }}>
           <Text style={s.cardTitle}>Des Moines, IA</Text>
           <Text style={s.cardSub}>NOAA · {station}</Text>
         </View>
-        <Pill label={state} tone={live ? "live" : "warn"} />
+        <Pill label={cityChip(windows, citySalesClosed(props.status, "des-moines", props.nowSeconds)).label} tone={live ? "live" : citySalesClosed(props.status, "des-moines", props.nowSeconds) ? "neutral" : "warn"} />
       </View>
       <View style={s.perilRow} accessibilityRole="text" accessibilityLabel="Rain live. Wind, snow, and heat coming soon.">
         <View style={[s.perilChip, s.perilChipLive]}>
@@ -185,19 +220,10 @@ export function MarketsScreen(props: {
         <View style={s.between}><Text style={s.caption}>{history.length}-week rainfall · NOAA · mm</Text>{thresholdMm != null ? <Text style={[s.caption, { color: C.payout }]}>– – trigger</Text> : null}</View>
       </View> : <Text style={[s.caption, { marginTop: S.md }]}>Weekly history isn’t available yet — nothing is estimated.</Text>}
 
-      {live ? <Text style={[s.caption, { marginTop: S.md }]}>{nextDates}</Text> : <Text style={[s.caption, { marginTop: S.md }]}>{NEXT_WINDOW_COPY}</Text>}
+      {live ? <Text style={[s.caption, { marginTop: S.md }]}>{nextDates}</Text> : <Text style={[s.caption, { marginTop: S.md }]}>{citySalesClosed(props.status, "des-moines", props.nowSeconds) ? "Sales closed" : NEXT_WINDOW_COPY}</Text>}
       <View style={{ marginTop: S.lg }}><ActionButton label={live ? "View coverage" : "See markets"} icon="arrow-right" onPress={props.onProtect} /></View>
     </GlassCard>
 
-    <Pressable accessibilityRole="button" accessibilityLabel="Toronto Pearson, Ontario. Environment Canada rain data. Opens soon." onPress={() => { const t = MARKETS.find((m) => m.code === "YYZ"); if (t) props.onOpenMarket?.(t); }}>
-      <GlassCard accent={C.amber} delay={5 * motion.stagger}>
-        <View style={s.between}>
-          <View style={{ flex: 1 }}><Text style={s.cardTitleSm}>Toronto Pearson, ON</Text><Text style={s.cardSub}>Environment Canada · YYZ station</Text></View>
-          <StatusTag status="soon" />
-        </View>
-        <View style={[s.between, { marginTop: S.md }]}><Text style={s.caption}>Payout: automatic when triggered</Text><Text style={s.link}>View market →</Text></View>
-      </GlassCard>
-    </Pressable>
     {props.guide}
     <Disclosure>Devnet test token. Parametric weather protection. Concept markets are previews: no prices, triggers or rainfall figures exist for them. Observed station data only — missing values are never estimated.</Disclosure>
   </>;
@@ -277,7 +303,8 @@ export function ProtectTicket(props: {
   const thresholdMm = market?.thresholdMmX100 != null && /^\d+$/.test(String(market.thresholdMmX100)) ? trimMm(Number(market.thresholdMmX100) / 100) : null;
   const stage = payoutStage(props.claimReadiness);
   const deal = dealSentence({ place: "Des Moines", premiumBase: q?.premium, payoutBase: q ? props.amountBase : null, thresholdMmX100: market?.thresholdMmX100, operator: market?.operator, start: market?.observationStart, end: market?.observationEnd });
-  const salesClosed = false;
+  const pilotClose = props.status?.desMoinesMarket.salesCloseAt;
+  const salesClosed = !live && typeof pilotClose === "number" && pilotClose <= props.nowSeconds;
   const pay = payState({ premiumBase: q?.premium, busy: props.quoteBusy, error: props.quoteError, live, salesClosed, walletConnected: props.walletConnected });
   const selectedOption = options.find((o) => o.id === props.coverageId);
   const maxOption = options.find((o) => o.id === "max");
@@ -348,7 +375,7 @@ export function ProtectTicket(props: {
               <Text style={s.smallLabel}>You pay</Text>
               {pay.kind === "priced" ? <Text style={s.splitFigure}>{pay.label}</Text>
                 : pay.kind === "pricing" ? <View style={s.skeletonWrap} accessibilityLabel="Pricing"><View style={s.skeleton} /><ActivityIndicator size="small" color={C.rain} /></View>
-                : <Text style={[s.payState, pay.kind === "error" && { color: C.coral }]}>{pay.label}</Text>}
+                : <Text style={[s.payState, pay.label === "Sales closed" && { color: C.muted }, pay.kind === "error" && { color: C.coral }]}>{pay.label}</Text>}
               <Text style={s.caption}>{pay.kind === "priced" ? "SKYT incl. 1% fee" : pay.kind === "pricing" ? "Getting a live NOAA price…" : pay.kind === "error" ? "Tap “Get a new price” below" : "SKYT"}</Text>
             </View>
             <View style={[s.splitCell, { backgroundColor: C.payoutSoft }]} accessible accessibilityLabel={`You get ${props.amountBase ? formatSkytFixed(props.amountBase, 0) : "nothing selected"} SKYT automatically if it rains past the trigger`}>

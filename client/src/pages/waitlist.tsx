@@ -1,46 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { BrandMark } from "@/components/brand-mark";
-import { PhoneMockup, PhoneMockupStack } from "@/components/phone-mockup";
+import { PhoneMockup, PhoneMockupStack, PhonePlans } from "@/components/phone-mockup";
 import { WaitlistForm } from "@/components/waitlist-form";
-
-const MARKETS = [
-  {
-    city: "Des Moines",
-    region: "IA",
-    peril: "Rain",
-    source: "NOAA",
-    status: "Live" as const,
-  },
-  {
-    city: "New York",
-    region: "NY",
-    peril: "Rain",
-    source: "NOAA",
-    status: "Live" as const,
-  },
-  {
-    city: "Miami",
-    region: "FL",
-    peril: "Rain",
-    source: "NOAA",
-    status: "Live" as const,
-  },
-  {
-    city: "Chicago",
-    region: "IL",
-    peril: "Rain",
-    source: "NOAA",
-    status: "Live" as const,
-  },
-  {
-    city: "Toronto",
-    region: "ON",
-    peril: "Rain",
-    source: "Environment Canada",
-    status: "Soon" as const,
-  },
-] as const;
+import { CONSUMER_CITIES } from "../../../shared/consumer-cities";
 
 const STEPS = [
   {
@@ -90,7 +53,7 @@ const FAQ = [
   },
   {
     q: "Which cities are live?",
-    a: "Des Moines, New York, Miami, and Chicago are listed as live rainfall markets. Toronto opens when Environment Canada evidence is finalized.",
+    a: "New York (Central Park), Dallas (DFW), and Des Moines are the rainfall cities. Des Moines already has weekly and monthly windows. New York and Dallas use the same NOAA ladder once you sign those Devnet markets. Toronto stays closed until Environment Canada data is in.",
   },
   {
     q: "What happens if weather data is missing?",
@@ -239,11 +202,11 @@ export default function WaitlistPage() {
         <section className="wl-hero" aria-labelledby="wl-hero-title">
           <div className="wl-hero__copy">
             <h1 id="wl-hero-title" className="wl-hero__title">
-              Weather risk, settled on-chain.
+              Wedding in Central Park this Saturday?
             </h1>
             <p className="wl-hero__lead">
-              Buy rainfall protection from your wallet. Official station data hits the trigger — payout settles on
-              Solana.
+              Pick the city and the days. If NOAA rain at the station reaches the threshold, the payout lands in your
+              wallet.
             </p>
             <div id="waitlist" className="wl-hero__form">
               <WaitlistForm variant="hero" />
@@ -251,7 +214,7 @@ export default function WaitlistPage() {
             </div>
           </div>
           <div ref={heroPhoneRef} className="wl-hero__phone wl-hero__phone--enter">
-            <PhoneMockup screen="protect" glow parallax float />
+            <PhonePlans glow parallax float />
           </div>
         </section>
 
@@ -301,31 +264,30 @@ export default function WaitlistPage() {
           <section id="markets" className="wl-section" aria-labelledby="wl-markets-title">
             <div className="wl-section__head">
               <h2 id="wl-markets-title" className="wl-section__title">
-                Live markets
+                Where are your plans?
               </h2>
               <p className="wl-section__lead">
-                Rainfall cities on Devnet research. Toronto stays soon until evidence lands.
+                New York first. Dallas and Des Moines stay on the same weekly and monthly rain ladder. Toronto opens
+                later.
               </p>
             </div>
-            <ul className="wl-markets" aria-label="Devnet rainfall markets">
-              {MARKETS.map((market) => (
-                <li key={market.city} className="wl-markets__card">
+            <ul className="wl-markets" aria-label="Rainfall cities">
+              {CONSUMER_CITIES.map((market) => (
+                <li key={market.code} className="wl-markets__card">
                   <div className="wl-markets__top">
                     <p className="wl-markets__city">{market.city}</p>
                     <span
                       className={
-                        market.status === "Live"
+                        market.code === "DSM"
                           ? "wl-markets__status wl-markets__status--live"
                           : "wl-markets__status wl-markets__status--soon"
                       }
                     >
-                      {market.status}
+                      {market.code === "DSM" ? "Weekly · Monthly open" : market.status === "soon" ? "Opens soon" : "Next window opening shortly"}
                     </span>
                   </div>
-                  <p className="wl-markets__peril">
-                    {market.peril} · {market.region}
-                  </p>
-                  <p className="wl-markets__source">{market.source}</p>
+                  <p className="wl-markets__peril">{market.moment}</p>
+                  <p className="wl-markets__source">{market.payout}</p>
                 </li>
               ))}
             </ul>

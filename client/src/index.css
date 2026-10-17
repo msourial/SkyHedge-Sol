@@ -158,6 +158,64 @@
     /* Soft inner rim so corners don’t show hard rects */
     box-shadow: inset 0 0 0 1px rgba(124, 196, 255, 0.1);
   }
+  .sky-phone__plans {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 18% 8% 10%;
+    color: var(--foreground);
+    background:
+      radial-gradient(120% 70% at 50% -10%, rgba(124, 196, 255, 0.16), transparent 55%),
+      var(--background);
+  }
+  .sky-phone__kicker {
+    margin: 0;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .sky-phone__headline {
+    margin: 0.35rem 0 0.85rem;
+    font-size: 1.35rem;
+    line-height: 1.15;
+    font-weight: 650;
+  }
+  .sky-phone__plans ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .sky-phone__plans li {
+    padding: 0.65rem 0.7rem;
+    border-radius: 14px;
+    background: var(--surface-2, rgba(255, 255, 255, 0.04));
+    border: 1px solid rgba(124, 196, 255, 0.12);
+  }
+  .sky-phone__plans li p {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.25;
+    font-weight: 600;
+  }
+  .sky-phone__plans li span {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.4rem;
+    margin-top: 0.35rem;
+    font-size: 0.68rem;
+    color: var(--muted-foreground);
+  }
+  .sky-phone__plans em {
+    font-style: normal;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .sky-phone__plans em.is-open { color: var(--success, #7dcea0); }
+  .sky-phone__plans em.is-soon { color: var(--warning, #e2b657); }
   .sky-phone__screen img {
     display: block;
     width: 100%;
@@ -441,7 +499,7 @@
     box-shadow: var(--glass-shadow), 0 0 0 1px color-mix(in srgb, var(--identity) 22%, transparent), 0 12px 28px color-mix(in srgb, var(--identity) 12%, transparent);
   }
 }
-.wl-markets__top { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; }
+.wl-markets__top { display: flex; flex-direction: column; align-items: flex-start; gap: .55rem; }
 .wl-markets__city { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.25rem; letter-spacing: -.02em; }
 .wl-markets__peril { margin: 0; color: var(--wl-body-strong); font-size: .95rem; font-weight: 550; line-height: 1.35; }
 .wl-markets__source { margin: auto 0 0; color: var(--wl-body); font-size: .8125rem; line-height: 1.4; }
@@ -456,13 +514,27 @@
 }
 .wl-markets__status--live { color: var(--success); background: var(--success-dim); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent); }
 .wl-markets__status--soon { color: var(--warning); background: var(--warning-dim); border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent); }
+.wl-markets__status--closed { color: var(--muted-foreground); background: var(--surface-2); border: 1px solid var(--border); }
+
+.plan-cities { display: grid; gap: 1rem; }
+.plan-cities__head p { margin: .4rem 0 0; max-width: 40rem; color: var(--muted-foreground); font-size: .95rem; line-height: 1.45; }
+.plan-cities__grid { list-style: none; margin: 0; padding: 0; display: grid; gap: .85rem; grid-template-columns: repeat(auto-fit, minmax(16.5rem, 1fr)); }
+.plan-cities__card {
+  display: flex; flex-direction: column; gap: .55rem; min-height: 9.5rem;
+  padding: 1rem 1rem 1.1rem; border: 1px solid var(--glass-border); border-radius: var(--radius-glass);
+  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
+}
+.plan-cities__top { display: flex; flex-direction: column; align-items: flex-start; gap: .55rem; }
+.plan-cities__moment { margin: 0; font-family: var(--font-display); font-weight: 700; letter-spacing: -.02em; line-height: 1.25; }
+.plan-cities__place { margin: 0; color: var(--foreground); font-size: .9rem; }
+.plan-cities__payout { margin: auto 0 0; color: var(--muted-foreground); font-size: .8rem; line-height: 1.4; }
 @keyframes wl-dot-pulse {
   0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 45%, transparent); }
   70% { box-shadow: 0 0 0 6px transparent; }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 @media (min-width: 1100px) {
-  .wl-markets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow: visible; gap: 1rem; padding-bottom: 0; }
+  .wl-markets { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); overflow: visible; gap: 1rem; padding-bottom: 0; }
   .wl-markets__card { flex: initial; min-width: 0; }
 }
 

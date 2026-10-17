@@ -247,7 +247,8 @@ export default function App() {
   };
 
   const amountBase = parseSkytAmount(protectionAmount);
-  const openWindows = sellingWindows(status, nowSeconds);
+  const openWindows = sellingWindows(status, nowSeconds).filter((window) => window.city === "des-moines");
+  const nycWindows = sellingWindows(status, nowSeconds).filter((window) => window.city === "new-york");
   const tenorWindows = openWindows.filter((window) => window.tenor === tenor);
   const activeWindow = tenorWindows.find((window) => window.address === selectedWindow) ?? tenorWindows[0] ?? null;
   // Price from the open market's NOAA terms even before wallet connect; purchase still requires a wallet.
@@ -400,7 +401,7 @@ export default function App() {
         {error ? <ErrorBanner message={error} onRetry={() => { void retryData(); }} /> : null}
         {!showLanding && homeLoading && cities.length === 0 && catalog.length === 0 ? <View style={styles.loadingPanel} accessibilityLabel="Loading"><ActivityIndicator color={C.rain} /><Text style={styles.emptyText}>Loading finalized weather, market catalog, and Devnet readiness…</Text></View> : null}
         {showLanding ? (
-          <Landing live={openWindows.length > 0} openLabel={liveMarketLabel(openWindows)} busy={loading} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect().then(() => setShowLanding(false)); }} />
+          <Landing live={nycWindows.length > 0} openLabel={nycWindows.length > 0 ? liveMarketLabel(nycWindows) : undefined} busy={loading} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect().then(() => setShowLanding(false)); }} />
         ) : null}
         {!showLanding && tab === "catalog" && detailCode && marketByCode(detailCode) ? (
           <MarketDetail
@@ -408,7 +409,7 @@ export default function App() {
             notified={notifyCodes.has(detailCode)}
             onNotify={() => setNotifyCodes((prev) => { const next = new Set(prev); if (next.has(detailCode)) next.delete(detailCode); else next.add(detailCode); return next; })}
             onBack={() => setDetailCode(null)}
-            onExploreLive={() => { setDetailCode(null); if (selectedCity !== "des-moines") changeCity("des-moines"); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
+            onExploreLive={() => { setDetailCode(null); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
           />
         ) : null}
         {!showLanding && tab === "catalog" && !detailCode ? (

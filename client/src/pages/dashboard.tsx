@@ -14,6 +14,7 @@ import { finalizedSkytMintSupply, finalizedWalletState, PROTOCOL_ADMIN, RPC_URL,
 import { initialSkytMintState } from "../../../shared/mint-issuance";
 import { isValidImmutableMarketPricingTerms } from "../../../shared/market-pricing";
 import { desMoinesSeedActionMode, isValidDesMoinesSeedSchedule, marketStateFromStatusJson, nextDesMoinesBuilderMilestone, seedTermsMatch } from "../../../shared/des-moines-seed-plan";
+import { PlanCities } from "@/components/plan-cities";
 import { AGRICULTURAL_MARKETS, agriculturalMarketBySlug, agriculturalMarketLocation, millimetersToInches, searchAgriculturalMarkets, type AgriculturalMarketSlug } from "../../../shared/agricultural-markets";
 
 const MARKETS = AGRICULTURAL_MARKETS.map((market) => ({ id: market.slug, city: market.name, location: agriculturalMarketLocation(market), station: market.evidenceStatus === "validated" ? market.noaaStationId : "NOAA station validation in progress", crops: market.crops, region: market.region, context: market.agriculturalContext, evidenceStatus: market.evidenceStatus })) as Array<{ id: AgriculturalMarketSlug; city: string; location: string; station: string | null; crops: readonly string[]; region: string; context: string; evidenceStatus: "researching_evidence" | "validated" }>;
@@ -509,6 +510,7 @@ function Markets({ hazard, setHazard, onSelect, selectedSlug, status }: { hazard
   };
 
   return <section id="markets-workspace" className="market-explorer" aria-labelledby="markets-heading">
+    <PlanCities />
     <HazardSelector value={hazard} onChange={setHazard} />
     <header className="market-explorer__header">
       <div>

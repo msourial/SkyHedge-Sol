@@ -60,9 +60,9 @@ export function ProgressSteps({ steps, done }: { steps: string[]; done: number }
   </View>;
 }
 
-export function LivePill({ label, tone = "live" }: { label: string; tone?: "live" | "warn" | "gold" }) {
-  const col = tone === "live" ? C.mint : tone === "gold" ? C.payout : C.amber;
-  const soft = tone === "live" ? C.mintSoft : tone === "gold" ? C.payoutSoft : C.amberSoft;
+export function LivePill({ label, tone = "live" }: { label: string; tone?: "live" | "warn" | "gold" | "closed" }) {
+  const col = tone === "live" ? C.mint : tone === "gold" ? C.payout : tone === "closed" ? C.muted : C.amber;
+  const soft = tone === "live" ? C.mintSoft : tone === "gold" ? C.payoutSoft : tone === "closed" ? C.mutedSurface : C.amberSoft;
   return <View style={[j.livePill, { borderColor: col + "77", backgroundColor: soft, boxShadow: statusGlow(col) }]}>
     <View style={[j.liveDot, { backgroundColor: col }]} />
     <Text style={[j.livePillText, { color: col }]}>{label}</Text>
@@ -73,7 +73,7 @@ export function LivePill({ label, tone = "live" }: { label: string; tone?: "live
 export function CoverageHero(props: { live: boolean; stateLabel: string; windowLabel: string | null; observedMm: number | null; triggerMm: number | null; triggerSymbol: string; source: string; updated?: string | null }) {
   const toGo = props.observedMm != null && props.triggerMm != null ? Math.max(0, props.triggerMm - props.observedMm) : null;
   return <GlassCard accent={props.live ? C.mint : undefined}>
-    <View style={j.rowCenter}><LivePill label={props.stateLabel} tone={props.live ? "live" : "warn"} />{props.windowLabel ? <Text style={j.caption}>  Window {props.windowLabel}</Text> : null}</View>
+    <View style={j.rowCenter}><LivePill label={props.stateLabel} tone={props.stateLabel === "Sales closed" ? "closed" : props.live ? "live" : "warn"} />{props.windowLabel ? <Text style={j.caption}>  Window {props.windowLabel}</Text> : null}</View>
     <View style={{ flexDirection: "row", gap: S.lg + 2, marginTop: S.lg, alignItems: "flex-end" }}>
       <RainGauge observedMm={props.observedMm} triggerMm={props.triggerMm} height={170} />
       <View style={{ flex: 1 }}>

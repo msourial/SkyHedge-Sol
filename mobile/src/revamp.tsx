@@ -120,10 +120,10 @@ export function Landing(props: { onConnect: () => void; onBrowse: () => void; bu
       </Enter>)}
     </GlassCard>
     <GlassCard>
-      <View style={g.marketLine}><View style={[g.tagDot, { backgroundColor: C.mint }]} /><Text style={g.marketName}>Des Moines, IA</Text><StatusTag status={props.live ? "live" : "soon"} label={props.live ? (props.openLabel ?? "Weekly open") : "Next window opening shortly"} /></View>
+      <View style={g.marketLine}><View style={[g.tagDot, { backgroundColor: props.live ? C.mint : C.muted }]} /><Text style={g.marketName}>New York, NY</Text><StatusTag status={props.live ? "live" : "soon"} label={props.live ? (props.openLabel ?? "Weekly · Monthly open") : props.openLabel === "Sales closed" ? "Sales closed" : "Next window opening shortly"} /></View>
       <Text style={g.caption}>{MARKETS.filter((m) => m.status === "ready").length} more cities opening soon · {concepts} preview cities across {GROUP_ORDER.length} regions</Text>
     </GlassCard>
-    <RadarMap scope="region" onScope={() => props.onBrowse()} focusCode="DSM" highlight={new Set()} onSelect={() => props.onBrowse()} />
+    <RadarMap scope="region" onScope={() => props.onBrowse()} focusCode="NYC" highlight={new Set()} onSelect={() => props.onBrowse()} />
     <View accessibilityRole="text" style={g.testNote}><AppIcon name="info" color={C.amber} size={16} /><Text style={g.testNoteText}>{TEST_TOKEN_NOTE}</Text></View>
     <View style={{ marginTop: S.xl }}><ActionButton label="Get started · connect wallet" icon="credit-card" busy={props.busy} onPress={props.onConnect} /></View>
     <SpringPress accessibilityRole="button" onPress={props.onBrowse} style={g.linkBtn}><Text style={g.link}>Look around first →</Text></SpringPress>
@@ -135,6 +135,7 @@ export function MarketDetail(props: { market: CatalogMarket; onBack: () => void;
   const m = props.market;
   const soon = m.status === "soon";
   const ready = m.status === "ready";
+  const liveCity = m.status === "live";
   const col = soon ? C.amber : C.rain;
   return <>
     <ScreenTop onBack={props.onBack} />
@@ -145,13 +146,13 @@ export function MarketDetail(props: { market: CatalogMarket; onBack: () => void;
     <PerilSelector value="rain" available={[]} />
     <Text style={[g.caption, { marginTop: -4, marginBottom: 8 }]}>{m.country} · {m.group}</Text>
     <GlassCard accent={col}>
-      <View style={g.rowBetween}><StatusTag status={m.status} label={soon ? "Coming soon" : ready ? "Ready to open" : "Concept market"} /></View>
+      <View style={g.rowBetween}><StatusTag status={m.status} label={soon ? "Opens soon" : liveCity ? "Next window opening shortly" : ready ? "Ready to open" : "Concept market"} /></View>
       <View style={{ flexDirection: "row", gap: 16, marginTop: 14 }}>
         <RainGauge observedMm={null} triggerMm={null} color={col} height={130} />
         <View style={{ flex: 1 }}>
           <Text style={g.overline}>Trigger</Text>
           <Text style={[g.big, { color: col }]}>{soon ? "Set per window" : "Not yet defined"}</Text>
-          <Text style={g.caption}>{soon ? "Windows, triggers and prices are published when the market opens." : ready ? "NOAA rain data is wired in. No Devnet market exists yet, so there is no window, trigger or price." : "Concept only — no window, trigger or price exists yet."}</Text>
+          <Text style={g.caption}>{soon ? "Windows, triggers and prices are published when the market opens." : liveCity ? "Payout follows that window's NOAA rainfall threshold. No price until the window is open." : ready ? "NOAA rain data is wired in. No Devnet market exists yet, so there is no window, trigger or price." : "Concept only — no window, trigger or price exists yet."}</Text>
           <View style={g.hr} />
           <Text style={g.overline}>Weather data</Text>
           <Text style={g.body}>{m.source}</Text>
@@ -170,7 +171,7 @@ export function MarketDetail(props: { market: CatalogMarket; onBack: () => void;
       <Text style={[g.notifyText, props.notified && { color: C.amber }]}>{props.notified ? "Interest saved on this phone" : "Notify me when it opens"}</Text>
     </Pressable> : null}
     {(soon || ready) && props.notified ? <Text style={[g.caption, { textAlign: "center", marginTop: 6 }]}>Kept in the app on this device only. No notification is scheduled yet and nothing was sent.</Text> : null}
-    <Pressable accessibilityRole="button" onPress={props.onExploreLive} style={g.secondary}><View style={[g.tagDot, { backgroundColor: C.mint }]} /><Text style={g.secondaryText}>Explore Des Moines (live)</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={props.onExploreLive} style={g.secondary}><View style={[g.tagDot, { backgroundColor: C.mint }]} /><Text style={g.secondaryText}>See New York</Text></Pressable>
     <Text style={[g.caption, { textAlign: "center", marginTop: 8 }]}>{soon ? "Concept preview · not yet open" : ready ? "Ready to open · not tradable yet" : "Concept market · not tradable"}</Text>
   </>;
 }

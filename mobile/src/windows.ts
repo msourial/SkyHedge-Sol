@@ -62,6 +62,26 @@ export function liveMarketLabel(windows: readonly SellingWindow[]): string {
   return marketsOpenLabel(windows.map((window) => window.tenor));
 }
 
+export function windowsForCity(windows: readonly SellingWindow[], city: SellingWindow["city"]): SellingWindow[] {
+  return windows.filter((window) => window.city === city);
+}
+
+/** True when this city's latest market exists and its sales have already closed. */
+export function citySalesClosed(status: DevnetStatus | null, city: SellingWindow["city"], nowSeconds: number): boolean {
+  if (city !== "des-moines") return false;
+  const market = status?.desMoinesMarket;
+  if (!market?.salesCloseAt || market.salesCloseAt > nowSeconds) return false;
+  return windowsForCity(sellingWindows(status, nowSeconds), city).length === 0;
+}
+
+export function cityChip(windows: readonly SellingWindow[], salesClosed: boolean): { label: string; tone: "live" | "soon" | "closed" } {
+  if (windows.length > 0) {
+    const label = liveMarketLabel(windows);
+    return { label, tone: label === NEXT_WINDOW_COPY ? "soon" : "live" };
+  }
+  return salesClosed ? { label: "Sales closed", tone: "closed" } : { label: NEXT_WINDOW_COPY, tone: "soon" };
+}
+
 export function positionLabel(marketAddress: string, windows: readonly SellingWindow[], fallbackAddress: string | null): string | null {
   const match = windows.find((window) => window.address === marketAddress);
   if (match) return `Des Moines · ${expiryLabel(match)}`;
