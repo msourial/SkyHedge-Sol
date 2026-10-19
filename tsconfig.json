@@ -24,6 +24,7 @@
     "server/services/unsigned-tx.ts",
     "server/services/vercel-api.ts",
     "server/services/devnet-status.ts",
+    "server/services/rpc-failover.ts",
     "server/services/tester-readiness.ts",
     "server/services/advisory.ts",
     "server/services/advisory-api.ts",

@@ -9,13 +9,14 @@ import { getDesMoinesEvidencePackage, type DesMoinesEvidencePackage } from "./de
 import { marketStateFromStatusJson } from "../../shared/des-moines-seed-plan.js";
 import { LIVE_CITY_SLUGS, tenorOf, type LiveCitySlug, type Tenor } from "../../shared/window-ladder.js";
 import type { WindowEvidencePackage } from "../../shared/window-chain.js";
+import { callWithRpcFailover } from "./rpc-failover.js";
 import { readStoredWindowEvidence } from "./window-evidence.js";
 
 const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 const SKYT_MINT = process.env.SKYT_MINT ?? "3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g";
 const STATUS_CACHE_MS = 20_000;
-/** Public Devnet endpoints. web3.js must not sit in its 429 retry loop; the next URL is tried instead. */
+/** Public Devnet endpoints. web3.js 429 retry stays off; the first URL is retried with backoff, then the fallback, under a strict timeout. */
 const DEVNET_RPC_URLS = ["https://api.devnet.solana.com", "https://solana-devnet.api.onfinality.io/public"];
 
 function devnetRpcUrls(): string[] {
@@ -121,16 +122,10 @@ export class DevnetStatusReader {
   }
 
   private async readWithFailover(): Promise<DevnetStatus> {
-    let last: unknown;
-    for (const url of devnetRpcUrls()) {
+    return callWithRpcFailover(devnetRpcUrls(), async (url) => {
       this.connection = devnetConnection(url);
-      try {
-        return await this.readUncached();
-      } catch (error) {
-        last = error;
-      }
-    }
-    throw last instanceof Error ? last : new Error("Devnet status is unavailable.");
+      return this.readUncached();
+    });
   }
 
   private async readUncached(): Promise<DevnetStatus> {
