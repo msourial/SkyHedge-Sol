@@ -3,3 +3,16 @@ mobile/android/app/build
 mobile/android/build
 mobile/node_modules
 mobile/tools/__pycache__
+mobile/.gradle-home
+node_modules
+dist
+graphify-out
+.local-secrets
+.tmp-seed-signer
+.env
+.env.*
+anchor/keys
+anchor/target
+*.keypair.json
+docs/landing-review
+docs/mockups
