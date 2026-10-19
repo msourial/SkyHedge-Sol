@@ -4,9 +4,10 @@
 | --- | --- |
 | Program | `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx` |
 | SKYT mint | `3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g` (Devnet, no value) |
-| Live pilot | Des Moines cumulative rainfall — sales/observation windows follow each seeded market; check the live ticket |
-| Coming soon | Toronto (ECCC adapter in-repo); Chicago / New York / Miami need admin create + fund |
-| Research-only | Wind gust, snowfall (UI only) |
+| Demo market | New York (Central Park), NOAA. On 18 Oct 2026 the Seeker showed **Nov 1 · W** priced at ≥ 69 mm, 20.0%, 24.00 SKYT per 100, 4.1×. Nov 30 · M and Dec 31 · M were listed and not the buy. |
+| Also on Devnet | Des Moines windows are in `/api/devnet/status`. They are not the Encode camera path. |
+| Soon on the first Markets screen | Chicago, Miami, Dallas–Fort Worth, Los Angeles. Toronto stays closed. |
+| Research-only | Wind, snow, and heat (UI only; no prices or triggers) |
 | Website | https://skyhedge.app (waitlist) · https://skyhedge.app/app (product) |
 | Branch | `seeker-revamp` |
 

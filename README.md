@@ -29,7 +29,7 @@
 **Quick start.**
 1. Open **https://skyhedge.app** (waitlist) or **https://skyhedge.app/app** (Devnet product). Or install the Android APK on a Seeker / Android phone ([Releases](https://github.com/msourial/SkyHedge-Sol/releases)).
 2. Phantom → Settings → Developer Settings → **Testnet Mode** → Solana **Devnet**. Need Devnet SOL (fees) and SKYT (premiums).
-3. Demo path: **Markets** → city → **Protect** quote → **Review in wallet** → approve in Phantom → **Wallet** position → settlement/refund story. Shot list: [docs/demo-script.md](docs/demo-script.md).
+3. Demo path: landing **Rain on your plans? Get paid.** → **Open web app** → Seeker **Markets** (New York **Open**) → **Protect** expiry **Nov 1 · W**, the priced trigger row, **100 SKYT** → Phantom `open_position` → coverage ticket and Wallet balance → NOAA final data or a DataUnavailable refund. Shot list: [docs/demo-script.md](docs/demo-script.md). Local edit target: `~/Documents/Codex/demo-assets/skyhedge-encode-demo.mp4`.
 4. Without SKYT you can still browse markets, quotes, and live NOAA data.
 
 **How Solana powers it.**
@@ -41,9 +41,9 @@
 
 **Current live status (Devnet).**
 - **Website:** https://skyhedge.app — Storm Glass waitlist; product UI at `/app`. MapTiler key configured in Vercel production. Waitlist: `DATABASE_URL` + migrations `0002`/`0003`, plus `ADMIN_TOKEN` / `IP_HASH_SALT` for export — see `docs/waitlist-backend.md`.
-- **Des Moines, Iowa:** Devnet pilot for cumulative rainfall. Sales and observation windows move with each seeded market — check the live ticket for the active window; do not assume a fixed calendar date from this README.
-- **Chicago, New York and Miami:** ready to open; each needs on-chain market creation and funding by the admin wallet.
-- **Toronto:** opens soon (Environment Canada adapter is in the codebase). Wind gust and snowfall stay research-only in the UI.
+- **New York:** the Encode camera path. On 18 Oct 2026 the Seeker showed New York **Open**, with **Nov 1 · W** as the priced weekly expiry. Read the live row for the trigger, chance, and price. Do not copy a number from this README onto a later recording if the screen has moved.
+- **Des Moines:** still has open Devnet windows in the status API. It is not the demo path.
+- **Soon on the first Markets screen (18 Oct 2026):** Chicago, Miami, Dallas–Fort Worth, Los Angeles. Toronto stays closed. Wind, snow, and heat have no prices.
 
 **x402 (Best Use of x402 track).** x402 is **not integrated yet**. It is planned and under evaluation, for example for pay-per-request access to premium weather feeds. Today the app only checks a free WeatherXM health endpoint, and x402-paid data is never used for settlement.
 
@@ -61,8 +61,8 @@ Weather decides whether a flight leaves, a crane lifts, a haul road stays open, 
 
 ## Key features
 
-- **Protect flow:** choose coverage of **50 / 100 / 250 / Max SKYT** (paid if triggered). A labelled **Rain trigger** row shows the threshold in mm. The quote appears as an option ticket listing what you pay, what you get, the trigger, the window, the chance and the fee. Then tap **Review in wallet**.
-- **Markets:** a hero card with **live NOAA rainfall** and a **7-week chart**. **Des Moines, Iowa** (cumulative rainfall) is live. **Toronto** shows as **"Opens soon"** and its Environment Canada adapter is already in the codebase.
+- **Protect flow:** an expiry chain. Pick a date such as **Nov 1 · W**, the one priced trigger row, and coverage of **50 / 100 / 250 / Max SKYT**. The button reads **Protect for … SKYT** only with a live price, then Phantom approves `open_position`.
+- **Markets:** New York leads the Seeker list and shows **Open** while a window is selling. Toronto stays closed. Wind, snow, and heat have no prices.
 - **Phantom via Mobile Wallet Adapter on Devnet:** the server builds the transaction unsigned, and the user approves it in their wallet. Nothing is signed without the user.
 - **On-chain positions** through the Anchor program, **one per wallet per market window**. After purchase the app shows "You're protected" with the finalized status and an **Explorer link**.
 - **Settlement:** the final observation is normalized, hashed and committed on-chain. If the trigger is hit, the buyer claims the fixed payout. If source data is unavailable after a 7-day grace period, the market resolves `DATA_UNAVAILABLE` and premiums are refundable. SkyHedge never makes up weather values.

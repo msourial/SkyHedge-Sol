@@ -1,57 +1,46 @@
 # Demo recording checklist — Seeker (2:30)
 
-Follow with [docs/demo-script.md](../demo-script.md). Devnet only. No fake balances, weather totals, or traction numbers. Never say “insurance.”
+Follow [docs/demo-script.md](../demo-script.md). Devnet only. No fake balances, weather totals, or traction numbers. Do not use a regulated-product noun.
 
 ## Before you hit record
 
-### Phone (SM02G406197714 / Seeker)
+Phone `SM02G406197714` was checked on 18 Oct 2026. Re-read the screen if any figure moved.
 
-- [ ] Unlock Seeker; Wi‑Fi on (no SIM is fine).
-- [ ] **Do Not Disturb** on; discard/clear notification shade.
-- [ ] Brightness comfortable for camera; auto-brightness off if it flickers.
-- [ ] Status bar clean: no low-battery icon, no USB-debug toast if possible.
-- [ ] Phantom: Settings → Developer Settings → **Testnet Mode** → Solana **Devnet**.
-- [ ] Test wallet funded with **Devnet SOL** (fees) and **SKYT** (`3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g`).
-- [ ] SkyHedge release APK installed (`com.skyhedge.mobile`); cold-launch once to confirm Markets loads.
-- [ ] Prefer an **open** Des Moines rainfall window so Protect shows a real priced ticket. If not open, use the live window and say “Devnet” on camera.
+- [x] Seeker attached over USB (`adb devices` shows `SM02G406197714`).
+- [x] SkyHedge open. Wallet connected (`DKA9…FD6y`). Balance on screen: **329,973.85 SKYT**, **5.6296 SOL**.
+- [x] Markets: **New York (Central Park)** chip **Open**.
+- [x] Protect: **Nov 1 · W** priced row **≥ 69 mm · 20.0% · 24.00 per 100 SKYT · 4.1×**. Button **Protect for 24.00 SKYT** (100 SKYT). Not tapped.
+- [x] This wallet has **no position** on Nov 1 · W (`4MVypmwGhpNTvLhpEUTPu6AHEXL5aRzuprkPWT9o6ygq`), Nov 30 · M, or Dec 31 · M.
+- [ ] Devnet pill is **still visible**. There is no `EXPO_PUBLIC_MARKETING_SHOTS=1` build on the device or on disk. Leave the pill. Say Devnet.
+- [ ] Unlock, Do Not Disturb, Phantom Testnet Mode → Solana Devnet.
+- [ ] Chrome on the Seeker open to **https://skyhedge.app** (headline and **Open web app**).
+- [ ] App left on **Markets**, not on the buy button.
 
-### Desk / capture
-
-- [ ] USB connected; `adb devices` shows the Seeker.
-- [ ] Mirror with a window titled **Seeker**:
+## One command
 
 ```bash
-scrcpy -s SM02G406197714 --window-title 'Seeker' --max-size 1080 --stay-awake --disable-screensaver
+scripts/record-seeker-demo.sh
 ```
 
-- [ ] Record the scrcpy window (or on-device screen record). Suggested ffmpeg of the Seeker window after you note its geometry, or QuickTime/OBS capturing that window:
+Saves `~/Documents/Codex/demo-assets/seeker-raw.mp4`. Ctrl+C when the wallet beat ends (limit 170s). Then:
 
 ```bash
-# Example: record selected display/window in OBS → 1080p portrait crop, 30fps
-# Or on-device:
-adb -s SM02G406197714 shell screenrecord --time-limit 150 /sdcard/skyhedge-demo.mp4
-# then pull:
-adb -s SM02G406197714 pull /sdcard/skyhedge-demo.mp4 ./skyhedge-demo.mp4
+scripts/edit-encode-demo.sh
 ```
 
-- [ ] Mic check; script open beside you; Explorer bookmarked for optional signature beat.
+`ffmpeg` is not installed on this Mac yet. The edit script stops until it is. Output path: `~/Documents/Codex/demo-assets/skyhedge-encode-demo.mp4`.
 
-## Timing (voiceover beats)
+## Timing
 
 | Time | On screen | Must show |
 | --- | --- | --- |
-| 0:00–0:12 | Title / brief rain still | “SkyHedge” |
-| 0:12–0:35 | **Markets** → Des Moines → Rainfall + NOAA chart | Live station picture |
-| 0:35–1:05 | **Protect** ticket (coverage, You pay, Payout, trigger, window, chance, fee) | Real quote numbers |
-| 1:05–1:35 | **Review in wallet** → Phantom approve → finalized | Real signature path |
-| 1:35–1:55 | **Wallet** address, SKYT, position card | Explorer affordance |
-| 1:55–2:20 | Settlement / refund story on position or payoff | No staged fake payout |
-| 2:20–2:30 | End card | skyhedge.app · Solana Mobile |
+| 0:00–0:03 | Title card | SkyHedge logo |
+| 0:03–0:16 | skyhedge.app | Rain on your plans? Get paid. · Open web app |
+| 0:16–0:34 | Markets | New York · Open |
+| 0:34–1:08 | Protect | Nov 1 · W · priced row · 100 SKYT |
+| 1:08–1:40 | Phantom | Live `open_position` approval |
+| 1:40–2:02 | Ticket, then Wallet | Explorer link · connected address · SKYT balance |
+| 2:02–2:27 | Ticket or Wallet | NOAA final data · DataUnavailable refund (spoken, not a fake payout) |
+| 2:27–2:30 | End card | skyhedge.app |
 
-Trim Markets scroll first if over 2:30. Keep Phantom approval in one continuous take.
-
-## After recording
-
-- [ ] Trim to ≤2:30; export 1080p.
-- [ ] Upload; put URL in README (`<<DEMO_VIDEO_URL>>`) and `docs/submission/links.md`.
-- [ ] Do **not** publish the GitHub release until the video link is ready (draft is fine).
+Do not open the hidden sample payout preview. The Wallet positions list is not indexed; the coverage ticket is the position.

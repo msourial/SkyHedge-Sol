@@ -6,11 +6,11 @@ Weather decides whether a flight leaves, a crane lifts, a haul road stays open, 
 
 ## Solution
 
-SkyHedge sells **parametric weather protection**: a fixed payout that triggers automatically when public weather data crosses a pre-set threshold (for example, enough cumulative rain in Des Moines over a published window).
+SkyHedge sells **parametric weather protection**: a fixed payout that triggers automatically when public weather data crosses a published threshold. The Seeker demo is New York rain. Protect shows an expiry chain. **Nov 1 · W** is the weekly date. One trigger row is priced from the terms already on that Devnet market. Coverage in the demo is **100 SKYT**.
 
-- **Instant** — quote and buy from a phone in under a minute.
+- **Instant** — pick the expiry, read the priced row, approve from the phone.
 - **Accessible** — Solana Mobile Wallet Adapter + Phantom; keys stay in the wallet.
-- **Fractional** — choose coverage amounts (50 / 100 / 250 / Max SKYT on Devnet); no large minimum policy size.
-- **Verifiable** — Anchor program, per-city vaults, NOAA station/methodology hashes, Explorer links.
+- **Fractional** — 50 / 100 / 250 / Max SKYT on Devnet.
+- **Verifiable** — Anchor program, per-market vaults, NOAA evidence for that expiry, Explorer links.
 
-Settlement is fail-closed: incomplete or flagged NOAA data never becomes a made-up rainfall value. After the data deadline with no valid observation, premiums are refundable.
+Settlement uses NOAA’s final data after the expiry. Incomplete or flagged days are rejected, not replaced with a guess. If valid data never arrives by the deadline, the market is marked DataUnavailable and the premium can be reclaimed.
