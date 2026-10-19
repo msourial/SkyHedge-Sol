@@ -41,7 +41,7 @@ export function ProtectChain(props: {
 
   return <View>
     <Text style={styles.settle} android_hyphenationFrequency="none">{settlementLine(source)}</Text>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll} accessibilityRole="radiogroup" accessibilityLabel="Expiry">
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll} style={styles.chipScroller} accessibilityRole="radiogroup" accessibilityLabel="Expiry">
       {windows.length ? windows.map((window) => {
         const on = window.address === selected?.address;
         const label = expiryChipLabel(window) ?? "Expiry";
@@ -54,10 +54,10 @@ export function ProtectChain(props: {
     </ScrollView>
     <View accessibilityRole="list" accessibilityLabel="Rain triggers">
       <View style={styles.head}>
-        <Text numberOfLines={2} android_hyphenationFrequency="none" style={[styles.headText, styles.colTrigger]}>Trigger (≥ mm)</Text>
-        <Text numberOfLines={2} android_hyphenationFrequency="none" style={[styles.headText, styles.col]}>Chance</Text>
-        <Text numberOfLines={2} android_hyphenationFrequency="none" style={[styles.headText, styles.colPrice]}>Price per 100 SKYT</Text>
-        <Text numberOfLines={2} android_hyphenationFrequency="none" style={[styles.headText, styles.col]}>Payout multiple</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} android_hyphenationFrequency="none" style={[styles.headText, styles.colTrigger]}>Trigger</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} android_hyphenationFrequency="none" style={[styles.headText, styles.colChance]}>Chance</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} android_hyphenationFrequency="none" style={[styles.headText, styles.colPrice]}>Per 100 SKYT</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} android_hyphenationFrequency="none" style={[styles.headText, styles.colPayout]}>Payout</Text>
       </View>
       {props.evidenceLoading ? <Text style={styles.muted}>Checking NOAA analogue history…</Text> : null}
       {!props.evidenceLoading && !pkg ? <Text style={styles.muted}>Not ready to price yet. A validated NOAA evidence package is not available.</Text> : null}
@@ -71,12 +71,12 @@ export function ProtectChain(props: {
           accessibilityState={{ disabled: !row.onChain, selected: row.onChain }}
           disabled={!row.onChain}
           onPress={() => { if (selected && row.onChain) props.onSelectWindow(selected.address); }}
-          style={[styles.row, row.popular && styles.rowPopular, !row.onChain && styles.rowSoon]}
+          style={[styles.row, row.onChain && styles.rowPopular, !row.onChain && styles.rowSoon]}
         >
           <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} android_hyphenationFrequency="none" style={[styles.cell, styles.colTrigger, !row.onChain && styles.soonText]}>{`≥ ${row.thresholdMm} mm`}</Text>
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} android_hyphenationFrequency="none" style={[styles.cell, styles.col, !row.onChain && styles.soonText]}>{chance ?? "—"}</Text>
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} android_hyphenationFrequency="none" style={[styles.cell, styles.colPrice, !row.onChain && styles.soonText]}>{price ?? "Coming soon"}</Text>
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} android_hyphenationFrequency="none" style={[styles.cell, styles.col, !row.onChain && styles.soonText]}>{multiple ?? "Coming soon"}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} android_hyphenationFrequency="none" style={[styles.cell, styles.colChance, !row.onChain && styles.soonText]}>{chance ?? "—"}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} android_hyphenationFrequency="none" style={[styles.cell, styles.colPrice, !row.onChain && styles.soonText]}>{price ?? "Coming soon"}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} android_hyphenationFrequency="none" style={[styles.cell, styles.colPayout, !row.onChain && styles.soonText]}>{multiple ?? "—"}</Text>
         </Pressable>;
       })}
     </View>
@@ -85,22 +85,24 @@ export function ProtectChain(props: {
 
 const styles = StyleSheet.create({
   settle: { ...T.body, color: C.muted, marginBottom: S.md },
-  chipScroll: { gap: S.sm, paddingBottom: S.md },
+  chipScroller: { marginHorizontal: -18 },
+  chipScroll: { gap: S.sm, paddingBottom: S.md, paddingLeft: 18, paddingRight: 32 },
   chip: { minHeight: MIN_TOUCH, minWidth: 108, justifyContent: "center", paddingHorizontal: S.md, paddingVertical: S.xs, borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceRaised },
   chipOn: { borderColor: C.rain, backgroundColor: C.rainSoft },
   chipLabel: { ...T.bodyStrong, color: C.ink },
   chipLabelOn: { color: C.rainBright },
   chipDays: { ...T.caption, color: C.quiet },
   chipDaysOn: { color: C.rain },
-  head: { flexDirection: "row", gap: S.xs, paddingBottom: S.xs },
+  head: { flexDirection: "row", gap: 4, paddingBottom: S.xs },
   headText: { ...T.caption, color: C.quiet },
-  row: { flexDirection: "row", gap: S.xs, alignItems: "center", minHeight: MIN_TOUCH, borderRadius: 12, paddingHorizontal: S.xs },
+  row: { flexDirection: "row", gap: 4, alignItems: "center", minHeight: MIN_TOUCH, borderRadius: 12, paddingHorizontal: 2 },
   rowPopular: { backgroundColor: C.rainSoft, borderWidth: 1, borderColor: C.rain },
   rowSoon: { opacity: 0.55 },
   cell: { ...T.bodyStrong, color: C.ink, fontVariant: ["tabular-nums"] },
   soonText: { color: C.quiet, fontFamily: F.body },
-  colTrigger: { flex: 1.1 },
-  col: { flex: 0.9 },
-  colPrice: { flex: 1.3 },
+  colTrigger: { flex: 1.05, minWidth: 0 },
+  colChance: { flex: 0.7, minWidth: 0 },
+  colPrice: { flex: 1.25, minWidth: 0, textAlign: "right" },
+  colPayout: { flex: 0.95, minWidth: 0, textAlign: "right" },
   muted: { ...T.body, color: C.muted, marginBottom: S.md },
 });

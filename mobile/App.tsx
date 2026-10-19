@@ -18,6 +18,7 @@ import { AdvisoryResponse, AgriculturalMarket, ClaimReadiness, CityIndex, Devnet
 import { DEVNET_RPC_URL, readFinalizedWalletStateAnyRpc, readWalletStateWithFallback } from "./src/chain";
 import { type HazardId } from "./src/hazards";
 import { resolveSelectedNoaaCity } from "./src/presentation";
+import { committedPremiumQuote } from "../shared/market-pricing.ts";
 import { buildCommittedQuoteRequest, duplicatePositionReason, formatSkyt, getProtectionUnavailableReason, parseSkytAmount } from "./src/protection";
 import { authorizeDevnetWallet, signAndConfirmDevnetTransaction, type AuthorizedWallet } from "./src/wallet";
 import { clearWalletSession, loadWalletSession, saveWalletSession } from "./src/wallet-session-store";
@@ -237,6 +238,7 @@ export default function App() {
 
   const changeCity = (slug: string) => {
     setSelectedCity(slug);
+    setSelectedWindow(null);
     setSelectedHazard(slug === "toronto" ? null : "rainfall");
     const next = resolveSelectedNoaaCity(slug, cities);
     setCity(next);
@@ -302,20 +304,45 @@ export default function App() {
   const requestProtectionQuote = async () => {
     const id = ++quoteRequestId.current;
     setQuoteError(null);
-    setQuote(null);
-    if (quoteUnavailableReason || !status || !amountBase || !activeWindow) return;
+    if (quoteUnavailableReason || !status || !amountBase || !activeWindow) {
+      setQuote(null);
+      return;
+    }
     const request = buildCommittedQuoteRequest(status, amountBase, activeWindow, protectCity);
     if (!request) {
+      setQuote(null);
       setQuoteError("This window's terms aren't finalized yet, so it can't be priced.");
       return;
     }
-    setQuoteBusy(true);
+    const committed = committedPremiumQuote({
+      protectedAmount: amountBase,
+      probabilityBps: activeWindow.quoteProbabilityBps,
+      premiumRateBps: activeWindow.premiumRateBps,
+      inputsHash: activeWindow.quoteInputsHash,
+    });
+    const committedQuote: ProtectionQuote | null = committed
+      ? { ...committed, source: "NOAA", explicitApprovalRequired: true }
+      : null;
+    if (committedQuote) setQuote(committedQuote);
+    else setQuote(null);
+    setQuoteBusy(committedQuote == null);
     try {
-      const result = await postJson<ProtectionQuote>("/api/quotes", request);
-      if (result.protectedAmount !== amountBase || result.source !== "NOAA" || result.explicitApprovalRequired !== true) throw new Error("The price didn't match the selected coverage. Get a new price.");
-      if (id === quoteRequestId.current) setQuote(result);
+      const result = await postJson<ProtectionQuote>("/api/quotes", request, { timeoutMs: 12_000, attempts: 2 });
+      if (id !== quoteRequestId.current) return;
+      if (result.protectedAmount !== amountBase || result.source !== "NOAA" || result.explicitApprovalRequired !== true) {
+        throw new Error("The price didn't match the selected coverage. Get a new price.");
+      }
+      if (activeWindow.quoteInputsHash && result.inputsHash.toLowerCase() !== activeWindow.quoteInputsHash.toLowerCase()) {
+        throw new Error("The price didn't match this window's committed terms. Get a new price.");
+      }
+      setQuote(result);
+      setQuoteError(null);
     } catch (reason) {
-      if (id === quoteRequestId.current) setQuoteError(reason instanceof Error ? reason.message : "The NOAA-backed price is unavailable.");
+      if (id !== quoteRequestId.current) return;
+      const message = reason instanceof Error ? reason.message : "The NOAA-backed price is unavailable.";
+      const mismatch = /committed terms|didn't match the selected coverage/.test(message);
+      if (mismatch) setQuote(null);
+      if (mismatch || !committedQuote) setQuoteError(message);
     } finally {
       if (id === quoteRequestId.current) setQuoteBusy(false);
     }
@@ -423,6 +450,7 @@ export default function App() {
 
       <ScrollView
         ref={scrollRef}
+        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.rain} />}
@@ -449,7 +477,7 @@ export default function App() {
             city={city}
             indicativeQuote={indicativeQuote}
             nowSeconds={nowSeconds}
-            onProtect={(code) => { const slug = consumerCityByCode(code)?.slug; if (!slug || slug === "toronto") return; changeCity(slug); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
+            onProtect={(code) => { const slug = consumerCityByCode(code)?.slug; if (!slug) return; changeCity(slug); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
             guide={<>
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: guideOpen }} accessibilityLabel="Describe your plans and let the guide find a market" onPress={() => setGuideOpen((open) => !open)} style={styles.guideToggle}><AppIcon name="message-circle" color={C.rain} size={20} /><Text style={styles.guideToggleText}>Describe your plans instead</Text><AppIcon name={guideOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={18} /></Pressable>
               {guideOpen ? <GuidePanel turns={guideTurns} busy={guideBusy} onSend={(message) => { void askGuide(message); }} onViewMatch={(result) => { if (result.match?.slug !== "des-moines") return; changeCity("des-moines"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} /> : null}
@@ -509,6 +537,7 @@ export default function App() {
               tenor={tenor}
               onTenor={(next) => { setTenor(next); setSelectedWindow(null); setQuote(null); }}
               windows={openWindows}
+              city={protectCity}
               selectedAddress={activeWindow?.address ?? null}
               onSelectWindow={(address) => { setSelectedWindow(address); setQuote(null); }}
               windowEvidence={windowEvidence}
@@ -557,7 +586,7 @@ export default function App() {
       {!showLanding && tab === "protect" && !demo && status ? (() => {
         const claimable = claimReadiness?.state === "claimable" && claimReadiness.action;
         if (claimable) return <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={transactionBusy} onPress={() => { if (claimReadiness?.action) void submitApprovedAction(claimReadiness.action); }} />;
-        if (!wallet) return <StickyCta label="Connect wallet to protect" busy={loading} onPress={() => { void connect(); }} />;
+        if (!wallet) return <StickyCta label="Connect wallet" busy={loading} onPress={() => { void connect(); }} />;
         const quoteReady = !!quote && quote.protectedAmount === amountBase;
         const cta = buyCta({ premiumBase: quoteReady ? quote!.premium : null, busy: quoteBusy, error: quoteError, blockedReason: protectionUnavailableReason ? friendlyError(protectionUnavailableReason) : null, paymentReason: quotePaymentReason ? "Not enough SKYT in this wallet for this premium." : null });
         return <StickyCta
@@ -623,7 +652,8 @@ const styles = StyleSheet.create({
   demoTitle: { color: C.amber, fontFamily: F.mono, fontSize: 13, letterSpacing: 1.2, marginBottom: 4 },
   demoBtn: { flex: 1, minHeight: MIN_TOUCH, borderRadius: 14, borderWidth: 1, borderColor: C.amber, alignItems: "center", justifyContent: "center" },
   demoBtnText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 14 },
-  scrollContent: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 18, paddingTop: 18, paddingBottom: 32 },
+  scroll: { flex: 1 },
+  scrollContent: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 18, paddingTop: 18, paddingBottom: 76 + 34 },
   loadingPanel: { minHeight: 110, alignItems: "center", justifyContent: "center", gap: S.md - 2, backgroundColor: glass.fill, borderColor: glass.border, borderWidth: 1, borderRadius: glass.radius, padding: S.lg, marginBottom: S.md, boxShadow: glass.shadow },
   emptyText: { ...T.caption, color: C.muted, fontSize: 13, lineHeight: 20 },
   guideToggle: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: glass.border, marginTop: S.xs },

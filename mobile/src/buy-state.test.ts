@@ -24,10 +24,14 @@ describe("buy button", () => {
   it("is enabled with the premium in the label when priced", () => {
     assert.deepEqual(buyCta({ ...b, premiumBase: "3480000" }), { label: "Protect for 3.48 SKYT", disabled: false, hint: null });
   });
-  it("is disabled with a reason otherwise", () => {
-    assert.equal(buyCta({ ...b, premiumBase: null, blockedReason: "The market’s sales window has ended." }).hint, "The market’s sales window has ended.");
+  it("names loading, and asks for a trigger when nothing is priced", () => {
+    assert.deepEqual(buyCta({ ...b, premiumBase: null, busy: true }), { label: "Getting price…", disabled: true, hint: null });
+    const unpriced = buyCta({ ...b, premiumBase: null, blockedReason: "The market’s sales window has ended." });
+    assert.equal(unpriced.label, "Pick a trigger");
+    assert.equal(unpriced.disabled, true);
+    assert.equal(unpriced.hint, "The market’s sales window has ended.");
     assert.equal(buyCta({ ...b, premiumBase: "3480000", paymentReason: "short" }).disabled, true);
-    assert.equal(buyCta({ ...b, premiumBase: null, busy: true }).disabled, true);
+    assert.equal(buyCta({ ...b, premiumBase: "3480000", busy: true }).label, "Protect for 3.48 SKYT");
   });
 });
 describe("utcDateTime", () => {

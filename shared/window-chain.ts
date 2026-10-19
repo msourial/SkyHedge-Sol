@@ -151,8 +151,7 @@ export function triggerRows(input: {
   onChainPremiumRateBps: number | null;
 }): TriggerRow[] {
   const thresholds = triggerLadderMm(input.totalsMm, input.onChainThresholdMm);
-  const popularIndex = middleTriggerIndex(thresholds.length);
-  return thresholds.flatMap((thresholdMm, index) => {
+  return thresholds.flatMap((thresholdMm) => {
     const historic = historicHitBps(input.totalsMm, thresholdMm);
     if (historic == null) return [];
     const forecastBps = input.forecastCumulativeMm == null ? null : input.forecastCumulativeMm >= thresholdMm ? 10_000 : 0;
@@ -165,7 +164,8 @@ export function triggerRows(input: {
       probabilityBps: onChain ? input.onChainProbabilityBps! : model.probabilityBps,
       premiumRateBps: onChain ? input.onChainPremiumRateBps! : model.premiumRateBps,
       onChain,
-      popular: index === popularIndex,
+      // Only the buyable on-chain row is highlighted. Coming soon rows stay unselected.
+      popular: onChain,
     }];
   });
 }

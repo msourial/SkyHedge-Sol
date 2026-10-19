@@ -17,6 +17,7 @@ import { desMoinesSeedActionMode, isValidDesMoinesSeedSchedule, marketStateFromS
 import { PlanCities } from "@/components/plan-cities";
 import { ProtectChain } from "@/components/protect-chain";
 import { AGRICULTURAL_MARKETS, agriculturalMarketBySlug, agriculturalMarketLocation, millimetersToInches, searchAgriculturalMarkets, type AgriculturalMarketSlug } from "../../../shared/agricultural-markets";
+import { LIVE_CITY_SLUGS } from "../../../shared/window-ladder";
 
 const MARKETS = AGRICULTURAL_MARKETS.map((market) => ({ id: market.slug, city: market.name, location: agriculturalMarketLocation(market), station: market.evidenceStatus === "validated" ? market.noaaStationId : "NOAA station validation in progress", crops: market.crops, region: market.region, context: market.agriculturalContext, evidenceStatus: market.evidenceStatus })) as Array<{ id: AgriculturalMarketSlug; city: string; location: string; station: string | null; crops: readonly string[]; region: string; context: string; evidenceStatus: "researching_evidence" | "validated" }>;
 const TABS = [
@@ -49,6 +50,7 @@ const RESEARCH_HAZARD_PAGE_COPY: Record<Exclude<Hazard, "rainfall">, { title: st
 
 function validTab(value: string | null): Tab { return TABS.some((tab) => tab.id === value) ? value as Tab : "markets"; }
 function validMarket(value: string | null): MarketId { return MARKETS.some((market) => market.id === value) ? value as MarketId : "des-moines"; }
+function liveProtectCity(value: string | null): string { return value && (LIVE_CITY_SLUGS as readonly string[]).includes(value) ? value : "new-york"; }
 function baseUnits(value: string): string | null {
   if (!/^\d+(\.\d{0,6})?$/.test(value) || Number(value) <= 0) return null;
   const [whole, fractional = ""] = value.split(".");
@@ -76,6 +78,7 @@ export default function DashboardPage() {
   const query = new URLSearchParams(window.location.search);
   const [tab, setTab] = useState<Tab>(() => validTab(query.get("tab")));
   const [marketId, setMarketId] = useState<MarketId>(() => validMarket(query.get("city")));
+  const [protectCity, setProtectCity] = useState(() => (validTab(query.get("tab")) === "protect" ? liveProtectCity(query.get("city")) : "new-york"));
   const [hazard, setHazard] = useState<Hazard>("rainfall");
   const [amount, setAmount] = useState("100");
   const [threshold, setThreshold] = useState("50");
@@ -105,7 +108,17 @@ export default function DashboardPage() {
     && devnetStatus.data.desMoinesMarket.quoteInputsHash?.toLowerCase() === quoteQuery.data.inputsHash.toLowerCase()
     ? quoteQuery.data
     : undefined;
-  const switchTab = (next: Tab, selectedMarket: MarketId = marketId) => { setTab(next); window.history.replaceState(null, "", `/app?tab=${next}&city=${selectedMarket}`); };
+  const switchTab = (next: Tab, cityOverride?: string) => {
+    setTab(next);
+    const city = cityOverride ?? (next === "protect" ? protectCity : marketId);
+    window.history.replaceState(null, "", `/app?tab=${next}&city=${city}`);
+  };
+  const openProtectCity = (slug: string) => {
+    setProtectCity(slug);
+    setHazard("rainfall");
+    setTab("protect");
+    window.history.replaceState(null, "", `/app?tab=protect&city=${slug}`);
+  };
   const selectMarket = (id: MarketId) => {
     setMarketId(id);
     setQuoteActive(false);
@@ -149,10 +162,10 @@ export default function DashboardPage() {
   const researchHazardView = (tab === "markets" || tab === "protect") && hazard !== "rainfall";
   return <div className="grid min-w-0 gap-7 lg:grid-cols-[68px_minmax(0,1fr)]">
     <aside className="hidden lg:block"><nav aria-label="Product sections" className="sticky top-24 flex w-[68px] flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-[var(--shadow-card)]">{TABS.map(({ id, label, icon: Icon }, index) => <button key={id} type="button" title={label} aria-label={label} aria-current={tab === id ? "page" : undefined} onClick={() => switchTab(id)} className={cn("flex min-h-11 items-center justify-center rounded-lg text-sm font-medium transition-colors", index === TABS.length - 1 && "mt-3 border-t border-[var(--border)] pt-3", tab === id ? "bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]")}><Icon className="h-5 w-5" /><span className="sr-only">{label}</span></button>)}</nav></aside>
-    <div className="min-w-0 space-y-6">
+    <div className="min-w-0 space-y-6 pb-[calc(64px+env(safe-area-inset-bottom))] lg:pb-0">
       <header className="sky-page-header"><Pill tone={tab === "builders" ? "slate" : researchHazardView ? "amber" : "cyan"}>{tab === "builders" ? "Technical workspace" : researchHazardView ? "Research-only hazard" : "NOAA-settled protection"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></header>
-      {tab === "markets" && <Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} selectedSlug={marketId} status={devnetStatus.data} />}
-      {chainOn ? <ProtectChain windows={devnetStatus.data?.cityWindows ?? []} /> : tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") { setQuoteActive(true); setQuoteRequest((count) => count + 1); } }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" && quoteActive ? quoteQuery.error : undefined} />}
+      {tab === "markets" && <Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} onOpenCity={openProtectCity} selectedSlug={marketId} status={devnetStatus.data} />}
+      {chainOn ? <ProtectChain windows={devnetStatus.data?.cityWindows ?? []} city={protectCity} onCityChange={openProtectCity} /> : tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") { setQuoteActive(true); setQuoteRequest((count) => count + 1); } }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" && quoteActive ? quoteQuery.error : undefined} />}
       {tab === "liquidity" && <Liquidity />}
       {tab === "portfolio" && <PortfolioView />}
       {tab === "evidence" && <Evidence />}
@@ -461,7 +474,7 @@ function ResearchOnlyHazard({ hazard }: { hazard: Exclude<Hazard, "rainfall"> })
   </section>;
 }
 
-function Markets({ hazard, setHazard, onSelect, selectedSlug, status }: { hazard: Hazard; setHazard: (value: Hazard) => void; onSelect: (id: MarketId) => void; selectedSlug: MarketId; status?: DevnetStatus }) {
+function Markets({ hazard, setHazard, onSelect, onOpenCity, selectedSlug, status }: { hazard: Hazard; setHazard: (value: Hazard) => void; onSelect: (id: MarketId) => void; onOpenCity: (slug: string) => void; selectedSlug: MarketId; status?: DevnetStatus }) {
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -514,7 +527,7 @@ function Markets({ hazard, setHazard, onSelect, selectedSlug, status }: { hazard
   };
 
   return <section id="markets-workspace" className="market-explorer" aria-labelledby="markets-heading">
-    <PlanCities />
+    <PlanCities onOpen={onOpenCity} />
     <HazardSelector value={hazard} onChange={setHazard} />
     <header className="market-explorer__header">
       <div>

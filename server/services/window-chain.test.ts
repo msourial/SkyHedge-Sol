@@ -46,7 +46,8 @@ describe("options chain labels", () => {
     expect(chanceLabel(live!.probabilityBps)).to.equal("20.0%");
     expect(pricePer100Label(live!.premiumRateBps)).to.equal("24.00");
     expect(payoutMultipleLabel(live!.premiumRateBps)).to.equal("4.1×");
-    expect(rows.filter((row) => row.popular)).to.have.length(1);
+    expect(rows.filter((row) => row.popular).map((row) => row.thresholdMm)).to.deep.equal([29]);
+    expect(rows.some((row) => row.popular && !row.onChain)).to.equal(false);
     expect(rows.some((row) => !row.onChain && row.probabilityBps > 0)).to.equal(true);
   });
 });

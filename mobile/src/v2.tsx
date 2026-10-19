@@ -113,7 +113,7 @@ export function MarketsScreen(props: {
     return compactRowChip(selling);
   };
   const open = (market: CatalogMarket) => {
-    if (rowChip(market).tone === "live") props.onProtect(market.code);
+    if (consumerCityByCode(market.code)) props.onProtect(market.code);
     else props.onOpenMarket?.(market);
   };
   const showFeatured = () => { setBrowseAll(false); setGroup(null); setQuery(""); };
@@ -269,6 +269,7 @@ export function ProtectTicket(props: {
   tenor?: Tenor;
   onTenor?: (tenor: Tenor) => void;
   windows?: SellingWindow[];
+  city?: string;
   selectedAddress?: string | null;
   onSelectWindow?: (address: string) => void;
   windowEvidence?: readonly WindowEvidencePackage[] | null;
@@ -280,9 +281,9 @@ export function ProtectTicket(props: {
   const market = windows.find((window) => window.address === props.selectedAddress) ?? windows[0] ?? null;
   const live = !!market;
   const options = coverageOptions(props.walletSkytBase);
-  const consumer = consumerCityBySlug(market?.city ?? "");
-  const place = consumer?.city ?? "Des Moines";
-  const region = consumer?.region ?? "IA";
+  const consumer = consumerCityBySlug(props.city ?? market?.city ?? "");
+  const place = consumer?.city ?? "New York";
+  const region = consumer?.region ?? "NY";
   const stationId = consumer?.stationId?.replace(/^GHCND:/, "") ?? props.status?.noaaEvidence.package?.stationId;
   const station = stationLabel(stationId);
   const sentence = triggerSentence({ station, thresholdMmX100: market?.thresholdMmX100, operator: market?.operator, start: market?.observationStart, end: market?.observationEnd });
@@ -322,7 +323,7 @@ export function ProtectTicket(props: {
   return <>
     <ScreenTop onBack={props.onBackToMarkets} title={`${place}, ${region}`} />
     <Enter index={0}><PerilSelector value="rain" available={["rain"]} /></Enter>
-    <ProtectChain city={market?.city ?? props.windows?.[0]?.city ?? "new-york"} windows={windows} selectedAddress={market?.address ?? null} nowSeconds={props.nowSeconds} evidence={props.windowEvidence ?? null} evidenceLoading={!!props.evidenceLoading} onSelectWindow={(address) => props.onSelectWindow?.(address)} />
+    <ProtectChain city={props.city ?? market?.city ?? props.windows?.[0]?.city ?? "new-york"} windows={windows} selectedAddress={market?.address ?? null} nowSeconds={props.nowSeconds} evidence={props.windowEvidence ?? null} evidenceLoading={!!props.evidenceLoading} onSelectWindow={(address) => props.onSelectWindow?.(address)} />
     {showTicket ? null : stage ? <PayoutStatusCard stage={stage} dates={trackerDates(market, props.claimReadiness)} /> : <StepBar step={props.walletConnected && q ? 3 : 2} reason={reviewWhy} />}
 
     {!live ? <View style={[s.notice, { marginTop: S.sm }]} accessibilityRole="text">
@@ -357,7 +358,8 @@ export function ProtectTicket(props: {
               {pay.kind === "priced" ? <Text style={s.splitFigure}>{pay.label}</Text>
                 : pay.kind === "pricing" ? <View style={s.skeletonWrap} accessibilityLabel="Pricing"><View style={s.skeleton} /><ActivityIndicator size="small" color={C.rain} /></View>
                 : <Text style={[s.payState, pay.label === "Sales closed" && { color: C.muted }, pay.kind === "error" && { color: C.coral }]}>{pay.label}</Text>}
-              <Text style={s.caption}>{pay.kind === "priced" ? "SKYT incl. 1% fee" : pay.kind === "pricing" ? "Getting a live NOAA price…" : pay.kind === "error" ? "Tap “Get a new price” below" : "SKYT"}</Text>
+              <Text style={s.caption}>{pay.kind === "priced" ? "SKYT incl. 1% fee" : pay.kind === "pricing" ? "Getting a live NOAA price…" : pay.kind === "error" ? "Price unavailable" : "SKYT"}</Text>
+              {pay.kind === "error" ? <Pressable accessibilityRole="button" accessibilityLabel="Get a new price" onPress={props.onRetryQuote} style={s.inlineBtn}><Text style={s.link}>Get a new price</Text></Pressable> : null}
             </View>
             <View style={[s.splitCell, { backgroundColor: C.payoutSoft }]} accessible accessibilityLabel={`You get ${props.amountBase ? formatSkytFixed(props.amountBase, 0) : "nothing selected"} SKYT automatically if it rains past the trigger`}>
               <Text style={s.smallLabel}>You get if it rains</Text>

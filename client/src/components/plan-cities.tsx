@@ -1,8 +1,8 @@
-import { CONSUMER_CITIES } from "../../../shared/consumer-cities";
+import { CONSUMER_CITIES, type ConsumerCity } from "../../../shared/consumer-cities";
 import { chipClass, useSalesChips } from "@/lib/sales-chips";
 
 /** Rainfall cities on the web Markets tab. New York leads. Chips follow on-chain windows. */
-export function PlanCities() {
+export function PlanCities({ onOpen }: { onOpen: (slug: ConsumerCity["slug"]) => void }) {
   const chips = useSalesChips();
   return (
     <section className="plan-cities" aria-label="Rainfall cities">
@@ -14,13 +14,15 @@ export function PlanCities() {
         {CONSUMER_CITIES.map((city) => {
           const chip = chips[city.code] ?? { label: city.status === "soon" ? "Opens soon" : "Opening shortly", tone: "soon" as const };
           return (
-            <li key={city.code} className="plan-cities__card">
-              <div className="plan-cities__top">
-                <p className="plan-cities__moment">{city.moment}</p>
-                <span className={chipClass(chip, city.code === "NYC" && chip.tone === "live")}>{chip.label}</span>
-              </div>
-              <p className="plan-cities__place">{city.city}, {city.region}</p>
-              <p className="plan-cities__payout">{city.payout}</p>
+            <li key={city.code}>
+              <button type="button" className="plan-cities__card" onClick={() => onOpen(city.slug)}>
+                <div className="plan-cities__top">
+                  <p className="plan-cities__moment">{city.moment}</p>
+                  <span className={chipClass(chip, city.code === "NYC" && chip.tone === "live")}>{chip.label}</span>
+                </div>
+                <p className="plan-cities__place">{city.city}, {city.region}</p>
+                <p className="plan-cities__payout">{city.payout}</p>
+              </button>
             </li>
           );
         })}

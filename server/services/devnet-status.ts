@@ -14,6 +14,17 @@ import { readStoredWindowEvidence } from "./window-evidence.js";
 const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 const SKYT_MINT = process.env.SKYT_MINT ?? "3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g";
+const STATUS_CACHE_MS = 20_000;
+/** Public Devnet endpoints. web3.js must not sit in its 429 retry loop; the next URL is tried instead. */
+const DEVNET_RPC_URLS = ["https://api.devnet.solana.com", "https://solana-devnet.api.onfinality.io/public"];
+
+function devnetRpcUrls(): string[] {
+  return [...new Set([process.env.SOLANA_RPC_URL, ...DEVNET_RPC_URLS].filter((url): url is string => Boolean(url)))];
+}
+
+function devnetConnection(url: string): Connection {
+  return new Connection(url, { commitment: "confirmed", disableRetryOnRateLimit: true });
+}
 
 type Status = "ready" | "pending" | "unavailable" | "error";
 type EvidenceStatus = "ready" | "pending" | "unavailable";
@@ -80,20 +91,49 @@ export function noaaStationValidationMessage(windowStart: string, windowEnd: str
 }
 
 export class DevnetStatusReader {
-  private readonly connection: Connection;
+  private connection: Connection;
+  private readonly injected: boolean;
   private readonly programId = new PublicKey(PROGRAM_ID);
   private readonly mint = new PublicKey(SKYT_MINT);
   private readonly idl: Idl;
   private readonly coder: BorshCoder;
   private evidenceCache: { expiresAt: number; value: DevnetStatus["noaaEvidence"] } | null = null;
+  private statusCache: { at: number; value: Promise<DevnetStatus> } | null = null;
 
-  constructor(connection = new Connection(RPC_URL, "confirmed")) {
-    this.connection = connection;
+  constructor(connection?: Connection) {
+    this.injected = connection != null;
+    this.connection = connection ?? devnetConnection(devnetRpcUrls()[0] ?? RPC_URL);
     this.idl = committedIdl as unknown as Idl;
     this.coder = new BorshCoder(this.idl);
   }
 
   async read(): Promise<DevnetStatus> {
+    if (this.injected) return this.readUncached();
+    if (this.statusCache && Date.now() - this.statusCache.at < STATUS_CACHE_MS) return this.statusCache.value;
+    const run = this.readWithFailover();
+    this.statusCache = { at: Date.now(), value: run };
+    try {
+      return await run;
+    } catch (error) {
+      if (this.statusCache?.value === run) this.statusCache = null;
+      throw error;
+    }
+  }
+
+  private async readWithFailover(): Promise<DevnetStatus> {
+    let last: unknown;
+    for (const url of devnetRpcUrls()) {
+      this.connection = devnetConnection(url);
+      try {
+        return await this.readUncached();
+      } catch (error) {
+        last = error;
+      }
+    }
+    throw last instanceof Error ? last : new Error("Devnet status is unavailable.");
+  }
+
+  private async readUncached(): Promise<DevnetStatus> {
     const [programInfo, mintAccountInfo, noaaEvidence, windowEvidence] = await Promise.all([
       this.connection.getAccountInfo(this.programId, "finalized"),
       this.connection.getAccountInfo(this.mint, "finalized"),

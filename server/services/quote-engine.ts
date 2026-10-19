@@ -1,5 +1,5 @@
 import { canonicalSourceHash, cumulativeMillimeters, DataUnavailableError, NOAA_STATIONS, type DailyRainfall, type RainfallProvider, type SkyHedgeCity } from "./noaa.js";
-import { isValidImmutableMarketPricingTerms } from "../../shared/market-pricing.js";
+import { ceilRate, isValidImmutableMarketPricingTerms, PROTOCOL_FEE_BPS } from "../../shared/market-pricing.js";
 
 export const SKYT_DECIMALS = 6;
 export const MARKET_LIMITS = { maxLiquidity: BigInt(10_000_000_000), maxExposure: BigInt(8_000_000_000), perWallet: BigInt(500_000_000) } as const;
@@ -17,8 +17,8 @@ export function quoteFromCommittedMarketTerms(input: { protectedAmount: bigint; 
   return {
     probabilityBps: input.probabilityBps,
     premiumRateBps: input.premiumRateBps,
-    premium: ceilBps(input.protectedAmount, input.premiumRateBps),
-    protocolFee: ceilBps(input.protectedAmount, 100),
+    premium: ceilRate(input.protectedAmount, input.premiumRateBps),
+    protocolFee: ceilRate(input.protectedAmount, PROTOCOL_FEE_BPS),
     inputsHash: input.inputsHash,
     modelVersion: "noaa-rain-v1",
     historicalWindows: 10,
@@ -46,8 +46,8 @@ export class RainfallQuoteEngine {
     const forecastProbability = matches(forecast, request.operator, request.thresholdMm) ? 10_000 : 0;
     const probabilityBps = clamp(Math.round(historicProbability * 0.7 + forecastProbability * 0.3), 100, 9_000);
     const premiumRateBps = Math.ceil((probabilityBps * 11_500) / 10_000) + 100;
-    const premium = ceilBps(request.protectedAmount, premiumRateBps);
-    const protocolFee = ceilBps(request.protectedAmount, 100);
+    const premium = ceilRate(request.protectedAmount, premiumRateBps);
+    const protocolFee = ceilRate(request.protectedAmount, PROTOCOL_FEE_BPS);
     const inputsHash = canonicalSourceHash({
       schema: "skyhedge-noaa-quote-inputs-v1",
       city: request.city,
@@ -163,4 +163,3 @@ function parseUtcDate(value: string): number {
 }
 function matches(value: number, operator: TriggerOperator, threshold: number): boolean { return operator === "gt" ? value > threshold : operator === "gte" ? value >= threshold : operator === "lt" ? value < threshold : value <= threshold; }
 function clamp(value: number, minimum: number, maximum: number): number { return Math.min(Math.max(value, minimum), maximum); }
-function ceilBps(value: bigint, bps: number): bigint { return (value * BigInt(bps) + BigInt(9_999)) / BigInt(10_000); }

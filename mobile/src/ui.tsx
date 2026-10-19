@@ -87,8 +87,10 @@ export function ActionButton({ label, onPress, disabled = false, busy = false, i
       android_ripple={{ color: C.greenSoft }}
       style={({ pressed }) => [styles.action, variant === "secondary" && styles.actionSecondary, disabled && styles.actionDisabled, pressed && !disabled && styles.actionPressed]}
     >
-      {icon ? <AppIcon name={icon} color={disabled ? C.quiet : variant === "secondary" ? C.ink : C.actionText} size={19} /> : null}
-      <Text style={[styles.actionText, variant === "secondary" && styles.actionTextSecondary, disabled && styles.actionTextDisabled]}>{busy ? "Working…" : label}</Text>
+      <View style={styles.actionRow} collapsable={false}>
+        {icon ? <AppIcon name={icon} color={disabled ? C.quiet : variant === "secondary" ? C.ink : C.actionText} size={19} /> : null}
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.actionText, variant === "secondary" && styles.actionTextSecondary, disabled && styles.actionTextDisabled]}>{busy ? "Working…" : label}</Text>
+      </View>
     </TactilePressable>
   );
 }
@@ -146,12 +148,13 @@ const styles = StyleSheet.create({
   pill: { minHeight: 32, flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 7, borderWidth: 1, borderRadius: 16, paddingHorizontal: 10 },
   dot: { width: 6, height: 6, borderRadius: 3 },
   pillText: { fontFamily: F.bodySemi, fontSize: 12, letterSpacing: 0.3 },
-  action: { minHeight: 48, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", borderRadius: radius.md, paddingHorizontal: 18, backgroundColor: C.rain, overflow: "hidden" },
+  action: { minHeight: 52, alignItems: "center", justifyContent: "center", borderRadius: radius.md, paddingHorizontal: 18, backgroundColor: C.rain },
+  actionRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, maxWidth: "100%" },
   actionSecondary: { backgroundColor: C.surfaceRaised, borderWidth: 1, borderColor: glass.border, boxShadow: "none" },
   actionTextSecondary: { color: C.ink },
   actionDisabled: { backgroundColor: C.surfaceRaised, borderWidth: 1, borderColor: C.border, boxShadow: "none" },
   actionPressed: { opacity: 0.84 },
-  actionText: { color: C.actionText, fontFamily: F.bodyBold, fontSize: 16, letterSpacing: 0.2 },
+  actionText: { flexShrink: 1, color: C.actionText, fontFamily: F.bodyBold, fontSize: 16, lineHeight: 22, letterSpacing: 0.2 },
   actionTextDisabled: { color: C.quiet },
   screenHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 20 },
   screenHeaderCopy: { flex: 1 },

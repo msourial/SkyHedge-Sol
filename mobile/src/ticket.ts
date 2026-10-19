@@ -123,16 +123,17 @@ export function payState(input: { premiumBase: string | null | undefined; busy: 
   return { kind: "blocked", label: "Not priced yet" };
 }
 
-/** Sticky buy button: "Protect for X SKYT" only with a real quote; otherwise disabled with the reason. */
+/** Sticky buy button. A real quote names the price. Loading, and every other unpriced state, say so on the button. */
 export function buyCta(input: { premiumBase: string | null | undefined; busy: boolean; error: string | null; blockedReason: string | null; paymentReason: string | null }): { label: string; disabled: boolean; hint: string | null } {
   const priced = !!input.premiumBase && /^\d+$/.test(input.premiumBase);
-  const label = priced ? `Protect for ${formatSkytFixed(input.premiumBase!, 2)} SKYT` : "Protect";
-  if (input.blockedReason) return { label, disabled: true, hint: input.blockedReason };
-  if (input.busy) return { label, disabled: true, hint: "Getting a live NOAA price…" };
-  if (input.error) return { label, disabled: true, hint: "Price unavailable. Tap “Get a new price” above." };
-  if (!priced) return { label, disabled: true, hint: "Waiting for a live price." };
-  if (input.paymentReason) return { label, disabled: true, hint: input.paymentReason };
-  return { label, disabled: false, hint: null };
+  if (priced) {
+    const label = `Protect for ${formatSkytFixed(input.premiumBase!, 2)} SKYT`;
+    if (input.blockedReason) return { label, disabled: true, hint: input.blockedReason };
+    if (input.paymentReason) return { label, disabled: true, hint: input.paymentReason };
+    return { label, disabled: false, hint: null };
+  }
+  if (input.busy) return { label: "Getting price…", disabled: true, hint: null };
+  return { label: "Pick a trigger", disabled: true, hint: input.blockedReason ?? (input.error ? "Price unavailable. Tap “Get a new price” above." : null) };
 }
 
 /** Why step 3 (Review) isn't reached yet; null once a live quote exists for a connected wallet. */

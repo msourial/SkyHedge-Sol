@@ -239,23 +239,45 @@ export async function getJson<T>(path: string): Promise<T> {
   return body as T;
 }
 
-export async function postJson<T>(path: string, value: unknown): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`, {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify(value),
-  });
-  const body = await response.json().catch(() => null);
-  if (!response.ok) {
-    const reason = typeof body?.message === "string" ? body.message
-      : typeof body?.error === "string" ? body.error
-        : `Service returned ${response.status}`;
-    throw new Error(reason);
+export async function postJson<T>(path: string, value: unknown, opts: { timeoutMs?: number; attempts?: number; signal?: AbortSignal; fetcher?: typeof fetch } = {}): Promise<T> {
+  const attempts = opts.attempts ?? 1;
+  const f = opts.fetcher ?? fetch;
+  let last: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    if (opts.signal?.aborted) throw new Error("The request was cancelled.");
+    const controller = new AbortController();
+    const timer = opts.timeoutMs ? setTimeout(() => controller.abort(), opts.timeoutMs) : null;
+    const onParentAbort = () => controller.abort();
+    opts.signal?.addEventListener("abort", onParentAbort);
+    try {
+      const response = await f(`${apiBase}${path}`, {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(value),
+        signal: controller.signal,
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        const reason = typeof body?.message === "string" ? body.message
+          : typeof body?.error === "string" ? body.error
+            : `Service returned ${response.status}`;
+        throw new Error(reason);
+      }
+      if (body === null || typeof body !== "object" || Array.isArray(body)) {
+        throw new Error("SkyHedge returned an unreadable API response. Try again later.");
+      }
+      return body as T;
+    } catch (error) {
+      last = controller.signal.aborted && !opts.signal?.aborted
+        ? new Error("The price request timed out.")
+        : error;
+      if (attempt + 1 >= attempts) break;
+    } finally {
+      if (timer) clearTimeout(timer);
+      opts.signal?.removeEventListener("abort", onParentAbort);
+    }
   }
-  if (body === null || typeof body !== "object" || Array.isArray(body)) {
-    throw new Error("SkyHedge returned an unreadable API response. Try again later.");
-  }
-  return body as T;
+  throw last instanceof Error ? last : new Error("Network request failed");
 }
 
 export function getApiHost() {
