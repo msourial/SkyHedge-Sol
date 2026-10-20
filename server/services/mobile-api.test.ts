@@ -52,17 +52,18 @@ describe("mobile read APIs", () => {
     expect(body.markets.every((market) => market.evidenceStatus === "researching_evidence" && market.noaaStationId === null)).to.equal(true);
   });
 
-  it("labels a wallet portfolio as not indexed instead of returning false zero positions", async () => {
+  it("returns finalized chain positions instead of an indexer placeholder", async () => {
     const wallet = new PublicKey("DKA9RkGvaW4isyj5xdiZ2oGVUkD1UL64Ha1BazXZFD6y").toBase58();
+    const protections = [{ market: "market", address: "position", city: "New York", premiumPaid: "24000000", statusLabel: "Active" }];
     const record = recorder();
-    await createMobileApiHandler()({ method: "GET", query: { resource: "portfolio", wallet } } as never, record.response as never);
-    const body = record.result().body as { indexed: boolean; source: string; protections: unknown[]; message: string };
+    await createMobileApiHandler({ readPortfolio: async () => protections })({ method: "GET", query: { resource: "portfolio", wallet } } as never, record.response as never);
+    const body = record.result().body as { indexed: boolean; source: string; protections: unknown[]; message?: string };
 
     expect(record.result().statusCode).to.equal(200);
-    expect(body.indexed).to.equal(false);
-    expect(body.source).to.equal("not-indexed");
-    expect(body.protections).to.deep.equal([]);
-    expect(body.message).to.match(/not available|not indexed/i);
+    expect(body.indexed).to.equal(true);
+    expect(body.source).to.equal("finalized-solana-rpc");
+    expect(body.protections).to.deep.equal(protections);
+    expect(body.message).to.equal(undefined);
   });
 
   it("rejects malformed wallet addresses at the portfolio boundary", async () => {

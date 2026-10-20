@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import Feather from "@expo/vector-icons/Feather";
-import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text as NativeText, type TextProps, View, type ViewProps } from "react-native";
+import { AccessibilityInfo, Animated, StyleSheet, Text as NativeText, type TextProps, View, type ViewProps } from "react-native";
 import { C, F, glass, radius } from "./theme";
 import { TactilePressable } from "./liquid-glass";
 
@@ -58,29 +58,29 @@ export function EvidenceTimeline({ steps }: { steps: Array<{ label: string; read
 
 /** The single per-screen disclosure. Every screen gets at most one. */
 export function Disclosure({ children }: { children: string }) {
-  const [open, setOpen] = React.useState(false);
-  return <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={children} onPress={() => setOpen((v) => !v)} style={styles.disclosure}>
+  return <View accessibilityRole="text" style={styles.disclosure}>
     <AppIcon name="info" color={C.quiet} size={16} />
-    <Text numberOfLines={open ? undefined : 1} style={styles.disclosureText}>{children}</Text>
-  </Pressable>;
+    <Text style={styles.disclosureText}>{children}</Text>
+  </View>;
 }
 
 export function BottomSheet({ children }: { children: React.ReactNode }) {
   return <View style={styles.bottomSheet}>{children}</View>;
 }
 
-export function ActionButton({ label, onPress, disabled = false, busy = false, icon, variant = "primary" }: {
+export function ActionButton({ label, onPress, disabled = false, busy = false, busyLabel, icon, variant = "primary" }: {
   variant?: "primary" | "secondary";
   label: string;
   onPress: () => void;
   disabled?: boolean;
   busy?: boolean;
+  busyLabel?: string;
   icon?: AppIconName;
 }) {
   return (
     <TactilePressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={busy ? (busyLabel ?? "Working…") : label}
       accessibilityState={{ disabled: disabled || busy, busy }}
       disabled={disabled || busy}
       onPress={onPress}
@@ -89,7 +89,7 @@ export function ActionButton({ label, onPress, disabled = false, busy = false, i
     >
       <View style={styles.actionRow} collapsable={false}>
         {icon ? <AppIcon name={icon} color={disabled ? C.quiet : variant === "secondary" ? C.ink : C.actionText} size={19} /> : null}
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.actionText, variant === "secondary" && styles.actionTextSecondary, disabled && styles.actionTextDisabled]}>{busy ? "Working…" : label}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.actionText, variant === "secondary" && styles.actionTextSecondary, disabled && styles.actionTextDisabled]}>{busy ? (busyLabel ?? "Working…") : label}</Text>
       </View>
     </TactilePressable>
   );

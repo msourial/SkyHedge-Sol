@@ -32,6 +32,22 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   });
 }
 
+/** Try each Devnet RPC, retrying a URL before moving to the next. */
+export async function tryDevnetUrls<T>(read: (url: string) => Promise<T>, opts: { urls?: string[]; attempts?: number; timeoutMs?: number } = {}): Promise<T> {
+  const urls = opts.urls ?? DEVNET_RPC_URLS;
+  const attempts = opts.attempts ?? 2;
+  const timeoutMs = opts.timeoutMs ?? 8_000;
+  let last: unknown;
+  for (const url of urls) {
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        return await withTimeout(read(url), timeoutMs);
+      } catch (error) { last = error; }
+    }
+  }
+  throw last instanceof Error ? last : new Error("All Devnet RPC endpoints failed");
+}
+
 const BALANCE_CACHE_MS = 15_000;
 const balanceCache = new Map<string, { at: number; value: FinalizedWalletState }>();
 const balanceInFlight = new Map<string, Promise<FinalizedWalletState>>();

@@ -13,7 +13,7 @@ import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } f
 import { payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
 import { formatWeekLabel } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
-import { daysToExpiry, daysToExpiryLabel, expiryChipLabel, matchingWindowPackage, measuredAtLine, type WindowEvidencePackage } from "../../shared/window-chain.ts";
+import { expiryChipLabel, matchingWindowPackage, measuredAtLine, type WindowEvidencePackage } from "../../shared/window-chain.ts";
 import { marketStatus, notTriggeredLine, payGet } from "../../shared/pay-get.ts";
 import { RainGauge } from "./rain-gauge";
 import { ProtectChain } from "./protect-chain";
@@ -22,6 +22,7 @@ import type { ProtectSurface } from "../../shared/protect-surface.ts";
 import { CONSUMER_LEAD_CODES, consumerCityByCode, consumerCityBySlug } from "../../shared/consumer-cities.ts";
 import { MARKETING_SHOTS } from "./marketing";
 import { balanceCheck, coverageOptions, formatSkytFixed, premiumPer100, payState, reviewReason, shortAddress, shortUtcDate, trimMm, utcDateTime, type CoverageOption } from "./ticket";
+import { buyPhaseLabel, type BuyPhase } from "./buy-phase";
 
 const TAB = ["tabular-nums" as const];
 
@@ -256,6 +257,9 @@ export function ProtectTicket(props: {
   transactionMessage: string | null;
   transactionError: string | null;
   transactionSignature: string | null;
+  buyPhase?: BuyPhase | null;
+  onViewWallet?: () => void;
+  onRetryBuy?: () => void;
   walletName: string;
   onRefresh: () => void;
   observedMm?: number | null;
@@ -340,8 +344,9 @@ export function ProtectTicket(props: {
 
     {blocking && props.surface === "ready" && evidenceReady && !showTicket ? <View style={s.calm}><Text style={s.noticeTitle}>Not ready to price yet</Text><Text style={s.noticeBody}>{friendlyError(blocking)}</Text><Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh</Text></Pressable></View> : null}
     {props.quoteError && props.surface === "ready" && !showTicket ? <View style={s.calm}><Text style={s.noticeTitle}>{quoteErrorTitle(props.quoteError)}</Text><Text style={s.noticeBody}>{friendlyError(props.quoteError)}</Text><Pressable accessibilityRole="button" onPress={props.onRetryQuote} style={s.inlineBtn}><Text style={s.link}>Retry</Text></Pressable></View> : null}
-    {props.transactionMessage ? <Text accessibilityLiveRegion="polite" style={[s.body, { color: C.rain, marginBottom: S.md }]}>{props.transactionMessage}</Text> : null}
-    {props.transactionError ? <View style={[s.notice, { borderColor: C.coral }]} accessibilityRole="alert"><Text style={s.noticeTitle}>{transactionErrorTitle(props.transactionError, props.walletName)}</Text><Text style={s.noticeBody}>{friendlyError(props.transactionError)} Nothing was charged unless Explorer shows a transaction.</Text></View> : null}
+    {props.buyPhase ? <BuyProgress phase={props.buyPhase} error={props.transactionError} signature={props.transactionSignature} onRetry={props.onRetryBuy} onWallet={props.onViewWallet} /> : null}
+    {!props.buyPhase && props.transactionMessage ? <Text accessibilityLiveRegion="polite" style={[s.body, { color: C.rain, marginBottom: S.md }]}>{props.transactionMessage}</Text> : null}
+    {!props.buyPhase && props.transactionError ? <View style={[s.notice, { borderColor: C.coral }]} accessibilityRole="alert"><Text style={s.noticeTitle}>{transactionErrorTitle(props.transactionError, props.walletName)}</Text><Text style={s.noticeBody}>{props.transactionError}</Text><Pressable accessibilityRole="button" onPress={props.onRetryBuy} style={s.inlineBtn}><Text style={s.link}>Retry</Text></Pressable></View> : null}
 
     {showTicket ? <Reveal><CoverageTicket
       status={coverageTicketStatus(props.claimReadiness)}
@@ -450,7 +455,7 @@ function CoverageTicket(props: {
       <Row label="Payout" value={props.payout} gold />
       {props.signature ? <Row label="Tx" value={`${shortAddress(props.signature)} ↗`} /> : null}
       <View style={s.row}><Text style={s.rowLabel}>Network</Text><Text style={[s.rowValue, { color: C.payout }]}>Solana Devnet</Text></View>
-      {props.signature ? <Pressable accessibilityRole="link" onPress={() => { void Linking.openURL(`https://explorer.solana.com/tx/${encodeURIComponent(props.signature!)}?cluster=devnet`); }} style={s.inlineBtn}><Text style={s.link}>View on explorer ↗</Text></Pressable> : null}
+      {props.signature ? <Pressable accessibilityRole="link" onPress={() => { void Linking.openURL(`https://explorer.solana.com/tx/${encodeURIComponent(props.signature!)}?cluster=devnet`); }} style={s.inlineBtn}><Text style={s.link}>View on Explorer ↗</Text></Pressable> : null}
     </View>
     <View style={s.ticketHr} />
     <Text style={s.overlineIn}>Status</Text>
@@ -523,18 +528,18 @@ export function PayoutStatusCard({ stage, dates }: { stage: NonNullable<ReturnTy
   </View>;
 }
 
-export function StickyCta(props: { label: string; onPress: () => void; disabled?: boolean; busy?: boolean; hint?: string | null; pay?: string | null; getLabel?: string | null }) {
+export function StickyCta(props: { label: string; onPress: () => void; disabled?: boolean; busy?: boolean; busyLabel?: string; hint?: string | null; pay?: string | null; getLabel?: string | null }) {
   return <View style={s.sticky}>
     {props.pay && props.getLabel ? <View style={s.ticketBars} accessibilityLabel="Pay and payout">
       <View style={s.ticketCol}><View style={[s.payBar, { height: 16 }]} /><Text style={s.caption}>You pay {props.pay} SKYT</Text></View>
       <View style={s.ticketCol}><View style={[s.getBar, { height: 32 }]} /><Text style={[s.caption, { color: C.payout }]}>You get {props.getLabel} SKYT</Text></View>
     </View> : null}
     {props.hint ? <Text style={[s.caption, { textAlign: "center", marginBottom: S.sm }]}>{props.hint}</Text> : null}
-    <ActionButton label={props.label} icon="arrow-right" disabled={props.disabled} busy={props.busy} onPress={props.onPress} />
+    <ActionButton label={props.label} busyLabel={props.busyLabel} icon="arrow-right" disabled={props.disabled} busy={props.busy} onPress={props.onPress} />
   </View>;
 }
 
-export function ConfirmCover(props: { sentence: string; station: string; expiry: string; pay: string; getLabel: string; onClose: () => void; onWallet: () => void }) {
+export function ConfirmCover(props: { sentence: string; station: string; expiry: string; pay: string; getLabel: string; onClose: () => void; onApprove: () => void }) {
   return <View style={s.sheetScrim}>
     <View style={s.sheet} accessibilityViewIsModal accessibilityLabel="Confirm protection">
       <Text style={s.bodyStrong}>{props.sentence}</Text>
@@ -542,12 +547,29 @@ export function ConfirmCover(props: { sentence: string; station: string; expiry:
       <Text style={s.caption}>Settlement · {props.expiry}</Text>
       <Text style={s.caption}>You pay {props.pay} SKYT</Text>
       <Text style={[s.caption, { color: C.payout }]}>You get {props.getLabel} SKYT</Text>
-      <Text style={[s.caption, { marginTop: S.sm }]}>This sheet does not sign a transaction.</Text>
+      <Text style={[s.caption, { marginTop: S.sm }]}>Phantom will ask you to approve this protection.</Text>
       <View style={s.sheetActions}>
         <Pressable accessibilityRole="button" onPress={props.onClose} style={s.sheetBack}><Text style={s.bodyStrong}>Back</Text></Pressable>
-        <Pressable accessibilityRole="button" onPress={props.onWallet} style={s.sheetGo}><Text style={[s.bodyStrong, { color: C.canvas }]}>Wallet</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={props.onApprove} style={s.sheetGo}><Text style={[s.bodyStrong, { color: C.canvas, textAlign: "center" }]}>Approve in Phantom</Text></Pressable>
       </View>
     </View>
+  </View>;
+}
+
+function BuyProgress(props: { phase: BuyPhase; error: string | null; signature: string | null; onRetry?: () => void; onWallet?: () => void }) {
+  const title = buyPhaseLabel(props.phase);
+  const pending = props.phase === "preparing" || props.phase === "waiting" || props.phase === "sending";
+  return <View accessibilityLiveRegion="polite" accessibilityRole={props.phase === "failed" ? "alert" : "text"} style={[s.notice, props.phase !== "failed" && { backgroundColor: C.surfaceRaised, borderColor: C.rain }]}>
+    <View style={s.baseline}>
+      {pending ? <ActivityIndicator color={C.rain} style={{ marginRight: S.sm }} /> : null}
+      <Text style={s.noticeTitle}>{title}</Text>
+    </View>
+    {props.phase === "waiting" ? <Text style={s.noticeBody}>Approve the protection in Phantom. This screen updates when Phantom returns.</Text> : null}
+    {props.phase === "sending" ? <Text style={s.noticeBody}>Solana is confirming the transaction.</Text> : null}
+    {props.phase === "confirmed" && props.signature ? <ExplorerButton url={`https://explorer.solana.com/tx/${encodeURIComponent(props.signature)}?cluster=devnet`} label="View on Explorer" /> : null}
+    {props.phase === "confirmed" && props.onWallet ? <Pressable accessibilityRole="button" onPress={props.onWallet} style={s.inlineBtn}><Text style={s.link}>View in Wallet</Text></Pressable> : null}
+    {props.phase === "failed" ? <Text style={s.noticeBody}>{props.error ?? "The transaction did not complete."}</Text> : null}
+    {props.phase === "failed" && props.onRetry ? <Pressable accessibilityRole="button" onPress={props.onRetry} style={s.inlineBtn}><Text style={s.link}>Retry</Text></Pressable> : null}
   </View>;
 }
 
@@ -628,30 +650,26 @@ export function WalletV2(props: {
       <Text style={s.overline}>My protections</Text>
       <GlassCard delay={2 * motion.stagger}>
         {props.portfolio?.indexed && props.portfolio.protections.length ? props.portfolio.protections.map((p) => {
-          const window = (props.windows ?? []).find((row) => row.address === p.market);
-          const trigger = window?.thresholdMmX100 && /^\d+$/.test(window.thresholdMmX100) ? Number(window.thresholdMmX100) / 100 : null;
-          const observedRaw = props.claimReadiness?.market === p.market ? props.claimReadiness.observation?.rainfallMmX100 : null;
-          const observed = observedRaw && /^\d+$/.test(observedRaw) ? Number(observedRaw) / 100 : null;
-          const maxMm = trigger ? trigger * 1.25 : 1;
-          const missed = observed != null && trigger != null ? notTriggeredLine(observed, trigger) : null;
-          const date = window ? expiryChipLabel(window)?.split(" · ")[0] ?? null : null;
-          const days = window ? daysToExpiry(window.observationEnd, Math.floor(Date.now() / 1000)) : null;
-          const settledMiss = props.claimReadiness?.market === p.market && (props.claimReadiness.state === "not_claimable" || props.claimReadiness.state === "expired");
-          return <View key={p.address} style={[s.between, s.positionRow, { alignItems: "flex-end" }]}>
-            <RainGauge width={36} height={84} level={trigger != null && observed != null ? Math.min(1, observed / maxMm) : 0} ticks={trigger != null ? [{ mm: trigger, selected: true }] : []} label="Protection gauge" />
-            <View style={{ flex: 1, minWidth: 0 }}><Text style={s.cardTitleSm} android_hyphenationFrequency="none">{positionLabel(p.market, props.windows ?? [], props.marketAddress) ?? `Market ${shortAddress(p.market)}`}</Text><Text style={s.caption}>Paid {formatSkytFixed(p.premiumPaid, 2)} SKYT</Text>{missed && settledMiss ? <Text style={[s.caption, { color: C.payout }]}>{missed}</Text> : date && !settledMiss ? <Text style={s.caption}>You're covered through {date}</Text> : null}{observed == null ? <Text style={s.caption}>Rainfall to date is not in this record.</Text> : null}{days != null ? <Text style={s.caption}>{daysToExpiryLabel(days)}</Text> : null}</View>
-            <View style={{ alignItems: "flex-end" }}><Text style={[s.rowValue, { ...T.amountS, fontSize: 18, lineHeight: 24, color: C.payout }]}>{formatSkytFixed(p.protectedAmount, 0)}</Text><Text style={s.caption}>potential</Text></View>
+          return <View key={p.address} style={s.positionBlock}>
+            <Text style={s.cardTitleSm} android_hyphenationFrequency="none">{p.city ?? positionLabel(p.market, props.windows ?? [], props.marketAddress) ?? `Market ${shortAddress(p.market)}`}</Text>
+            <Text style={s.caption}>Window · {p.windowLabel ?? "—"}</Text>
+            <Text style={s.caption}>Trigger · {p.triggerLabel ?? "—"}</Text>
+            <Text style={s.caption}>Paid · {formatSkytFixed(p.premiumPaid, 2)} SKYT</Text>
+            <Text style={s.caption}>Payout · {formatSkytFixed(p.potentialPayout ?? p.protectedAmount, 0)} SKYT</Text>
+            <Text style={s.caption}>Status · {p.statusLabel ?? "Active"}</Text>
+            <ExplorerButton url={p.explorerUrl ?? `https://explorer.solana.com/address/${encodeURIComponent(p.address)}?cluster=devnet`} label="Position on Explorer" />
           </View>;
         }) : props.portfolio?.indexed ? <View style={s.emptyCard}>
           <AppIcon name="umbrella" color={C.rain} size={22} />
-          <Text style={s.body}>No positions yet. Protect a window from Markets.</Text>
-          {props.onBrowseMarkets ? <Pressable accessibilityRole="button" onPress={props.onBrowseMarkets} style={s.inlineBtn}><Text style={s.link}>Browse markets →</Text></Pressable> : null}
+          <Text style={s.body}>No protections yet</Text>
+          {props.onBrowseMarkets ? <Pressable accessibilityRole="link" onPress={props.onBrowseMarkets} style={s.inlineBtn}><Text style={s.link}>Protect</Text></Pressable> : null}
         </View> : props.portfolioError ? <View style={s.emptyCard} accessibilityRole="alert">
           <AppIcon name="alert-circle" color={C.coral} size={22} />
-          <Text style={s.body}>{friendlyError(props.portfolioError)}</Text>
+          <Text style={s.body}>{friendlyError(props.portfolioError, "Couldn’t read protections from Solana.")}</Text>
+          {props.onRetryBalances ? <Pressable accessibilityRole="button" onPress={props.onRetryBalances} style={s.inlineBtn}><Text style={s.link}>Retry</Text></Pressable> : null}
         </View> : <View style={s.emptyCard}>
           <ActivityIndicator color={C.rain} />
-          <Text style={[s.body, { color: C.muted }]}>{props.portfolio?.message ?? "Positions will appear once Solana confirms them."}</Text>
+          <Text style={[s.body, { color: C.muted }]}>Reading protections from Solana…</Text>
         </View>}
       </GlassCard>
 
@@ -733,6 +751,7 @@ const s = StyleSheet.create({
   payState: { ...T.bodyStrong, fontSize: 17, lineHeight: 24, color: C.ink, marginTop: S.sm, marginBottom: S.xs },
   skeletonWrap: { flexDirection: "row", alignItems: "center", gap: S.sm, height: 42, marginTop: S.xs },
   skeleton: { width: 72, height: 24, borderRadius: 6, backgroundColor: C.mutedSurface },
+  positionBlock: { alignItems: "flex-start", gap: 2, marginBottom: S.md },
   emptyCard: { alignItems: "flex-start", gap: S.sm },
   chipText: { ...T.bodyStrong, color: C.ink, fontVariant: TAB, letterSpacing: -0.1 },
   chart: { flexDirection: "row", alignItems: "flex-end", gap: S.sm, marginTop: S.lg, marginBottom: S.sm },

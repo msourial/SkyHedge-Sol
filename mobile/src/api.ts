@@ -163,13 +163,19 @@ export type ClaimReadiness = {
 
 export type Portfolio = {
   wallet: string;
-  source?: "not-indexed" | "finalized-chain-indexer";
+  source?: "finalized-solana-rpc" | "finalized-chain-indexer";
   indexed: boolean;
   protections: Array<{
     market: string;
     address: string;
     protectedAmount: string;
     premiumPaid: string;
+    potentialPayout?: string;
+    city?: string;
+    windowLabel?: string;
+    triggerLabel?: string;
+    statusLabel?: string;
+    explorerUrl?: string;
   }>;
   liquidity: Array<{ market: string; address: string; shares: string }>;
   message?: string;

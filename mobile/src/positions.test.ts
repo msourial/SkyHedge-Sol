@@ -1,0 +1,110 @@
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { describe, it } from "node:test";
+import { Buffer } from "buffer";
+import { PublicKey } from "@solana/web3.js";
+import { positionAccountFilters, POSITION_DATA_SIZE, POSITION_OWNER_OFFSET, protectionView, readFinalizedProtections, SKYHEDGE_PROGRAM_ID } from "./positions.ts";
+
+const OWNER = "DKA9RkGvaW4isyj5xdiZ2oGVUkD1UL64Ha1BazXZFD6y";
+const MARKET = "Bi7RnLKP7cvp4Q8F5YzZmaRiR9J9p51k2SbtEToGbd7U";
+const POSITION = "H1qKXbHatEpNupdP6R9wpwz348Jso48zKcYWKKVgc7L1";
+const DISC = Buffer.from([157, 171, 49, 175, 119, 109, 126, 129]);
+
+function positionBytes(): Buffer {
+  const data = Buffer.alloc(POSITION_DATA_SIZE);
+  DISC.copy(data, 0);
+  new PublicKey(MARKET).toBuffer().copy(data, 8);
+  new PublicKey(OWNER).toBuffer().copy(data, 40);
+  data.writeBigUInt64LE(100_000_000n, 72);
+  data.writeBigUInt64LE(24_000_000n, 80);
+  data.writeBigUInt64LE(100_000_000n, 88);
+  data.writeBigInt64LE(1_792_218_000n, 96);
+  return data;
+}
+
+function marketBytes(): Buffer {
+  const data = Buffer.alloc(384);
+  Buffer.from(createHash("sha256").update("new-york").digest("hex"), "hex").copy(data, 80);
+  data[240] = 1;
+  data.writeBigInt64LE(2900n, 241);
+  data.writeBigInt64LE(1_792_368_000n, 257);
+  data.writeBigInt64LE(1_792_972_800n, 265);
+  data[381] = 1;
+  data[382] = 0;
+  return data;
+}
+
+describe("position accounts", () => {
+  it("filters program accounts by the owner pubkey at offset 40", () => {
+    assert.deepEqual(positionAccountFilters(OWNER), [
+      { dataSize: POSITION_DATA_SIZE },
+      { memcmp: { offset: POSITION_OWNER_OFFSET, bytes: OWNER } },
+    ]);
+  });
+
+  it("presents city, window, trigger, premium, payout and status from account bytes", () => {
+    const view = protectionView(POSITION, positionBytes(), marketBytes());
+    assert.ok(view);
+    assert.equal(view.city, "New York");
+    assert.equal(view.windowLabel, "Oct 19 – Oct 25");
+    assert.equal(view.triggerLabel, "≥ 29 mm");
+    assert.equal(view.premiumPaid, "24000000");
+    assert.equal(view.potentialPayout, "100000000");
+    assert.equal(view.statusLabel, "Active");
+    assert.equal(view.explorerUrl, `https://explorer.solana.com/address/${POSITION}?cluster=devnet`);
+  });
+
+  it("retries a failing RPC and then reads the next endpoint", async () => {
+    let calls = 0;
+    const rows = await readFinalizedProtections(OWNER, {
+      urls: ["https://rpc.a", "https://rpc.b"],
+      attempts: 2,
+      timeoutMs: 1_000,
+      getProgramAccounts: async () => {
+        calls += 1;
+        if (calls < 3) throw new Error("429");
+        return [{ pubkey: new PublicKey(POSITION), data: positionBytes() }];
+      },
+      getMultipleAccounts: async () => [marketBytes()],
+    });
+    assert.equal(calls, 3);
+    assert.equal(rows[0]?.city, "New York");
+    assert.equal(rows[0]?.statusLabel, "Active");
+  });
+
+  it("derives position PDAs when getProgramAccounts fails on every RPC", async () => {
+    const programId = SKYHEDGE_PROGRAM_ID;
+    const [protocol] = PublicKey.findProgramAddressSync([Buffer.from("protocol")], programId);
+    const protocolData = Buffer.alloc(210);
+    protocolData.writeBigUInt64LE(1n, 200);
+    const id = Buffer.alloc(8);
+    id.writeBigUInt64LE(0n);
+    const [market] = PublicKey.findProgramAddressSync([Buffer.from("market"), protocol.toBuffer(), id], programId);
+    const [position] = PublicKey.findProgramAddressSync([Buffer.from("position"), market.toBuffer(), new PublicKey(OWNER).toBuffer()], programId);
+    const rows = await readFinalizedProtections(OWNER, {
+      urls: ["https://rpc.a"],
+      attempts: 1,
+      timeoutMs: 1_000,
+      programId,
+      getProgramAccounts: async () => { throw new Error("getProgramAccounts disabled"); },
+      getAccount: async (_url, key) => key.equals(protocol) ? protocolData : null,
+      getMultipleAccounts: async (_url, keys) => keys.map((key) => {
+        if (key.equals(market)) return marketBytes();
+        if (key.equals(position)) return positionBytes();
+        return null;
+      }),
+    });
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]?.address, position.toBase58());
+    assert.equal(rows[0]?.premiumPaid, "24000000");
+  });
+
+  it("returns an empty list when the scan finds no position accounts", async () => {
+    const rows = await readFinalizedProtections(OWNER, {
+      urls: ["https://rpc.a"],
+      attempts: 1,
+      getProgramAccounts: async () => [],
+    });
+    assert.deepEqual(rows, []);
+  });
+});
