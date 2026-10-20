@@ -6,7 +6,7 @@ import type { ClaimReadiness, DevnetStatus, EvidenceRow, HealthResponse, Portfol
 import { api, apiUnavailable, mm, skytDisplay } from "@/lib/api";
 import { Card, EmptyState, Pill, SectionLabel, Stat } from "@/components/sky";
 import { AgriculturalAreaMap } from "@/components/sky/agricultural-area-map";
-import { AgriculturalMarketExplorerMap } from "@/components/sky/agricultural-market-explorer-map";
+import { StationStrip } from "@/components/station-strip";
 import { cn } from "@/lib/utils";
 import { canOfferInitialization, isProtocolInitialized } from "@shared/protocol-init";
 import { approveAndConfirm, approveAndConfirmDesMoinesSeed, cancelEmptyDraftMarketTransaction, desMoinesSeedTransactions, explorerTx, initializeProtocolTransaction, isProtocolAdmin, issueSkytTransaction, protocolExists, SKYT_ISSUANCE } from "@/lib/admin";
@@ -14,8 +14,9 @@ import { finalizedSkytMintSupply, finalizedWalletState, PROTOCOL_ADMIN, RPC_URL,
 import { initialSkytMintState } from "../../../shared/mint-issuance";
 import { isValidImmutableMarketPricingTerms } from "../../../shared/market-pricing";
 import { desMoinesSeedActionMode, isValidDesMoinesSeedSchedule, marketStateFromStatusJson, nextDesMoinesBuilderMilestone, seedTermsMatch } from "../../../shared/des-moines-seed-plan";
-import { PlanCities } from "@/components/plan-cities";
+import { FirstRunSteps, PlanCities } from "@/components/plan-cities";
 import { ProtectChain } from "@/components/protect-chain";
+import { ProtectionGauges } from "@/components/protection-gauges";
 import { AGRICULTURAL_MARKETS, agriculturalMarketBySlug, agriculturalMarketLocation, millimetersToInches, searchAgriculturalMarkets, type AgriculturalMarketSlug } from "../../../shared/agricultural-markets";
 import { LIVE_CITY_SLUGS } from "../../../shared/window-ladder";
 
@@ -23,12 +24,10 @@ const MARKETS = AGRICULTURAL_MARKETS.map((market) => ({ id: market.slug, city: m
 const TABS = [
   { id: "markets", label: "Markets", icon: Activity },
   { id: "protect", label: "Protect", icon: ShieldPlus },
-  { id: "liquidity", label: "Liquidity", icon: Droplets },
-  { id: "portfolio", label: "Portfolio", icon: WalletCards },
-  { id: "evidence", label: "Evidence", icon: FileCheck2 },
-  { id: "builders", label: "Builder", icon: Code2 },
+  { id: "wallet", label: "Wallet", icon: WalletCards },
 ] as const;
-type Tab = (typeof TABS)[number]["id"];
+type CustomerTab = (typeof TABS)[number]["id"];
+type Tab = CustomerTab | "liquidity" | "builders";
 type MarketId = AgriculturalMarketSlug;
 type Hazard = "rainfall" | "wind_gust" | "snowfall";
 const MARKET_REGIONS = ["North America", "South America", "Emerging markets"] as const;
@@ -36,11 +35,10 @@ const TESTER_PROTECTION_CAP_BASE = 500_000_000n;
 const today = new Date().toISOString().slice(0, 10);
 const weekFromToday = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
 const PAGE_COPY: Record<Tab, { title: string; description: string }> = {
-  markets: { title: "Agricultural rainfall protection", description: "Explore researched crop regions and understand each index before protection becomes available." },
-  protect: { title: "Create a protection plan", description: "Choose an amount, rainfall threshold, and observation window for the selected agricultural area." },
+  markets: { title: "Rain", description: "Pick a city. Official rainfall at the station is what settles." },
+  protect: { title: "Rain", description: "Pick an expiry, then a rain trigger." },
+  wallet: { title: "Wallet", description: "Devnet balances and your protections." },
   liquidity: { title: "Provide test liquidity", description: "Review collateral safeguards and market constraints before contributing to a Devnet pool." },
-  portfolio: { title: "Your protection portfolio", description: "View finalized wallet balances and positions directly from Solana Devnet." },
-  evidence: { title: "Weather evidence", description: "Review the NOAA-only evidence path used for deterministic settlement." },
   builders: { title: "Builder mode", description: "Administer and verify the SkyHedge Devnet protocol using finalized on-chain state." },
 };
 const RESEARCH_HAZARD_PAGE_COPY: Record<Exclude<Hazard, "rainfall">, { title: string; description: string }> = {
@@ -48,7 +46,11 @@ const RESEARCH_HAZARD_PAGE_COPY: Record<Exclude<Hazard, "rainfall">, { title: st
   snowfall: { title: "Snowfall protection research", description: "New snowfall accumulation is a proposed protection index, distinct from snow depth. NOAA station coverage, exact-window evidence, data-use rights, and pricing rules are still being validated." },
 };
 
-function validTab(value: string | null): Tab { return TABS.some((tab) => tab.id === value) ? value as Tab : "markets"; }
+function validTab(value: string | null): Tab {
+  if (value === "portfolio" || value === "evidence") return "wallet";
+  if (value === "liquidity" || value === "builders") return value;
+  return TABS.some((tab) => tab.id === value) ? value as CustomerTab : "markets";
+}
 function validMarket(value: string | null): MarketId { return MARKETS.some((market) => market.id === value) ? value as MarketId : "des-moines"; }
 function liveProtectCity(value: string | null): string { return value && (LIVE_CITY_SLUGS as readonly string[]).includes(value) ? value : "new-york"; }
 function baseUnits(value: string): string | null {
@@ -87,7 +89,7 @@ export default function DashboardPage() {
   const [end, setEnd] = useState(weekFromToday);
   const [quoteRequest, setQuoteRequest] = useState(0);
   const [quoteActive, setQuoteActive] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
+  const wallet = useWallet();
   const amountBase = baseUnits(amount);
   const selectedMarket = agriculturalMarketBySlug(marketId)!;
   const devnetStatus = useQuery({ queryKey: ["devnet-status"], queryFn: () => api<DevnetStatus>("/api/devnet/status"), retry: false, refetchInterval: 30_000 });
@@ -114,6 +116,7 @@ export default function DashboardPage() {
     window.history.replaceState(null, "", `/app?tab=${next}&city=${city}`);
   };
   const openProtectCity = (slug: string) => {
+    window.localStorage.setItem("skyhedge-guide", "done");
     setProtectCity(slug);
     setHazard("rainfall");
     setTab("protect");
@@ -147,35 +150,24 @@ export default function DashboardPage() {
     return () => { document.documentElement.dataset.uiMode = "customer"; };
   }, [tab]);
 
-  useEffect(() => {
-    if (!moreOpen) return;
-    document.querySelector<HTMLButtonElement>('[aria-label="Close more menu"]')?.focus();
-    const closeOnEscape = (event: globalThis.KeyboardEvent) => { if (event.key === "Escape") setMoreOpen(false); };
-    document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [moreOpen]);
-
   const chainOn = tab === "protect" && hazard === "rainfall" && (devnetStatus.data?.cityWindows?.length ?? 0) > 0;
   const page = chainOn
-    ? { title: "Protect", description: "Pick an expiry, then a rain trigger." }
+    ? { title: "Rain", description: "Pick an expiry, then a rain trigger." }
     : (tab === "markets" || tab === "protect") && hazard !== "rainfall" ? RESEARCH_HAZARD_PAGE_COPY[hazard] : PAGE_COPY[tab];
-  const researchHazardView = (tab === "markets" || tab === "protect") && hazard !== "rainfall";
   return <div className="grid min-w-0 gap-7 lg:grid-cols-[68px_minmax(0,1fr)]">
     <aside className="hidden lg:block"><nav aria-label="Product sections" className="sticky top-24 flex w-[68px] flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-[var(--shadow-card)]">{TABS.map(({ id, label, icon: Icon }, index) => <button key={id} type="button" title={label} aria-label={label} aria-current={tab === id ? "page" : undefined} onClick={() => switchTab(id)} className={cn("flex min-h-11 items-center justify-center rounded-lg text-sm font-medium transition-colors", index === TABS.length - 1 && "mt-3 border-t border-[var(--border)] pt-3", tab === id ? "bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]")}><Icon className="h-5 w-5" /><span className="sr-only">{label}</span></button>)}</nav></aside>
-    <div className="min-w-0 space-y-6 pb-[calc(64px+env(safe-area-inset-bottom))] lg:pb-0">
-      <header className="sky-page-header"><Pill tone={tab === "builders" ? "slate" : researchHazardView ? "amber" : "cyan"}>{tab === "builders" ? "Technical workspace" : researchHazardView ? "Research-only hazard" : "NOAA-settled protection"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></header>
+    <div className="min-w-0 space-y-6 pb-[calc(112px+env(safe-area-inset-bottom))] lg:pb-0">
+      <header className="sky-page-header"><div className="flex items-start justify-between gap-3"><div><Pill tone={tab === "builders" ? "slate" : "slate"}>{tab === "builders" ? "Technical workspace" : "Devnet"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></div><button type="button" className="min-h-11 shrink-0 rounded-full border border-[var(--border)] px-3 text-sm" onClick={() => switchTab("builders")}>Builder</button></div></header>
+      {tab === "markets" && <FirstRunSteps /> }
       {tab === "markets" && <Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} onOpenCity={openProtectCity} selectedSlug={marketId} status={devnetStatus.data} />}
-      {chainOn ? <ProtectChain windows={devnetStatus.data?.cityWindows ?? []} city={protectCity} onCityChange={openProtectCity} /> : tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") { setQuoteActive(true); setQuoteRequest((count) => count + 1); } }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" && quoteActive ? quoteQuery.error : undefined} />}
+      {chainOn ? <ProtectChain windows={devnetStatus.data?.cityWindows ?? []} city={protectCity} connected={wallet.connected} onCityChange={openProtectCity} onCovered={() => switchTab("wallet")} /> : tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") { setQuoteActive(true); setQuoteRequest((count) => count + 1); } }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" && quoteActive ? quoteQuery.error : undefined} />}
       {tab === "liquidity" && <Liquidity />}
-      {tab === "portfolio" && <PortfolioView />}
-      {tab === "evidence" && <Evidence />}
+      {tab === "wallet" && <div className="space-y-8"><h2 className="text-xl font-semibold">My protections</h2><PortfolioView windows={devnetStatus.data?.cityWindows ?? []} /><Evidence /></div>}
       {tab === "builders" && <div className="space-y-6"><OwnerConsole status={devnetStatus.data} /><BuilderProof /></div>}
     </div>
-    <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[var(--border)] bg-[var(--surface-1)] px-1 pb-[env(safe-area-inset-bottom)] lg:hidden">
-      {TABS.filter(({ id }) => ["markets", "protect", "portfolio", "evidence"].includes(id)).map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { setMoreOpen(false); switchTab(id); }} className={cn("flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] font-medium", tab === id ? "text-[var(--identity)]" : "text-[var(--muted-foreground)]")}><Icon className="h-5 w-5" />{label}</button>)}
-      <button type="button" aria-expanded={moreOpen} onClick={() => setMoreOpen((value) => !value)} className={cn("flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] font-medium", moreOpen || tab === "liquidity" || tab === "builders" ? "text-[var(--identity)]" : "text-[var(--muted-foreground)]")}><Menu className="h-5 w-5" />More</button>
+    <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-[var(--border)] bg-[var(--surface-1)] px-1 pb-[env(safe-area-inset-bottom)] lg:hidden">
+      {TABS.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => switchTab(id)} className={cn("flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] font-medium", tab === id ? "text-[var(--foreground)]" : "text-[var(--muted-foreground)]")}><Icon className="h-5 w-5" />{label}</button>)}
     </nav>
-    {moreOpen && <div className="fixed inset-0 z-50 bg-black/30 lg:hidden" onClick={() => setMoreOpen(false)}><section role="dialog" aria-modal="true" aria-label="More sections" className="absolute inset-x-3 bottom-[calc(76px+env(safe-area-inset-bottom))] rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-3 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="mb-2 flex items-center justify-between"><h2 className="text-base font-semibold">More</h2><button type="button" className="flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-[var(--surface-2)]" onClick={() => setMoreOpen(false)} aria-label="Close more menu"><X className="h-5 w-5" /></button></div>{TABS.filter(({ id }) => id === "liquidity" || id === "builders").map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { setMoreOpen(false); switchTab(id); }} className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium hover:bg-[var(--surface-2)]"><Icon className="h-5 w-5" />{label}</button>)}</section></div>}
   </div>;
 }
 
@@ -486,7 +478,6 @@ function Markets({ hazard, setHazard, onSelect, onOpenCity, selectedSlug, status
     ...results.map((market) => ({ kind: "market" as const, market })),
   ], [results]);
   const showingAllCatalog = query.trim().length === 0 || showAll;
-  const mapMarkets = useMemo(() => results.map((market) => agriculturalMarketBySlug(market.id)!).filter(Boolean), [results]);
   const getEvidenceStatus = useCallback((market: (typeof AGRICULTURAL_MARKETS)[number]): "researching_evidence" | "validated" | "DATA_UNAVAILABLE" => (
     evidenceValidated(market.slug as MarketId, status) ? "validated" : market.evidenceStatus
   ), [status]);
@@ -527,8 +518,8 @@ function Markets({ hazard, setHazard, onSelect, onOpenCity, selectedSlug, status
   };
 
   return <section id="markets-workspace" className="market-explorer" aria-labelledby="markets-heading">
-    <PlanCities onOpen={onOpenCity} />
-    <HazardSelector value={hazard} onChange={setHazard} />
+    <PlanCities onOpen={onOpenCity} windows={status?.cityWindows} />
+    <p className="text-sm text-[var(--muted-foreground)]">Wind, snow and heat coming</p>
     <header className="market-explorer__header">
       <div>
         <p className="market-explorer__overline">Climate risk explorer</p>
@@ -547,9 +538,8 @@ function Markets({ hazard, setHazard, onSelect, onOpenCity, selectedSlug, status
       <div className="market-selection-brief__action"><Pill tone={selectedState.tone}>{selectedState.label}</Pill><button type="button" className="sky-btn-primary" onClick={() => onSelect(selectedSlug)}>Review protection</button></div>
     </section>
 
+    <StationStrip selected="new-york" onSelect={onOpenCity} />
     <div className="market-workspace">
-      <AgriculturalMarketExplorerMap markets={mapMarkets} selectedSlug={selectedSlug} getEvidenceStatus={getEvidenceStatus} onSelect={onSelect} onSelectFromList={() => document.getElementById("market-search")?.focus()} />
-
       <aside className="market-location-dock" aria-label="Agricultural index locations">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -559,7 +549,7 @@ function Markets({ hazard, setHazard, onSelect, onOpenCity, selectedSlug, status
           <MapPin className="h-5 w-5 shrink-0 text-[var(--identity)]" aria-hidden="true" />
         </div>
 
-        <div ref={searchRef} className="relative mt-4">
+        <div ref={searchRef} className="relative z-30 mt-4">
           <label className="sky-label" htmlFor="market-search">Find an index</label>
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--faint)]" aria-hidden="true" />
@@ -714,7 +704,7 @@ function QuotePanel({ quote, error }: { quote?: Quote; error: unknown }) { if (e
 
 function Liquidity() { return <div className="grid gap-5 lg:grid-cols-[1fr_340px]"><Card><SectionLabel>Liquidity safeguards</SectionLabel><h2 className="sky-display text-xl">Collateral is available only before lock.</h2><div className="mt-5 grid gap-3 sm:grid-cols-2"><Guardrail title="Tester cap" text="A seeded test market can accept at most 10,000 SKYT total liquidity. SKYT has no real-world value." /><Guardrail title="Pre-lock only" text="LP funding and withdrawals are permitted only while the market is open." /><Guardrail title="Reserved exposure" text="Withdrawals cannot reduce collateral below protection already reserved." /><Guardrail title="Final accounting" text="The 1% protocol fee transfers after the claim deadline; residual funds redeem pro rata." /></div></Card><Card><Pill tone="amber">Gates not satisfied</Pill><h2 className="sky-display mt-4 text-lg">Liquidity actions unavailable</h2><p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">No finalized market has a verified program, published IDL, initialized protocol, validated NOAA evidence, and seeded collateral. The interface will not manufacture a funding or withdrawal transaction before those gates pass.</p><button disabled aria-describedby="liquidity-unavailable-reason" className="sky-btn-primary mt-5 min-h-11 w-full">Prepare liquidity unavailable</button><p id="liquidity-unavailable-reason" className="sr-only">Liquidity is unavailable until all finalized Devnet protocol and market gates pass.</p></Card></div>; }
 function Guardrail({ title, text }: { title: string; text: string }) { return <div className="border-l-2 border-[var(--violet)] bg-[var(--surface-2)] p-4"><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">{text}</p></div>; }
-function PortfolioView() { const { publicKey, connected } = useWallet(); const portfolio = useQuery({ queryKey: ["portfolio", publicKey?.toBase58()], queryFn: () => api<Portfolio>(`/api/portfolio/${publicKey!.toBase58()}`), enabled: Boolean(publicKey), retry: false }); const balances = useQuery({ queryKey: ["finalized-wallet", publicKey?.toBase58()], queryFn: () => finalizedWalletState(publicKey!), enabled: Boolean(publicKey), retry: false, refetchInterval: 30_000 }); if (!connected || !publicKey) return <EmptyState icon={<WalletCards className="h-8 w-8" />} title="Connect Phantom or Solflare to inspect your portfolio" hint="Connected wallets read finalized Devnet balances directly; nothing is simulated." />; const data = portfolio.data; return <div className="space-y-5"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><Stat label="Wallet" value={`${publicKey.toBase58().slice(0, 4)}…${publicKey.toBase58().slice(-4)}`} accent="cyan" /><Stat label="Finalized SOL" value={balances.data ? balances.data.sol.toFixed(4) : balances.isError ? "Unavailable" : "Loading…"} /><Stat label="Finalized SKYT" value={balances.data ? (Number(balances.data.skytBaseUnits) / 10 ** balances.data.skytDecimals).toLocaleString() : balances.isError ? "Unavailable" : "Loading…"} /><Stat label="Protections" value={data?.protections.length ?? "—"} /><Stat label="Liquidity positions" value={data?.liquidity.length ?? "—"} /></div><p role="status" className="text-xs text-[var(--muted-foreground)]">{balances.data ? `Balances read directly from finalized Devnet slot ${balances.data.slot}.` : balances.isError ? "Finalized Devnet balance read is unavailable; no balance is estimated." : "Reading balances directly from finalized Devnet…"}</p>{portfolio.isError ? <DeploymentNotice /> : data && data.protections.length + data.liquidity.length === 0 ? <EmptyState icon={<Database className="h-8 w-8" />} title="No finalized positions indexed" hint={data.message ?? "The indexer has not reported positions for this wallet."} /> : <Card><p className="text-sm text-[var(--muted-foreground)]">Fetching final-chain records…</p></Card>}</div>; }
+function PortfolioView({ windows }: { windows: NonNullable<DevnetStatus["cityWindows"]> }) { const { publicKey, connected } = useWallet(); const portfolio = useQuery({ queryKey: ["portfolio", publicKey?.toBase58()], queryFn: () => api<Portfolio>(`/api/portfolio/${publicKey!.toBase58()}`), enabled: Boolean(publicKey), retry: false }); const balances = useQuery({ queryKey: ["finalized-wallet", publicKey?.toBase58()], queryFn: () => finalizedWalletState(publicKey!), enabled: Boolean(publicKey), retry: false, refetchInterval: 30_000 }); if (!connected || !publicKey) return <EmptyState icon={<WalletCards className="h-8 w-8" />} title="Connect Phantom or Solflare to inspect your portfolio" hint="Connected wallets read finalized Devnet balances directly; nothing is simulated." />; const data = portfolio.data; return <div className="space-y-5"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><Stat label="Wallet" value={`${publicKey.toBase58().slice(0, 4)}…${publicKey.toBase58().slice(-4)}`} accent="cyan" /><Stat label="Finalized SOL" value={balances.data ? balances.data.sol.toFixed(4) : balances.isError ? "Unavailable" : "Loading…"} /><Stat label="Finalized SKYT" value={balances.data ? (Number(balances.data.skytBaseUnits) / 10 ** balances.data.skytDecimals).toLocaleString() : balances.isError ? "Unavailable" : "Loading…"} /><Stat label="Protections" value={data?.protections.length ?? "—"} /><Stat label="Liquidity positions" value={data?.liquidity.length ?? "—"} /></div><p role="status" className="text-xs text-[var(--muted-foreground)]">{balances.data ? `Balances read directly from finalized Devnet slot ${balances.data.slot}.` : balances.isError ? "Finalized Devnet balance read is unavailable; no balance is estimated." : "Reading balances directly from finalized Devnet…"}</p>{portfolio.isError ? <DeploymentNotice /> : data && data.protections.length + data.liquidity.length === 0 ? <EmptyState icon={<Database className="h-8 w-8" />} title="No finalized positions indexed" hint={data.message ?? "The indexer has not reported positions for this wallet."} /> : <div className="space-y-4">{data?.protections.length ? <ProtectionGauges protections={data.protections} windows={windows} /> : null}{data && !data.protections.length && data.liquidity.length ? <Card><p className="text-sm text-[var(--muted-foreground)]">{data.liquidity.length} liquidity positions. Rainfall protections appear here as gauges.</p></Card> : null}{!data ? <Card><p className="text-sm text-[var(--muted-foreground)]">Fetching final-chain records…</p></Card> : null}</div>}</div>; }
 function Evidence() {
   const evidence = useQuery({ queryKey: ["evidence"], queryFn: () => api<{ rows: EvidenceRow[] }>("/api/settlement/evidence"), retry: false });
   const [city, setCity] = useState<MarketId>("des-moines");

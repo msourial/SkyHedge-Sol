@@ -137,7 +137,7 @@ function HeroWeather() {
           <ellipse cx="248" cy="196" rx="96" ry="16" />
           <ellipse cx="304" cy="186" rx="38" ry="14" />
         </g>
-        <g className="wl-rain" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+        <g className="wl-rain" fill="none" stroke="#7CC4FF" strokeWidth="1.6" strokeLinecap="round">
           <path d="M48 40 v28" />
           <path d="M96 70 v22" />
           <path d="M150 28 v26" />
@@ -147,6 +147,11 @@ function HeroWeather() {
           <path d="M70 150 v24" />
           <path d="M188 120 v28" />
           <path d="M340 150 v22" />
+        </g>
+        <g transform="translate(150 430)">
+          <rect x="16" y="8" width="32" height="144" rx="16" fill="#1C2433" stroke="#2A3444" strokeWidth="2" />
+          <rect x="20" y="96" width="24" height="52" fill="#7CC4FF" />
+          <line x1="48" x2="64" y1="70" y2="70" stroke="#F2C230" strokeWidth="2" />
         </g>
       </svg>
     </div>
@@ -310,6 +315,9 @@ export default function WaitlistPage() {
             <div id="waitlist" className="wl-hero__form">
               <div className="wl-hero__cta">
                 <WaitlistForm variant="hero" />
+                <Link to="/app?tab=markets&city=new-york" className="wl-cta-secondary">
+                  Pick your city
+                </Link>
                 <Link to="/app" className="wl-cta-secondary">
                   Open web app
                 </Link>

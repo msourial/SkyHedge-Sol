@@ -48,22 +48,12 @@ test("wind gust and snowfall are research-only in Markets and never request quot
   });
   await page.goto("/app?tab=markets&city=des-moines");
 
-  await page.getByRole("button", { name: "Wind gust" }).click();
-  await expect(page.getByRole("heading", { name: "Wind gust protection is research-only" })).toBeVisible();
-  await expect(page.getByText("Research-only hazard", { exact: true })).toBeVisible();
-  await expect(page.getByText("NOAA-settled protection", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("Researching NOAA evidence", { exact: true })).toBeVisible();
-  await expect(page.getByText("Highest daily peak gust", { exact: false })).toBeVisible();
-  await expect(page.getByText(/mph.*km\/h/)).toBeVisible();
-  await expect(page.locator('[data-testid^="market-index-option-"]')).toHaveCount(0);
-
-  await page.getByRole("button", { name: "Snowfall" }).click();
-  await expect(page.getByRole("heading", { name: "Snowfall protection is research-only" })).toBeVisible();
-  await expect(page.getByText("Research-only hazard", { exact: true })).toBeVisible();
-  await expect(page.getByText("NOAA-settled protection", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("New snowfall accumulated during the observation window", { exact: true })).toBeVisible();
-  await expect(page.getByText(/not snow depth/i)).toBeVisible();
-  await expect(page.getByText(/inches.*millimetres/i)).toBeVisible();
+  await expect(page.getByText("Wind, snow and heat coming")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Wind gust" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Snowfall" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Wind gust protection is research-only" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Snowfall protection is research-only" })).toHaveCount(0);
+  await expect(page.locator('[data-testid^="market-index-option-"]')).toHaveCount(12);
   expect(apiRequests).toEqual([]);
 });
 
@@ -140,16 +130,15 @@ test("rainfall protect shows an expiry chain and only prices the on-chain trigge
   await page.setViewportSize({ width: 1200, height: 2670 });
   await page.goto("/app?tab=protect");
   await page.addStyleTag({ content: "html { font-size: 130%; }" });
-  await expect(page.getByText("NOAA Central Park · settles after expiry from NOAA final data")).toBeVisible();
-  await expect(page.getByRole("radio", { name: /Oct 25 · W/ })).toBeVisible();
-  await expect(page.getByRole("radio", { name: /Nov 1 · W/ })).toBeVisible();
-  await expect(page.getByRole("radio", { name: /Nov 30 · M/ })).toBeVisible();
-  await expect(page.getByRole("radio", { name: /Dec 31 · M/ })).toBeVisible();
-  await page.getByRole("radio", { name: /Nov 30 · M/ }).click();
-  await expect(page.getByRole("row", { name: /≥ 102 mm/ })).toContainText("24.00");
-  await expect(page.getByText("Coming soon").first()).toBeVisible();
-  await page.getByLabel("Protect chain").getByRole("button", { name: "Protect" }).click();
-  await expect(page.getByText(/One Phantom approval/)).toBeVisible();
+  await expect(page.getByText(/Measured at NOAA Central Park/)).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Weekly · Oct 25/ })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Weekly · Nov 1/ })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Monthly · Nov 30/ })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Monthly · Dec 31/ })).toBeVisible();
+  await page.getByRole("radio", { name: /Monthly · Nov 30/ }).click();
+  await expect(page.getByText("20.0% chance · 4.1×").first()).toBeVisible();
+  await expect(page.getByText(/more triggers open soon/)).toBeVisible();
+  await expect(page.getByLabel("Protect chain").getByRole("button", { name: "Connect wallet" })).toBeDisabled();
   expect(signed).toEqual([]);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);
@@ -211,7 +200,8 @@ test("Markets is a map-led agricultural index explorer with truthful location-on
   test.skip(Boolean(process.env.MAP_TEST_KEY), "This fallback scenario runs without a configured map key.");
   await page.goto("/app?tab=markets&city=des-moines");
 
-  await expect(page.getByRole("region", { name: "Agricultural index map" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "NOAA stations" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /New York/ }).first()).toBeVisible();
   await expect(page.getByText("Reference locations", { exact: true })).toBeVisible();
   await expect(page.getByText("Winnipeg, Manitoba, Canada", { exact: true })).toBeVisible();
   const mapState = await page.getByTestId("market-explorer-map").getAttribute("data-map-state");
@@ -371,7 +361,7 @@ test("wallet opens the supported chooser without attempting connection on load",
   await expect(page.locator("[data-wallet-state=idle]")).toBeVisible();
   expect(errors.filter((message) => message.includes("WalletConnectionError"))).toEqual([]);
 
-  await page.getByRole("button", { name: /Select Wallet|Connect Wallet/ }).click();
+  await page.getByRole("button", { name: /Select Wallet|Connect wallet/i }).click();
   await expect(page.getByText("Phantom", { exact: true })).toBeVisible();
   await expect(page.getByText("Solflare", { exact: true })).toBeVisible();
 });
@@ -390,7 +380,7 @@ test("wallet connection timeout offers a safe reset without submitting a transac
     Object.defineProperty(window, "phantom", { value: { solana: pendingProvider }, configurable: true });
   });
   await page.goto("/app?tab=markets&city=des-moines");
-  await page.getByRole("button", { name: /Select Wallet|Connect Wallet/ }).click();
+  await page.getByRole("button", { name: /Select Wallet|Connect wallet/i }).click();
   await page.getByRole("button", { name: "Phantom Detected" }).click();
   await expect(page.locator("[data-wallet-state=selected]")).toBeVisible();
   await page.getByRole("button", { name: "Connect" }).click();
@@ -431,10 +421,10 @@ test("waitlist landing owns the root hero and the product lives at /app", async 
   await expect(hero.getByText("Toronto")).toHaveCount(0);
   await expect(hero.getByText("Des Moines")).toHaveCount(0);
   const examples = page.getByRole("list", { name: "Rainfall cities" });
-  await expect(examples.getByText("Los Angeles")).toBeVisible();
-  await expect(examples.getByText("Boston")).toBeVisible();
-  await expect(examples.getByText("Austin")).toBeVisible();
-  await expect(examples.getByText("Des Moines")).toBeVisible();
+  await expect(examples.getByText("Los Angeles", { exact: true })).toBeVisible();
+  await expect(examples.getByText("Boston", { exact: true })).toBeVisible();
+  await expect(examples.getByText("Austin", { exact: true })).toBeVisible();
+  await expect(examples.getByText("Des Moines", { exact: true })).toBeVisible();
   await expect(examples.getByText("Toronto")).toBeVisible();
   await expect(examples.getByText("Opens soon")).toBeVisible();
   await expect(page.getByRole("link", { name: "Open web app" }).first()).toHaveAttribute("href", "/app");
@@ -442,13 +432,13 @@ test("waitlist landing owns the root hero and the product lives at /app", async 
   await expect(page.getByText("insurance", { exact: false })).toHaveCount(0);
 
   await page.goto("/app?tab=markets&city=des-moines");
-  await expect(page.getByRole("heading", { name: "Agricultural rainfall protection" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Rain", exact: true })).toBeVisible();
   await expect(page).toHaveURL(/\/app\?/);
 });
 
 test("customer screens hide protocol administration and Builder mode contains it", async ({ page }) => {
   await page.goto("/app?tab=markets&city=des-moines");
-  await expect(page.getByRole("heading", { name: "Agricultural rainfall protection" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Rain", exact: true })).toBeVisible();
   await expect(page.getByText("Live Devnet status", { exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Builder", exact: true }).click();
@@ -511,20 +501,16 @@ test("Builder shows that automatic oracle settlement is blocked when cron auth i
   await expect(page.getByText("unavailable", { exact: true }).first()).toBeVisible();
 });
 
-test("mobile bottom navigation exposes Liquidity and Builder through More", async ({ page }) => {
+test("mobile bottom navigation is Markets, Protect, and Wallet", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/app?tab=markets&city=des-moines");
   const mobileNavigation = page.getByRole("navigation", { name: "Mobile navigation" });
-  await expect(mobileNavigation).toBeVisible();
-  await mobileNavigation.getByRole("button", { name: "More" }).click();
-  const drawer = page.getByRole("dialog", { name: "More sections" });
-  await expect(drawer.getByRole("button", { name: "Liquidity" })).toBeVisible();
-  await expect(drawer.getByRole("button", { name: "Builder" })).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(drawer).toBeHidden();
-  await mobileNavigation.getByRole("button", { name: "More" }).click();
-  await drawer.getByRole("button", { name: "Liquidity" }).click();
-  await expect(page.getByRole("heading", { name: "Provide test liquidity" })).toBeVisible();
+  await expect(mobileNavigation.getByRole("button", { name: "Markets" })).toBeVisible();
+  await expect(mobileNavigation.getByRole("button", { name: "Protect" })).toBeVisible();
+  await expect(mobileNavigation.getByRole("button", { name: "Wallet" })).toBeVisible();
+  await expect(mobileNavigation.getByRole("button", { name: "More" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Builder", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Builder mode" })).toBeVisible();
 });
 
 test("uses the self-hosted Inter / Inter Tight Storm Glass system with mobile-size inputs", async ({ page }) => {

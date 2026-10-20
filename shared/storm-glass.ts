@@ -41,7 +41,7 @@ export const C = {
   field: "#1C2433",
   fieldText: "#F2F5F8",
   /** Money / payout figures — distinct from alert amber. */
-  payout: "#F5B841",
+  payout: "#F2C230",
   payoutSoft: "#2E2414",
 } as const;
 

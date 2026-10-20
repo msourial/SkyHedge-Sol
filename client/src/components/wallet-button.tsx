@@ -71,7 +71,7 @@ export function WalletButton() {
         clearError();
       }}
     >
-      <WalletMultiButton className="sky-wallet-button" />
+      <WalletMultiButton className="sky-wallet-button">Connect wallet</WalletMultiButton>
       <span className="sr-only" aria-live="polite">
         {connected && publicKey ? `${wallet?.adapter.name ?? "Wallet"} connected: ${publicKey.toBase58()}` : connecting ? "Connecting wallet" : wallet ? `${wallet.adapter.name} selected. Activate the Connect button to continue.` : "No wallet connected"}
       </span>
