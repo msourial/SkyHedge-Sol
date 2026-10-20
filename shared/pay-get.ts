@@ -36,7 +36,7 @@ export function payGet(input: { coverageSkyt: number; premiumRateBps: number; pr
 export function protectCta(input: { connected: boolean; quote: PayGet | null; thresholdMm: number | null }): string {
   if (!input.connected) return "Connect wallet";
   if (!input.quote || input.thresholdMm == null) return "Pick a trigger";
-  return `Protect ${input.quote.payLabel} SKYT · get ${input.quote.getLabel} if ≥${input.thresholdMm} mm`;
+  return `Protect ${input.quote.getLabel} SKYT · pay ${input.quote.payLabel}`;
 }
 
 export function notTriggeredLine(observedMm: number, triggerMm: number): string | null {

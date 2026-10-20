@@ -25,7 +25,7 @@ describe("pay and get", () => {
     const quote = payGet({ coverageSkyt: 100, premiumRateBps: 2_400, probabilityBps: 2_000 });
     expect(protectCta({ connected: false, quote, thresholdMm: 29 })).to.equal("Connect wallet");
     expect(protectCta({ connected: true, quote: null, thresholdMm: null })).to.equal("Pick a trigger");
-    expect(protectCta({ connected: true, quote, thresholdMm: 29 })).to.equal("Protect 24.00 SKYT · get 100 if ≥29 mm");
+    expect(protectCta({ connected: true, quote, thresholdMm: 29 })).to.equal("Protect 100 SKYT · pay 24.00");
   });
 
   it("states a miss and a confirm sentence only from real figures", () => {
