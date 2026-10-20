@@ -11,7 +11,7 @@ describe("Storm Glass theme", () => {
     assert.equal(C.rainBright, "#A8D9FF");
     assert.equal(C.mint, "#34D399");
     assert.equal(C.amber, "#FFB020");
-    assert.equal(C.payout, "#F5B841");
+    assert.equal(C.payout, "#F2C230");
     assert.notEqual(C.amber, C.payout);
     assert.equal(C.coral, "#F2787D");
   });

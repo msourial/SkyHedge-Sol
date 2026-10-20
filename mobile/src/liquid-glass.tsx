@@ -38,9 +38,8 @@ type LiquidGlassSurfaceProps = ViewProps & {
 export function LiquidGlassSurface({ children, style, contentStyle, blurRadius = 18, alpha = 0.4, strokeWidth = 1, radius = 18, ...props }: LiquidGlassSurfaceProps) {
   const { usesNativeBlur } = liquidGlassRecipe(Number(Platform.Version), false);
   const blurTarget = useContext(GlassTargetContext);
-  return <View {...props} style={[styles.surface, { borderRadius: radius }, style]}>
-    {usesNativeBlur && blurTarget ? <BlurView pointerEvents="none" blurTarget={blurTarget} tint="dark" intensity={Math.min(100, Math.max(1, Math.round(blurRadius * 3)))} blurReductionFactor={4} blurMethod="dimezisBlurViewSdk31Plus" style={StyleSheet.absoluteFill} /> : null}
-    <LinearGradient pointerEvents="none" colors={[glass.edge, glass.border, "transparent"]} locations={[0, 0.45, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: radius }]} />
+  return <View {...props} style={[styles.surface, { borderRadius: radius, backgroundColor: C.surfaceRaised }, style]}>
+    {false && usesNativeBlur && blurTarget ? <BlurView pointerEvents="none" blurTarget={blurTarget} tint="dark" intensity={Math.min(100, Math.max(1, Math.round(blurRadius * 3)))} blurReductionFactor={4} blurMethod="dimezisBlurViewSdk31Plus" style={StyleSheet.absoluteFill} /> : null}
     <View style={[styles.content, { margin: strokeWidth, borderRadius: Math.max(0, radius - strokeWidth), backgroundColor: glass.fill }, contentStyle]}>{children}</View>
   </View>;
 }

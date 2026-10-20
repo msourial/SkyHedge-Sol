@@ -31,12 +31,12 @@ import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
 import { marketIsLive, MarketsScreen, ProtectTicket, StickyCta, WalletV2 } from "./src/v2";
 import { liveMarketLabel, protectCityFor, sellingWindows, windowsForCity, type Tenor } from "./src/windows";
 import { matchingWindowPackage, sortByExpiry, type WindowEvidencePackage } from "../shared/window-chain.ts";
+import { payGet, protectCta } from "../shared/pay-get.ts";
 import { buyCta, coverageOptions, type CoverageOption } from "./src/ticket";
 import { Landing, MarketDetail } from "./src/revamp";
 import { CollectPayoutView, ReceiptView } from "./src/journey";
 import { BrandMark } from "./src/BrandMark";
 import { BlurTargetView } from "expo-blur";
-import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 import { GlassTargetContext } from "./src/liquid-glass";
 import { formatSkytFixed, shortAddress } from "./src/ticket";
 import { consumerCityByCode } from "../shared/consumer-cities.ts";
@@ -59,6 +59,7 @@ export default function App() {
     InterTight_600SemiBold, InterTight_700Bold,
   });
   const [tab, setTab] = useState<Tab>("catalog");
+  const [showGuide, setShowGuide] = useState(true);
   const [cities, setCities] = useState<CityIndex[]>([]);
   const [catalog, setCatalog] = useState<AgriculturalMarket[]>([]);
   const [status, setStatus] = useState<DevnetStatus | null>(null);
@@ -436,16 +437,6 @@ export default function App() {
       <GlassTargetContext.Provider value={glassTarget}>
       <View pointerEvents="none" style={StyleSheet.absoluteFill}><BlurTargetView ref={glassTarget} style={StyleSheet.absoluteFill}>
         <LinearGradient colors={["#122033", C.canvas, C.canvas, "#121820"]} locations={[0, 0.35, 0.75, 1]} style={StyleSheet.absoluteFill} />
-        <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
-          <Defs>
-            <RadialGradient id="aB" cx="50%" cy="50%" r="50%"><Stop offset="0" stopColor={C.rain} stopOpacity="0.16" /><Stop offset="1" stopColor={C.rain} stopOpacity="0" /></RadialGradient>
-            <RadialGradient id="aA" cx="50%" cy="50%" r="50%"><Stop offset="0" stopColor="#F5B544" stopOpacity="0.10" /><Stop offset="1" stopColor="#F5B544" stopOpacity="0" /></RadialGradient>
-            <RadialGradient id="aM" cx="50%" cy="50%" r="50%"><Stop offset="0" stopColor="#34D399" stopOpacity="0.07" /><Stop offset="1" stopColor="#34D399" stopOpacity="0" /></RadialGradient>
-          </Defs>
-          <Circle cx="85%" cy="6%" r="320" fill="url(#aB)" />
-          <Circle cx="0%" cy="45%" r="260" fill="url(#aM)" />
-          <Circle cx="100%" cy="88%" r="300" fill="url(#aA)" />
-        </Svg>
       </BlurTargetView></View>
 
       <ScrollView
@@ -477,7 +468,8 @@ export default function App() {
             city={city}
             indicativeQuote={indicativeQuote}
             nowSeconds={nowSeconds}
-            onProtect={(code) => { const slug = consumerCityByCode(code)?.slug; if (!slug) return; changeCity(slug); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
+            showGuide={showGuide}
+            onProtect={(code) => { const slug = consumerCityByCode(code)?.slug; if (!slug) return; setShowGuide(false); changeCity(slug); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
             guide={<>
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: guideOpen }} accessibilityLabel="Describe your plans and let the guide find a market" onPress={() => setGuideOpen((open) => !open)} style={styles.guideToggle}><AppIcon name="message-circle" color={C.rain} size={20} /><Text style={styles.guideToggleText}>Describe your plans instead</Text><AppIcon name={guideOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={18} /></Pressable>
               {guideOpen ? <GuidePanel turns={guideTurns} busy={guideBusy} onSend={(message) => { void askGuide(message); }} onViewMatch={(result) => { if (result.match?.slug !== "des-moines") return; changeCity("des-moines"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} /> : null}
@@ -589,8 +581,13 @@ export default function App() {
         if (!wallet) return <StickyCta label="Connect wallet" busy={loading} onPress={() => { void connect(); }} />;
         const quoteReady = !!quote && quote.protectedAmount === amountBase;
         const cta = buyCta({ premiumBase: quoteReady ? quote!.premium : null, busy: quoteBusy, error: quoteError, blockedReason: protectionUnavailableReason ? friendlyError(protectionUnavailableReason) : null, paymentReason: quotePaymentReason ? "Not enough SKYT in this wallet for this premium." : null });
+        const threshold = activeWindow?.thresholdMmX100 && /^\d+$/.test(activeWindow.thresholdMmX100) ? Number(activeWindow.thresholdMmX100) / 100 : null;
+        const deal = quoteReady && quote?.premiumRateBps && quote.probabilityBps && amountBase
+          ? payGet({ coverageSkyt: Number(BigInt(amountBase) / 1_000_000n), premiumRateBps: quote.premiumRateBps, probabilityBps: quote.probabilityBps })
+          : null;
+        const dealLabel = protectCta({ connected: !!wallet, quote: deal, thresholdMm: threshold });
         return <StickyCta
-          label={cta.label}
+          label={deal ? dealLabel : cta.label}
           hint={cta.hint}
           disabled={cta.disabled}
           busy={transactionBusy}
@@ -668,7 +665,7 @@ const styles = StyleSheet.create({
   bottomBar: { minHeight: 76, backgroundColor: C.canvas + "F0", borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: "0px -8px 24px rgba(0,0,0,0.45)", borderTopWidth: 1, borderTopColor: glass.border, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10, paddingHorizontal: S.sm },
   tabButtonWrap: { flex: 1, minWidth: 0 },
   tabButton: { flex: 1, minWidth: 0, minHeight: 58, alignItems: "center", justifyContent: "center", borderRadius: 14, paddingHorizontal: 2 },
-  tabButtonSelected: { backgroundColor: C.rainSoft, borderWidth: 1, borderColor: C.rain + "59", borderRadius: 16, boxShadow: `0px 0px 16px ${C.rain}4D` },
+  tabButtonSelected: { backgroundColor: C.surfaceRaised, borderWidth: 1, borderColor: C.border, borderRadius: 16 },
   tabLabel: { ...T.caption, color: C.quiet, fontFamily: F.bodyMedium, marginTop: 5 },
   tabLabelSelected: { color: C.rain, fontFamily: F.bodySemi },
 });

@@ -11,11 +11,13 @@ import { Enter, ProgressRail, SpringPress } from "./motion";
 import { ActionButton, AppIcon, Disclosure, Reveal, Text } from "./ui";
 import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } from "./friendly-errors";
 import { dealSentence, payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
-import { compactRowChip, formatWeekLabel } from "./presentation";
+import { formatWeekLabel } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
-import { matchingWindowPackage, type WindowEvidencePackage } from "../../shared/window-chain.ts";
+import { daysToExpiry, daysToExpiryLabel, expiryChipLabel, matchingWindowPackage, type WindowEvidencePackage } from "../../shared/window-chain.ts";
+import { marketStatus, notTriggeredLine, payGet } from "../../shared/pay-get.ts";
+import { RainGauge } from "./rain-gauge";
 import { ProtectChain } from "./protect-chain";
-import { basisLine, cityChip, citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
+import { basisLine, citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
 import { CONSUMER_LEAD_CODES, consumerCityByCode, consumerCityBySlug } from "../../shared/consumer-cities.ts";
 import { MARKETING_SHOTS } from "./marketing";
 import { balanceCheck, coverageOptions, formatSkytFixed, premiumFeeLine, premiumPer100, returnMultiple, payState, reviewReason, shortAddress, shortUtcDate, trimMm, triggerSentence, utcDateTime, type CoverageOption } from "./ticket";
@@ -31,13 +33,14 @@ export function NetworkPill({ label = "Devnet" }: { label?: string }) {
   </View>;
 }
 
-function CompactChip({ label, tone }: { label: "Open" | "Soon"; tone: "live" | "soon" }) {
-  const col = tone === "live" ? C.mint : C.amber;
-  const bg = tone === "live" ? C.mintSoft : C.amberSoft;
-  return <View style={[s.compactChip, { borderColor: col + "77", backgroundColor: bg }]} accessibilityLabel={label}>
-    <View style={[s.dot, { backgroundColor: col }]} />
-    <Text style={[s.compactChipText, { color: col }]}>{label}</Text>
-  </View>;
+function cityDataLine(windows: readonly SellingWindow[]): string | null {
+  const next = windows.find((window) => window.thresholdMmX100 && window.premiumRateBps != null && window.quoteProbabilityBps != null);
+  if (!next?.thresholdMmX100 || next.premiumRateBps == null || next.quoteProbabilityBps == null) return null;
+  const mm = Number(next.thresholdMmX100) / 100;
+  const quote = payGet({ coverageSkyt: 100, premiumRateBps: next.premiumRateBps, probabilityBps: next.quoteProbabilityBps });
+  const date = expiryChipLabel(next)?.split(" · ")[0];
+  if (!quote || !date || !Number.isFinite(mm)) return null;
+  return `Next: ${date} · ≥${Number.isInteger(mm) ? String(mm) : mm.toFixed(1)} mm · ${quote.chance} · ${quote.multiple}`;
 }
 
 function Pill({ label, tone }: { label: string; tone: "live" | "neutral" | "warn" | "gold" }) {
@@ -70,6 +73,7 @@ export function MarketsScreen(props: {
   onProtect: (code: string) => void;
   onOpenMarket?: (m: CatalogMarket) => void;
   guide?: React.ReactNode;
+  showGuide?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<MapScope>("region");
@@ -92,7 +96,7 @@ export function MarketsScreen(props: {
   const per100 = props.indicativeQuote ? premiumPer100(props.indicativeQuote.premium, props.indicativeQuote.protectedAmount) : null;
   const station = stationLabel(props.status?.noaaEvidence.package?.stationId ?? "USW00014933");
   const nextDates = windows.map((window) => expiryLabel(window)).join(" · ");
-  const dsmChip = compactRowChip(cityChip(windows, citySalesClosed(props.status, "des-moines", props.nowSeconds)).tone === "live");
+  const dsmStatus = marketStatus(windows, props.nowSeconds) ?? (citySalesClosed(props.status, "des-moines", props.nowSeconds) ? { tone: "closed" as const, label: "Closed" } : null);
 
   const featured = CONSUMER_LEAD_CODES.map((code) => MARKETS.find((market) => market.code === code)).filter((market): market is CatalogMarket => !!market);
   const catalogResults = searchMarkets(query, group || query.trim() ? "all" : scope === "region" ? "region" : "global", group);
@@ -107,11 +111,6 @@ export function MarketsScreen(props: {
   const highlight = new Set(filtering ? catalogResults.map((market) => market.code) : []);
   const focusCode = filtering && catalogResults[0] ? catalogResults[0].code : "NYC";
   const mapScope: MapScope = filtering && catalogResults[0] && catalogResults[0].group !== "North America" ? "global" : scope;
-  const rowChip = (market: CatalogMarket) => {
-    const slug = consumerCityByCode(market.code)?.slug;
-    const selling = !!slug && slug !== "toronto" && cityChip(windowsForCity(allWindows, slug), citySalesClosed(props.status, slug, props.nowSeconds)).tone === "live";
-    return compactRowChip(selling);
-  };
   const open = (market: CatalogMarket) => {
     if (consumerCityByCode(market.code)) props.onProtect(market.code);
     else props.onOpenMarket?.(market);
@@ -120,7 +119,7 @@ export function MarketsScreen(props: {
   const showAllZones = () => { setBrowseAll(true); setGroup(null); setScope("global"); setQuery(""); };
 
   return <>
-    <StepBar step={1} />
+    {props.showGuide ? <StepBar step={1} /> : null}
     <ScreenTop title="Where are your plans?" lead="Pick a city, then choose what to protect against inside it." />
 
     <Enter index={0}>
@@ -147,15 +146,20 @@ export function MarketsScreen(props: {
       <Text style={s.sectionLabel}>{browseAll ? "All zones" : "Cities"}</Text>
       {visibleRows.length ? visibleRows.map((m) => {
         const [a, b, c] = highlightParts(m.name, query);
-        const chip = rowChip(m);
-        const col = chip.tone === "live" ? C.mint : C.amber;
+        const slug = consumerCityByCode(m.code)?.slug;
+        const cityWindows = slug ? windowsForCity(allWindows, slug) : [];
+        const status = marketStatus(cityWindows, props.nowSeconds) ?? (slug && citySalesClosed(props.status, slug, props.nowSeconds) ? { tone: "closed" as const, label: "Closed" } : null);
+        const statusColor = status?.tone === "open" ? C.rain : status?.tone === "closed" ? C.quiet : C.muted;
         const moment = consumerCityByCode(m.code)?.moment;
+        const line = cityDataLine(cityWindows);
+        const trigger = cityWindows[0]?.thresholdMmX100 && /^\d+$/.test(cityWindows[0].thresholdMmX100) ? Number(cityWindows[0].thresholdMmX100) / 100 : null;
         const on = highlight.has(m.code) && m.code === focusCode;
-        return <SpringPress key={m.code} accessibilityRole="button" accessibilityLabel={`${m.name}. ${moment ?? `${m.region}, ${m.source}`}. ${chip.label}`} onPress={() => open(m)} style={[s.resultRow, on && { backgroundColor: col + "14", borderColor: col + "55" }]}>
+        return <SpringPress key={m.code} accessibilityRole="button" accessibilityLabel={`${m.name}. ${moment ?? `${m.region}, ${m.source}`}. ${status?.label ?? ""}`} onPress={() => open(m)} style={[s.resultRow, on && { backgroundColor: C.surfaceRaised, borderColor: "#F2C230" }]}>
+          {trigger != null ? <RainGauge width={28} height={64} level={0} ticks={[{ mm: trigger, selected: true }]} label="" /> : null}
           <View style={s.resultCopy}>
-            <Text style={s.resultName} android_hyphenationFrequency="none">{a}<Text style={{ fontFamily: F.bodyBold, color: col }}>{b}</Text>{c}</Text>
-            <Text style={s.resultSub} android_hyphenationFrequency="none">{moment ?? `${m.region} · ${m.source}`}</Text>
-            <CompactChip label={chip.label} tone={chip.tone} />
+            <Text style={s.resultName} android_hyphenationFrequency="none">{a}<Text style={{ fontFamily: F.bodyBold, color: C.ink }}>{b}</Text>{c}</Text>
+            <Text style={s.resultSub} android_hyphenationFrequency="none">{line ?? moment ?? `${m.region} · ${m.source}`}</Text>
+            {status ? <Text style={[s.caption, { color: statusColor }]}>{status.label}</Text> : null}
           </View>
           <AppIcon name="chevron-right" color={C.quiet} size={16} />
         </SpringPress>;
@@ -174,20 +178,9 @@ export function MarketsScreen(props: {
       <View style={s.resultCopy}>
         <Text style={s.cardTitle} android_hyphenationFrequency="none">Des Moines, IA</Text>
         <Text style={s.cardSub}>NOAA · {station}</Text>
-        <CompactChip label={dsmChip.label} tone={dsmChip.tone} />
+        {dsmStatus ? <Text style={[s.caption, { color: dsmStatus.tone === "open" ? C.rain : dsmStatus.tone === "closed" ? C.quiet : C.muted }]}>{dsmStatus.label}</Text> : null}
       </View>
-      <View style={s.perilRow} accessibilityRole="text" accessibilityLabel="Rain live. Wind, snow, and heat coming soon.">
-        <View style={[s.perilChip, s.perilChipLive]}>
-          <View style={[s.dot, { backgroundColor: C.mint }]} />
-          <Text style={s.perilChipLiveText}>Rain live</Text>
-        </View>
-        {(["Wind", "Snow", "Heat"] as const).map((label) => (
-          <View key={label} style={[s.perilChip, s.perilChipSoon]}>
-            <Text style={s.perilChipSoonText}>{label}</Text>
-            <Text style={s.perilSoonTag}>soon</Text>
-          </View>
-        ))}
-      </View>
+      <Text style={s.caption}>Wind, snow and heat coming</Text>
       <View style={[s.between, { marginTop: S.lg, alignItems: "flex-end" }]}>
         <View>
           <Text style={s.sectionLabel}>{thresholdMm != null ? "Trigger" : "Rain this window"}</Text>
@@ -324,7 +317,7 @@ export function ProtectTicket(props: {
     <ScreenTop onBack={props.onBackToMarkets} title={`${place}, ${region}`} />
     <Enter index={0}><PerilSelector value="rain" available={["rain"]} /></Enter>
     <ProtectChain city={props.city ?? market?.city ?? props.windows?.[0]?.city ?? "new-york"} windows={windows} selectedAddress={market?.address ?? null} nowSeconds={props.nowSeconds} evidence={props.windowEvidence ?? null} evidenceLoading={!!props.evidenceLoading} onSelectWindow={(address) => props.onSelectWindow?.(address)} />
-    {showTicket ? null : stage ? <PayoutStatusCard stage={stage} dates={trackerDates(market, props.claimReadiness)} /> : <StepBar step={props.walletConnected && q ? 3 : 2} reason={reviewWhy} />}
+    {showTicket ? null : stage ? <PayoutStatusCard stage={stage} dates={trackerDates(market, props.claimReadiness)} /> : null}
 
     {!live ? <View style={[s.notice, { marginTop: S.sm }]} accessibilityRole="text">
       <Text style={s.noticeTitle}>{NEXT_WINDOW_COPY}</Text>
@@ -414,6 +407,7 @@ export function ProtectTicket(props: {
       station={station}
       positionReason={props.claimReadiness?.reason ?? null}
       observationMm={props.claimReadiness?.observation ? Number(props.claimReadiness.observation.rainfallMmX100) / 100 : null}
+      triggerMm={thresholdMm != null ? Number(thresholdMm) : null}
       resolutionSignature={props.claimReadiness?.resolutionSignature ?? null}
       onAgain={() => props.onProtectAgain?.()}
       onMarkets={() => props.onBackToMarkets?.()}
@@ -473,6 +467,7 @@ function CoverageTicket(props: {
   station: string;
   positionReason: string | null;
   observationMm: number | null;
+  triggerMm: number | null;
   resolutionSignature: string | null;
   onAgain: () => void;
   onMarkets: () => void;
@@ -519,6 +514,7 @@ function CoverageTicket(props: {
     })}
     {props.positionReason ? <Text style={[s.caption, { marginTop: S.md }]}>{props.positionReason}</Text> : null}
     {props.observationMm != null ? <Row label="Verified rainfall" value={`${props.observationMm.toFixed(1)} mm · NOAA`} /> : null}
+    {props.observationMm != null && props.triggerMm != null && notTriggeredLine(props.observationMm, props.triggerMm) ? <Text style={[s.caption, { color: C.payout, marginTop: S.sm }]}>{notTriggeredLine(props.observationMm, props.triggerMm)}</Text> : null}
     {props.resolutionSignature ? <ExplorerButton url={`https://explorer.solana.com/tx/${encodeURIComponent(props.resolutionSignature)}?cluster=devnet`} label="Settlement proof" /> : null}
     <View style={{ marginTop: S.lg }}><ActionButton label="Protect again" icon="shield" onPress={props.onAgain} /></View>
     <Pressable accessibilityRole="button" onPress={props.onMarkets} style={[s.inlineBtn, { alignSelf: "center", marginTop: S.sm }]}><Text style={s.link}>Back to markets</Text></Pressable>
@@ -656,12 +652,24 @@ export function WalletV2(props: {
       </GlassCard>
 
       {stage ? <PayoutStatusCard stage={stage} dates={trackerDates({ observationEnd: props.observationEnd ?? null }, props.claimReadiness ?? null)} /> : null}
-      <Text style={s.overline}>Positions</Text>
+      <Text style={s.overline}>My protections</Text>
       <GlassCard delay={2 * motion.stagger}>
-        {props.portfolio?.indexed && props.portfolio.protections.length ? props.portfolio.protections.map((p) => <View key={p.address} style={[s.between, s.positionRow]}>
-          <View style={{ flex: 1, minWidth: 0 }}><Text style={s.cardTitleSm} android_hyphenationFrequency="none">{positionLabel(p.market, props.windows ?? [], props.marketAddress) ?? `Market ${shortAddress(p.market)}`}</Text><Text style={s.caption}>Paid {formatSkytFixed(p.premiumPaid, 2)} SKYT</Text></View>
-          <View style={{ alignItems: "flex-end" }}><Text style={[s.rowValue, { ...T.amountS, fontSize: 18, lineHeight: 24, color: C.payout }]}>{formatSkytFixed(p.protectedAmount, 0)}</Text><Text style={s.caption}>potential</Text></View>
-        </View>) : props.portfolio?.indexed ? <View style={s.emptyCard}>
+        {props.portfolio?.indexed && props.portfolio.protections.length ? props.portfolio.protections.map((p) => {
+          const window = (props.windows ?? []).find((row) => row.address === p.market);
+          const trigger = window?.thresholdMmX100 && /^\d+$/.test(window.thresholdMmX100) ? Number(window.thresholdMmX100) / 100 : null;
+          const observedRaw = props.claimReadiness?.market === p.market ? props.claimReadiness.observation?.rainfallMmX100 : null;
+          const observed = observedRaw && /^\d+$/.test(observedRaw) ? Number(observedRaw) / 100 : null;
+          const maxMm = trigger ? trigger * 1.25 : 1;
+          const missed = observed != null && trigger != null ? notTriggeredLine(observed, trigger) : null;
+          const date = window ? expiryChipLabel(window)?.split(" · ")[0] ?? null : null;
+          const days = window ? daysToExpiry(window.observationEnd, Math.floor(Date.now() / 1000)) : null;
+          const settledMiss = props.claimReadiness?.market === p.market && (props.claimReadiness.state === "not_claimable" || props.claimReadiness.state === "expired");
+          return <View key={p.address} style={[s.between, s.positionRow, { alignItems: "flex-end" }]}>
+            <RainGauge width={36} height={84} level={trigger != null && observed != null ? Math.min(1, observed / maxMm) : 0} ticks={trigger != null ? [{ mm: trigger, selected: true }] : []} label="Protection gauge" />
+            <View style={{ flex: 1, minWidth: 0 }}><Text style={s.cardTitleSm} android_hyphenationFrequency="none">{positionLabel(p.market, props.windows ?? [], props.marketAddress) ?? `Market ${shortAddress(p.market)}`}</Text><Text style={s.caption}>Paid {formatSkytFixed(p.premiumPaid, 2)} SKYT</Text>{missed && settledMiss ? <Text style={[s.caption, { color: C.payout }]}>{missed}</Text> : date && !settledMiss ? <Text style={s.caption}>You're covered through {date}</Text> : null}{observed == null ? <Text style={s.caption}>Rainfall to date is not in this record.</Text> : null}{days != null ? <Text style={s.caption}>{daysToExpiryLabel(days)}</Text> : null}</View>
+            <View style={{ alignItems: "flex-end" }}><Text style={[s.rowValue, { ...T.amountS, fontSize: 18, lineHeight: 24, color: C.payout }]}>{formatSkytFixed(p.protectedAmount, 0)}</Text><Text style={s.caption}>potential</Text></View>
+          </View>;
+        }) : props.portfolio?.indexed ? <View style={s.emptyCard}>
           <AppIcon name="umbrella" color={C.rain} size={22} />
           <Text style={s.body}>No positions yet. Protect a window from Markets.</Text>
           {props.onBrowseMarkets ? <Pressable accessibilityRole="button" onPress={props.onBrowseMarkets} style={s.inlineBtn}><Text style={s.link}>Browse markets →</Text></Pressable> : null}
@@ -694,7 +702,7 @@ const s = StyleSheet.create({
   search: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: S.md, paddingHorizontal: S.lg, borderRadius: glass.radius, backgroundColor: glass.fillField, borderWidth: 1, borderColor: glass.border, marginTop: S.lg, marginBottom: S.md, boxShadow: glass.fieldShadow },
   searchInput: { ...T.body, flex: 1, minHeight: 48, color: C.ink, fontSize: 16 },
   regionChip: { minHeight: 36, justifyContent: "center", paddingHorizontal: S.md, borderRadius: 999, borderWidth: 1, borderColor: glass.borderStrong, backgroundColor: C.surfaceRaised },
-  regionChipOn: { borderColor: C.rain, backgroundColor: C.rain, boxShadow: `0px 0px 14px ${C.rain}55` },
+  regionChipOn: { borderColor: "#F2C230", backgroundColor: C.surfaceRaised },
   regionChipText: { ...T.label, color: C.muted },
   regionChipTextOn: { color: C.actionText, fontFamily: F.bodySemi },
   regionChipN: { fontFamily: F.mono, fontSize: 12, color: C.quiet, fontVariant: TAB },
