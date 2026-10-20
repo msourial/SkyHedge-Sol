@@ -4,23 +4,23 @@ import { RadarMap, type MapScope } from "./RadarMap";
 import { CountUp, GlassCard, GlobalGroups } from "./revamp";
 import { GROUP_ORDER, highlightParts, MARKETS, searchMarkets, type CatalogMarket, type MarketGroup } from "./markets-catalog";
 import { useReducedMotion } from "./liquid-glass";
-import { CoverageHero, FactRows, PerilSelector, ScreenTop, StatPair } from "./journey";
+import { ScreenTop } from "./journey";
 import type { CityIndex, ClaimReadiness, DevnetStatus, FinalizedWalletState, Portfolio, ProtectionQuote } from "./api";
 import { C, F, glass, MIN_TOUCH, motion, space as S, statusGlow, type as T } from "./theme";
 import { Enter, ProgressRail, SpringPress } from "./motion";
 import { ActionButton, AppIcon, Disclosure, Reveal, Text } from "./ui";
 import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } from "./friendly-errors";
-import { dealSentence, payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
+import { payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
 import { formatWeekLabel } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
-import { daysToExpiry, daysToExpiryLabel, expiryChipLabel, matchingWindowPackage, type WindowEvidencePackage } from "../../shared/window-chain.ts";
+import { daysToExpiry, daysToExpiryLabel, expiryChipLabel, matchingWindowPackage, measuredAtLine, type WindowEvidencePackage } from "../../shared/window-chain.ts";
 import { marketStatus, notTriggeredLine, payGet } from "../../shared/pay-get.ts";
 import { RainGauge } from "./rain-gauge";
 import { ProtectChain } from "./protect-chain";
-import { basisLine, citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
+import { citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
 import { CONSUMER_LEAD_CODES, consumerCityByCode, consumerCityBySlug } from "../../shared/consumer-cities.ts";
 import { MARKETING_SHOTS } from "./marketing";
-import { balanceCheck, coverageOptions, formatSkytFixed, premiumFeeLine, premiumPer100, returnMultiple, payState, reviewReason, shortAddress, shortUtcDate, trimMm, triggerSentence, utcDateTime, type CoverageOption } from "./ticket";
+import { balanceCheck, coverageOptions, formatSkytFixed, premiumPer100, payState, reviewReason, shortAddress, shortUtcDate, trimMm, utcDateTime, type CoverageOption } from "./ticket";
 
 const TAB = ["tabular-nums" as const];
 
@@ -146,7 +146,8 @@ export function MarketsScreen(props: {
       <Text style={s.sectionLabel}>{browseAll ? "All zones" : "Cities"}</Text>
       {visibleRows.length ? visibleRows.map((m) => {
         const [a, b, c] = highlightParts(m.name, query);
-        const slug = consumerCityByCode(m.code)?.slug;
+        const rawSlug = consumerCityByCode(m.code)?.slug;
+        const slug = rawSlug && rawSlug !== "toronto" ? rawSlug : undefined;
         const cityWindows = slug ? windowsForCity(allWindows, slug) : [];
         const status = marketStatus(cityWindows, props.nowSeconds) ?? (slug && citySalesClosed(props.status, slug, props.nowSeconds) ? { tone: "closed" as const, label: "Closed" } : null);
         const statusColor = status?.tone === "open" ? C.rain : status?.tone === "closed" ? C.quiet : C.muted;
@@ -267,6 +268,8 @@ export function ProtectTicket(props: {
   onSelectWindow?: (address: string) => void;
   windowEvidence?: readonly WindowEvidencePackage[] | null;
   evidenceLoading?: boolean;
+  cities?: readonly { slug: string; label: string }[];
+  onCity?: (slug: string) => void;
 }) {
   const [verifyOpen, setVerifyOpen] = useState(false);
   const windows = props.windows ?? sellingWindows(props.status, props.nowSeconds);
@@ -276,13 +279,10 @@ export function ProtectTicket(props: {
   const options = coverageOptions(props.walletSkytBase);
   const consumer = consumerCityBySlug(props.city ?? market?.city ?? "");
   const place = consumer?.city ?? "New York";
-  const region = consumer?.region ?? "NY";
   const stationId = consumer?.stationId?.replace(/^GHCND:/, "") ?? props.status?.noaaEvidence.package?.stationId;
   const station = stationLabel(stationId);
-  const sentence = triggerSentence({ station, thresholdMmX100: market?.thresholdMmX100, operator: market?.operator, start: market?.observationStart, end: market?.observationEnd });
   const q = props.quote && props.quote.protectedAmount === props.amountBase ? props.quote : null;
   const balance = balanceCheck(props.walletSkytBase, q?.premium);
-  const endDate = shortUtcDate(market?.observationEnd ? market.observationEnd - 1 : null);
   const evidenceReady = !!market && market.evidenceStatus === "validated" && !!matchingWindowPackage(props.windowEvidence, market.city, market.observationStart, market.observationEnd);
   const checks: Check[] = [
     { ready: !!props.status?.program.executable && props.status.program.status === "ready", label: "Solana program is live on Devnet" },
@@ -297,12 +297,9 @@ export function ProtectTicket(props: {
   const blocking = props.unavailableReason && !isExistingPosition && !(hasPosition && props.transactionSignature) && !/^Connect your Devnet wallet|finalized SKYT wallet balance/.test(props.unavailableReason) ? props.unavailableReason : null;
   const thresholdMm = market?.thresholdMmX100 != null && /^\d+$/.test(String(market.thresholdMmX100)) ? trimMm(Number(market.thresholdMmX100) / 100) : null;
   const stage = payoutStage(props.claimReadiness);
-  const deal = dealSentence({ place, premiumBase: q?.premium, payoutBase: q ? props.amountBase : null, thresholdMmX100: market?.thresholdMmX100, operator: market?.operator, start: market?.observationStart, end: market?.observationEnd });
   const pilotClose = props.status?.desMoinesMarket.salesCloseAt;
   const salesClosed = !live && typeof pilotClose === "number" && pilotClose <= props.nowSeconds;
   const pay = payState({ premiumBase: q?.premium, busy: props.quoteBusy, error: props.quoteError, live, salesClosed, walletConnected: props.walletConnected });
-  const selectedOption = options.find((o) => o.id === props.coverageId);
-  const maxOption = options.find((o) => o.id === "max");
   const reviewWhy = reviewReason(props.walletConnected, pay);
   const showTicket = !!props.transactionSignature || !!hasPosition;
   const triggerSym = market?.operator === "gt" ? ">" : market?.operator === "lt" ? "<" : market?.operator === "lte" ? "≤" : "≥";
@@ -313,10 +310,22 @@ export function ProtectTicket(props: {
   const paidLabel = q ? `${formatSkytFixed(q.premium, 2)} SKYT` : "—";
   const payoutLabel = props.amountBase ? `${formatSkytFixed(props.amountBase, 0)} SKYT` : "—";
 
+  const sourceName = consumer?.source ?? "NOAA station";
+  const expiryBit = market ? expiryChipLabel(market)?.split(" · ")[0] ?? "expiry" : "expiry";
   return <>
-    <ScreenTop onBack={props.onBackToMarkets} title={`${place}, ${region}`} />
-    <Enter index={0}><PerilSelector value="rain" available={["rain"]} /></Enter>
-    <ProtectChain city={props.city ?? market?.city ?? props.windows?.[0]?.city ?? "new-york"} windows={windows} selectedAddress={market?.address ?? null} nowSeconds={props.nowSeconds} evidence={props.windowEvidence ?? null} evidenceLoading={!!props.evidenceLoading} onSelectWindow={(address) => props.onSelectWindow?.(address)} />
+    <ScreenTop hideDevnet onBack={props.onBackToMarkets} eyebrow="Rain" title={place} lead={measuredAtLine(sourceName, expiryBit)} />
+    <ProtectChain
+      city={props.city ?? market?.city ?? props.windows?.[0]?.city ?? "new-york"}
+      windows={windows}
+      selectedAddress={market?.address ?? null}
+      nowSeconds={props.nowSeconds}
+      evidence={props.windowEvidence ?? null}
+      evidenceLoading={!!props.evidenceLoading}
+      onSelectWindow={(address) => props.onSelectWindow?.(address)}
+      cities={props.cities}
+      onCity={props.onCity}
+      amounts={options.filter((option) => option.id !== "max").map((option) => ({ id: option.id, label: `${option.label} SKYT`, on: option.id === props.coverageId, onPress: () => props.onCoverage(option) }))}
+    />
     {showTicket ? null : stage ? <PayoutStatusCard stage={stage} dates={trackerDates(market, props.claimReadiness)} /> : null}
 
     {!live ? <View style={[s.notice, { marginTop: S.sm }]} accessibilityRole="text">
@@ -325,66 +334,7 @@ export function ProtectTicket(props: {
       <Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh status</Text></Pressable>
     </View> : null}
 
-    {!showTicket ? <>
-      <Enter index={1}><CoverageHero live={live} stateLabel={live ? "Open" : NEXT_WINDOW_COPY} windowLabel={market ? expiryLabel(market) : null} observedMm={props.observedMm ?? null} triggerMm={thresholdMm != null ? Number(thresholdMm) : null} triggerSymbol={triggerSym} source="NOAA" /></Enter>
-      <Enter index={2}><StatPair leftLabel="Coverage" left={props.amountBase ? formatSkytFixed(props.amountBase, 0) : "—"} leftUnit="SKYT" rightLabel="Premium" right={q ? `~${formatSkytFixed(q.premium, 2)}` : props.quoteBusy ? "…" : "—"} rightUnit={q ? "SKYT incl. 1% fee" : props.quoteBusy ? "Pricing…" : "Live NOAA price"} /></Enter>
-      <Enter index={3}><FactRows rows={[
-        { k: "Window", v: windowLabel },
-        { k: "Trigger", v: thresholdMm ? `${triggerLabel} cumulative` : "Pending", tone: "gold" },
-        { k: "Basis", v: basisLine(station, market?.tenor ?? tenor) },
-        { k: "Payout", v: "Automatic · from official NOAA data" },
-        { k: "Ready checks", v: `${readyCount === checks.length ? "✓ " : ""}${readyCount} of ${checks.length} passed`, tone: readyCount === checks.length ? "mint" : "gold" },
-      ]} /></Enter>
-
-      <Text style={s.overline}>How much do you want back if it rains?</Text>
-      <View accessibilityRole="radiogroup" accessibilityLabel="Coverage amount in SKYT">
-        <View style={s.chipRow}>{options.filter((o) => o.id !== "max").map((o) => <CoverageChip key={o.id} o={o} on={o.id === props.coverageId} short={o.id === props.coverageId && balance === "short"} onPress={() => props.onCoverage(o)} />)}</View>
-        {maxOption ? <View style={s.chipRow}><CoverageChip o={maxOption} on={maxOption.id === props.coverageId} short={maxOption.id === props.coverageId && balance === "short"} onPress={() => props.onCoverage(maxOption)} /></View> : null}
-      </View>
-      {maxOption && !maxOption.enabled ? <Text style={[s.chipMsg, { color: C.muted }]}>Max is unavailable: this wallet has no SKYT yet.</Text> : null}
-      {balance === "short" && q && selectedOption ? <Text style={[s.chipMsg, { color: C.coral }]} accessibilityRole="alert">Not enough SKYT: you need {formatSkytFixed(q.premium, 2)} SKYT. Pick less coverage or top up your wallet.</Text> : null}
-      <View accessibilityLabel="Protection ticket">
-        <GlassCard style={{ padding: 0, overflow: "hidden" }} delay={4 * motion.stagger}>
-          <View style={s.split}>
-            <View style={s.splitCell} accessible accessibilityLabel={`You pay ${pay.kind === "priced" ? `${pay.label} SKYT` : pay.label}`}>
-              <Text style={s.smallLabel}>You pay</Text>
-              {pay.kind === "priced" ? <Text style={s.splitFigure}>{pay.label}</Text>
-                : pay.kind === "pricing" ? <View style={s.skeletonWrap} accessibilityLabel="Pricing"><View style={s.skeleton} /><ActivityIndicator size="small" color={C.rain} /></View>
-                : <Text style={[s.payState, pay.label === "Sales closed" && { color: C.muted }, pay.kind === "error" && { color: C.coral }]}>{pay.label}</Text>}
-              <Text style={s.caption}>{pay.kind === "priced" ? "SKYT incl. 1% fee" : pay.kind === "pricing" ? "Getting a live NOAA price…" : pay.kind === "error" ? "Price unavailable" : "SKYT"}</Text>
-              {pay.kind === "error" ? <Pressable accessibilityRole="button" accessibilityLabel="Get a new price" onPress={props.onRetryQuote} style={s.inlineBtn}><Text style={s.link}>Get a new price</Text></Pressable> : null}
-            </View>
-            <View style={[s.splitCell, { backgroundColor: C.payoutSoft }]} accessible accessibilityLabel={`You get ${props.amountBase ? formatSkytFixed(props.amountBase, 0) : "nothing selected"} SKYT automatically if it rains past the trigger`}>
-              <Text style={s.smallLabel}>You get if it rains</Text>
-              <Text style={[s.splitFigure, { color: C.payout }]}>{props.amountBase ? formatSkytFixed(props.amountBase, 0) : "—"}</Text>
-              <Text style={s.caption}>SKYT · automatic</Text>
-            </View>
-          </View>
-          <View style={{ padding: S.lg }}>
-            {deal ? <Text style={[s.body, { fontFamily: F.bodySemi }]} accessibilityLiveRegion="polite">{deal}</Text> : <Text style={s.body}>{sentence ?? "Terms will appear once the market is finalized."}</Text>}
-            {deal ? <Text style={[s.caption, { marginTop: S.sm }]}>If it stays drier, there's no payout. If the official data never arrives, you get what you paid back.</Text> : null}
-            <View style={{ marginTop: S.sm }}>
-              <Row label="Chance it rains that much" value={q ? `${(q.probabilityBps / 100).toFixed(1)}%` : "—"} />
-              <Row label="Payout vs. price" value={q ? returnMultiple(q.premium, q.protectedAmount) ?? "—" : "—"} gold />
-              <Row label="Premium + 1% fee" value={q ? premiumFeeLine(q.premium, q.protocolFee) ?? `${formatSkytFixed(q.premium)}` : "—"} />
-              <Row label="Settles" value={endDate ? `After ${endDate} · NOAA final` : "NOAA final data"} />
-            </View>
-            {!props.walletConnected && q ? <Text style={s.caption}>Connect your wallet to buy this priced coverage.</Text> : null}
-            {!props.walletConnected && !q ? <Text style={s.caption}>Connect your wallet to protect once a live price appears.</Text> : null}
-          </View>
-        </GlassCard>
-      </View>
-
-      <GlassCard style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: S.md, paddingVertical: S.md }} delay={5 * motion.stagger}>
-        <Text style={s.rowLabel}>Wallet balance</Text>
-        {!props.walletConnected ? <Text style={s.rowLabel}>Not connected</Text>
-          : props.walletSkytBase == null ? <Text style={s.rowLabel}>Checking…</Text>
-          : <View style={s.baseline} accessibilityLiveRegion="polite">
-            <Text style={s.rowValue}>{formatSkytFixed(props.walletSkytBase, 2)} SKYT </Text>
-            {balance === "enough" ? <AppIcon name="check" color={C.mint} size={16} /> : balance === "short" ? <AppIcon name="alert-circle" color={C.coral} size={16} /> : null}
-          </View>}
-      </GlassCard>
-    </> : null}
+    {balance === "short" && q && !showTicket ? <Text style={[s.chipMsg, { color: C.coral }]} accessibilityRole="alert">Not enough SKYT: you need {formatSkytFixed(q.premium, 2)} SKYT. Pick less coverage or top up your wallet.</Text> : null}
 
     {blocking && live && !showTicket ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>Not ready to price yet</Text><Text style={s.noticeBody}>{friendlyError(blocking)}</Text><Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh status</Text></Pressable></View> : null}
     {props.quoteError && !showTicket ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>{quoteErrorTitle(props.quoteError)}</Text><Text style={s.noticeBody}>{friendlyError(props.quoteError)}</Text><Pressable accessibilityRole="button" onPress={props.onRetryQuote} style={s.inlineBtn}><Text style={s.link}>Get a new price</Text></Pressable></View> : null}
@@ -571,10 +521,31 @@ export function PayoutStatusCard({ stage, dates }: { stage: NonNullable<ReturnTy
   </View>;
 }
 
-export function StickyCta(props: { label: string; onPress: () => void; disabled?: boolean; busy?: boolean; hint?: string | null }) {
+export function StickyCta(props: { label: string; onPress: () => void; disabled?: boolean; busy?: boolean; hint?: string | null; pay?: string | null; getLabel?: string | null }) {
   return <View style={s.sticky}>
+    {props.pay && props.getLabel ? <View style={s.ticketBars} accessibilityLabel="Pay and payout">
+      <View style={s.ticketCol}><View style={[s.payBar, { height: 16 }]} /><Text style={s.caption}>You pay {props.pay} SKYT</Text></View>
+      <View style={s.ticketCol}><View style={[s.getBar, { height: 32 }]} /><Text style={[s.caption, { color: C.payout }]}>You get {props.getLabel} SKYT</Text></View>
+    </View> : null}
     {props.hint ? <Text style={[s.caption, { textAlign: "center", marginBottom: S.sm }]}>{props.hint}</Text> : null}
     <ActionButton label={props.label} icon="arrow-right" disabled={props.disabled} busy={props.busy} onPress={props.onPress} />
+  </View>;
+}
+
+export function ConfirmCover(props: { sentence: string; station: string; expiry: string; pay: string; getLabel: string; onClose: () => void; onWallet: () => void }) {
+  return <View style={s.sheetScrim}>
+    <View style={s.sheet} accessibilityViewIsModal accessibilityLabel="Confirm protection">
+      <Text style={s.bodyStrong}>{props.sentence}</Text>
+      <Text style={[s.caption, { marginTop: S.sm }]}>Station · {props.station}</Text>
+      <Text style={s.caption}>Settlement · {props.expiry}</Text>
+      <Text style={s.caption}>You pay {props.pay} SKYT</Text>
+      <Text style={[s.caption, { color: C.payout }]}>You get {props.getLabel} SKYT</Text>
+      <Text style={[s.caption, { marginTop: S.sm }]}>This sheet does not sign a transaction.</Text>
+      <View style={s.sheetActions}>
+        <Pressable accessibilityRole="button" onPress={props.onClose} style={s.sheetBack}><Text style={s.bodyStrong}>Back</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={props.onWallet} style={s.sheetGo}><Text style={[s.bodyStrong, { color: C.canvas }]}>Wallet</Text></Pressable>
+      </View>
+    </View>
   </View>;
 }
 
@@ -782,7 +753,16 @@ const s = StyleSheet.create({
   inlineBtn: { minHeight: MIN_TOUCH, justifyContent: "center", alignSelf: "flex-start" },
   link: { ...T.label, fontSize: 14, lineHeight: 20, color: C.rain },
   checkRow: { minHeight: 40, flexDirection: "row", alignItems: "center" },
-  sticky: { paddingHorizontal: S.lg + 2, paddingTop: S.md, paddingBottom: S.md, backgroundColor: C.canvas + "EB", borderTopWidth: 1, borderTopColor: glass.border },
+  sticky: { paddingHorizontal: S.lg + 2, paddingTop: S.sm, paddingBottom: S.md, backgroundColor: C.canvas + "F2", borderTopWidth: 1, borderTopColor: glass.border },
+  ticketBars: { flexDirection: "row", alignItems: "flex-end", gap: S.md, marginBottom: S.sm },
+  ticketCol: { flex: 1 },
+  payBar: { borderTopLeftRadius: 4, borderTopRightRadius: 4, backgroundColor: C.mutedSurface },
+  getBar: { borderTopLeftRadius: 4, borderTopRightRadius: 4, backgroundColor: C.payout },
+  sheetScrim: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, zIndex: 40, justifyContent: "flex-end", backgroundColor: "#00000066", padding: S.lg },
+  sheet: { borderRadius: 18, borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceRaised, padding: S.lg },
+  sheetActions: { flexDirection: "row", gap: S.sm, marginTop: S.md },
+  sheetBack: { flex: 1, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 24, borderWidth: 1, borderColor: C.border },
+  sheetGo: { flex: 1, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 24, backgroundColor: C.ink },
   netPill: { minHeight: 32, flexDirection: "row", alignItems: "center", gap: S.sm, borderWidth: 1, borderColor: C.border, borderRadius: 16, paddingHorizontal: S.md, backgroundColor: C.surface },
   netPillText: { ...T.label, fontSize: 12, lineHeight: 16, color: C.ink },
   pill: { minHeight: 28, flexShrink: 0, flexDirection: "row", alignItems: "center", gap: S.sm - 2, borderRadius: 14, paddingHorizontal: S.md - 2 },

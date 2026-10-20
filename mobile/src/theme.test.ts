@@ -34,7 +34,7 @@ describe("Storm Glass theme", () => {
   });
 
   it("keeps display, interface, and technical typography roles distinct", () => {
-    assert.match(F.heading, /InterTight/);
+    assert.match(F.heading, /Barlow/);
     assert.match(F.body, /Inter/);
     assert.match(F.mono, /mono/i);
   });

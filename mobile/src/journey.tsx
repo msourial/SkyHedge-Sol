@@ -11,13 +11,13 @@ import { GlassCard, RainGauge, CountUp, Ticker } from "./revamp";
 const TAB = ["tabular-nums" as const];
 
 /** Screen title row replacing the old persistent header: back/brand on the left, Devnet pill top-right. */
-export function ScreenTop(props: { onBack?: () => void; backIcon?: "chevron-left" | "x"; eyebrow?: string; title?: string; lead?: string; brand?: boolean }) {
+export function ScreenTop(props: { onBack?: () => void; backIcon?: "chevron-left" | "x"; eyebrow?: string; title?: string; lead?: string; brand?: boolean; hideDevnet?: boolean }) {
   return <View style={j.top}>
     <View style={j.topRow}>
       {props.onBack ? <Pressable accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} onPress={props.onBack} style={j.back}><AppIcon name={props.backIcon ?? "chevron-left"} color={C.rain} size={24} /></Pressable>
         : props.brand ? <View style={j.brand}><BrandMark size={34} /><Text style={j.brandText}>SkyHedge</Text></View>
         : <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><BrandMark size={20} tile={false} /><Text style={j.eyebrowCaps}>SkyHedge</Text></View>}
-      <DevnetPill />
+      {props.hideDevnet ? null : <DevnetPill />}
     </View>
     {props.eyebrow ? <Text style={j.eyebrow}>{props.eyebrow}</Text> : null}
     {props.title ? <Text accessibilityRole="header" style={j.title} android_hyphenationFrequency="none">{props.title}</Text> : null}

@@ -35,9 +35,9 @@ export const F = {
   bodyMedium: "Inter_500Medium",
   bodySemi: "Inter_600SemiBold",
   bodyBold: "Inter_700Bold",
-  heading: "InterTight_600SemiBold",
-  headingBold: "InterTight_700Bold",
-  mono: "monospace",
+  heading: "BarlowCondensed_600SemiBold",
+  headingBold: "BarlowCondensed_700Bold",
+  mono: "IBMPlexMono_500Medium",
 } as const;
 
 /** Amount figures (mutable TextStyle so fontVariant stays assignable). */

@@ -1,15 +1,13 @@
+import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import type { WindowEvidencePackage } from "../../shared/window-chain.ts";
 import {
   expiryChipCopy,
-  expiryChipLabel,
   matchingWindowPackage,
-  measuredAtLine,
   pricedTriggers,
   sortByExpiry,
   triggerRows,
 } from "../../shared/window-chain.ts";
-import { consumerCityBySlug } from "../../shared/consumer-cities.ts";
 import { payGet } from "../../shared/pay-get.ts";
 import { RainGauge } from "./rain-gauge";
 import { C, F, MIN_TOUCH, space as S, type as T } from "./theme";
@@ -24,10 +22,13 @@ export function ProtectChain(props: {
   evidence: readonly WindowEvidencePackage[] | null;
   evidenceLoading: boolean;
   onSelectWindow: (address: string) => void;
+  cities?: readonly { slug: string; label: string }[];
+  onCity?: (slug: string) => void;
+  amounts?: readonly { id: string; label: string; on: boolean; onPress: () => void }[];
 }) {
+  const [triggerMm, setTriggerMm] = useState<number | null>(null);
   const windows = sortByExpiry(props.windows);
   const selected = windows.find((window) => window.address === props.selectedAddress) ?? windows[0] ?? null;
-  const source = consumerCityBySlug(props.city)?.source ?? "NOAA station";
   const pkg = selected ? matchingWindowPackage(props.evidence, props.city, selected.observationStart, selected.observationEnd) : null;
   const onChainMm = selected?.thresholdMmX100 && /^\d+$/.test(selected.thresholdMmX100) ? Number(selected.thresholdMmX100) / 100 : null;
   const rows = pkg ? triggerRows({
@@ -38,12 +39,18 @@ export function ProtectChain(props: {
     onChainPremiumRateBps: selected?.premiumRateBps ?? null,
   }) : [];
   const ladder = pricedTriggers(rows);
-  const expiry = selected ? expiryChipLabel(selected)?.split(" · ")[0] ?? "" : "";
   const maxMm = Math.max(1, ...rows.map((row) => row.thresholdMm));
+  const chosen = ladder.priced.find((row) => row.thresholdMm === triggerMm) ?? ladder.priced[0] ?? null;
 
   return <View>
-    <Text style={styles.settle} android_hyphenationFrequency="none">{expiry ? measuredAtLine(source, expiry) : "Rain"}</Text>
-    <Text style={styles.muted}>Wind, snow and heat coming</Text>
+    {props.cities?.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll} style={styles.chipScroller} accessibilityRole="radiogroup" accessibilityLabel="City">
+      {props.cities.map((city) => {
+        const on = city.slug === props.city;
+        return <Pressable key={city.slug} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => props.onCity?.(city.slug)} style={[styles.chip, on && styles.chipOn]}>
+          <Text numberOfLines={1} style={[styles.chipLabel, on && styles.chipLabelOn]}>{city.label}</Text>
+        </Pressable>;
+      })}
+    </ScrollView> : null}
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll} style={styles.chipScroller} accessibilityRole="radiogroup" accessibilityLabel="Expiry">
       {windows.length ? windows.map((window) => {
         const on = window.address === selected?.address;
@@ -53,26 +60,39 @@ export function ProtectChain(props: {
         </Pressable>;
       }) : <Text style={styles.muted}>Next window opening shortly</Text>}
     </ScrollView>
-    <View style={{ flexDirection: "row", alignItems: "flex-end", gap: S.md }}>
-      <RainGauge level={onChainMm ? onChainMm / maxMm : 0} ticks={ladder.priced.map((row) => ({ mm: row.thresholdMm, selected: row.thresholdMm === onChainMm }))} label="Rain gauge" />
-      <View style={{ flex: 1 }} accessibilityRole="list" accessibilityLabel="Rain triggers">
-        {props.evidenceLoading ? <Text style={styles.muted}>Checking NOAA analogue history…</Text> : null}
-        {!props.evidenceLoading && !pkg ? <Text style={styles.muted}>Not ready to price yet. A validated NOAA evidence package is not available.</Text> : null}
+    {props.amounts?.length ? <View accessibilityRole="radiogroup" accessibilityLabel="Coverage amount in SKYT" style={styles.amounts}>
+      {props.amounts.map((amount) => <Pressable key={amount.id} accessibilityRole="radio" accessibilityState={{ selected: amount.on }} onPress={amount.onPress} style={[styles.chip, amount.on && styles.chipOn]}>
+        <Text style={[styles.chipLabel, amount.on && styles.chipLabelOn]}>{amount.label}</Text>
+      </Pressable>)}
+    </View> : null}
+    {props.evidenceLoading ? <Text style={styles.muted}>Checking NOAA analogue history…</Text> : null}
+    {!props.evidenceLoading && !pkg ? <Text style={styles.muted}>Not ready to price yet. A validated NOAA evidence package is not available.</Text> : null}
+    <View style={{ flexDirection: "row", alignItems: "flex-end", gap: S.sm, marginTop: S.sm }}>
+      <RainGauge showMm width={172} height={220} level={chosen ? chosen.thresholdMm / maxMm : 0} ticks={ladder.priced.map((row) => ({ mm: row.thresholdMm, selected: row.thresholdMm === chosen?.thresholdMm }))} label="Rain gauge" />
+      <View accessibilityRole="list" accessibilityLabel="Rain triggers">
         {ladder.priced.map((row) => {
           const quote = payGet({ coverageSkyt: 100, premiumRateBps: row.premiumRateBps, probabilityBps: row.probabilityBps });
-          return <View key={row.thresholdMm} style={styles.row}>
-            <Text style={styles.cell}>{`≥ ${row.thresholdMm} mm`}</Text>
-            <Text style={styles.cell}>{quote ? `${quote.chance} · ${quote.multiple}` : "—"}</Text>
-          </View>;
+          const on = row.thresholdMm === chosen?.thresholdMm;
+          return <Pressable key={row.thresholdMm} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setTriggerMm(row.thresholdMm)} style={[styles.row, on && styles.rowOn]}>
+            <Text style={styles.cell}>{`≥${row.thresholdMm} mm`}</Text>
+            <Text style={styles.cell}>{quote ? quote.chance : "—"}</Text>
+            <Text style={styles.cell}>{quote ? quote.multiple : "—"}</Text>
+          </Pressable>;
         })}
         {ladder.soonCount > 0 ? <Text style={styles.muted}>{ladder.soonCount} more triggers open soon</Text> : null}
       </View>
     </View>
+    <Text style={styles.footnote}>Wind, snow and heat coming</Text>
   </View>;
 }
 
 const styles = StyleSheet.create({
+  eyebrow: { ...T.overline, color: C.quiet, marginBottom: 2 },
+  city: { ...T.hero, fontFamily: F.headingBold, color: C.ink, marginBottom: S.xs },
   settle: { ...T.body, color: C.muted, marginBottom: S.md },
+  footnote: { ...T.caption, color: C.quiet, marginTop: S.md },
+  rowOn: { borderColor: "#F2C230" },
+  amounts: { flexDirection: "row", flexWrap: "wrap", gap: S.sm, marginBottom: S.sm },
   chipScroller: { marginHorizontal: -18 },
   chipScroll: { gap: S.sm, paddingBottom: S.md, paddingLeft: 18, paddingRight: 32 },
   chip: { minHeight: MIN_TOUCH, minWidth: 108, justifyContent: "center", paddingHorizontal: S.md, paddingVertical: S.xs, borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceRaised },
@@ -83,7 +103,7 @@ const styles = StyleSheet.create({
   chipDaysOn: { color: C.rain },
   head: { flexDirection: "row", gap: 4, paddingBottom: S.xs },
   headText: { ...T.caption, color: C.quiet },
-  row: { flexDirection: "row", gap: 4, alignItems: "center", minHeight: MIN_TOUCH, borderRadius: 12, paddingHorizontal: 2 },
+  row: { flexDirection: "row", gap: 8, alignItems: "center", alignSelf: "flex-start", minHeight: 36, borderRadius: 12, borderWidth: 1, borderColor: C.border, paddingHorizontal: 8 },
   rowPopular: { backgroundColor: C.rainSoft, borderWidth: 1, borderColor: C.rain },
   rowSoon: { opacity: 0.55 },
   cell: { ...T.bodyStrong, color: C.ink, fontVariant: ["tabular-nums"] },

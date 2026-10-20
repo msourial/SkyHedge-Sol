@@ -3,7 +3,8 @@ import "./src/polyfills";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFonts } from "expo-font";
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
-import { InterTight_600SemiBold, InterTight_700Bold } from "@expo-google-fonts/inter-tight";
+import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold } from "@expo-google-fonts/barlow-condensed";
+import { IBMPlexMono_500Medium } from "@expo-google-fonts/ibm-plex-mono";
 import {
   ActivityIndicator,
   Pressable,
@@ -22,16 +23,16 @@ import { committedPremiumQuote } from "../shared/market-pricing.ts";
 import { buildCommittedQuoteRequest, duplicatePositionReason, formatSkyt, getProtectionUnavailableReason, parseSkytAmount } from "./src/protection";
 import { authorizeDevnetWallet, signAndConfirmDevnetTransaction, type AuthorizedWallet } from "./src/wallet";
 import { clearWalletSession, loadWalletSession, saveWalletSession } from "./src/wallet-session-store";
-import { consumerCityName } from "../shared/consumer-cities.ts";
+import { consumerCityBySlug, consumerCityName } from "../shared/consumer-cities.ts";
 import { C, F, glass, MIN_TOUCH, space as S, type as T } from "./src/theme";
 import { ActionButton, AppIcon, Text, type AppIconName } from "./src/ui";
 import { friendlyError, isNetworkError, stationLabel } from "./src/friendly-errors";
 import { ScreenTransition, TactilePressable } from "./src/liquid-glass";
 import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
-import { marketIsLive, MarketsScreen, ProtectTicket, StickyCta, WalletV2 } from "./src/v2";
+import { ConfirmCover, marketIsLive, MarketsScreen, ProtectTicket, StickyCta, WalletV2 } from "./src/v2";
 import { liveMarketLabel, protectCityFor, sellingWindows, windowsForCity, type Tenor } from "./src/windows";
-import { matchingWindowPackage, sortByExpiry, type WindowEvidencePackage } from "../shared/window-chain.ts";
-import { payGet, protectCta } from "../shared/pay-get.ts";
+import { expiryChipLabel, matchingWindowPackage, sortByExpiry, type WindowEvidencePackage } from "../shared/window-chain.ts";
+import { confirmSentence, payGet, protectCta } from "../shared/pay-get.ts";
 import { buyCta, coverageOptions, type CoverageOption } from "./src/ticket";
 import { Landing, MarketDetail } from "./src/revamp";
 import { CollectPayoutView, ReceiptView } from "./src/journey";
@@ -56,9 +57,10 @@ export default function App() {
   const scrollRef = useRef<ScrollView>(null);
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
-    InterTight_600SemiBold, InterTight_700Bold,
+    BarlowCondensed_600SemiBold, BarlowCondensed_700Bold, IBMPlexMono_500Medium,
   });
   const [tab, setTab] = useState<Tab>("catalog");
+  const [coverConfirm, setCoverConfirm] = useState<{ sentence: string; station: string; expiry: string; pay: string; getLabel: string } | null>(null);
   const [showGuide, setShowGuide] = useState(true);
   const [cities, setCities] = useState<CityIndex[]>([]);
   const [catalog, setCatalog] = useState<AgriculturalMarket[]>([]);
@@ -534,6 +536,8 @@ export default function App() {
               onSelectWindow={(address) => { setSelectedWindow(address); setQuote(null); }}
               windowEvidence={windowEvidence}
               evidenceLoading={evidenceLoading}
+              cities={CITY_ORDER.map((slug) => ({ slug, label: consumerCityBySlug(slug)?.city ?? slug }))}
+              onCity={changeCity}
             />
           )
         ) : null}
@@ -575,7 +579,8 @@ export default function App() {
       </ScrollView>
 
       {!showLanding && tab === "protect" && demo === "collect" ? <StickyCta label="Collect payout to wallet" disabled hint="DEMO preview — disabled, nothing to sign" onPress={() => {}} /> : null}
-      {!showLanding && tab === "protect" && !demo && status ? (() => {
+      {!showLanding && tab === "protect" && !demo ? (() => {
+        if (!status) return <StickyCta label={wallet ? "Pick a trigger" : "Connect wallet"} disabled={!!wallet} onPress={() => { if (!wallet) void connect(); }} />;
         const claimable = claimReadiness?.state === "claimable" && claimReadiness.action;
         if (claimable) return <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={transactionBusy} onPress={() => { if (claimReadiness?.action) void submitApprovedAction(claimReadiness.action); }} />;
         if (!wallet) return <StickyCta label="Connect wallet" busy={loading} onPress={() => { void connect(); }} />;
@@ -586,14 +591,28 @@ export default function App() {
           ? payGet({ coverageSkyt: Number(BigInt(amountBase) / 1_000_000n), premiumRateBps: quote.premiumRateBps, probabilityBps: quote.probabilityBps })
           : null;
         const dealLabel = protectCta({ connected: !!wallet, quote: deal, thresholdMm: threshold });
+        const expiry = activeWindow ? expiryChipLabel(activeWindow)?.split(" · ")[0] ?? "expiry" : "expiry";
+        const station = consumerCityBySlug(protectCity)?.source ?? "NOAA station";
         return <StickyCta
           label={deal ? dealLabel : cta.label}
-          hint={cta.hint}
-          disabled={cta.disabled}
+          hint={deal ? `${deal.chance} · ${deal.multiple}` : cta.hint}
+          disabled={deal ? false : cta.disabled}
           busy={transactionBusy}
-          onPress={() => { void submitApprovedAction("open_position"); }}
+          pay={deal?.payLabel ?? null}
+          getLabel={deal?.getLabel ?? null}
+          onPress={() => {
+            if (!deal || threshold == null) return;
+            setCoverConfirm({
+              sentence: confirmSentence({ thresholdMm: threshold, station, expiry, getLabel: deal.getLabel }),
+              station,
+              expiry,
+              pay: deal.payLabel,
+              getLabel: deal.getLabel,
+            });
+          }}
         />;
       })() : null}
+      {coverConfirm ? <ConfirmCover {...coverConfirm} onClose={() => setCoverConfirm(null)} onWallet={() => { setCoverConfirm(null); setTab("wallet"); }} /> : null}
       {showLanding ? null : <View style={styles.bottomBar} accessibilityRole="tablist" accessibilityLabel="Main navigation">
         <TabButton label="Markets" icon="map-pin" selected={tab === "catalog" || tab === "weather"} onPress={() => { setDemo(null); setTab("catalog"); setDetailCode(null); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} />
         <TabButton label="Protect" icon="shield" selected={tab === "protect"} onPress={() => setTab("protect")} />
