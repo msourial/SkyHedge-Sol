@@ -1,4 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function openReferenceExplorer(page: Page) {
+  const explorer = page.locator("details.reference-explorer");
+  if ((await explorer.getAttribute("open")) == null) await explorer.locator("summary").click();
+}
 
 const transparentTile = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+XfL2WQAAAABJRU5ErkJggg==",
@@ -25,6 +30,7 @@ test.beforeEach(async ({ page }) => {
 
 test("search shows exact locations and matches locality, state, country, crop, and accents", async ({ page }) => {
   await page.goto("/app?tab=markets&city=des-moines");
+  await openReferenceExplorer(page);
   const search = page.getByRole("combobox", { name: "Find an index" });
   await search.focus();
   await expect(page.getByText("Lubbock, Texas, United States", { exact: true }).first()).toBeVisible();
@@ -189,6 +195,7 @@ test("hazard selector remains usable without horizontal overflow on mobile", asy
 
 test("selecting a search result opens the matching market and updates the URL", async ({ page }) => {
   await page.goto("/app?tab=markets&city=des-moines");
+  await openReferenceExplorer(page);
   const search = page.getByRole("combobox", { name: "Find an index" });
   await search.fill("Texas");
   await page.getByRole("option", { name: /Lubbock cotton plains; Lubbock, Texas, United States/ }).click();
@@ -199,6 +206,7 @@ test("selecting a search result opens the matching market and updates the URL", 
 test("Markets is a map-led agricultural index explorer with truthful location-only data", async ({ page }) => {
   test.skip(Boolean(process.env.MAP_TEST_KEY), "This fallback scenario runs without a configured map key.");
   await page.goto("/app?tab=markets&city=des-moines");
+  await openReferenceExplorer(page);
 
   await expect(page.getByRole("region", { name: "NOAA stations" })).toBeVisible();
   await expect(page.getByRole("button", { name: /New York/ }).first()).toBeVisible();
@@ -218,6 +226,7 @@ test("Markets is a map-led agricultural index explorer with truthful location-on
 
 test("Markets gives the selected reference location one enterprise next action", async ({ page }) => {
   await page.goto("/app?tab=markets&city=des-moines");
+  await openReferenceExplorer(page);
 
   const brief = page.getByRole("region", { name: "Selected reference location" });
   await expect(brief.getByText("Des Moines, Iowa, United States", { exact: true })).toBeVisible();
@@ -281,6 +290,7 @@ test("MapLibre reports repeated map tile failures and offers a retry", async ({ 
 
 test("selecting an agricultural area from the explorer opens Protect and keeps the location precise", async ({ page }) => {
   await page.goto("/app?tab=markets&city=des-moines");
+  await openReferenceExplorer(page);
   await page.getByRole("button", { name: /Lubbock, Texas, United States/ }).click();
 
   await expect(page).toHaveURL(/tab=protect&city=lubbock/);
@@ -401,6 +411,7 @@ test("locations wrap without horizontal overflow at supported widths", async ({ 
   for (const width of [375, 414, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/app?tab=markets&city=des-moines");
+    await openReferenceExplorer(page);
     await page.getByRole("combobox", { name: "Find an index" }).focus();
     await expect(page.getByText("Santa Cruz, Santa Cruz Department, Bolivia", { exact: true }).first()).toBeVisible();
     const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);

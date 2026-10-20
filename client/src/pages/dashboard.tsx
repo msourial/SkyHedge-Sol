@@ -19,6 +19,7 @@ import { ProtectChain } from "@/components/protect-chain";
 import { ProtectionGauges } from "@/components/protection-gauges";
 import { AGRICULTURAL_MARKETS, agriculturalMarketBySlug, agriculturalMarketLocation, millimetersToInches, searchAgriculturalMarkets, type AgriculturalMarketSlug } from "../../../shared/agricultural-markets";
 import { LIVE_CITY_SLUGS } from "../../../shared/window-ladder";
+import { consumerCityBySlug } from "../../../shared/consumer-cities";
 
 const MARKETS = AGRICULTURAL_MARKETS.map((market) => ({ id: market.slug, city: market.name, location: agriculturalMarketLocation(market), station: market.evidenceStatus === "validated" ? market.noaaStationId : "NOAA station validation in progress", crops: market.crops, region: market.region, context: market.agriculturalContext, evidenceStatus: market.evidenceStatus })) as Array<{ id: AgriculturalMarketSlug; city: string; location: string; station: string | null; crops: readonly string[]; region: string; context: string; evidenceStatus: "researching_evidence" | "validated" }>;
 const TABS = [
@@ -157,9 +158,9 @@ export default function DashboardPage() {
   return <div className="grid min-w-0 gap-7 lg:grid-cols-[68px_minmax(0,1fr)]">
     <aside className="hidden lg:block"><nav aria-label="Product sections" className="sticky top-24 flex w-[68px] flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-[var(--shadow-card)]">{TABS.map(({ id, label, icon: Icon }, index) => <button key={id} type="button" title={label} aria-label={label} aria-current={tab === id ? "page" : undefined} onClick={() => switchTab(id)} className={cn("flex min-h-11 items-center justify-center rounded-lg text-sm font-medium transition-colors", index === TABS.length - 1 && "mt-3 border-t border-[var(--border)] pt-3", tab === id ? "bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]")}><Icon className="h-5 w-5" /><span className="sr-only">{label}</span></button>)}</nav></aside>
     <div className="min-w-0 space-y-6 pb-[calc(112px+env(safe-area-inset-bottom))] lg:pb-0">
-      <header className="sky-page-header"><div className="flex items-start justify-between gap-3"><div><Pill tone={tab === "builders" ? "slate" : "slate"}>{tab === "builders" ? "Technical workspace" : "Devnet"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></div><button type="button" className="min-h-11 shrink-0 rounded-full border border-[var(--border)] px-3 text-sm" onClick={() => switchTab("builders")}>Builder</button></div></header>
+      <header className={cn("sky-page-header", chainOn && "sky-page-header--compact")}><div className={cn("flex items-start gap-3", chainOn ? "justify-end" : "justify-between")}>{chainOn ? null : <div><Pill tone={tab === "builders" ? "slate" : "slate"}>{tab === "builders" ? "Technical workspace" : "Devnet"}</Pill><h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></div>}<button type="button" className="min-h-11 shrink-0 rounded-full border border-[var(--border)] px-3 text-sm" onClick={() => switchTab("builders")}>Builder</button></div></header>
       {tab === "markets" && <FirstRunSteps /> }
-      {tab === "markets" && <Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} onOpenCity={openProtectCity} selectedSlug={marketId} status={devnetStatus.data} />}
+      {tab === "markets" && <Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} onOpenCity={openProtectCity} selectedSlug={marketId} focusSlug={query.get("city")} status={devnetStatus.data} />}
       {chainOn ? <ProtectChain windows={devnetStatus.data?.cityWindows ?? []} city={protectCity} connected={wallet.connected} onCityChange={openProtectCity} onCovered={() => switchTab("wallet")} /> : tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") { setQuoteActive(true); setQuoteRequest((count) => count + 1); } }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" && quoteActive ? quoteQuery.error : undefined} />}
       {tab === "liquidity" && <Liquidity />}
       {tab === "wallet" && <div className="space-y-8"><h2 className="text-xl font-semibold">My protections</h2><PortfolioView windows={devnetStatus.data?.cityWindows ?? []} /><Evidence /></div>}
@@ -466,7 +467,7 @@ function ResearchOnlyHazard({ hazard }: { hazard: Exclude<Hazard, "rainfall"> })
   </section>;
 }
 
-function Markets({ hazard, setHazard, onSelect, onOpenCity, selectedSlug, status }: { hazard: Hazard; setHazard: (value: Hazard) => void; onSelect: (id: MarketId) => void; onOpenCity: (slug: string) => void; selectedSlug: MarketId; status?: DevnetStatus }) {
+function Markets({ hazard, setHazard, onSelect, onOpenCity, selectedSlug, focusSlug = null, status }: { hazard: Hazard; setHazard: (value: Hazard) => void; onSelect: (id: MarketId) => void; onOpenCity: (slug: string) => void; selectedSlug: MarketId; focusSlug?: string | null; status?: DevnetStatus }) {
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -517,28 +518,32 @@ function Markets({ hazard, setHazard, onSelect, onOpenCity, selectedSlug, status
     if (event.key === "Enter" && dropdownOpen && activeOption >= 0) { event.preventDefault(); selectDropdownOption(activeOption); }
   };
 
+  const consumerFocus = consumerCityBySlug(focusSlug ?? "") ?? consumerCityBySlug("new-york")!;
+  const agriculturalFocus = Boolean(focusSlug && MARKETS.some((market) => market.id === focusSlug));
+
   return <section id="markets-workspace" className="market-explorer" aria-labelledby="markets-heading">
     <PlanCities onOpen={onOpenCity} windows={status?.cityWindows} />
     <p className="text-sm text-[var(--muted-foreground)]">Wind, snow and heat coming</p>
-    <header className="market-explorer__header">
-      <div>
-        <p className="market-explorer__overline">Climate risk explorer</p>
-        <h2 id="markets-heading" className="sky-display">Find a rainfall reference area</h2>
-        <p>Search by place, crop, or region. A pin is a reference point—not coverage or a weather station.</p>
-      </div>
-      <div className="market-explorer__meta"><span>{results.length} areas</span><Pill tone="amber">Test environment</Pill></div>
-    </header>
-
-    <section className="market-selection-brief" aria-label="Selected reference location">
+    <details className="reference-explorer">
+      <summary><h2 id="markets-heading" className="sky-display">Find a rainfall reference area</h2></summary>
+      <p className="mb-3 max-w-3xl text-sm text-[var(--muted-foreground)]">Search by place, crop, or region. A pin is a reference point—not coverage or a weather station.</p>
+    {agriculturalFocus ? <section className="market-selection-brief" aria-label="Selected reference location">
       <div>
         <p className="market-selection-brief__eyebrow">Selected reference location</p>
         <h3>{selectedMarket.location}</h3>
         <p>{selectedMarket.context} · {selectedMarket.crops.join(", ")}</p>
       </div>
       <div className="market-selection-brief__action"><Pill tone={selectedState.tone}>{selectedState.label}</Pill><button type="button" className="sky-btn-primary" onClick={() => onSelect(selectedSlug)}>Review protection</button></div>
-    </section>
+    </section> : <section className="market-selection-brief" aria-label="Selected reference location">
+      <div>
+        <p className="market-selection-brief__eyebrow">Selected reference location</p>
+        <h3>{consumerFocus.city}</h3>
+        <p>{consumerFocus.source}</p>
+      </div>
+      <div className="market-selection-brief__action"><button type="button" className="sky-btn-primary" onClick={() => onOpenCity(consumerFocus.slug)}>Review protection</button></div>
+    </section>}
 
-    <StationStrip selected="new-york" onSelect={onOpenCity} />
+    <StationStrip selected={agriculturalFocus && focusSlug ? focusSlug : consumerFocus.slug} onSelect={onOpenCity} />
     <div className="market-workspace">
       <aside className="market-location-dock" aria-label="Agricultural index locations">
         <div className="flex items-center justify-between gap-3">
@@ -571,7 +576,8 @@ function Markets({ hazard, setHazard, onSelect, onOpenCity, selectedSlug, status
             const evidence = getEvidenceStatus(agriculturalMarketBySlug(market.id)!);
             const activePilot = market.id === "des-moines" && isOpenDesMoinesMarket(status) && evidence === "validated";
             const availability = activePilot ? { label: "Active pilot", tone: "green" as const } : market.id === "des-moines" ? { label: "Unavailable", tone: "slate" as const } : { label: "Researching", tone: "amber" as const };
-            return <button key={market.id} type="button" data-testid={`market-index-option-${market.id}`} data-latitude={agriculturalMarketBySlug(market.id)!.latitude} data-longitude={agriculturalMarketBySlug(market.id)!.longitude} aria-label={`${market.location}; ${availability.label}`} aria-pressed={selectedSlug === market.id} onClick={() => onSelect(market.id)} className={cn("market-location-row", selectedSlug === market.id && "market-location-row--selected")}>
+            const pressed = agriculturalFocus && selectedSlug === market.id;
+            return <button key={market.id} type="button" data-testid={`market-index-option-${market.id}`} data-latitude={agriculturalMarketBySlug(market.id)!.latitude} data-longitude={agriculturalMarketBySlug(market.id)!.longitude} aria-label={`${market.location}; ${availability.label}`} aria-pressed={pressed} onClick={() => onSelect(market.id)} className={cn("market-location-row", pressed && "market-location-row--selected")}>
               <span className="flex items-start justify-between gap-3"><span className="min-w-0"><span className="block font-semibold leading-snug">{market.location}</span><span className="mt-1 block break-words text-xs leading-relaxed text-[var(--muted-foreground)]">{market.context} · {market.crops.join(", ")}</span></span><Pill tone={availability.tone}>{availability.label}</Pill></span>
             </button>;
           })}
@@ -579,6 +585,7 @@ function Markets({ hazard, setHazard, onSelect, onOpenCity, selectedSlug, status
         <p className="market-location-dock__note">Choose a location to view its protection details. Station and settlement evidence remain secondary.</p>
       </aside>
     </div>
+    </details>
   </section>;
 }
 

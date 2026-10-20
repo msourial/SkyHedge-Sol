@@ -28,17 +28,12 @@ export function PlanCities({ onOpen, windows = [] }: { onOpen: (slug: ConsumerCi
           return (
             <li key={city.code}>
               <button type="button" className="plan-cities__card" onClick={() => onOpen(city.slug)}>
-                <div className="plan-cities__top">
-                  <p className="plan-cities__moment">{city.moment}</p>
-                  {status ? <span className={`wl-markets__status wl-markets__status--${status.tone}`}>{status.label}</span> : null}
+                <RainGauge level={0} ticks={mm ? gaugeTicks([{ mm, selected: true }], mm) : []} label={`${city.city} gauge`} />
+                <div className="plan-cities__copy">
+                  <p className="plan-cities__place">{city.city}</p>
+                  {line ? <p className="sky-mono plan-cities__payout">{line}</p> : <p className="plan-cities__payout">{city.payout}</p>}
                 </div>
-                <div className="mt-2 flex items-center gap-3">
-                  <RainGauge level={0} ticks={mm ? gaugeTicks([{ mm, selected: true }], mm) : []} label={`${city.city} gauge`} />
-                  <div>
-                    <p className="plan-cities__place">{city.city}, {city.region}</p>
-                    {line ? <p className="sky-mono plan-cities__payout">{line}</p> : <p className="plan-cities__payout">{city.payout}</p>}
-                  </div>
-                </div>
+                {status ? <span className={`wl-markets__status wl-markets__status--${status.tone}`}>{status.label}</span> : null}
               </button>
             </li>
           );
