@@ -3,9 +3,14 @@ export const PUBLIC_DEVNET_RPC_URLS = [
   "https://solana-devnet.api.onfinality.io/public",
 ] as const;
 
-/** Official Devnet first, then an optional override, then the public fallback. */
+/**
+ * A private SOLANA_RPC_URL (e.g. a keyed Helius Devnet URL) goes first: public Devnet RPCs rate-limit
+ * the shared Vercel IPs (HTTP 429). With no override, or a public one, official Devnet stays first.
+ */
 export function prepareRpcUrls(envUrl = process.env.SOLANA_RPC_URL): string[] {
-  return [...new Set([PUBLIC_DEVNET_RPC_URLS[0], envUrl, PUBLIC_DEVNET_RPC_URLS[1]].filter((url): url is string => Boolean(url)))];
+  const isPublic = !envUrl || (PUBLIC_DEVNET_RPC_URLS as readonly string[]).includes(envUrl.replace(/\/$/, ""));
+  const ordered = isPublic ? [PUBLIC_DEVNET_RPC_URLS[0], envUrl, PUBLIC_DEVNET_RPC_URLS[1]] : [envUrl, ...PUBLIC_DEVNET_RPC_URLS];
+  return [...new Set(ordered.filter((url): url is string => Boolean(url)))];
 }
 
 /** First URL is retried on HTTP 429. Later URLs are single-shot fallbacks. */

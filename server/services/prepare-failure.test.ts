@@ -24,6 +24,11 @@ describe("unsigned prepare", () => {
     expect(prepareRpcUrls("https://solana-devnet.api.onfinality.io/public")).to.have.length(2);
   });
 
+  it("tries a private Devnet RPC first so a rate-limited public endpoint cannot block prepare", () => {
+    expect(prepareRpcUrls("https://devnet.helius-rpc.com/?api-key=test")).to.deep.equal(["https://devnet.helius-rpc.com/?api-key=test", "https://api.devnet.solana.com", "https://solana-devnet.api.onfinality.io/public"]);
+    expect(prepareRpcUrls(undefined)[0]).to.equal("https://api.devnet.solana.com");
+  });
+
   it("uses the selling New York weekly account dates for the quote and the sheet", () => {
     expect(committedWindowLabel(WEEKLY)).to.equal("Oct 26 – Nov 2");
     expect(new Date(WEEKLY.observationStart * 1000).toISOString().slice(0, 10)).to.equal("2026-10-26");
