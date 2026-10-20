@@ -3,6 +3,7 @@ import { AnchorProvider, Program, type Idl } from "@coral-xyz/anchor";
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { BN } from "bn.js";
 import committedIdl from "../../shared/idl/skyhedge_protection.json" with { type: "json" };
+import { callWithRpcFailover, prepareRpcUrls } from "./rpc-failover.js";
 
 const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
@@ -64,16 +65,25 @@ export class UnsignedTransactionBuilder {
   }
 
   async build(action: TxAction, marketAddress: string, walletAddress: string, amount?: string): Promise<UnsignedTxResult> {
+    return callWithRpcFailover(prepareRpcUrls(), async (url) => {
+      const connection = new Connection(url, { commitment: "confirmed", disableRetryOnRateLimit: true });
+      const wallet = { publicKey: KeypairFake().publicKey, signTransaction: async (tx: VersionedTransaction) => tx, signAllTransactions: async (txs: VersionedTransaction[]) => txs } as never;
+      const provider = new AnchorProvider(connection, wallet, { commitment: "confirmed", preflightCommitment: "confirmed" });
+      const program = new Program(committedIdl as unknown as Idl, provider);
+      return this.buildOn(program, connection, action, marketAddress, walletAddress, amount);
+    });
+  }
+
+  private async buildOn(program: Program, connection: Connection, action: TxAction, marketAddress: string, walletAddress: string, amount?: string): Promise<UnsignedTxResult> {
     const market = new PublicKey(marketAddress);
     const wallet = new PublicKey(walletAddress);
     const protocolAddress = PublicKey.findProgramAddressSync([Buffer.from("protocol")], this.programId)[0];
     const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), market.toBuffer()], this.programId);
-    const accounts = this.program.account as unknown as Record<string, { fetch: (address: PublicKey) => Promise<Record<string, unknown>> }>;
+    const accounts = program.account as unknown as Record<string, { fetch: (address: PublicKey) => Promise<Record<string, unknown>> }>;
     const protocol = (await accounts["protocolConfig"].fetch(protocolAddress)) as unknown as { collateralMint: PublicKey };
     this.mint = new PublicKey(protocol.collateralMint);
     const tokenProgram = TOKEN_PROGRAM_ID;
 
-    const common = { market, vault, collateralMint: this.mint, tokenProgram };
     let tx: Transaction;
 
     switch (action) {
@@ -83,16 +93,16 @@ export class UnsignedTransactionBuilder {
         const [liquidityPosition] = PublicKey.findProgramAddressSync([Buffer.from("liquidity"), market.toBuffer(), wallet.toBuffer()], this.programId);
         const amountBn = requireAmount(action, amount);
         tx = action === "fund_pool"
-          ? await this.program.methods.fundPool(amountBn).accounts({ provider: wallet, protocol: protocolAddress, market, vault, providerTokenAccount, liquidityPosition, collateralMint: this.mint, tokenProgram }).transaction()
-          : await this.program.methods.withdrawLiquidity(amountBn).accounts({ provider: wallet, protocol: protocolAddress, market, vault, providerTokenAccount, liquidityPosition, collateralMint: this.mint, tokenProgram }).transaction();
-        return this.finalize(action, marketAddress, walletAddress, tx, `${action === "fund_pool" ? "Fund" : "Withdraw"} ${amount} SKYT ${action === "fund_pool" ? "into" : "from"} the market pool`);
+          ? await program.methods.fundPool(amountBn).accounts({ provider: wallet, protocol: protocolAddress, market, vault, providerTokenAccount, liquidityPosition, collateralMint: this.mint, tokenProgram }).transaction()
+          : await program.methods.withdrawLiquidity(amountBn).accounts({ provider: wallet, protocol: protocolAddress, market, vault, providerTokenAccount, liquidityPosition, collateralMint: this.mint, tokenProgram }).transaction();
+        return this.finalize(connection, action, marketAddress, walletAddress, tx, `${action === "fund_pool" ? "Fund" : "Withdraw"} ${amount} SKYT ${action === "fund_pool" ? "into" : "from"} the market pool`);
       }
       case "open_position": {
         const ownerTokenAccount = await getAssociatedTokenAddress(this.mint, wallet);
         const [position] = PublicKey.findProgramAddressSync([Buffer.from("position"), market.toBuffer(), wallet.toBuffer()], this.programId);
         const protectedAmount = requireAmount(action, amount);
-        tx = await this.program.methods.openPosition(protectedAmount).accounts({ owner: wallet, protocol: protocolAddress, market, vault, ownerTokenAccount, position, collateralMint: this.mint, tokenProgram }).transaction();
-        return this.finalize(action, marketAddress, walletAddress, tx, `Buy ${amount} SKYT of rainfall coverage (fixed payout)`);
+        tx = await program.methods.openPosition(protectedAmount).accounts({ owner: wallet, protocol: protocolAddress, market, vault, ownerTokenAccount, position, collateralMint: this.mint, tokenProgram }).transaction();
+        return this.finalize(connection, action, marketAddress, walletAddress, tx, `Buy ${amount} SKYT of rainfall coverage (fixed payout)`);
       }
       case "claim_payout":
       case "claim_premium_refund": {
@@ -101,15 +111,15 @@ export class UnsignedTransactionBuilder {
         const ownerTokenAccount = await getAssociatedTokenAddress(this.mint, wallet);
         const [position] = PublicKey.findProgramAddressSync([Buffer.from("position"), market.toBuffer(), wallet.toBuffer()], this.programId);
         tx = action === "claim_payout"
-          ? await this.program.methods.claimPayout().accounts({ owner: wallet, protocol: protocolAddress, market, vault, position, ownerTokenAccount, collateralMint: this.mint, tokenProgram }).transaction()
-          : await this.program.methods.claimPremiumRefund().accounts({ owner: wallet, protocol: protocolAddress, market, vault, position, ownerTokenAccount, collateralMint: this.mint, tokenProgram }).transaction();
-        return this.finalize(action, marketAddress, walletAddress, tx, action === "claim_payout" ? "Claim triggered-market payout" : "Claim premium refund (DATA_UNAVAILABLE market)");
+          ? await program.methods.claimPayout().accounts({ owner: wallet, protocol: protocolAddress, market, vault, position, ownerTokenAccount, collateralMint: this.mint, tokenProgram }).transaction()
+          : await program.methods.claimPremiumRefund().accounts({ owner: wallet, protocol: protocolAddress, market, vault, position, ownerTokenAccount, collateralMint: this.mint, tokenProgram }).transaction();
+        return this.finalize(connection, action, marketAddress, walletAddress, tx, action === "claim_payout" ? "Claim triggered-market payout" : "Claim premium refund (DATA_UNAVAILABLE market)");
       }
       case "redeem_closed_liquidity": {
         const providerTokenAccount = await getAssociatedTokenAddress(this.mint, wallet);
         const [liquidityPosition] = PublicKey.findProgramAddressSync([Buffer.from("liquidity"), market.toBuffer(), wallet.toBuffer()], this.programId);
-        tx = await this.program.methods.redeemClosedLiquidity().accounts({ provider: wallet, protocol: protocolAddress, market, vault, liquidityPosition, providerTokenAccount, collateralMint: this.mint, tokenProgram }).transaction();
-        return this.finalize(action, marketAddress, walletAddress, tx, "Redeem closed-market liquidity");
+        tx = await program.methods.redeemClosedLiquidity().accounts({ provider: wallet, protocol: protocolAddress, market, vault, liquidityPosition, providerTokenAccount, collateralMint: this.mint, tokenProgram }).transaction();
+        return this.finalize(connection, action, marketAddress, walletAddress, tx, "Redeem closed-market liquidity");
       }
     }
   }
@@ -186,8 +196,8 @@ export class UnsignedTransactionBuilder {
     };
   }
 
-  private async finalize(action: TxAction, market: string, wallet: string, tx: Transaction, description: string): Promise<UnsignedTxResult> {
-    tx.recentBlockhash = (await this.connection.getLatestBlockhash()).blockhash;
+  private async finalize(connection: Connection, action: TxAction, market: string, wallet: string, tx: Transaction, description: string): Promise<UnsignedTxResult> {
+    tx.recentBlockhash = (await connection.getLatestBlockhash("confirmed")).blockhash;
     tx.feePayer = new PublicKey(wallet);
     const message = tx.compileMessage();
     const versioned = new VersionedTransaction(message);

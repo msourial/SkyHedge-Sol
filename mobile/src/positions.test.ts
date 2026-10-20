@@ -22,6 +22,8 @@ function positionBytes(): Buffer {
   return data;
 }
 
+const DURING_NEW_YORK = 1_792_509_000;
+
 function marketBytes(): Buffer {
   const data = Buffer.alloc(384);
   Buffer.from(createHash("sha256").update("new-york").digest("hex"), "hex").copy(data, 80);
@@ -34,6 +36,18 @@ function marketBytes(): Buffer {
   return data;
 }
 
+/** Live Des Moines market: start 2026-10-14T00:00Z, exclusive end 2026-10-19T00:00Z, still Open. */
+function desMoinesMarket(status = 1, result = 0): Buffer {
+  const data = marketBytes();
+  Buffer.from(createHash("sha256").update("des-moines").digest("hex"), "hex").copy(data, 80);
+  data.writeBigInt64LE(5000n, 241);
+  data.writeBigInt64LE(1_791_936_000n, 257);
+  data.writeBigInt64LE(1_792_368_000n, 265);
+  data[381] = status;
+  data[382] = result;
+  return data;
+}
+
 describe("position accounts", () => {
   it("filters program accounts by the owner pubkey at offset 40", () => {
     assert.deepEqual(positionAccountFilters(OWNER), [
@@ -43,7 +57,7 @@ describe("position accounts", () => {
   });
 
   it("presents city, window, trigger, premium, payout and status from account bytes", () => {
-    const view = protectionView(POSITION, positionBytes(), marketBytes());
+    const view = protectionView(POSITION, positionBytes(), marketBytes(), DURING_NEW_YORK);
     assert.ok(view);
     assert.equal(view.city, "New York");
     assert.equal(view.windowLabel, "Oct 19 – Oct 25");
@@ -52,6 +66,16 @@ describe("position accounts", () => {
     assert.equal(view.potentialPayout, "100000000");
     assert.equal(view.statusLabel, "Active");
     assert.equal(view.explorerUrl, `https://explorer.solana.com/address/${POSITION}?cluster=devnet`);
+  });
+
+  it("uses the account window, and waits for NOAA after that window ends", () => {
+    const afterWindow = 1_792_509_943;
+    const waiting = protectionView(POSITION, positionBytes(), desMoinesMarket(), afterWindow);
+    assert.equal(waiting?.windowLabel, "Oct 14 – Oct 18");
+    assert.equal(waiting?.triggerLabel, "≥ 50 mm");
+    assert.equal(waiting?.statusLabel, "Awaiting NOAA final data");
+    assert.equal(protectionView(POSITION, positionBytes(), desMoinesMarket(4, 1), afterWindow)?.statusLabel, "Paid");
+    assert.equal(protectionView(POSITION, positionBytes(), desMoinesMarket(4, 2), afterWindow)?.statusLabel, "Not triggered");
   });
 
   it("retries a failing RPC and then reads the next endpoint", async () => {
@@ -66,6 +90,7 @@ describe("position accounts", () => {
         return [{ pubkey: new PublicKey(POSITION), data: positionBytes() }];
       },
       getMultipleAccounts: async () => [marketBytes()],
+      nowSeconds: DURING_NEW_YORK,
     });
     assert.equal(calls, 3);
     assert.equal(rows[0]?.city, "New York");

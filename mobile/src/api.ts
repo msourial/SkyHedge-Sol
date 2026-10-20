@@ -245,6 +245,15 @@ export async function getJson<T>(path: string): Promise<T> {
   return body as T;
 }
 
+export class ApiError extends Error {
+  readonly detail: string | null;
+  constructor(message: string, detail: string | null = null) {
+    super(message);
+    this.name = "ApiError";
+    this.detail = detail;
+  }
+}
+
 export async function postJson<T>(path: string, value: unknown, opts: { timeoutMs?: number; attempts?: number; signal?: AbortSignal; fetcher?: typeof fetch } = {}): Promise<T> {
   const attempts = opts.attempts ?? 1;
   const f = opts.fetcher ?? fetch;
@@ -267,7 +276,7 @@ export async function postJson<T>(path: string, value: unknown, opts: { timeoutM
         const reason = typeof body?.message === "string" ? body.message
           : typeof body?.error === "string" ? body.error
             : `Service returned ${response.status}`;
-        throw new Error(reason);
+        throw new ApiError(reason, typeof body?.detail === "string" ? body.detail : null);
       }
       if (body === null || typeof body !== "object" || Array.isArray(body)) {
         throw new Error("SkyHedge returned an unreadable API response. Try again later.");

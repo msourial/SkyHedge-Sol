@@ -3,6 +3,7 @@ import {
   chanceLabel,
   daysToExpiry,
   daysToExpiryLabel,
+  committedWindowLabel,
   expiryChipCopy,
   expiryChipLabel,
   measuredAtLine,
@@ -23,6 +24,7 @@ describe("options chain labels", () => {
   it("labels expiries by the last inclusive day and tenor, sorted by end", () => {
     expect(expiryChipLabel(WEEK)).to.equal("Oct 25 · W");
     expect(expiryChipLabel(NEXT_WEEK)).to.equal("Nov 1 · W");
+    expect(committedWindowLabel(NEXT_WEEK)).to.equal("Oct 26 – Nov 2");
     expect(expiryChipLabel(NOVEMBER)).to.equal("Nov 30 · M");
     expect(sortByExpiry([NOVEMBER, WEEK, NEXT_WEEK]).map(expiryChipLabel)).to.deep.equal(["Oct 25 · W", "Nov 1 · W", "Nov 30 · M"]);
     const now = Date.parse("2026-10-17T15:00:00Z") / 1000;

@@ -18,6 +18,7 @@ import { finalizedEvidenceWindow, getDesMoinesEvidencePackage } from "./services
 import { ensureCityWindowEvidence } from "./services/window-evidence";
 import { LIVE_CITY_SLUGS, type LiveCitySlug } from "../shared/window-ladder";
 import { desMoinesQuoteUnavailableReason, matchingOpenWindow, testerProtectionUnavailableReason } from "./services/tester-readiness";
+import { prepareFailure } from "../shared/prepare-failure";
 import { settlementWorkerReadiness } from "./services/settlement-config";
 import { agriculturalMarketBySlug, AGRICULTURAL_MARKETS, calendarMonthlyWindow, weeklyFridayWindow } from "../shared/agricultural-markets";
 import { createMobileApiHandler } from "./services/mobile-api";
@@ -373,8 +374,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tx = await unsignedTx.build(intent.data.action as TxAction, intent.data.market, intent.data.wallet, intent.data.amount);
       return res.json({ ...tx, note: "Serialized as base64 VersionedTransaction with zero signatures; the wallet signs offline and the client broadcasts. No simulation." });
     } catch (error) {
-      if (error instanceof ClaimUnavailableError) return res.status(409).json({ error: "CLAIM_UNAVAILABLE", message: error.message });
-      return res.status(500).json({ error: "TX_BUILD_ERROR", message: (error as Error).message });
+      console.error("[unsigned] prepare failed", error);
+      if (error instanceof ClaimUnavailableError) return res.status(409).json({ error: "CLAIM_UNAVAILABLE", message: error.message, detail: error.message });
+      const failure = prepareFailure(error);
+      return res.status(503).json({ error: "TX_BUILD_ERROR", message: failure.message, detail: failure.detail });
     }
   });
 

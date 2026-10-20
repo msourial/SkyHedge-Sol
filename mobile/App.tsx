@@ -15,14 +15,15 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { AdvisoryResponse, AgriculturalMarket, ClaimReadiness, CityIndex, DevnetStatus, FinalizedWalletState, getJson, NotAvailableYetError, claimReadinessPath, Portfolio, postJson, ProtectionQuote, UnsignedTransaction } from "./src/api";
+import { AdvisoryResponse, AgriculturalMarket, ApiError, ClaimReadiness, CityIndex, DevnetStatus, FinalizedWalletState, getJson, NotAvailableYetError, claimReadinessPath, Portfolio, postJson, ProtectionQuote, UnsignedTransaction } from "./src/api";
 import { DEVNET_RPC_URL, readFinalizedWalletStateAnyRpc, readWalletStateWithFallback } from "./src/chain";
 import { readFinalizedProtections } from "./src/positions";
-import { buyPhaseLabel, TransactionFailedError, visibleTransactionError, type BuyPhase } from "./src/buy-phase";
+import { buyPhaseLabel, customerPrepareError, TransactionFailedError, visibleTransactionError, type BuyPhase } from "./src/buy-phase";
 import { type HazardId } from "./src/hazards";
 import { resolveSelectedNoaaCity } from "./src/presentation";
 import { committedPremiumQuote } from "../shared/market-pricing.ts";
 import { buildCommittedQuoteRequest, duplicatePositionReason, formatSkyt, getProtectionUnavailableReason, parseSkytAmount } from "./src/protection";
+import { handleConfirmApprove } from "./src/confirm-buy";
 import { authorizeDevnetWallet, signAndConfirmDevnetTransaction, type AuthorizedWallet } from "./src/wallet";
 import { clearWalletSession, loadWalletSession, saveWalletSession } from "./src/wallet-session-store";
 import { consumerCityBySlug, consumerCityName } from "../shared/consumer-cities.ts";
@@ -33,7 +34,7 @@ import { ScreenTransition, TactilePressable } from "./src/liquid-glass";
 import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
 import { ConfirmCover, marketIsLive, MarketsScreen, ProtectTicket, StickyCta, WalletV2 } from "./src/v2";
 import { liveMarketLabel, protectCityFor, sellingWindows, windowsForCity, type Tenor } from "./src/windows";
-import { expiryChipLabel, matchingWindowPackage, sortByExpiry, type WindowEvidencePackage } from "../shared/window-chain.ts";
+import { committedWindowLabel, expiryChipLabel, matchingWindowPackage, sortByExpiry, type WindowEvidencePackage } from "../shared/window-chain.ts";
 import { confirmSentence, payGet, protectCta } from "../shared/pay-get.ts";
 import { buyCtaVisible, nextWeeklyOpenCopy, openCityPrompt, protectSurface } from "../shared/protect-surface.ts";
 import { buyCta, coverageOptions, type CoverageOption } from "./src/ticket";
@@ -63,7 +64,7 @@ export default function App() {
     BarlowCondensed_600SemiBold, BarlowCondensed_700Bold, IBMPlexMono_500Medium,
   });
   const [tab, setTab] = useState<Tab>("catalog");
-  const [coverConfirm, setCoverConfirm] = useState<{ sentence: string; station: string; expiry: string; pay: string; getLabel: string } | null>(null);
+  const [coverConfirm, setCoverConfirm] = useState<{ sentence: string; station: string; expiry: string; windowLabel: string; pay: string; getLabel: string; market: string; amount: string } | null>(null);
   const [showGuide, setShowGuide] = useState(true);
   const [cities, setCities] = useState<CityIndex[]>([]);
   const [catalog, setCatalog] = useState<AgriculturalMarket[]>([]);
@@ -118,6 +119,7 @@ export default function App() {
   const [claimError, setClaimError] = useState<string | null>(null);
   const [transactionMessage, setTransactionMessage] = useState<string | null>(null);
   const [transactionError, setTransactionError] = useState<string | null>(null);
+  const [transactionDetail, setTransactionDetail] = useState<string | null>(null);
   const [transactionSignature, setTransactionSignature] = useState<string | null>(null);
   const [buyPhase, setBuyPhase] = useState<BuyPhase | null>(null);
 
@@ -410,19 +412,26 @@ export default function App() {
     if (max.amountBase) setProtectionAmount((Number(BigInt(max.amountBase) / 1_000_000n)).toString());
   }, [coverageId, walletBalances]);
 
-  const submitApprovedAction = async (action: "open_position" | "claim_payout" | "claim_premium_refund") => {
+  const submitApprovedAction = async (action: "open_position" | "claim_payout" | "claim_premium_refund", marketAddress?: string, amountOverride?: string) => {
     setTransactionError(null);
+    setTransactionDetail(null);
     setBuyPhase("preparing");
     setTransactionMessage(buyPhaseLabel("preparing"));
     setTransactionSignature(null);
     try {
-      if (!walletSession || !wallet || !activeWindow?.address) throw new Error("Connect the wallet and refresh finalized market status before continuing.");
-      if (action === "open_position" && (amountMode !== "devnet-test" || protectionUnavailableReason || !quote || !amountBase || quotePaymentReason)) throw new Error(protectionUnavailableReason ?? quotePaymentReason ?? "Enter Devnet test mode and request a valid SKYT quote before approving a protection position.");
+      const market = marketAddress ?? activeWindow?.address;
+      const amount = amountOverride ?? amountBase;
+      if (!walletSession || !wallet || !market) throw new Error("Connect the wallet and refresh finalized market status before continuing.");
+      if (action === "open_position" && quote?.inputsHash && activeWindow?.quoteInputsHash && quote.inputsHash.toLowerCase() !== activeWindow.quoteInputsHash.toLowerCase()) {
+        void requestProtectionQuote();
+        throw new Error("The price changed for this window. Review the new price, then approve again.");
+      }
+      if (action === "open_position" && (amountMode !== "devnet-test" || protectionUnavailableReason || !quote || !amount || quotePaymentReason)) throw new Error(protectionUnavailableReason ?? quotePaymentReason ?? "Enter Devnet test mode and request a valid SKYT quote before approving a protection position.");
       if (action.startsWith("claim_") && (claimReadiness?.state !== "claimable" || claimReadiness.action !== action)) throw new Error("The finalized claim-readiness API does not currently allow this claim.");
       const unsigned = await postJson<UnsignedTransaction>("/api/transactions/unsigned", {
-        action, market: activeWindow.address, wallet, ...(action === "open_position" ? { amount: amountBase } : {}), approved: true,
-      });
-      if (unsigned.network !== "devnet" || unsigned.market !== activeWindow.address || unsigned.wallet !== wallet) throw new Error("The prepared transaction does not match this wallet, market, or Devnet.");
+        action, market, wallet, ...(action === "open_position" ? { amount } : {}), approved: true,
+      }, { attempts: 2, timeoutMs: 20_000 });
+      if (unsigned.network !== "devnet" || unsigned.market !== market || unsigned.wallet !== wallet) throw new Error("The prepared transaction does not match this wallet, market, or Devnet.");
       const signature = await signAndConfirmDevnetTransaction({
         transactionBase64: unsigned.base64,
         wallet: walletSession,
@@ -448,10 +457,13 @@ export default function App() {
       }
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "The transaction did not complete.";
+      const shown = customerPrepareError(visibleTransactionError(message), reason instanceof ApiError ? reason.detail : null);
+      if (/just closed|price changed|committed terms/i.test(shown.message)) void requestProtectionQuote();
       if (reason instanceof TransactionFailedError && reason.signature) setTransactionSignature(reason.signature);
       setBuyPhase("failed");
       setTransactionMessage(buyPhaseLabel("failed"));
-      setTransactionError(visibleTransactionError(message));
+      setTransactionError(shown.message);
+      setTransactionDetail(shown.detail);
     }
   };
 
@@ -560,6 +572,7 @@ export default function App() {
               claimError={claimError}
               transactionMessage={transactionMessage}
               transactionError={transactionError}
+              transactionDetail={transactionDetail}
               transactionSignature={transactionSignature}
               buyPhase={buyPhase}
               onViewWallet={() => { setTab("wallet"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
@@ -636,7 +649,8 @@ export default function App() {
           : null;
         const dealLabel = protectCta({ connected: !!wallet, quote: deal, thresholdMm: threshold });
         if (!deal && cta.disabled && !quoteBusy) return null;
-        const expiry = activeWindow ? expiryChipLabel(activeWindow)?.split(" · ")[0] ?? "expiry" : "expiry";
+        const windowLabel = activeWindow ? committedWindowLabel(activeWindow) : null;
+        const expiry = windowLabel?.split(" – ")[1] ?? (activeWindow ? expiryChipLabel(activeWindow)?.split(" · ")[0] ?? "expiry" : "expiry");
         const station = consumerCityBySlug(protectCity)?.source ?? "NOAA station";
         const buying = buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending";
         return <StickyCta
@@ -649,18 +663,24 @@ export default function App() {
           getLabel={deal?.getLabel ?? null}
           onPress={() => {
             if (buyPhase === "failed") { void submitApprovedAction("open_position"); return; }
-            if (!deal || threshold == null) return;
+            if (!deal || threshold == null || !activeWindow || !amountBase || !windowLabel) return;
             setCoverConfirm({
               sentence: confirmSentence({ thresholdMm: threshold, station, expiry, getLabel: deal.getLabel }),
               station,
               expiry,
+              windowLabel,
               pay: deal.payLabel,
               getLabel: deal.getLabel,
+              market: activeWindow.address,
+              amount: amountBase,
             });
           }}
         />;
       })() : null}
-      {coverConfirm ? <ConfirmCover {...coverConfirm} onClose={() => setCoverConfirm(null)} onApprove={() => { setCoverConfirm(null); void submitApprovedAction("open_position"); }} /> : null}
+      {coverConfirm ? <ConfirmCover {...coverConfirm} onClose={() => setCoverConfirm(null)} onApprove={() => {
+        const pending = coverConfirm;
+        handleConfirmApprove({ close: () => setCoverConfirm(null), signOpenPosition: () => { void submitApprovedAction("open_position", pending.market, pending.amount); } });
+      }} /> : null}
       {showLanding ? null : <View style={styles.bottomBar} accessibilityRole="tablist" accessibilityLabel="Main navigation">
         <TabButton label="Markets" icon="map-pin" selected={tab === "catalog" || tab === "weather"} onPress={() => { setDemo(null); setTab("catalog"); setDetailCode(null); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} />
         <TabButton label="Protect" icon="shield" selected={tab === "protect"} onPress={() => setTab("protect")} />

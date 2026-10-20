@@ -9,7 +9,7 @@ import { getDesMoinesEvidencePackage, type DesMoinesEvidencePackage } from "./de
 import { marketStateFromStatusJson } from "../../shared/des-moines-seed-plan.js";
 import { LIVE_CITY_SLUGS, tenorOf, type LiveCitySlug, type Tenor } from "../../shared/window-ladder.js";
 import type { WindowEvidencePackage } from "../../shared/window-chain.js";
-import { callWithRpcFailover } from "./rpc-failover.js";
+import { callWithRpcFailover, prepareRpcUrls } from "./rpc-failover.js";
 import { readStoredWindowEvidence } from "./window-evidence.js";
 
 const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
@@ -17,10 +17,8 @@ const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 const SKYT_MINT = process.env.SKYT_MINT ?? "3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g";
 const STATUS_CACHE_MS = 20_000;
 /** Public Devnet endpoints. web3.js 429 retry stays off; the first URL is retried with backoff, then the fallback, under a strict timeout. */
-const DEVNET_RPC_URLS = ["https://api.devnet.solana.com", "https://solana-devnet.api.onfinality.io/public"];
-
 function devnetRpcUrls(): string[] {
-  return [...new Set([process.env.SOLANA_RPC_URL, ...DEVNET_RPC_URLS].filter((url): url is string => Boolean(url)))];
+  return prepareRpcUrls();
 }
 
 function devnetConnection(url: string): Connection {
@@ -130,15 +128,15 @@ export class DevnetStatusReader {
 
   private async readUncached(): Promise<DevnetStatus> {
     const [programInfo, mintAccountInfo, noaaEvidence, windowEvidence] = await Promise.all([
-      this.connection.getAccountInfo(this.programId, "finalized"),
-      this.connection.getAccountInfo(this.mint, "finalized"),
+      this.connection.getAccountInfo(this.programId, "confirmed"),
+      this.connection.getAccountInfo(this.mint, "confirmed"),
       this.readNoaaEvidence(),
       readStoredWindowEvidence().catch(() => [] as WindowEvidencePackage[]),
     ]);
-    const mintInfo = mintAccountInfo ? await getMint(this.connection, this.mint, "finalized") : null;
+    const mintInfo = mintAccountInfo ? await getMint(this.connection, this.mint, "confirmed") : null;
     const [protocolAddress] = PublicKey.findProgramAddressSync([Buffer.from("protocol")], this.programId);
     const [feeVaultAddress] = PublicKey.findProgramAddressSync([Buffer.from("fee-vault"), protocolAddress.toBuffer()], this.programId);
-    const protocolInfo = await this.connection.getAccountInfo(protocolAddress, "finalized");
+    const protocolInfo = await this.connection.getAccountInfo(protocolAddress, "confirmed");
     const decodedProtocol = protocolInfo ? this.decodeAccount<Record<string, unknown>>("ProtocolConfig", protocolInfo.data) : null;
     const feeVaultBalance = await this.tokenBalance(feeVaultAddress);
     const markets = decodedProtocol ? await this.listDesMoinesMarkets(protocolAddress, decodedProtocol) : [];
@@ -230,7 +228,7 @@ export class DevnetStatusReader {
       const ids: bigint[] = [];
       for (let id = start; id < end; id++) ids.push(id);
       const addresses = ids.map((id) => PublicKey.findProgramAddressSync([Buffer.from("market"), protocol.toBuffer(), u64Le(id)], this.programId)[0]);
-      const accounts = await this.connection.getMultipleAccountsInfo(addresses, "finalized");
+      const accounts = await this.connection.getMultipleAccountsInfo(addresses, "confirmed");
       for (let index = 0; index < accounts.length; index++) {
         const account = accounts[index];
         if (!account) continue;
@@ -293,9 +291,9 @@ export class DevnetStatusReader {
   }
 
   private async tokenBalance(address: PublicKey): Promise<string | null> {
-    const account = await this.connection.getAccountInfo(address, "finalized");
+    const account = await this.connection.getAccountInfo(address, "confirmed");
     if (!account) return null;
-    const balance = await this.connection.getTokenAccountBalance(address, "finalized");
+    const balance = await this.connection.getTokenAccountBalance(address, "confirmed");
     return balance.value.amount;
   }
 }

@@ -42,6 +42,20 @@ export function sortByExpiry<T extends { observationEnd: number; observationStar
   return [...windows].sort((left, right) => left.observationEnd - right.observationEnd || (left.observationStart ?? 0) - (right.observationStart ?? 0));
 }
 
+/** UTC dates stored on the market account. observation_end is exclusive, so Oct 26–Nov 2 is that weekly window. */
+export function committedWindowLabel(window: { observationStart: number; observationEnd: number }): string | null {
+  const from = utcDayLabel(window.observationStart);
+  const to = utcDayLabel(window.observationEnd);
+  return from && to ? `${from} – ${to}` : null;
+}
+
+function utcDayLabel(seconds: number): string | null {
+  if (!Number.isSafeInteger(seconds) || seconds <= 0) return null;
+  const date = new Date(seconds * 1_000);
+  const month = SHORT_MONTHS[date.getUTCMonth()];
+  return month ? `${month} ${date.getUTCDate()}` : null;
+}
+
 /** Last inclusive UTC day of the window, marked W or M. Example: "Oct 25 · W". */
 export function expiryChipLabel(window: { observationStart: number; observationEnd: number }): string | null {
   const tenor = tenorOf(window.observationStart, window.observationEnd);

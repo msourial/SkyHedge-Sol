@@ -88,6 +88,18 @@ describe("Vercel production API routes", () => {
     expect(buildCalls).to.equal(1);
   });
 
+  it("returns the Devnet rate-limit reason instead of a generic prepare error", async () => {
+    const handler = createUnsignedTransactionHandler({
+      readStatus: async () => status,
+      builder: { build: async () => { throw new Error("429 Too Many Requests: OnFinality"); } } as never,
+    });
+    const response = new ResponseStub();
+    await handler(request("POST", { action: "open_position", market: MARKET, wallet: WALLET, amount: "1000000", approved: true }), response as unknown as ServerResponse);
+    expect(response.code).to.equal(503);
+    expect(response.body).to.include({ error: "TX_BUILD_ERROR", message: "Devnet is busy, try again" });
+    expect((response.body as { detail: string }).detail).to.match(/429/);
+  });
+
   it("exposes finalized claim readiness from the production route", async () => {
     const handler = createClaimReadinessHandler({ read: async (market, wallet) => ({ market, wallet, state: "claimable", action: "claim_payout", result: "triggered", amount: "100000000", claimDeadline: 2_000_000_000, finalizedSlot: 88, reason: "Finalized settlement confirms payout.", observationSignature: "observation-sig", resolutionSignature: "settlement-sig", observation: null }) });
     const response = new ResponseStub();

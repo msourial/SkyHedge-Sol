@@ -1,3 +1,13 @@
+export const PUBLIC_DEVNET_RPC_URLS = [
+  "https://api.devnet.solana.com",
+  "https://solana-devnet.api.onfinality.io/public",
+] as const;
+
+/** Official Devnet first, then an optional override, then the public fallback. */
+export function prepareRpcUrls(envUrl = process.env.SOLANA_RPC_URL): string[] {
+  return [...new Set([PUBLIC_DEVNET_RPC_URLS[0], envUrl, PUBLIC_DEVNET_RPC_URLS[1]].filter((url): url is string => Boolean(url)))];
+}
+
 /** First URL is retried on HTTP 429. Later URLs are single-shot fallbacks. */
 export const RPC_RATE_LIMIT_BACKOFF_MS = [250, 750] as const;
 /** One RPC attempt may not outlive this. */

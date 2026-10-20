@@ -4,6 +4,7 @@ import { PublicKey } from "@solana/web3.js";
 import { DataUnavailableError, NOAA_STATIONS, type SkyHedgeCity } from "./noaa.js";
 import { MARKET_LIMITS, quoteFromCommittedMarketTerms, type Quote, type TriggerOperator } from "./quote-engine.js";
 import { desMoinesQuoteUnavailableReason, matchingOpenWindow, testerProtectionUnavailableReason } from "./tester-readiness.js";
+import { prepareFailure } from "../../shared/prepare-failure.js";
 import type { DevnetStatus } from "./devnet-status";
 import { ClaimUnavailableError, type ClaimReadiness, type TxAction, type UnsignedTransactionBuilder, type UnsignedTxResult } from "./unsigned-tx.js";
 import { applyCorsHeaders } from "./cors.js";
@@ -120,8 +121,10 @@ export function createUnsignedTransactionHandler(dependencies: {
         note: "Serialized with zero signatures; your wallet must review and sign before broadcast. No simulation or transaction submission occurs here.",
       });
     } catch (error) {
-      if (error instanceof ClaimUnavailableError) return sendJson(res, 409, { error: "CLAIM_UNAVAILABLE", message: error.message });
-      return sendJson(res, 500, { error: "TX_BUILD_ERROR", message: "The unsigned transaction could not be prepared from finalized Devnet state." });
+      console.error("[unsigned] prepare failed", error);
+      if (error instanceof ClaimUnavailableError) return sendJson(res, 409, { error: "CLAIM_UNAVAILABLE", message: error.message, detail: error.message });
+      const failure = prepareFailure(error);
+      return sendJson(res, 503, { error: "TX_BUILD_ERROR", message: failure.message, detail: failure.detail });
     }
   };
 }

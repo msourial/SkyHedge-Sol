@@ -1,3 +1,5 @@
+import { prepareFailure } from "../../shared/prepare-failure.ts";
+
 export type BuyPhase = "preparing" | "waiting" | "sending" | "confirmed" | "failed";
 
 const PROGRAM_ERRORS: Record<number, string> = {
@@ -42,6 +44,13 @@ export class TransactionFailedError extends Error {
     this.name = "TransactionFailedError";
     this.signature = signature;
   }
+}
+
+export function customerPrepareError(message: string, detail?: string | null): { message: string; detail: string | null } {
+  const raw = detail || message;
+  const prepared = prepareFailure(new Error(raw));
+  const friendly = prepared.message === raw ? message : prepared.message;
+  return { message: friendly, detail: raw !== friendly ? raw : null };
 }
 
 export function buyPhaseLabel(phase: BuyPhase): string {

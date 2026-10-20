@@ -21,6 +21,7 @@ import { citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingW
 import type { ProtectSurface } from "../../shared/protect-surface.ts";
 import { CONSUMER_LEAD_CODES, consumerCityByCode, consumerCityBySlug } from "../../shared/consumer-cities.ts";
 import { MARKETING_SHOTS } from "./marketing";
+import { approveInPhantomLabel } from "./confirm-buy";
 import { balanceCheck, coverageOptions, formatSkytFixed, premiumPer100, payState, reviewReason, shortAddress, shortUtcDate, trimMm, utcDateTime, type CoverageOption } from "./ticket";
 import { buyPhaseLabel, type BuyPhase } from "./buy-phase";
 
@@ -256,6 +257,7 @@ export function ProtectTicket(props: {
   claimError: string | null;
   transactionMessage: string | null;
   transactionError: string | null;
+  transactionDetail?: string | null;
   transactionSignature: string | null;
   buyPhase?: BuyPhase | null;
   onViewWallet?: () => void;
@@ -344,7 +346,7 @@ export function ProtectTicket(props: {
 
     {blocking && props.surface === "ready" && evidenceReady && !showTicket ? <View style={s.calm}><Text style={s.noticeTitle}>Not ready to price yet</Text><Text style={s.noticeBody}>{friendlyError(blocking)}</Text><Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh</Text></Pressable></View> : null}
     {props.quoteError && props.surface === "ready" && !showTicket ? <View style={s.calm}><Text style={s.noticeTitle}>{quoteErrorTitle(props.quoteError)}</Text><Text style={s.noticeBody}>{friendlyError(props.quoteError)}</Text><Pressable accessibilityRole="button" onPress={props.onRetryQuote} style={s.inlineBtn}><Text style={s.link}>Retry</Text></Pressable></View> : null}
-    {props.buyPhase ? <BuyProgress phase={props.buyPhase} error={props.transactionError} signature={props.transactionSignature} onRetry={props.onRetryBuy} onWallet={props.onViewWallet} /> : null}
+    {props.buyPhase ? <BuyProgress phase={props.buyPhase} error={props.transactionError} detail={props.transactionDetail} signature={props.transactionSignature} onRetry={props.onRetryBuy} onWallet={props.onViewWallet} /> : null}
     {!props.buyPhase && props.transactionMessage ? <Text accessibilityLiveRegion="polite" style={[s.body, { color: C.rain, marginBottom: S.md }]}>{props.transactionMessage}</Text> : null}
     {!props.buyPhase && props.transactionError ? <View style={[s.notice, { borderColor: C.coral }]} accessibilityRole="alert"><Text style={s.noticeTitle}>{transactionErrorTitle(props.transactionError, props.walletName)}</Text><Text style={s.noticeBody}>{props.transactionError}</Text><Pressable accessibilityRole="button" onPress={props.onRetryBuy} style={s.inlineBtn}><Text style={s.link}>Retry</Text></Pressable></View> : null}
 
@@ -539,24 +541,26 @@ export function StickyCta(props: { label: string; onPress: () => void; disabled?
   </View>;
 }
 
-export function ConfirmCover(props: { sentence: string; station: string; expiry: string; pay: string; getLabel: string; onClose: () => void; onApprove: () => void }) {
+export function ConfirmCover(props: { sentence: string; station: string; expiry: string; windowLabel: string; pay: string; getLabel: string; onClose: () => void; onApprove: () => void }) {
   return <View style={s.sheetScrim}>
     <View style={s.sheet} accessibilityViewIsModal accessibilityLabel="Confirm protection">
       <Text style={s.bodyStrong}>{props.sentence}</Text>
       <Text style={[s.caption, { marginTop: S.sm }]}>Station · {props.station}</Text>
+      <Text style={s.caption}>Window · {props.windowLabel}</Text>
       <Text style={s.caption}>Settlement · {props.expiry}</Text>
       <Text style={s.caption}>You pay {props.pay} SKYT</Text>
       <Text style={[s.caption, { color: C.payout }]}>You get {props.getLabel} SKYT</Text>
       <Text style={[s.caption, { marginTop: S.sm }]}>Phantom will ask you to approve this protection.</Text>
       <View style={s.sheetActions}>
         <Pressable accessibilityRole="button" onPress={props.onClose} style={s.sheetBack}><Text style={s.bodyStrong}>Back</Text></Pressable>
-        <Pressable accessibilityRole="button" onPress={props.onApprove} style={s.sheetGo}><Text style={[s.bodyStrong, { color: C.canvas, textAlign: "center" }]}>Approve in Phantom</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={approveInPhantomLabel(props.pay)} onPress={props.onApprove} style={s.sheetGo}><Text style={[s.bodyStrong, { color: C.canvas, textAlign: "center" }]}>{approveInPhantomLabel(props.pay)}</Text></Pressable>
       </View>
     </View>
   </View>;
 }
 
-function BuyProgress(props: { phase: BuyPhase; error: string | null; signature: string | null; onRetry?: () => void; onWallet?: () => void }) {
+function BuyProgress(props: { phase: BuyPhase; error: string | null; detail?: string | null; signature: string | null; onRetry?: () => void; onWallet?: () => void }) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const title = buyPhaseLabel(props.phase);
   const pending = props.phase === "preparing" || props.phase === "waiting" || props.phase === "sending";
   return <View accessibilityLiveRegion="polite" accessibilityRole={props.phase === "failed" ? "alert" : "text"} style={[s.notice, props.phase !== "failed" && { backgroundColor: C.surfaceRaised, borderColor: C.rain }]}>
@@ -569,6 +573,8 @@ function BuyProgress(props: { phase: BuyPhase; error: string | null; signature: 
     {props.phase === "confirmed" && props.signature ? <ExplorerButton url={`https://explorer.solana.com/tx/${encodeURIComponent(props.signature)}?cluster=devnet`} label="View on Explorer" /> : null}
     {props.phase === "confirmed" && props.onWallet ? <Pressable accessibilityRole="button" onPress={props.onWallet} style={s.inlineBtn}><Text style={s.link}>View in Wallet</Text></Pressable> : null}
     {props.phase === "failed" ? <Text style={s.noticeBody}>{props.error ?? "The transaction did not complete."}</Text> : null}
+    {props.phase === "failed" && props.detail ? <Pressable accessibilityRole="button" accessibilityState={{ expanded: detailsOpen }} onPress={() => setDetailsOpen((open) => !open)} style={s.inlineBtn}><Text style={s.link}>{detailsOpen ? "Hide details" : "Details"}</Text></Pressable> : null}
+    {props.phase === "failed" && detailsOpen && props.detail ? <Text style={s.noticeBody}>{props.detail}</Text> : null}
     {props.phase === "failed" && props.onRetry ? <Pressable accessibilityRole="button" onPress={props.onRetry} style={s.inlineBtn}><Text style={s.link}>Retry</Text></Pressable> : null}
   </View>;
 }
@@ -783,8 +789,8 @@ const s = StyleSheet.create({
   sheetScrim: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, zIndex: 40, justifyContent: "flex-end", backgroundColor: "#00000066", padding: S.lg },
   sheet: { borderRadius: 18, borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceRaised, padding: S.lg },
   sheetActions: { flexDirection: "row", gap: S.sm, marginTop: S.md },
-  sheetBack: { flex: 1, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 24, borderWidth: 1, borderColor: C.border },
-  sheetGo: { flex: 1, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 24, backgroundColor: C.ink },
+  sheetBack: { paddingHorizontal: S.lg, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 24, borderWidth: 1, borderColor: C.border },
+  sheetGo: { flex: 1, paddingHorizontal: S.sm, paddingVertical: S.sm, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 24, backgroundColor: C.ink },
   netPill: { minHeight: 32, flexDirection: "row", alignItems: "center", gap: S.sm, borderWidth: 1, borderColor: C.border, borderRadius: 16, paddingHorizontal: S.md, backgroundColor: C.surface },
   netPillText: { ...T.label, fontSize: 12, lineHeight: 16, color: C.ink },
   pill: { minHeight: 28, flexShrink: 0, flexDirection: "row", alignItems: "center", gap: S.sm - 2, borderRadius: 14, paddingHorizontal: S.md - 2 },

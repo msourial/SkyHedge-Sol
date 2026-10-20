@@ -51,6 +51,7 @@ type ReadDeps = {
   getProgramAccounts?: (url: string, owner: string) => Promise<AccountRow[]>;
   getMultipleAccounts?: (url: string, keys: PublicKey[]) => Promise<Array<Buffer | null>>;
   getAccount?: (url: string, key: PublicKey) => Promise<Buffer | null>;
+  nowSeconds?: number;
 };
 
 export function positionAccountFilters(owner: string): Array<{ dataSize: number } | { memcmp: { offset: number; bytes: string } }> {
@@ -74,7 +75,7 @@ export function decodePosition(data: Buffer): { market: string; owner: string; p
   };
 }
 
-export function protectionView(address: string, positionData: Buffer, marketData: Buffer | null): ChainProtection | null {
+export function protectionView(address: string, positionData: Buffer, marketData: Buffer | null, nowSeconds = Math.floor(Date.now() / 1000)): ChainProtection | null {
   const position = decodePosition(positionData);
   if (!position) return null;
   const market = decodeMarket(marketData);
@@ -88,7 +89,7 @@ export function protectionView(address: string, positionData: Buffer, marketData
     city: citySlug ? consumerCityName(citySlug) : "Unknown city",
     windowLabel: market ? windowLabel(market.observationStart, market.observationEnd) : "—",
     triggerLabel: market ? triggerLabel(market.operator, market.thresholdMmX100) : "—",
-    statusLabel: statusLabel(position, market),
+    statusLabel: statusLabel(position, market, nowSeconds),
     openedAt: position.openedAt,
     explorerUrl: `https://explorer.solana.com/address/${address}?cluster=devnet`,
   };
@@ -110,6 +111,7 @@ export async function readFinalizedProtections(wallet: string, deps: ReadDeps = 
       throw new Error(`Could not read protections from Solana. ${first} ${second}`);
     }
   }
+  const nowSeconds = deps.nowSeconds ?? Math.floor(Date.now() / 1000);
   const decoded = rows.flatMap((row) => {
     const data = Buffer.from(row.data);
     return decodePosition(data) ? [{ pubkey: row.pubkey, data }] : [];
@@ -123,7 +125,7 @@ export async function readFinalizedProtections(wallet: string, deps: ReadDeps = 
   const byMarket = new Map(marketKeys.map((key, index) => [key.toBase58(), markets[index] ? Buffer.from(markets[index]!) : null]));
   return decoded
     .flatMap((row) => {
-      const view = protectionView(row.pubkey.toBase58(), row.data, byMarket.get(decodePosition(row.data)!.market) ?? null);
+      const view = protectionView(row.pubkey.toBase58(), row.data, byMarket.get(decodePosition(row.data)!.market) ?? null, nowSeconds);
       return view ? [view] : [];
     })
     .sort((left, right) => right.openedAt - left.openedAt);
@@ -146,6 +148,7 @@ function decodeMarket(data: Buffer | null): { cityHash: string; operator: (typeo
   };
 }
 
+/** observation_end is the first second after the window. The label is the inclusive last day. */
 function windowLabel(start: number, end: number): string {
   const from = shortUtcDate(start);
   const to = shortUtcDate(end > 0 ? end - 1 : null);
@@ -158,14 +161,16 @@ function triggerLabel(operator: (typeof OPERATORS)[number], threshold: string): 
   return `${symbol} ${trimMm(Number(threshold) / 100)} mm`;
 }
 
-function statusLabel(position: { payoutClaimed: boolean; refundClaimed: boolean }, market: ReturnType<typeof decodeMarket>): string {
-  if (position.payoutClaimed) return "Claimed";
+function statusLabel(position: { payoutClaimed: boolean; refundClaimed: boolean }, market: ReturnType<typeof decodeMarket>, nowSeconds: number): string {
   if (position.refundClaimed) return "Refunded";
-  if (!market || market.status === "Open") return "Active";
-  if (market.status === "Locked" || market.status === "AwaitingSettlement") return "Watching";
-  if (market.status === "Settled" && market.result === "Triggered") return "Payout ready";
-  if (market.status === "Settled") return "Settled";
-  if (market.status === "DataUnavailable") return "Refund ready";
+  if (market?.status === "Settled" && market.result === "Triggered") return "Paid";
+  if (position.payoutClaimed) return "Paid";
+  if (market?.status === "Settled" && market.result === "NotTriggered") return "Not triggered";
+  if (market?.status === "DataUnavailable") return "Refund ready";
+  const windowEnded = market != null && nowSeconds >= market.observationEnd;
+  if (windowEnded && (market.status === "Open" || market.status === "Locked" || market.status === "AwaitingSettlement")) return "Awaiting NOAA final data";
+  if (!market || market.status === "Open" || market.status === "Locked") return "Active";
+  if (market.status === "AwaitingSettlement") return "Awaiting NOAA final data";
   return market.status;
 }
 
