@@ -5,6 +5,7 @@ import { DataUnavailableError, NOAA_STATIONS, type SkyHedgeCity } from "./noaa.j
 import { MARKET_LIMITS, quoteFromCommittedMarketTerms, type Quote, type TriggerOperator } from "./quote-engine.js";
 import { desMoinesQuoteUnavailableReason, matchingOpenWindow, testerProtectionUnavailableReason } from "./tester-readiness.js";
 import { prepareFailure } from "../../shared/prepare-failure.js";
+import { isRpcRateLimited } from "./rpc-failover.js";
 import type { DevnetStatus } from "./devnet-status";
 import { ClaimUnavailableError, type ClaimReadiness, type TxAction, type UnsignedTransactionBuilder, type UnsignedTxResult } from "./unsigned-tx.js";
 import { applyCorsHeaders } from "./cors.js";
@@ -111,8 +112,13 @@ export function createUnsignedTransactionHandler(dependencies: {
     const intent = parsed.data;
     try {
       if (intent.action === "open_position") {
-        const reason = testerProtectionUnavailableReason(await dependencies.readStatus(), intent.market, intent.amount ?? "");
-        if (reason) return sendJson(res, 409, { error: "TESTER_ACTION_UNAVAILABLE", message: reason });
+        try {
+          const reason = testerProtectionUnavailableReason(await dependencies.readStatus(), intent.market, intent.amount ?? "");
+          if (reason) return sendJson(res, 409, { error: "TESTER_ACTION_UNAVAILABLE", message: reason, detail: reason });
+        } catch (error) {
+          if (!isRpcRateLimited(error)) throw error;
+          console.error("[unsigned] status read rate-limited; the program still checks the window", error);
+        }
       }
       const transaction = await dependencies.builder.build(intent.action as TxAction, intent.market, intent.wallet, intent.amount);
       res.setHeader("Cache-Control", "no-store");

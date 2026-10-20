@@ -19,6 +19,7 @@ import { ensureCityWindowEvidence } from "./services/window-evidence";
 import { LIVE_CITY_SLUGS, type LiveCitySlug } from "../shared/window-ladder";
 import { desMoinesQuoteUnavailableReason, matchingOpenWindow, testerProtectionUnavailableReason } from "./services/tester-readiness";
 import { prepareFailure } from "../shared/prepare-failure";
+import { isRpcRateLimited } from "./services/rpc-failover";
 import { settlementWorkerReadiness } from "./services/settlement-config";
 import { agriculturalMarketBySlug, AGRICULTURAL_MARKETS, calendarMonthlyWindow, weeklyFridayWindow } from "../shared/agricultural-markets";
 import { createMobileApiHandler } from "./services/mobile-api";
@@ -368,8 +369,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!intent.success) return res.status(400).json({ error: "A valid market, wallet, and explicit approval are required." });
     try {
       if (intent.data.action === "open_position") {
-        const reason = testerProtectionUnavailableReason(await devnetStatus.read(), intent.data.market, intent.data.amount ?? "");
-        if (reason) return res.status(409).json({ error: "TESTER_ACTION_UNAVAILABLE", message: reason });
+        try {
+          const reason = testerProtectionUnavailableReason(await devnetStatus.read(), intent.data.market, intent.data.amount ?? "");
+          if (reason) return res.status(409).json({ error: "TESTER_ACTION_UNAVAILABLE", message: reason, detail: reason });
+        } catch (error) {
+          if (!isRpcRateLimited(error)) throw error;
+          console.error("[unsigned] status read rate-limited; the program still checks the window", error);
+        }
       }
       const tx = await unsignedTx.build(intent.data.action as TxAction, intent.data.market, intent.data.wallet, intent.data.amount);
       return res.json({ ...tx, note: "Serialized as base64 VersionedTransaction with zero signatures; the wallet signs offline and the client broadcasts. No simulation." });

@@ -88,6 +88,18 @@ describe("Vercel production API routes", () => {
     expect(buildCalls).to.equal(1);
   });
 
+  it("builds the transaction when the status scan is rate-limited", async () => {
+    let buildCalls = 0;
+    const handler = createUnsignedTransactionHandler({
+      readStatus: async () => { throw new Error("429 Too Many Requests"); },
+      builder: { build: async () => { buildCalls++; return { action: "open_position", market: MARKET, wallet: WALLET, base64: "AA==", description: "Buy protection", programId: "program", network: "devnet" }; } } as never,
+    });
+    const response = new ResponseStub();
+    await handler(request("POST", { action: "open_position", market: MARKET, wallet: WALLET, amount: "1000000", approved: true }), response as unknown as ServerResponse);
+    expect(response.code).to.equal(200);
+    expect(buildCalls).to.equal(1);
+  });
+
   it("returns the Devnet rate-limit reason instead of a generic prepare error", async () => {
     const handler = createUnsignedTransactionHandler({
       readStatus: async () => status,
