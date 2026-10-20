@@ -16,6 +16,7 @@ import {
   type WindowEvidencePackage,
 } from "../../../shared/window-chain";
 import { RainGauge, gaugeTicks } from "@/components/rain-gauge";
+import { buyCtaVisible, coverageChipOn, gaugeMode, nextWeeklyOpenCopy, openCityPrompt, protectSurface } from "../../../shared/protect-surface";
 
 type WindowRow = NonNullable<DevnetStatus["cityWindows"]>[number];
 const CHIPS = [50, 100, 250] as const;
@@ -25,7 +26,7 @@ function cityRank(slug: string): number {
   return index < 0 ? LIVE_CITY_SLUGS.length : index;
 }
 
-export function ProtectChain(props: { windows: readonly WindowRow[]; city?: string; connected: boolean; onCityChange?: (slug: string) => void; onCovered?: () => void }) {
+export function ProtectChain(props: { windows: readonly WindowRow[]; city?: string; connected: boolean; onCityChange?: (slug: string) => void; onCovered?: () => void; statusLoading?: boolean; statusFailed?: boolean; onRetry?: () => void }) {
   const cities = useMemo(
     () => [...new Set(props.windows.map((window) => window.city))].sort((left, right) => cityRank(left) - cityRank(right)),
     [props.windows],
@@ -69,16 +70,29 @@ export function ProtectChain(props: { windows: readonly WindowRow[]; city?: stri
   const sentence = chosen && quote && expiryDate ? confirmSentence({ thresholdMm: chosen.thresholdMm, station: source, expiry: expiryDate, getLabel: quote.getLabel }) : null;
 
   const ticks = gaugeTicks(ladder.priced.map((row) => ({ mm: row.thresholdMm, selected: row.thresholdMm === chosen?.thresholdMm })), maxMm).map((tick) => ({ ...tick, label: `${tick.id} mm` }));
+  const surface = protectSurface({
+    loading: !!props.statusLoading || (windows.length > 0 && evidence.isLoading),
+    failed: !!props.statusFailed || (windows.length > 0 && evidence.isError),
+    openWindowCount: windows.length,
+  });
+  const mode = gaugeMode({ surface, evidenceLoading: evidence.isLoading, pricedRowCount: ladder.priced.length });
+  const priced = surface === "ready" && ladder.priced.length > 0;
+  const showCta = buyCtaVisible(surface, priced);
+  const otherCity = openCityPrompt(props.windows, city);
+  const retry = () => { void evidence.refetch(); props.onRetry?.(); };
 
   return <section className="protect-layout" aria-label="Protect chain">
     <div className="protect-main">
       <p className="protect-eyebrow">Rain</p>
       <h2 className="protect-city">{place}</h2>
       <p className="protect-station">{active && expiryDate ? measuredAtLine(source, expiryDate) : measuredAtLine(source, "expiry")}</p>
-      <div className="sky-scroll-x mt-3 flex min-w-0 gap-2 pb-2" role="radiogroup" aria-label="City">
-        {cities.map((slug) => <button key={slug} type="button" role="radio" aria-checked={slug === city} className="min-h-12 shrink-0 rounded-full border px-3 text-sm" style={slug === city ? selectedStyle : idleStyle} onClick={() => { setCity(slug); props.onCityChange?.(slug); }}>{consumerCityBySlug(slug)?.city ?? slug}</button>)}
+      <div className="relative mt-3">
+        <div className="sky-scroll-x flex min-w-0 gap-2 pb-2" role="radiogroup" aria-label="City, scroll for more">
+          {LIVE_CITY_SLUGS.map((slug) => <button key={slug} type="button" role="radio" aria-checked={slug === city} className="min-h-12 shrink-0 rounded-full border px-3 text-sm" style={slug === city ? selectedStyle : idleStyle} onClick={() => { setCity(slug); props.onCityChange?.(slug); }}>{consumerCityBySlug(slug)?.city ?? slug}</button>)}
+        </div>
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex w-16 items-center justify-end bg-gradient-to-r from-transparent from-20% to-[var(--background)] pr-1 text-xs font-semibold text-[var(--muted-foreground)]" aria-hidden="true">More</div>
       </div>
-      <div className="mt-2 flex min-w-0 gap-2 overflow-x-auto pb-2" role="radiogroup" aria-label="Expiry">
+      {windows.length ? <div className="relative mt-2"><div className="flex min-w-0 gap-2 overflow-x-auto pb-2" role="radiogroup" aria-label="Expiry">
         {windows.map((window) => {
           const on = window.address === active?.address;
           const label = expiryChipCopy(window, now) ?? "Expiry";
@@ -86,15 +100,29 @@ export function ProtectChain(props: { windows: readonly WindowRow[]; city?: stri
             <span className="block whitespace-nowrap text-sm font-semibold">{label}</span>
           </button>;
         })}
-      </div>
-      <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Coverage amount in SKYT">
-        {CHIPS.map((choice) => <button key={choice} type="button" className="min-h-12 rounded-full border px-4" style={amount === choice ? selectedStyle : idleStyle} onClick={() => setAmount(choice)}>{choice} SKYT</button>)}
-      </div>
-      <div className="protect-ladder">
+      </div><div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-r from-transparent to-[var(--background)]" aria-hidden="true" /></div> : null}
+      {priced ? <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Coverage amount in SKYT">
+        {CHIPS.map((choice) => {
+          const on = coverageChipOn(priced, String(choice), String(amount));
+          return <button key={choice} type="button" aria-checked={on} className="min-h-12 rounded-full border px-4" style={on ? selectedStyle : idleStyle} onClick={() => setAmount(choice)}>{choice} SKYT</button>;
+        })}
+      </div> : null}
+      {mode === "skeleton" ? <div className="protect-ladder" aria-busy="true" aria-label="Loading prices">
+        <div className="relative h-44 w-14 overflow-hidden rounded-2xl border border-[var(--border)]">
+          <div className="sky-shimmer absolute inset-0" />
+          <span className="absolute right-1 top-8 h-0.5 w-4 bg-[var(--muted-foreground)]" />
+          <span className="absolute right-1 top-16 h-0.5 w-4 bg-[var(--muted-foreground)]" />
+          <span className="absolute right-1 top-24 h-0.5 w-4 bg-[var(--muted-foreground)]" />
+        </div>
+        <div className="flex flex-1 flex-col gap-2">
+          <div className="sky-shimmer h-8 w-full" />
+          <div className="sky-shimmer h-8 w-full" />
+          <div className="sky-shimmer h-8 w-3/4" />
+        </div>
+      </div> : null}
+      {mode === "gauge" ? <div className="protect-ladder">
         <RainGauge labelled level={chosen ? chosen.thresholdMm / maxMm : 0} ticks={ticks} label={chosen ? `Water at ${chosen.thresholdMm} millimetres` : "Rain gauge"} />
         <div className="protect-rows" role="list" aria-label="Rain triggers">
-          {evidence.isLoading ? <p className="text-sm text-[var(--muted-foreground)]">Checking NOAA analogue history…</p> : null}
-          {evidence.isError || (!evidence.isLoading && !pkg) ? <p className="text-sm" role="alert">Not ready to price yet. A validated NOAA evidence package is not available.</p> : null}
           {ladder.priced.map((row) => {
             const on = row.thresholdMm === chosen?.thresholdMm;
             const rowQuote = payGet({ coverageSkyt: 100, premiumRateBps: row.premiumRateBps, probabilityBps: row.probabilityBps });
@@ -106,15 +134,26 @@ export function ProtectChain(props: { windows: readonly WindowRow[]; city?: stri
           })}
           {ladder.soonCount > 0 ? <p className="mt-1 text-sm text-[var(--muted-foreground)]">{ladder.soonCount} more triggers open soon</p> : null}
         </div>
-      </div>
+      </div> : null}
+      {surface === "closed" ? <CalmCard title={nextWeeklyOpenCopy(city, now) ?? "The next weekly window is not on the schedule yet."} action="Refresh" onAction={retry} link={otherCity} onLink={otherCity ? () => { setCity(otherCity.slug); props.onCityChange?.(otherCity.slug); } : undefined} /> : null}
+      {surface === "error" ? <CalmCard title="Couldn't load prices" action="Retry" onAction={retry} /> : null}
+      {surface === "ready" && mode === "hidden" ? <CalmCard title="Not ready to price yet. A validated NOAA evidence package is not available." action="Refresh" onAction={retry} /> : null}
       <p className="protect-footnote">Wind, snow and heat coming</p>
     </div>
-    <aside className="protect-ticket" aria-label="Pay and payout">
-      {quote && chosen && active ? <PayGetBars pay={quote.payLabel} getLabel={quote.getLabel} chance={quote.chance} multiple={quote.multiple} thresholdMm={chosen.thresholdMm} expiry={expiryDate} /> : <p className="text-sm text-[var(--muted-foreground)]">Pick a trigger</p>}
+    {showCta ? <aside className="protect-ticket" aria-label="Pay and payout">
+      {quote && chosen && active ? <PayGetBars pay={quote.payLabel} getLabel={quote.getLabel} chance={quote.chance} multiple={quote.multiple} thresholdMm={chosen.thresholdMm} expiry={expiryDate} /> : null}
       <button type="button" className="mt-3 min-h-12 w-full rounded-full bg-[var(--foreground)] px-5 font-semibold text-[var(--background)] disabled:opacity-60" disabled={!ready} onClick={() => { if (ready) setSheet(true); }}>{cta}</button>
-    </aside>
+    </aside> : null}
     {sheet && sentence && quote && chosen ? <ConfirmSheet sentence={sentence} station={source} expiry={expiryDate} pay={quote.payLabel} getLabel={quote.getLabel} onClose={() => setSheet(false)} onWallet={() => { setSheet(false); props.onCovered?.(); }} /> : null}
   </section>;
+}
+
+function CalmCard(props: { title: string; action: string; onAction: () => void; link?: { slug: string; label: string } | null; onLink?: () => void }) {
+  return <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--muted-surface,#243044)] p-4">
+    <p className="text-sm text-[var(--foreground)]">{props.title}</p>
+    <button type="button" className="mt-3 min-h-12 rounded-full border border-[var(--border)] bg-[var(--surface-1)] px-4 text-sm font-semibold" onClick={props.onAction}>{props.action}</button>
+    {props.link && props.onLink ? <button type="button" className="mt-2 block min-h-12 text-sm font-semibold text-[var(--identity)]" onClick={props.onLink}>{props.link.label}</button> : null}
+  </div>;
 }
 
 function PayGetBars(props: { pay: string; getLabel: string; chance: string; multiple: string; thresholdMm: number; expiry: string }) {

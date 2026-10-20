@@ -18,6 +18,7 @@ import { marketStatus, notTriggeredLine, payGet } from "../../shared/pay-get.ts"
 import { RainGauge } from "./rain-gauge";
 import { ProtectChain } from "./protect-chain";
 import { citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
+import type { ProtectSurface } from "../../shared/protect-surface.ts";
 import { CONSUMER_LEAD_CODES, consumerCityByCode, consumerCityBySlug } from "../../shared/consumer-cities.ts";
 import { MARKETING_SHOTS } from "./marketing";
 import { balanceCheck, coverageOptions, formatSkytFixed, premiumPer100, payState, reviewReason, shortAddress, shortUtcDate, trimMm, utcDateTime, type CoverageOption } from "./ticket";
@@ -270,10 +271,12 @@ export function ProtectTicket(props: {
   evidenceLoading?: boolean;
   cities?: readonly { slug: string; label: string }[];
   onCity?: (slug: string) => void;
+  surface: ProtectSurface;
+  nextOpenCopy: string | null;
+  openCity: { slug: string; label: string } | null;
 }) {
   const [verifyOpen, setVerifyOpen] = useState(false);
   const windows = props.windows ?? sellingWindows(props.status, props.nowSeconds);
-  const tenor = props.tenor ?? "weekly";
   const market = windows.find((window) => window.address === props.selectedAddress) ?? windows[0] ?? null;
   const live = !!market;
   const options = coverageOptions(props.walletSkytBase);
@@ -324,20 +327,19 @@ export function ProtectTicket(props: {
       onSelectWindow={(address) => props.onSelectWindow?.(address)}
       cities={props.cities}
       onCity={props.onCity}
-      amounts={options.filter((option) => option.id !== "max").map((option) => ({ id: option.id, label: `${option.label} SKYT`, on: option.id === props.coverageId, onPress: () => props.onCoverage(option) }))}
+      amounts={options.filter((option) => option.id !== "max").map((option) => ({ id: option.id, label: `${option.label} SKYT`, onPress: () => props.onCoverage(option) }))}
+      selectedAmountId={props.coverageId}
+      surface={props.surface}
+      nextOpenCopy={props.nextOpenCopy}
+      openCity={props.openCity}
+      onRefresh={props.onRefresh}
     />
     {showTicket ? null : stage ? <PayoutStatusCard stage={stage} dates={trackerDates(market, props.claimReadiness)} /> : null}
 
-    {!live ? <View style={[s.notice, { marginTop: S.sm }]} accessibilityRole="text">
-      <Text style={s.noticeTitle}>{NEXT_WINDOW_COPY}</Text>
-      <Text style={s.noticeBody}>The next {tenor} expiry is added as soon as the previous one closes. Pull down or tap refresh.</Text>
-      <Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh status</Text></Pressable>
-    </View> : null}
-
     {balance === "short" && q && !showTicket ? <Text style={[s.chipMsg, { color: C.coral }]} accessibilityRole="alert">Not enough SKYT: you need {formatSkytFixed(q.premium, 2)} SKYT. Pick less coverage or top up your wallet.</Text> : null}
 
-    {blocking && live && !showTicket ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>Not ready to price yet</Text><Text style={s.noticeBody}>{friendlyError(blocking)}</Text><Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh status</Text></Pressable></View> : null}
-    {props.quoteError && !showTicket ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>{quoteErrorTitle(props.quoteError)}</Text><Text style={s.noticeBody}>{friendlyError(props.quoteError)}</Text><Pressable accessibilityRole="button" onPress={props.onRetryQuote} style={s.inlineBtn}><Text style={s.link}>Get a new price</Text></Pressable></View> : null}
+    {blocking && props.surface === "ready" && evidenceReady && !showTicket ? <View style={s.calm}><Text style={s.noticeTitle}>Not ready to price yet</Text><Text style={s.noticeBody}>{friendlyError(blocking)}</Text><Pressable accessibilityRole="button" onPress={props.onRefresh} style={s.inlineBtn}><Text style={s.link}>Refresh</Text></Pressable></View> : null}
+    {props.quoteError && props.surface === "ready" && !showTicket ? <View style={s.calm}><Text style={s.noticeTitle}>{quoteErrorTitle(props.quoteError)}</Text><Text style={s.noticeBody}>{friendlyError(props.quoteError)}</Text><Pressable accessibilityRole="button" onPress={props.onRetryQuote} style={s.inlineBtn}><Text style={s.link}>Retry</Text></Pressable></View> : null}
     {props.transactionMessage ? <Text accessibilityLiveRegion="polite" style={[s.body, { color: C.rain, marginBottom: S.md }]}>{props.transactionMessage}</Text> : null}
     {props.transactionError ? <View style={[s.notice, { borderColor: C.coral }]} accessibilityRole="alert"><Text style={s.noticeTitle}>{transactionErrorTitle(props.transactionError, props.walletName)}</Text><Text style={s.noticeBody}>{friendlyError(props.transactionError)} Nothing was charged unless Explorer shows a transaction.</Text></View> : null}
 
@@ -747,6 +749,7 @@ const s = StyleSheet.create({
   rowLabel: { ...T.body, color: C.muted, flexShrink: 0 },
   rowValue: { ...T.bodyStrong, color: C.ink, fontVariant: TAB },
   notice: { backgroundColor: C.redSoft, borderColor: C.coral, borderWidth: 1, borderRadius: glass.radius - 10, padding: S.lg, marginBottom: S.md },
+  calm: { backgroundColor: C.mutedSurface, borderColor: C.border, borderWidth: 1, borderRadius: glass.radius - 10, padding: S.lg, marginBottom: S.md },
   noticeWarn: { backgroundColor: C.amberSoft, borderColor: C.amber + "88" },
   noticeTitle: { ...T.bodyStrong, color: C.ink },
   noticeBody: { ...T.body, fontSize: 14, lineHeight: 20, color: C.muted, marginTop: S.xs },

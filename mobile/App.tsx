@@ -33,6 +33,7 @@ import { ConfirmCover, marketIsLive, MarketsScreen, ProtectTicket, StickyCta, Wa
 import { liveMarketLabel, protectCityFor, sellingWindows, windowsForCity, type Tenor } from "./src/windows";
 import { expiryChipLabel, matchingWindowPackage, sortByExpiry, type WindowEvidencePackage } from "../shared/window-chain.ts";
 import { confirmSentence, payGet, protectCta } from "../shared/pay-get.ts";
+import { buyCtaVisible, nextWeeklyOpenCopy, openCityPrompt, protectSurface } from "../shared/protect-surface.ts";
 import { buyCta, coverageOptions, type CoverageOption } from "./src/ticket";
 import { Landing, MarketDetail } from "./src/revamp";
 import { CollectPayoutView, ReceiptView } from "./src/journey";
@@ -65,6 +66,7 @@ export default function App() {
   const [cities, setCities] = useState<CityIndex[]>([]);
   const [catalog, setCatalog] = useState<AgriculturalMarket[]>([]);
   const [status, setStatus] = useState<DevnetStatus | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState("new-york");
   const [selectedHazard, setSelectedHazard] = useState<HazardId | null>("rainfall");
   const [city, setCity] = useState<CityIndex | null>(null);
@@ -89,6 +91,8 @@ export default function App() {
   const [selectedWindow, setSelectedWindow] = useState<string | null>(null);
   const [windowEvidence, setWindowEvidence] = useState<WindowEvidencePackage[] | null>(null);
   const [evidenceLoading, setEvidenceLoading] = useState(true);
+  const [evidenceError, setEvidenceError] = useState(false);
+  const [evidenceNonce, setEvidenceNonce] = useState(0);
   const [quoteBusy, setQuoteBusy] = useState(false);
   const [indicativeQuote, setIndicativeQuote] = useState<ProtectionQuote | null>(null);
   const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1_000));
@@ -136,7 +140,12 @@ export default function App() {
       setError(cityResult.reason instanceof Error ? cityResult.reason.message : "Could not load NOAA index data.");
     }
     if (catalogResult.status === "fulfilled") setCatalog(catalogResult.value.markets);
-    if (statusResult.status === "fulfilled") setStatus(statusResult.value);
+    if (statusResult.status === "fulfilled") {
+      setStatus(statusResult.value);
+      setStatusError(null);
+    } else {
+      setStatusError(statusResult.reason instanceof Error ? statusResult.reason.message : "Couldn't load prices");
+    }
     setHomeLoading(false);
   }, [selectedCity]);
 
@@ -200,6 +209,7 @@ export default function App() {
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
+    setEvidenceNonce((nonce) => nonce + 1);
     try {
       await loadHome();
       if (wallet) await loadWalletData(wallet);
@@ -276,16 +286,23 @@ export default function App() {
   const protectCity = protectCityFor(selectedCity, selling);
   const openWindows = sortByExpiry(windowsForCity(selling, protectCity));
   const activeWindow = openWindows.find((window) => window.address === selectedWindow) ?? openWindows[0] ?? null;
+  const protectView = protectSurface({
+    loading: (homeLoading && !status) || (openWindows.length > 0 && evidenceLoading),
+    failed: (!!statusError && !status) || (openWindows.length > 0 && evidenceError),
+    openWindowCount: openWindows.length,
+  });
+  const nextOpenCopy = nextWeeklyOpenCopy(protectCity, nowSeconds);
+  const openCity = openCityPrompt(selling, protectCity);
   const activePackage = matchingWindowPackage(windowEvidence, protectCity, activeWindow?.observationStart, activeWindow?.observationEnd);
   useEffect(() => {
     let cancelled = false;
     setEvidenceLoading(true);
     getJson<{ packages: WindowEvidencePackage[] }>(`/api/devnet/status?resource=window-evidence&city=${encodeURIComponent(protectCity)}`)
-      .then((value) => { if (!cancelled) setWindowEvidence(value.packages ?? []); })
-      .catch(() => { if (!cancelled) setWindowEvidence([]); })
+      .then((value) => { if (!cancelled) { setWindowEvidence(value.packages ?? []); setEvidenceError(false); } })
+      .catch(() => { if (!cancelled) { setWindowEvidence([]); setEvidenceError(true); } })
       .finally(() => { if (!cancelled) setEvidenceLoading(false); });
     return () => { cancelled = true; };
-  }, [protectCity]);
+  }, [protectCity, evidenceNonce]);
   // Price from the open market's NOAA terms even before wallet connect; purchase still requires a wallet.
   const quoteUnavailableReason = selectedHazard !== "rainfall"
     ? "Choose a place and its rainfall risk in Explore. Wind gust and snowfall remain research-only."
@@ -538,6 +555,9 @@ export default function App() {
               evidenceLoading={evidenceLoading}
               cities={CITY_ORDER.map((slug) => ({ slug, label: consumerCityBySlug(slug)?.city ?? slug }))}
               onCity={changeCity}
+              surface={protectView}
+              nextOpenCopy={nextOpenCopy}
+              openCity={openCity}
             />
           )
         ) : null}
@@ -579,8 +599,8 @@ export default function App() {
       </ScrollView>
 
       {!showLanding && tab === "protect" && demo === "collect" ? <StickyCta label="Collect payout to wallet" disabled hint="DEMO preview — disabled, nothing to sign" onPress={() => {}} /> : null}
-      {!showLanding && tab === "protect" && !demo ? (() => {
-        if (!status) return <StickyCta label={wallet ? "Pick a trigger" : "Connect wallet"} disabled={!!wallet} onPress={() => { if (!wallet) void connect(); }} />;
+      {!showLanding && tab === "protect" && !demo && buyCtaVisible(protectView, !!activePackage) ? (() => {
+        if (!status) return null;
         const claimable = claimReadiness?.state === "claimable" && claimReadiness.action;
         if (claimable) return <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={transactionBusy} onPress={() => { if (claimReadiness?.action) void submitApprovedAction(claimReadiness.action); }} />;
         if (!wallet) return <StickyCta label="Connect wallet" busy={loading} onPress={() => { void connect(); }} />;
@@ -591,6 +611,7 @@ export default function App() {
           ? payGet({ coverageSkyt: Number(BigInt(amountBase) / 1_000_000n), premiumRateBps: quote.premiumRateBps, probabilityBps: quote.probabilityBps })
           : null;
         const dealLabel = protectCta({ connected: !!wallet, quote: deal, thresholdMm: threshold });
+        if (!deal && cta.disabled && !quoteBusy) return null;
         const expiry = activeWindow ? expiryChipLabel(activeWindow)?.split(" · ")[0] ?? "expiry" : "expiry";
         const station = consumerCityBySlug(protectCity)?.source ?? "NOAA station";
         return <StickyCta
