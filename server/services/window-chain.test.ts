@@ -3,7 +3,9 @@ import {
   chanceLabel,
   daysToExpiry,
   daysToExpiryLabel,
+  expiryChipCopy,
   expiryChipLabel,
+  measuredAtLine,
   pricePer100Label,
   payoutMultipleLabel,
   settlementLine,
@@ -26,6 +28,9 @@ describe("options chain labels", () => {
     const now = Date.parse("2026-10-17T15:00:00Z") / 1000;
     expect(daysToExpiryLabel(daysToExpiry(WEEK.observationEnd, now))).to.match(/^\d+ days$/);
     expect(settlementLine("NOAA Central Park")).to.equal("NOAA Central Park · settles after expiry from NOAA final data");
+    expect(expiryChipCopy(WEEK, now)).to.equal("Weekly · Oct 25 · 9 days");
+    expect(expiryChipCopy(NOVEMBER, now)).to.equal("Monthly · Nov 30 · 45 days");
+    expect(measuredAtLine("NOAA Central Park", "Oct 25")).to.equal("Measured at NOAA Central Park. Pays out from NOAA's final numbers after Oct 25.");
   });
 
   it("builds four to six triggers only from analogue ranks and the pinned market", () => {

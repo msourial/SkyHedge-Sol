@@ -68,6 +68,25 @@ export function settlementLine(stationSource: string): string {
   return `${stationSource} · settles after expiry from NOAA final data`;
 }
 
+/** "Weekly · Oct 25 · 6 days". Days follow the exclusive observation end. */
+export function expiryChipCopy(window: { observationStart: number; observationEnd: number }, nowSeconds: number): string | null {
+  const dated = expiryChipLabel(window);
+  if (!dated) return null;
+  const [date, mark] = dated.split(" · ");
+  const name = mark === "M" ? "Monthly" : "Weekly";
+  return `${name} · ${date} · ${daysToExpiryLabel(daysToExpiry(window.observationEnd, nowSeconds))}`;
+}
+
+export function measuredAtLine(station: string, expiry: string): string {
+  const place = station.replace(/^NOAA\s+/i, "");
+  return `Measured at NOAA ${place}. Pays out from NOAA's final numbers after ${expiry}.`;
+}
+
+export function pricedTriggers<T extends { onChain: boolean }>(rows: readonly T[]): { priced: T[]; soonCount: number } {
+  const priced = rows.filter((row) => row.onChain);
+  return { priced, soonCount: rows.length - priced.length };
+}
+
 export function matchingWindowPackage(
   packages: readonly WindowEvidencePackage[] | null | undefined,
   city: string,
