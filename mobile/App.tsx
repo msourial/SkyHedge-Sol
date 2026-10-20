@@ -24,6 +24,8 @@ import { resolveSelectedNoaaCity } from "./src/presentation";
 import { committedPremiumQuote } from "../shared/market-pricing.ts";
 import { buildCommittedQuoteRequest, duplicatePositionReason, formatSkyt, getProtectionUnavailableReason, parseSkytAmount } from "./src/protection";
 import { handleConfirmApprove } from "./src/confirm-buy";
+import { buildOpenPositionOnDevice } from "./src/open-position-tx";
+import { prepareUnsignedTransaction } from "./src/prepare-tx";
 import { authorizeDevnetWallet, signAndConfirmDevnetTransaction, type AuthorizedWallet } from "./src/wallet";
 import { clearWalletSession, loadWalletSession, saveWalletSession } from "./src/wallet-session-store";
 import { consumerCityBySlug, consumerCityName } from "../shared/consumer-cities.ts";
@@ -428,9 +430,13 @@ export default function App() {
       }
       if (action === "open_position" && (amountMode !== "devnet-test" || protectionUnavailableReason || !quote || !amount || quotePaymentReason)) throw new Error(protectionUnavailableReason ?? quotePaymentReason ?? "Enter Devnet test mode and request a valid SKYT quote before approving a protection position.");
       if (action.startsWith("claim_") && (claimReadiness?.state !== "claimable" || claimReadiness.action !== action)) throw new Error("The finalized claim-readiness API does not currently allow this claim.");
-      const unsigned = await postJson<UnsignedTransaction>("/api/transactions/unsigned", {
-        action, market, wallet, ...(action === "open_position" ? { amount } : {}), approved: true,
-      }, { attempts: 2, timeoutMs: 20_000 });
+      const unsigned = await prepareUnsignedTransaction({
+        action, market, wallet, amount: amount ?? "",
+        onDevice: (input) => buildOpenPositionOnDevice(input),
+        server: () => postJson<UnsignedTransaction>("/api/transactions/unsigned", {
+          action, market, wallet, ...(action === "open_position" ? { amount } : {}), approved: true,
+        }, { attempts: 2, timeoutMs: 20_000 }),
+      });
       if (unsigned.network !== "devnet" || unsigned.market !== market || unsigned.wallet !== wallet) throw new Error("The prepared transaction does not match this wallet, market, or Devnet.");
       const signature = await signAndConfirmDevnetTransaction({
         transactionBase64: unsigned.base64,
