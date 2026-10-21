@@ -42,11 +42,27 @@ export function sortByExpiry<T extends { observationEnd: number; observationStar
   return [...windows].sort((left, right) => left.observationEnd - right.observationEnd || (left.observationStart ?? 0) - (right.observationStart ?? 0));
 }
 
-/** UTC dates stored on the market account. observation_end is exclusive, so Oct 26–Nov 2 is that weekly window. */
+/**
+ * One date convention everywhere (header, chip, sheet, Wallet): the UTC dates stored on the market
+ * account, start to observation_end, marked "(UTC)". Example: "Oct 26 – Nov 2 (UTC)" for the window
+ * that ends Nov 2 00:00 UTC. A local-time date would read Nov 1 in the Americas.
+ */
 export function committedWindowLabel(window: { observationStart: number; observationEnd: number }): string | null {
   const from = utcDayLabel(window.observationStart);
   const to = utcDayLabel(window.observationEnd);
-  return from && to ? `${from} – ${to}` : null;
+  return from && to ? `${from} – ${to} (UTC)` : null;
+}
+
+/** "Oct 26 (UTC)": the observation start. */
+export function windowStartLabel(window: { observationStart: number }): string | null {
+  const from = utcDayLabel(window.observationStart);
+  return from ? `${from} (UTC)` : null;
+}
+
+/** "Nov 2 (UTC)": the observation end, as the sheet and Wallet show it. */
+export function windowEndLabel(window: { observationEnd: number }): string | null {
+  const to = utcDayLabel(window.observationEnd);
+  return to ? `${to} (UTC)` : null;
 }
 
 function utcDayLabel(seconds: number): string | null {
@@ -56,11 +72,11 @@ function utcDayLabel(seconds: number): string | null {
   return month ? `${month} ${date.getUTCDate()}` : null;
 }
 
-/** Last inclusive UTC day of the window, marked W or M. Example: "Oct 25 · W". */
+/** UTC observation-end day, marked W or M. Example: "Nov 2 · W" for Oct 26 – Nov 2 (UTC). */
 export function expiryChipLabel(window: { observationStart: number; observationEnd: number }): string | null {
   const tenor = tenorOf(window.observationStart, window.observationEnd);
   if (!tenor) return null;
-  const end = new Date((window.observationEnd - DAY_SECONDS) * 1_000);
+  const end = new Date(window.observationEnd * 1_000);
   const month = SHORT_MONTHS[end.getUTCMonth()];
   if (!month) return null;
   return `${month} ${end.getUTCDate()} · ${tenor === "weekly" ? "W" : "M"}`;
@@ -82,18 +98,19 @@ export function settlementLine(stationSource: string): string {
   return `${stationSource} · settles after expiry from NOAA final data`;
 }
 
-/** "Weekly · Oct 25 · 6 days". Days follow the exclusive observation end. */
+/** "Weekly · ends Nov 2 · 13 days". Date and days both follow the UTC observation end. */
 export function expiryChipCopy(window: { observationStart: number; observationEnd: number }, nowSeconds: number): string | null {
   const dated = expiryChipLabel(window);
   if (!dated) return null;
   const [date, mark] = dated.split(" · ");
   const name = mark === "M" ? "Monthly" : "Weekly";
-  return `${name} · ${date} · ${daysToExpiryLabel(daysToExpiry(window.observationEnd, nowSeconds))}`;
+  return `${name} · ends ${date} · ${daysToExpiryLabel(daysToExpiry(window.observationEnd, nowSeconds))}`;
 }
 
 export function measuredAtLine(station: string, expiry: string): string {
   const place = station.replace(/^NOAA\s+/i, "");
-  return `Measured at NOAA ${place}. Pays out from NOAA's final numbers after ${expiry}.`;
+  const end = /\(UTC\)$/.test(expiry) || !/\d/.test(expiry) ? expiry : `${expiry} (UTC)`;
+  return `Measured at NOAA ${place}. Pays out from NOAA's final numbers after ${end}.`;
 }
 
 export function pricedTriggers<T extends { onChain: boolean }>(rows: readonly T[]): { priced: T[]; soonCount: number } {

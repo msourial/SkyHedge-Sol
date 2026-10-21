@@ -2,7 +2,8 @@ import { Buffer } from "buffer";
 import { PublicKey } from "@solana/web3.js";
 import { consumerCityName } from "../../shared/consumer-cities.ts";
 import { DEVNET_RPC_URLS, devnetConnection, tryDevnetUrls } from "./chain.ts";
-import { shortUtcDate, trimMm } from "./ticket.ts";
+import { trimMm } from "./ticket.ts";
+import { committedWindowLabel } from "../../shared/window-chain.ts";
 
 export const SKYHEDGE_PROGRAM_ID = new PublicKey("5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx");
 export const POSITION_DATA_SIZE = 106;
@@ -148,11 +149,9 @@ function decodeMarket(data: Buffer | null): { cityHash: string; operator: (typeo
   };
 }
 
-/** observation_end is the first second after the window. The label is the inclusive last day. */
+/** Same convention as Protect and the confirm sheet: UTC start to observation_end, marked (UTC). */
 function windowLabel(start: number, end: number): string {
-  const from = shortUtcDate(start);
-  const to = shortUtcDate(end > 0 ? end - 1 : null);
-  return from && to ? `${from} – ${to}` : "—";
+  return committedWindowLabel({ observationStart: start, observationEnd: end }) ?? "—";
 }
 
 function triggerLabel(operator: (typeof OPERATORS)[number], threshold: string): string {

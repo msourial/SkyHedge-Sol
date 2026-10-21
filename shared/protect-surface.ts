@@ -52,3 +52,18 @@ function formatUtc(unixSeconds: number): string {
   const minutes = String(date.getUTCMinutes()).padStart(2, "0");
   return `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}, ${hours}:${minutes} UTC`;
 }
+
+/**
+ * What the water in the gauge means. It is never a decorative level: it is the NOAA analogue
+ * forecast for this window when the evidence package has one, otherwise empty and labelled so.
+ */
+export function gaugeReading(input: { forecastMm: number | null | undefined; observationStart: number | null | undefined; nowSeconds: number; startLabel: string | null }): { levelMm: number; caption: string } {
+  if (input.forecastMm != null && Number.isFinite(input.forecastMm) && input.forecastMm >= 0) {
+    const mm = Math.round(input.forecastMm * 10) / 10;
+    return { levelMm: mm, caption: `Water = ${mm} mm NOAA forecast` };
+  }
+  if (input.observationStart && input.nowSeconds < input.observationStart) {
+    return { levelMm: 0, caption: input.startLabel ? `Empty until rain counts from ${input.startLabel}` : "Empty until the window starts" };
+  }
+  return { levelMm: 0, caption: "Rain so far settles from NOAA final data" };
+}

@@ -30,7 +30,7 @@ describe("unsigned prepare", () => {
   });
 
   it("uses the selling New York weekly account dates for the quote and the sheet", () => {
-    expect(committedWindowLabel(WEEKLY)).to.equal("Oct 26 – Nov 2");
+    expect(committedWindowLabel(WEEKLY)).to.equal("Oct 26 – Nov 2 (UTC)");
     expect(new Date(WEEKLY.observationStart * 1000).toISOString().slice(0, 10)).to.equal("2026-10-26");
     expect(new Date(WEEKLY.observationEnd * 1000).toISOString().slice(0, 10)).to.equal("2026-11-02");
     expect(Number(WEEKLY.thresholdMmX100) / 100).to.equal(69);

@@ -77,3 +77,14 @@ function utcDay(seconds: number): string {
   const date = new Date(seconds * 1000);
   return `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}`;
 }
+
+/** Bar widths (0–1) drawn to scale against the payout. The pay bar keeps a 4% sliver so it stays visible. */
+export function payGetBarWidths(payBase: string | null | undefined, getBase: string | null | undefined): { pay: number; get: number } | null {
+  if (!payBase || !getBase || !/^\d+$/.test(payBase) || !/^\d+$/.test(getBase)) return null;
+  const pay = BigInt(payBase);
+  const get = BigInt(getBase);
+  if (get <= 0n || pay <= 0n) return null;
+  const larger = pay > get ? pay : get;
+  const ratio = (value: bigint) => Number((value * 10_000n) / larger) / 10_000;
+  return { pay: Math.max(0.04, ratio(pay)), get: Math.max(0.04, ratio(get)) };
+}

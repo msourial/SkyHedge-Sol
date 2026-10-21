@@ -60,7 +60,7 @@ describe("position accounts", () => {
     const view = protectionView(POSITION, positionBytes(), marketBytes(), DURING_NEW_YORK);
     assert.ok(view);
     assert.equal(view.city, "New York");
-    assert.equal(view.windowLabel, "Oct 19 – Oct 25");
+    assert.equal(view.windowLabel, "Oct 19 – Oct 26 (UTC)");
     assert.equal(view.triggerLabel, "≥ 29 mm");
     assert.equal(view.premiumPaid, "24000000");
     assert.equal(view.potentialPayout, "100000000");
@@ -71,7 +71,7 @@ describe("position accounts", () => {
   it("uses the account window, and waits for NOAA after that window ends", () => {
     const afterWindow = 1_792_509_943;
     const waiting = protectionView(POSITION, positionBytes(), desMoinesMarket(), afterWindow);
-    assert.equal(waiting?.windowLabel, "Oct 14 – Oct 18");
+    assert.equal(waiting?.windowLabel, "Oct 14 – Oct 19 (UTC)");
     assert.equal(waiting?.triggerLabel, "≥ 50 mm");
     assert.equal(waiting?.statusLabel, "Awaiting NOAA final data");
     assert.equal(protectionView(POSITION, positionBytes(), desMoinesMarket(4, 1), afterWindow)?.statusLabel, "Paid");

@@ -10,7 +10,8 @@ import {
   triggerRows,
 } from "../../shared/window-chain.ts";
 import { payGet } from "../../shared/pay-get.ts";
-import { coverageChipOn, gaugeMode, type ProtectSurface } from "../../shared/protect-surface.ts";
+import { coverageChipOn, gaugeMode, gaugeReading, type ProtectSurface } from "../../shared/protect-surface.ts";
+import { windowStartLabel } from "../../shared/window-chain.ts";
 import { RainGauge } from "./rain-gauge";
 import { useReducedMotion } from "./liquid-glass";
 import { C, F, MIN_TOUCH, space as S, type as T } from "./theme";
@@ -47,8 +48,10 @@ export function ProtectChain(props: {
     onChainPremiumRateBps: selected?.premiumRateBps ?? null,
   }) : [];
   const ladder = pricedTriggers(rows);
-  const maxMm = Math.max(1, ...rows.map((row) => row.thresholdMm));
   const chosen = ladder.priced.find((row) => row.thresholdMm === triggerMm) ?? ladder.priced[0] ?? null;
+  const reading = gaugeReading({ forecastMm: pkg?.forecastCumulativeMm, observationStart: selected?.observationStart, nowSeconds: props.nowSeconds, startLabel: selected ? windowStartLabel(selected) : null });
+  // Water and ticks share one scale, with headroom above the highest line.
+  const gaugeMax = Math.max(1, reading.levelMm, ...ladder.priced.map((row) => row.thresholdMm)) * 1.2;
   const priced = ladder.priced.length > 0 && props.surface === "ready";
   const mode = gaugeMode({ surface: props.surface, evidenceLoading: props.evidenceLoading, pricedRowCount: ladder.priced.length });
 
@@ -63,7 +66,7 @@ export function ProtectChain(props: {
         })}
       </ScrollView>
       <LinearGradient pointerEvents="none" colors={["rgba(11,18,32,0)", C.canvas]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.chipFade} />
-      <View pointerEvents="none" style={styles.moreWrap}><Text style={styles.moreLabel}>More</Text></View>
+      <View pointerEvents="none" style={styles.moreWrap}><Text style={styles.moreLabel}>More ›</Text></View>
     </View> : null}
     {windows.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll} style={styles.chipScroller} accessibilityRole="radiogroup" accessibilityLabel="Expiry">
       {windows.map((window) => {
@@ -84,7 +87,10 @@ export function ProtectChain(props: {
     </View> : null}
     {mode === "skeleton" ? <GaugeSkeleton /> : null}
     {mode === "gauge" ? <View style={{ flexDirection: "row", alignItems: "flex-end", gap: S.sm, marginTop: S.sm }}>
-      <RainGauge showMm width={172} height={220} level={chosen ? chosen.thresholdMm / maxMm : 0} ticks={ladder.priced.map((row) => ({ mm: row.thresholdMm, selected: row.thresholdMm === chosen?.thresholdMm }))} label="Rain gauge" />
+      <View style={{ alignItems: "center" }}>
+        <RainGauge showMm width={172} height={220} maxMm={gaugeMax} level={reading.levelMm / gaugeMax} ticks={ladder.priced.map((row) => ({ mm: row.thresholdMm, selected: row.thresholdMm === chosen?.thresholdMm }))} label={`Rain gauge. ${reading.caption}. Trigger line at ${chosen?.thresholdMm ?? "—"} mm.`} />
+        <Text style={styles.gaugeCaption} numberOfLines={2}>{reading.caption}</Text>
+      </View>
       <View accessibilityRole="list" accessibilityLabel="Rain triggers">
         {ladder.priced.map((row) => {
           const quote = payGet({ coverageSkyt: 100, premiumRateBps: row.premiumRateBps, probabilityBps: row.probabilityBps });
@@ -154,14 +160,15 @@ function GaugeSkeleton() {
 
 const styles = StyleSheet.create({
   footnote: { ...T.caption, color: C.quiet, marginTop: S.md },
+  gaugeCaption: { ...T.caption, color: C.muted, maxWidth: 172, textAlign: "center", marginTop: S.xs },
   rowOn: { borderColor: "#F2C230" },
   amounts: { flexDirection: "row", flexWrap: "wrap", gap: S.sm, marginBottom: S.sm },
   chipWrap: { position: "relative" },
-  chipFade: { position: "absolute", right: -18, top: 0, bottom: S.md, width: 64 },
-  moreWrap: { position: "absolute", right: -10, top: 0, bottom: S.md, justifyContent: "center" },
+  chipFade: { position: "absolute", right: 40, top: 0, bottom: S.md, width: 48 },
+  moreWrap: { position: "absolute", right: -18, top: 0, bottom: S.md, justifyContent: "center", paddingLeft: S.sm, paddingRight: 18, backgroundColor: C.canvas },
   moreLabel: { ...T.caption, color: C.muted, fontFamily: F.bodyMedium },
   chipScroller: { marginHorizontal: -18 },
-  chipScroll: { gap: S.sm, paddingBottom: S.md, paddingLeft: 18, paddingRight: 48 },
+  chipScroll: { gap: S.sm, paddingBottom: S.md, paddingLeft: 18, paddingRight: 88 },
   chip: { minHeight: MIN_TOUCH, minWidth: 108, justifyContent: "center", paddingHorizontal: S.md, paddingVertical: S.xs, borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceRaised },
   chipOn: { borderColor: "#F2C230", backgroundColor: C.surfaceRaised },
   chipLabel: { ...T.bodyStrong, color: C.ink },

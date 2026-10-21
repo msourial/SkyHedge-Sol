@@ -14,7 +14,7 @@ import { payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-
 import { formatWeekLabel } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
 import { expiryChipLabel, matchingWindowPackage, measuredAtLine, type WindowEvidencePackage } from "../../shared/window-chain.ts";
-import { marketStatus, notTriggeredLine, payGet } from "../../shared/pay-get.ts";
+import { marketStatus, notTriggeredLine, payGet, payGetBarWidths } from "../../shared/pay-get.ts";
 import { RainGauge } from "./rain-gauge";
 import { ProtectChain } from "./protect-chain";
 import { citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
@@ -530,11 +530,12 @@ export function PayoutStatusCard({ stage, dates }: { stage: NonNullable<ReturnTy
   </View>;
 }
 
-export function StickyCta(props: { label: string; onPress: () => void; disabled?: boolean; busy?: boolean; busyLabel?: string; hint?: string | null; pay?: string | null; getLabel?: string | null }) {
+export function StickyCta(props: { label: string; onPress: () => void; disabled?: boolean; busy?: boolean; busyLabel?: string; hint?: string | null; pay?: string | null; getLabel?: string | null; payBase?: string | null; getBase?: string | null }) {
+  const bars = payGetBarWidths(props.payBase, props.getBase);
   return <View style={s.sticky}>
-    {props.pay && props.getLabel ? <View style={s.ticketBars} accessibilityLabel="Pay and payout">
-      <View style={s.ticketCol}><View style={[s.payBar, { height: 16 }]} /><Text style={s.caption}>You pay {props.pay} SKYT</Text></View>
-      <View style={s.ticketCol}><View style={[s.getBar, { height: 32 }]} /><Text style={[s.caption, { color: C.payout }]}>You get {props.getLabel} SKYT</Text></View>
+    {props.pay && props.getLabel && bars ? <View style={s.ticketBars} accessibilityLabel={`You pay ${props.pay} SKYT, you get ${props.getLabel} SKYT`}>
+      <View style={s.ticketRow}><View style={s.ticketTrack}><View style={[s.payBar, { width: `${bars.pay * 100}%` }]} /></View><Text numberOfLines={1} style={s.ticketLabel}>You pay {props.pay} SKYT</Text></View>
+      <View style={s.ticketRow}><View style={s.ticketTrack}><View style={[s.getBar, { width: `${bars.get * 100}%` }]} /></View><Text numberOfLines={1} style={[s.ticketLabel, { color: C.payout }]}>You get {props.getLabel} SKYT</Text></View>
     </View> : null}
     {props.hint ? <Text style={[s.caption, { textAlign: "center", marginBottom: S.sm }]}>{props.hint}</Text> : null}
     <ActionButton label={props.label} busyLabel={props.busyLabel} icon="arrow-right" disabled={props.disabled} busy={props.busy} onPress={props.onPress} />
@@ -547,7 +548,7 @@ export function ConfirmCover(props: { sentence: string; station: string; expiry:
       <Text style={s.bodyStrong}>{props.sentence}</Text>
       <Text style={[s.caption, { marginTop: S.sm }]}>Station · {props.station}</Text>
       <Text style={s.caption}>Window · {props.windowLabel}</Text>
-      <Text style={s.caption}>Settlement · {props.expiry}</Text>
+      <Text style={s.caption}>Settlement · after {props.expiry}</Text>
       <Text style={s.caption}>You pay {props.pay} SKYT</Text>
       <Text style={[s.caption, { color: C.payout }]}>You get {props.getLabel} SKYT</Text>
       <Text style={[s.caption, { marginTop: S.sm }]}>Phantom will ask you to approve this protection.</Text>
@@ -782,10 +783,12 @@ const s = StyleSheet.create({
   link: { ...T.label, fontSize: 14, lineHeight: 20, color: C.rain },
   checkRow: { minHeight: 40, flexDirection: "row", alignItems: "center" },
   sticky: { paddingHorizontal: S.lg + 2, paddingTop: S.sm, paddingBottom: S.md, backgroundColor: C.canvas + "F2", borderTopWidth: 1, borderTopColor: glass.border },
-  ticketBars: { flexDirection: "row", alignItems: "flex-end", gap: S.md, marginBottom: S.sm },
-  ticketCol: { flex: 1 },
-  payBar: { borderTopLeftRadius: 4, borderTopRightRadius: 4, backgroundColor: C.mutedSurface },
-  getBar: { borderTopLeftRadius: 4, borderTopRightRadius: 4, backgroundColor: C.payout },
+  ticketBars: { gap: 6, marginBottom: S.sm },
+  ticketRow: { flexDirection: "row", alignItems: "center", gap: S.sm },
+  ticketTrack: { flex: 1, height: 10, borderRadius: 5, overflow: "hidden" },
+  ticketLabel: { ...T.caption, width: 136, textAlign: "right", color: C.muted, fontVariant: ["tabular-nums"] },
+  payBar: { height: 10, borderRadius: 5, backgroundColor: C.muted },
+  getBar: { height: 10, borderRadius: 5, backgroundColor: C.payout },
   sheetScrim: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, zIndex: 40, justifyContent: "flex-end", backgroundColor: "#00000066", padding: S.lg },
   sheet: { borderRadius: 18, borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceRaised, padding: S.lg },
   sheetActions: { flexDirection: "row", gap: S.sm, marginTop: S.md },

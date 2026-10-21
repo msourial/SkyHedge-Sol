@@ -5,9 +5,9 @@ import { C } from "./theme";
 const SLICKER = "#F2C230";
 
 /** Graduated cylinder shared with the web gauge. Water is glacier. The selected line is slicker yellow. */
-export function RainGauge({ level, ticks, label, width = 72, height = 168, showMm = false }: { level: number; ticks: ReadonlyArray<{ mm: number; selected?: boolean }>; label?: string; width?: number; height?: number; showMm?: boolean }) {
+export function RainGauge({ level, ticks, label, width = 72, height = 168, showMm = false, maxMm }: { level: number; ticks: ReadonlyArray<{ mm: number; selected?: boolean }>; label?: string; width?: number; height?: number; showMm?: boolean; /** Water and ticks share this scale. */ maxMm?: number }) {
   const clipId = useId().replace(/:/g, "");
-  const max = Math.max(1, ...ticks.map((tick) => tick.mm));
+  const max = Math.max(1, maxMm ?? 0, ...ticks.map((tick) => tick.mm));
   const fill = Math.min(1, Math.max(0, level));
   const waterHeight = 128 * fill;
   const waterY = 148 - waterHeight;

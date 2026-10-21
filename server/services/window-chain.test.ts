@@ -21,18 +21,18 @@ const NOVEMBER = { observationStart: Date.parse("2026-11-01T00:00:00Z") / 1000, 
 const TOTALS = [2, 4, 8, 10, 14, 18, 22, 29, 40, 61];
 
 describe("options chain labels", () => {
-  it("labels expiries by the last inclusive day and tenor, sorted by end", () => {
-    expect(expiryChipLabel(WEEK)).to.equal("Oct 25 · W");
-    expect(expiryChipLabel(NEXT_WEEK)).to.equal("Nov 1 · W");
-    expect(committedWindowLabel(NEXT_WEEK)).to.equal("Oct 26 – Nov 2");
-    expect(expiryChipLabel(NOVEMBER)).to.equal("Nov 30 · M");
-    expect(sortByExpiry([NOVEMBER, WEEK, NEXT_WEEK]).map(expiryChipLabel)).to.deep.equal(["Oct 25 · W", "Nov 1 · W", "Nov 30 · M"]);
+  it("labels expiries by the UTC observation end and tenor, sorted by end", () => {
+    expect(expiryChipLabel(WEEK)).to.equal("Oct 26 · W");
+    expect(expiryChipLabel(NEXT_WEEK)).to.equal("Nov 2 · W");
+    expect(committedWindowLabel(NEXT_WEEK)).to.equal("Oct 26 – Nov 2 (UTC)");
+    expect(expiryChipLabel(NOVEMBER)).to.equal("Dec 1 · M");
+    expect(sortByExpiry([NOVEMBER, WEEK, NEXT_WEEK]).map(expiryChipLabel)).to.deep.equal(["Oct 26 · W", "Nov 2 · W", "Dec 1 · M"]);
     const now = Date.parse("2026-10-17T15:00:00Z") / 1000;
     expect(daysToExpiryLabel(daysToExpiry(WEEK.observationEnd, now))).to.match(/^\d+ days$/);
     expect(settlementLine("NOAA Central Park")).to.equal("NOAA Central Park · settles after expiry from NOAA final data");
-    expect(expiryChipCopy(WEEK, now)).to.equal("Weekly · Oct 25 · 9 days");
-    expect(expiryChipCopy(NOVEMBER, now)).to.equal("Monthly · Nov 30 · 45 days");
-    expect(measuredAtLine("NOAA Central Park", "Oct 25")).to.equal("Measured at NOAA Central Park. Pays out from NOAA's final numbers after Oct 25.");
+    expect(expiryChipCopy(WEEK, now)).to.equal("Weekly · ends Oct 26 · 9 days");
+    expect(expiryChipCopy(NOVEMBER, now)).to.equal("Monthly · ends Dec 1 · 45 days");
+    expect(measuredAtLine("NOAA Central Park", "Oct 26")).to.equal("Measured at NOAA Central Park. Pays out from NOAA's final numbers after Oct 26 (UTC).");
   });
 
   it("builds four to six triggers only from analogue ranks and the pinned market", () => {

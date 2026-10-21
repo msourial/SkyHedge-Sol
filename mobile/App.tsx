@@ -25,6 +25,7 @@ import { committedPremiumQuote } from "../shared/market-pricing.ts";
 import { buildCommittedQuoteRequest, duplicatePositionReason, formatSkyt, getProtectionUnavailableReason, parseSkytAmount } from "./src/protection";
 import { handleConfirmApprove } from "./src/confirm-buy";
 import { buildOpenPositionOnDevice } from "./src/open-position-tx";
+import { loadDevnetStatus, readDevnetStatusOnDevice } from "./src/chain-status";
 import { prepareUnsignedTransaction } from "./src/prepare-tx";
 import { authorizeDevnetWallet, signAndConfirmDevnetTransaction, type AuthorizedWallet } from "./src/wallet";
 import { clearWalletSession, loadWalletSession, saveWalletSession } from "./src/wallet-session-store";
@@ -131,7 +132,7 @@ export default function App() {
     const results = await Promise.allSettled([
       getJson<{ cities: CityIndex[] }>("/api/mobile?resource=cities"),
       getJson<{ markets: AgriculturalMarket[] }>("/api/mobile?resource=agricultural-markets"),
-      getJson<DevnetStatus>("/api/devnet/status"),
+      loadDevnetStatus({ onDevice: readDevnetStatusOnDevice, server: () => getJson<DevnetStatus>("/api/devnet/status") }),
     ]);
     const [cityResult, catalogResult, statusResult] = results;
     if (cityResult.status === "fulfilled") {
@@ -661,12 +662,14 @@ export default function App() {
         const buying = buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending";
         return <StickyCta
           label={buyPhase === "failed" ? "Retry" : deal ? dealLabel : cta.label}
-          hint={deal ? `${deal.chance} · ${deal.multiple}` : cta.hint}
+          hint={deal ? null : cta.hint}
           disabled={buying ? true : deal ? false : cta.disabled}
           busy={buying}
           busyLabel={buying && buyPhase ? buyPhaseLabel(buyPhase) : undefined}
           pay={deal?.payLabel ?? null}
           getLabel={deal?.getLabel ?? null}
+          payBase={deal?.payBase ?? null}
+          getBase={deal?.getBase ?? null}
           onPress={() => {
             if (buyPhase === "failed") { void submitApprovedAction("open_position"); return; }
             if (!deal || threshold == null || !activeWindow || !amountBase || !windowLabel) return;
