@@ -95,14 +95,14 @@ export class UnsignedTransactionBuilder {
         tx = action === "fund_pool"
           ? await program.methods.fundPool(amountBn).accounts({ provider: wallet, protocol: protocolAddress, market, vault, providerTokenAccount, liquidityPosition, collateralMint: this.mint, tokenProgram }).transaction()
           : await program.methods.withdrawLiquidity(amountBn).accounts({ provider: wallet, protocol: protocolAddress, market, vault, providerTokenAccount, liquidityPosition, collateralMint: this.mint, tokenProgram }).transaction();
-        return this.finalize(connection, action, marketAddress, walletAddress, tx, `${action === "fund_pool" ? "Fund" : "Withdraw"} ${amount} SKYT ${action === "fund_pool" ? "into" : "from"} the market pool`);
+        return this.finalize(connection, action, marketAddress, walletAddress, tx, `${action === "fund_pool" ? "Fund" : "Withdraw"} ${formatSkytBase(amount)} SKYT ${action === "fund_pool" ? "into" : "from"} the market pool`);
       }
       case "open_position": {
         const ownerTokenAccount = await getAssociatedTokenAddress(this.mint, wallet);
         const [position] = PublicKey.findProgramAddressSync([Buffer.from("position"), market.toBuffer(), wallet.toBuffer()], this.programId);
         const protectedAmount = requireAmount(action, amount);
         tx = await program.methods.openPosition(protectedAmount).accounts({ owner: wallet, protocol: protocolAddress, market, vault, ownerTokenAccount, position, collateralMint: this.mint, tokenProgram }).transaction();
-        return this.finalize(connection, action, marketAddress, walletAddress, tx, `Buy ${amount} SKYT of rainfall coverage (fixed payout)`);
+        return this.finalize(connection, action, marketAddress, walletAddress, tx, `Buy ${formatSkytBase(amount)} SKYT of rainfall coverage (fixed payout)`);
       }
       case "claim_payout":
       case "claim_premium_refund": {
@@ -223,6 +223,14 @@ function enumTag(value: unknown): string {
 }
 
 /** Anchor versions emit instruction names as snake_case or CamelCase in logs. */
+/** Base units (6 decimals) to a human SKYT figure for the transaction description, e.g. "100000000" → "100". */
+export function formatSkytBase(amount: string | undefined): string {
+  if (!amount || !/^\d+$/.test(amount)) return amount ?? "";
+  const whole = BigInt(amount) / 1_000_000n;
+  const frac = (BigInt(amount) % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : whole.toString();
+}
+
 export function hasInstructionLog(logs: string[] | null | undefined, instruction: string): boolean {
   const expected = normalizeInstructionName(instruction);
   return Boolean(expected) && Boolean(logs?.some((line) => normalizeInstructionName(line).includes(expected)));

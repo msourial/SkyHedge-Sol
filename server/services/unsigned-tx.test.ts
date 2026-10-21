@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { evaluateClaimReadiness, hasInstructionLog } from "./unsigned-tx";
+import { evaluateClaimReadiness, formatSkytBase, hasInstructionLog } from "./unsigned-tx";
 
 describe("finalized oracle claim readiness", () => {
   const base = { marketStatus: "settled", result: "triggered", claimDeadline: 2_000, chainNow: 1_000, payoutClaimed: false, refundClaimed: false };
@@ -32,5 +32,13 @@ describe("finalized oracle claim readiness", () => {
     expect(hasInstructionLog(["Program log: Instruction: settle_market"], "SettleMarket")).to.equal(true);
     expect(hasInstructionLog(["Program log: Instruction: MarkDataUnavailable"], "mark_data_unavailable")).to.equal(true);
     expect(hasInstructionLog(["Program log: Instruction: ClaimPayout"], "SettleMarket")).to.equal(false);
+  });
+});
+
+describe("transaction description amounts", () => {
+  it("shows SKYT, not base units", () => {
+    expect(formatSkytBase("100000000")).to.eq("100");
+    expect(formatSkytBase("24500000")).to.eq("24.5");
+    expect(formatSkytBase("1")).to.eq("0.000001");
   });
 });
