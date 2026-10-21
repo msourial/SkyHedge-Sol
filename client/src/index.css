@@ -595,9 +595,10 @@
 .wl-markets__status--soon { color: var(--warning); background: var(--warning-dim); border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent); }
 .wl-markets__status--closed { color: var(--muted-foreground); background: var(--surface-2); border: 1px solid var(--border); }
 
-.plan-cities { display: grid; gap: .6rem; }
+.plan-cities { display: grid; gap: .6rem; min-width: 0; }
+.plan-cities__grid > li { min-width: 0; }
 .plan-cities__head p { margin: .25rem 0 0; max-width: 40rem; color: var(--muted-foreground); font-size: .85rem; line-height: 1.35; }
-.plan-cities__grid { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; grid-template-columns: 1fr; }
+.plan-cities__grid { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 800px) {
   .plan-cities__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
