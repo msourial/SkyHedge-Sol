@@ -480,16 +480,7 @@ function CoverageTicket(props: {
   </GlassCard>;
 }
 
-function CoverageChip({ o, on, short, onPress }: { o: CoverageOption; on: boolean; short: boolean; onPress: () => void }) {
-  const label = o.id === "max" ? (o.amountBase ? `Max ${formatSkytFixed(o.amountBase, 0)} SKYT` : "Max") : `${o.label} SKYT`;
-  const a11y = o.id === "max" ? `Max${o.amountBase ? `, ${formatSkytFixed(o.amountBase, 0)} SKYT` : ", unavailable, wallet has no SKYT"}` : `${o.label} SKYT`;
-  return <SpringPress selected={on} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: !o.enabled }} accessibilityLabel={short ? `${a11y}, not enough SKYT` : a11y} disabled={!o.enabled} onPress={onPress} outerStyle={{ flex: 1 }}
-    style={({ pressed }: { pressed: boolean }) => [s.chip, { paddingHorizontal: S.sm }, pressed && o.enabled && s.chipPressed, on && s.chipOn, on && short && s.chipShort, !o.enabled && s.chipDisabled]}>
-    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.chipText, on && { color: short ? C.coral : C.rain }, !o.enabled && { color: C.muted }]}>{label}</Text>
-  </SpringPress>;
-}
 
-/** Sticky bottom CTA used by Protect. */
 /** Inactive rail track: muted ink at 40% so pending steps read as "not yet", not as missing. */
 const RAIL_TRACK = "rgba(163,174,188,0.40)";
 function StepBar({ step, reason }: { step: FlowStep; reason?: string | null }) {
