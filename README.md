@@ -164,6 +164,16 @@ cd android && EXPO_PUBLIC_API_BASE_URL=https://skyhedge.app ./gradlew assembleRe
 
 `EXPO_PUBLIC_API_BASE_URL` is baked in at build time and falls back to `https://skyhedge.app`. `EXPO_PUBLIC_SKYT_MINT` can override the SKYT mint. For the full developer reference (env vars, localnet, Devnet activation, API, security posture), see [docs/developer-reference.md](docs/developer-reference.md).
 
+**Run the web app and API locally (Devnet, read-only until a wallet signs):**
+
+```bash
+cp .env.example .env      # optional; fill only what you need
+SKYT_MINT=3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g npm run dev   # http://localhost:5000 (PORT overrides)
+npm run build && npm start                                          # production bundle in dist/
+```
+
+Without `SKYT_MINT` the server reads status but will not prepare transactions. Without `SOLANA_RPC_URL` it falls back to the public Devnet RPCs, which rate-limit (HTTP 429); set a private Devnet RPC URL for anything beyond a quick check. `DATABASE_URL` and `NOAA_TOKEN` are optional: without them `/api/markets` reports the read model as deferred (open windows come from `/api/devnet/status`) and live NOAA weather reads return `DATA_UNAVAILABLE`.
+
 ## Tech stack
 
 - **Mobile:** Expo / React Native (Android), `@solana-mobile/mobile-wallet-adapter-protocol-web3js`, `@solana/web3.js`
