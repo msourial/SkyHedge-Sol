@@ -2,6 +2,7 @@ import { Buffer } from "buffer";
 import { PublicKey, SystemProgram, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import { SKYT_MINT, devnetConnection, tryDevnetUrls } from "./chain.ts";
 import { SKYHEDGE_PROGRAM_ID } from "./positions.ts";
+import { u64LeBytes } from "./bytes.ts";
 
 export const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 export const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
@@ -27,9 +28,8 @@ export function openPositionKeys(marketAddress: string, walletAddress: string, m
 
 export function openPositionInstruction(keys: OpenPositionKeys, protectedAmountBase: string, programId: PublicKey = SKYHEDGE_PROGRAM_ID): TransactionInstruction {
   if (!/^\d+$/.test(protectedAmountBase) || BigInt(protectedAmountBase) <= 0n) throw new Error("Enter a valid SKYT amount before approving.");
-  const data = Buffer.alloc(16);
-  Buffer.from(OPEN_POSITION_DISCRIMINATOR).copy(data, 0);
-  data.writeBigUInt64LE(BigInt(protectedAmountBase), 8);
+  // No Buffer BigInt writes: Hermes' Buffer polyfill lacks them.
+  const data = Buffer.from([...OPEN_POSITION_DISCRIMINATOR, ...u64LeBytes(BigInt(protectedAmountBase))]);
   return new TransactionInstruction({
     programId,
     data,

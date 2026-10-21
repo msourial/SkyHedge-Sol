@@ -55,7 +55,8 @@ function protocolBuffer(next: bigint): Buffer {
 
 function mintBuffer(): Buffer { const buf = Buffer.alloc(82); buf[44] = 6; return buf; }
 function tokenBuffer(amount: bigint): Buffer { const buf = Buffer.alloc(165); buf.writeBigUInt64LE(amount, 64); return buf; }
-const info = (data: Buffer, executable = false) => ({ data, executable, lamports: 1, owner: SKYHEDGE_PROGRAM_ID, rentEpoch: 0 });
+// Plain Uint8Array, like Hermes: no Buffer BigInt helpers available to the decoder.
+const info = (data: Buffer, executable = false) => ({ data: Uint8Array.from(data) as unknown as Buffer, executable, lamports: 1, owner: SKYHEDGE_PROGRAM_ID, rentEpoch: 0 });
 
 describe("on-device Devnet status", () => {
   it("pins the same hashes the server computes", () => {
@@ -72,7 +73,7 @@ describe("on-device Devnet status", () => {
   });
 
   it("decodes the committed Market layout", () => {
-    const market = decodeMarket(marketBuffer())!;
+    const market = decodeMarket(Uint8Array.from(marketBuffer()))!;
     assert.equal(market.id, "8");
     assert.equal(market.operator, "gte");
     assert.equal(market.thresholdMmX100, "6900");
@@ -110,6 +111,13 @@ describe("on-device Devnet status", () => {
     assert.equal(pg.payLabel, "24.00");
     assert.equal(pg.multiple, "4.1×");
     assert.equal(payGet({ coverageSkyt: 250, premiumRateBps: 2400, probabilityBps: 2000 })!.payLabel, "60.00");
+  });
+
+  it("uses no Buffer BigInt methods, which Hermes lacks", () => {
+    for (const file of ["chain-status.ts", "open-position-tx.ts", "bytes.ts"]) {
+      const source = readFileSync(new URL(file, import.meta.url), "utf8");
+      assert.doesNotMatch(source, /\.(read|write)Big(U)?Int64(LE|BE)\(/, file);
+    }
   });
 
   it("falls back to the server and names both failures", async () => {

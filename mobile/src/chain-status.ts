@@ -4,6 +4,7 @@ import { LIVE_CITY_SLUGS, tenorOf, type LiveCitySlug } from "../../shared/window
 import type { DevnetStatus } from "./api.ts";
 import { SKYT_MINT, devnetConnection, tryDevnetUrls } from "./chain.ts";
 import { SKYHEDGE_PROGRAM_ID } from "./positions.ts";
+import { hexBytes, readI64LE, readU16LE, readU64LE, sliceBytes, u64LeBytes } from "./bytes.ts";
 
 /**
  * Committed hashes, identical to the server's: sha256(slug) for city_hash, and
@@ -62,32 +63,32 @@ function hasDiscriminator(data: Uint8Array, expected: number[]): boolean {
 
 /** Borsh layout of the committed IDL's Market account (fixed-size prefix through `status`). */
 export function decodeMarket(data: Uint8Array): DecodedMarket | null {
-  const buf = Buffer.from(data);
+  const buf = data;
   if (!hasDiscriminator(buf, MARKET_DISCRIMINATOR) || buf.length < 383) return null;
-  const hex = (offset: number) => buf.subarray(offset, offset + 32).toString("hex");
-  const i64 = (offset: number) => Number(buf.readBigInt64LE(offset));
+  const hex = (offset: number) => hexBytes(buf, offset, 32);
+  const i64 = (offset: number) => Number(readI64LE(buf, offset));
   return {
-    id: buf.readBigUInt64LE(8).toString(),
+    id: readU64LE(buf, 8).toString(),
     cityHash: hex(80), stationIdHash: hex(112), providerHash: hex(144), methodologyHash: hex(176), quoteInputsHash: hex(208),
     operator: OPERATORS[buf[240]!] ?? null,
-    thresholdMmX100: buf.readBigInt64LE(241).toString(),
+    thresholdMmX100: readI64LE(buf, 241).toString(),
     salesCloseAt: i64(249), observationStart: i64(257), observationEnd: i64(265),
-    quoteProbabilityBps: buf.readUInt16LE(289), premiumRateBps: buf.readUInt16LE(291),
+    quoteProbabilityBps: readU16LE(buf, 289), premiumRateBps: readU16LE(buf, 291),
     status: MARKET_STATUSES[buf[381]!] ?? null,
   };
 }
 
 export function decodeProtocol(data: Uint8Array): { admin: string; settlementAuthority: string; collateralMint: string; nextMarketId: bigint } | null {
-  const buf = Buffer.from(data);
+  const buf = data;
   if (!hasDiscriminator(buf, PROTOCOL_DISCRIMINATOR) || buf.length < 208) return null;
-  const key = (offset: number) => new PublicKey(buf.subarray(offset, offset + 32)).toBase58();
-  return { admin: key(8), settlementAuthority: key(72), collateralMint: key(136), nextMarketId: buf.readBigUInt64LE(200) };
+  const key = (offset: number) => new PublicKey(sliceBytes(buf, offset, 32)).toBase58();
+  return { admin: key(8), settlementAuthority: key(72), collateralMint: key(136), nextMarketId: readU64LE(buf, 200) };
 }
 
 /** SPL token account amount (u64 at byte 64). */
 export function tokenAccountAmount(data: Uint8Array | null | undefined): string | null {
   if (!data || data.length < 72) return null;
-  return Buffer.from(data).readBigUInt64LE(64).toString();
+  return readU64LE(data, 64).toString();
 }
 
 export function slugForCityHash(hash: string): LiveCitySlug | null {
@@ -124,7 +125,7 @@ export async function readDevnetStatusFrom(read: MultiReader, nowSeconds = Math.
   const [feeVaultAddress] = PublicKey.findProgramAddressSync([Buffer.from("fee-vault"), protocolAddress.toBuffer()], programId);
   const [programInfo, mintInfo, protocolInfo, feeVaultInfo] = await read([programId, mint, protocolAddress, feeVaultAddress]);
   const protocol = protocolInfo ? decodeProtocol(protocolInfo.data) : null;
-  const mintData = mintInfo ? Buffer.from(mintInfo.data) : null;
+  const mintData: Uint8Array | null = mintInfo ? mintInfo.data : null;
   const decimals = mintData && mintData.length >= 82 ? mintData[44]! : null;
 
   const markets: ListedMarket[] = [];
@@ -133,8 +134,7 @@ export async function readDevnetStatusFrom(read: MultiReader, nowSeconds = Math.
     const ids: bigint[] = [];
     for (let id = start; id < next && id < start + 100n; id++) ids.push(id);
     const addresses = ids.map((id) => {
-      const le = Buffer.alloc(8); le.writeBigUInt64LE(id);
-      return PublicKey.findProgramAddressSync([Buffer.from("market"), protocolAddress.toBuffer(), le], programId)[0];
+      return PublicKey.findProgramAddressSync([Buffer.from("market"), protocolAddress.toBuffer(), Buffer.from(u64LeBytes(id))], programId)[0];
     });
     const infos = await read(addresses);
     const found: Array<{ id: bigint; address: PublicKey; vault: PublicKey; decoded: DecodedMarket; slug: LiveCitySlug }> = [];
@@ -172,7 +172,7 @@ export async function readDevnetStatusFrom(read: MultiReader, nowSeconds = Math.
     idl: { status: "ready", source: "local-committed-idl", instructionCount: IDL_INSTRUCTION_COUNT, accountCount: IDL_ACCOUNT_COUNT, supportsEmptyDraftCancellation: false },
     protocol: { address: protocolAddress.toBase58(), status: protocol ? "ready" : "pending", initialized: !!protocol, admin: protocol?.admin ?? null, settlementAuthority: protocol?.settlementAuthority ?? null, collateralMint: protocol?.collateralMint ?? null, nextMarketId: protocol ? protocol.nextMarketId.toString() : null },
     feeVault: { address: feeVaultAddress.toBase58(), status: feeVaultInfo ? "ready" : "pending", exists: !!feeVaultInfo, balance: tokenAccountAmount(feeVaultInfo?.data) },
-    skytMint: { address: mint.toBase58(), status: mintInfo ? "ready" : "pending", exists: !!mintInfo, decimals, supply: mintData && mintData.length >= 82 ? mintData.readBigUInt64LE(36).toString() : null, mintAuthority: mintData && mintData.readUInt32LE(0) === 1 ? new PublicKey(mintData.subarray(4, 36)).toBase58() : null },
+    skytMint: { address: mint.toBase58(), status: mintInfo ? "ready" : "pending", exists: !!mintInfo, decimals, supply: mintData && mintData.length >= 82 ? readU64LE(mintData, 36).toString() : null, mintAuthority: mintData && mintData[0] === 1 && mintData[1] === 0 && mintData[2] === 0 && mintData[3] === 0 ? new PublicKey(sliceBytes(mintData, 4, 32)).toBase58() : null },
     desMoinesMarket: desMoines ? (({ city: _city, tenor: _tenor, ...terms }) => ({ ...terms, targetCityHash: desMoines.cityHash }))(strip(desMoines)) : {
       status: "pending", address: null, marketId: null, vault: null, vaultBalance: null, onchainStatus: null, salesCloseAt: null, observationStart: null, observationEnd: null,
       thresholdMmX100: null, operator: null, quoteProbabilityBps: null, premiumRateBps: null, quoteInputsHash: null, evidenceStatus: "researching_evidence", targetCityHash: CITY_HASHES["des-moines"],
