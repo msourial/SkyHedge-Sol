@@ -3,24 +3,18 @@ import { describe, it } from "node:test";
 import { authorizeForSigning, DEVNET_CHAIN } from "./wallet-auth.ts";
 
 describe("authorizeForSigning", () => {
-  it("uses authorize (not reauthorize) with the cached token and solana:devnet", async () => {
+  it("sends exactly one fresh authorize on solana:devnet, never the cached token", async () => {
     const calls: any[] = [];
-    const r = await authorizeForSigning({ authorize: async (p) => { calls.push(p); return "ok"; } }, "tok");
+    const r = await authorizeForSigning({ authorize: async (p) => { calls.push(p); return "ok"; } }, "cached-token");
     assert.equal(r, "ok");
     assert.equal(calls.length, 1);
     assert.equal(calls[0].chain, DEVNET_CHAIN);
-    assert.equal(calls[0].auth_token, "tok");
+    assert.equal(calls[0].auth_token, undefined, "a token becomes sol_mwa_reauthorize, which Phantom declines");
     assert.equal(calls[0].identity.uri, "https://skyhedge.app");
   });
-  it("falls back to a fresh authorize when the cached token is rejected", async () => {
-    const calls: any[] = [];
-    const r = await authorizeForSigning({ authorize: async (p) => {
-      calls.push(p);
-      if (p.auth_token) throw new Error("authorization request failed");
-      return "fresh";
-    } }, "stale");
-    assert.equal(r, "fresh");
-    assert.equal(calls.length, 2);
-    assert.equal(calls[1].auth_token, undefined);
+  it("does not retry inside the session, where Phantom stops answering", async () => {
+    let calls = 0;
+    await assert.rejects(authorizeForSigning({ authorize: async () => { calls++; throw new Error("authorization request failed"); } }, "tok"));
+    assert.equal(calls, 1);
   });
 });

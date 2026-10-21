@@ -79,10 +79,25 @@ export function describeChainError(err: unknown): string {
   return "The transaction failed.";
 }
 
+export const PHANTOM_NO_ANSWER = "Phantom didn't answer. Nothing was sent. Unlock Phantom, then tap Approve in Phantom again.";
+
+/** Wallet-side failures. These are not Devnet problems, so they never become "Devnet is busy". */
+export function walletFailure(message: string): string | null {
+  if (/Timed out waiting for response|TimeoutException|session closed|no installed wallet|ERROR_WALLET_NOT_FOUND|Found no installed wallet/i.test(message)) return PHANTOM_NO_ANSWER;
+  if (/user rejected|declined|cancell?ed by user|authorization request failed/i.test(message)) return "You declined the request in Phantom. Nothing was sent.";
+  return null;
+}
+
+/** Message and Details for the Failed card: wallet errors first, then the prepare mapping. */
+export function transactionFailure(message: string, apiDetail: string | null): { message: string; detail: string | null } {
+  const wallet = walletFailure(message);
+  if (wallet) return { message: wallet, detail: message };
+  return customerPrepareError(visibleTransactionError(message), apiDetail);
+}
+
 export function visibleTransactionError(message: string): string {
-  if (/user rejected|declined|cancell?ed by user|authorization request failed/i.test(message)) {
-    return "You declined the request in Phantom. Nothing was sent.";
-  }
+  const wallet = walletFailure(message);
+  if (wallet) return wallet;
   const line = message.split("\n").map((part) => part.trim()).find((part) => part && !/^at /.test(part)) ?? message;
   return line.length > 300 ? `${line.slice(0, 297)}…` : line;
 }

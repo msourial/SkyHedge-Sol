@@ -27,3 +27,15 @@ describe("buy phase copy", () => {
     assert.match(closed.detail ?? "", /sales window is closed/);
   });
 });
+
+describe("wallet failures on the Failed card", () => {
+  it("names Phantom, not Devnet, when Phantom never answers, and keeps the raw error in Details", async () => {
+    const { transactionFailure, PHANTOM_NO_ANSWER } = await import("./buy-phase.ts");
+    const raw = "java.util.concurrent.TimeoutException: Timed out waiting for response with id=2";
+    assert.deepEqual(transactionFailure(raw, null), { message: PHANTOM_NO_ANSWER, detail: raw });
+  });
+  it("still maps a rate-limited prepare to Devnet is busy", async () => {
+    const { transactionFailure } = await import("./buy-phase.ts");
+    assert.equal(transactionFailure("Devnet is busy, try again", "failed to get recent blockhash: 429 Too Many Requests").message, "Devnet is busy, try again");
+  });
+});

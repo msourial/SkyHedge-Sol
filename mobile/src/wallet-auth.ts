@@ -7,17 +7,12 @@ type AuthorizeParams = { identity: typeof APP_IDENTITY; chain: typeof DEVNET_CHA
 export type AuthorizingWallet<R> = { authorize(params: AuthorizeParams): Promise<R> };
 
 /**
- * Re-establish authorization inside a signing session. Tries the cached token via authorize()
- * (MWA 2.0 replacement for reauthorize); if the wallet rejects a stale/unknown token, falls back
- * to a fresh authorize so the user sees the wallet's approval screen instead of a silent failure.
+ * Authorize inside the signing session with one fresh authorize() and no cached token.
+ * Phantom negotiates the legacy MWA protocol, where authorize-with-token is sent as
+ * sol_mwa_reauthorize. Phantom declines that for unverified dApps ("Declining sol_mwa_reauthorize:
+ * dApp identity is not verified") and then never answers a second request in the same session
+ * ("Timed out waiting for response with id=2"). A single fresh request shows Phantom's own approval.
  */
-export async function authorizeForSigning<R>(wallet: AuthorizingWallet<R>, authToken?: string): Promise<R> {
-  if (authToken) {
-    try {
-      return await wallet.authorize({ identity: APP_IDENTITY, chain: DEVNET_CHAIN, auth_token: authToken });
-    } catch {
-      // stale token (e.g. after reinstall) — fall through to a fresh authorization
-    }
-  }
+export async function authorizeForSigning<R>(wallet: AuthorizingWallet<R>, _cachedAuthToken?: string): Promise<R> {
   return wallet.authorize({ identity: APP_IDENTITY, chain: DEVNET_CHAIN });
 }

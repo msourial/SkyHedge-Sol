@@ -18,7 +18,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AdvisoryResponse, AgriculturalMarket, ApiError, ClaimReadiness, CityIndex, DevnetStatus, FinalizedWalletState, getJson, NotAvailableYetError, claimReadinessPath, Portfolio, postJson, ProtectionQuote, UnsignedTransaction } from "./src/api";
 import { DEVNET_RPC_URL, readFinalizedWalletStateAnyRpc, readWalletStateWithFallback } from "./src/chain";
 import { readFinalizedProtections } from "./src/positions";
-import { buyPhaseLabel, customerPrepareError, TransactionFailedError, visibleTransactionError, type BuyPhase } from "./src/buy-phase";
+import { buyPhaseLabel, TransactionFailedError, transactionFailure, type BuyPhase } from "./src/buy-phase";
 import { type HazardId } from "./src/hazards";
 import { resolveSelectedNoaaCity } from "./src/presentation";
 import { committedPremiumQuote } from "../shared/market-pricing.ts";
@@ -464,7 +464,7 @@ export default function App() {
       }
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "The transaction did not complete.";
-      const shown = customerPrepareError(visibleTransactionError(message), reason instanceof ApiError ? reason.detail : null);
+      const shown = transactionFailure(message, reason instanceof ApiError ? reason.detail : null);
       if (/just closed|price changed|committed terms/i.test(shown.message)) void requestProtectionQuote();
       if (reason instanceof TransactionFailedError && reason.signature) setTransactionSignature(reason.signature);
       setBuyPhase("failed");
