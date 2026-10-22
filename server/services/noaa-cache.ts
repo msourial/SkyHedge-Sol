@@ -1,8 +1,12 @@
 import { getCache } from "@vercel/functions";
 import { NoaaRainfallProvider, type DailyRainfall, type RainfallProvider, type SkyHedgeCity } from "./noaa.js";
 
-/** Observed daily rainfall for a past range barely moves; the NWS forecast grid updates roughly hourly. */
-export const NOAA_DAILY_CACHE_TTL_S = 10 * 60;
+/**
+ * Pricing reads observed daily rainfall for past windows (ten prior years plus a completed sample window),
+ * which NOAA does not revise minute to minute, so an hour is safe and outlives idle instances. The NWS
+ * forecast grid updates roughly hourly; keep it short. Settlement never uses this cache.
+ */
+export const NOAA_DAILY_CACHE_TTL_S = 60 * 60;
 export const NOAA_FORECAST_CACHE_TTL_S = 5 * 60;
 /** A shared-cache lookup may not hold up a NOAA read for longer than this. */
 const SHARED_CACHE_BUDGET_MS = 400;
