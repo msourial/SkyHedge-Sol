@@ -17,7 +17,8 @@ import {
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AdvisoryResponse, AgriculturalMarket, ApiError, ClaimReadiness, CityIndex, DevnetStatus, FinalizedWalletState, getJson, NotAvailableYetError, claimReadinessPath, Portfolio, postJson, ProtectionQuote, UnsignedTransaction } from "./src/api";
 import { DEVNET_RPC_URL, readFinalizedWalletStateAnyRpc, readWalletStateWithFallback } from "./src/chain";
-import { readFinalizedProtections } from "./src/positions";
+import { readFinalizedProtections, type ChainProtection } from "./src/positions";
+import { findPositionAfterBuy, isExistingPositionError, isWalletDecline, positionForWindow } from "./src/covered";
 import { buyPhaseLabel, TransactionFailedError, transactionFailure, type BuyPhase } from "./src/buy-phase";
 import { type HazardId } from "./src/hazards";
 import { resolveSelectedNoaaCity } from "./src/presentation";
@@ -79,6 +80,8 @@ export default function App() {
   const [wallet, setWallet] = useState<string | null>(null);
   const [walletSession, setWalletSession] = useState<AuthorizedWallet | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  /** Finalized position accounts for this wallet, read on device. Drives the "You're covered" state. */
+  const [chainPositions, setChainPositions] = useState<ChainProtection[] | null>(null);
   const [walletBalances, setWalletBalances] = useState<FinalizedWalletState | null>(null);
   const [balancesError, setBalancesError] = useState<string | null>(null);
   const [balancesLoading, setBalancesLoading] = useState(false);
@@ -197,6 +200,7 @@ export default function App() {
         setBalancesError(balanceResult.reason instanceof Error ? balanceResult.reason.message : "Couldn’t read balances from Solana.");
       }
       setPortfolio(portfolioResult.status === "fulfilled" ? portfolioResult.value : null);
+      if (portfolioResult.status === "fulfilled") setChainPositions(portfolioResult.value.protections);
       setPortfolioError(portfolioResult.status === "rejected"
         ? portfolioResult.reason instanceof Error ? portfolioResult.reason.message : "Couldn’t read protections from Solana."
         : null);
@@ -299,6 +303,8 @@ export default function App() {
   const protectCity = protectCityFor(selectedCity, selling);
   const openWindows = sortByExpiry(windowsForCity(selling, protectCity));
   const activeWindow = openWindows.find((window) => window.address === selectedWindow) ?? openWindows[0] ?? null;
+  const coveredPosition = wallet ? positionForWindow(chainPositions, activeWindow?.address) : null;
+  const alreadyCovered = !!coveredPosition || (!!claimReadiness && claimReadiness.state !== "no_position");
   const protectView = protectSurface({
     loading: (homeLoading && !status) || (openWindows.length > 0 && evidenceLoading),
     failed: (!!statusError && !status) || (openWindows.length > 0 && evidenceError),
@@ -324,6 +330,7 @@ export default function App() {
       : getProtectionUnavailableReason({ status, citySlug: protectCity, walletConnected: true, walletSkytBalanceBase: walletBalances?.skytBaseUnits ?? null, amountBase, market: activeWindow, windowEvidence });
   const baseProtectionReason = evidenceLoading ? null : getProtectionUnavailableReason({ status, citySlug: protectCity, walletConnected: !!wallet, walletSkytBalanceBase: walletBalances?.skytBaseUnits ?? null, amountBase, market: activeWindow, windowEvidence });
   const positionGateReason = !wallet ? null
+    : coveredPosition ? duplicatePositionReason(consumerCityName(protectCity), "pending")
     : claimError ? "The current on-chain position could not be verified; refresh before requesting another position."
       : !claimReadiness ? "Checking the finalized wallet position before allowing another position."
         : duplicatePositionReason(consumerCityName(protectCity), claimReadiness.state);
@@ -416,6 +423,16 @@ export default function App() {
   }, [coverageId, walletBalances]);
 
   const submitApprovedAction = async (action: "open_position" | "claim_payout" | "claim_premium_refund", marketAddress?: string, amountOverride?: string) => {
+    const targetMarket = marketAddress ?? activeWindow?.address ?? null;
+    if (action === "open_position" && positionForWindow(chainPositions, targetMarket)) {
+      // Already covered on this window: show the position, never a second buy or a Failed card.
+      setBuyPhase(null);
+      setTransactionMessage(null);
+      setTransactionError(null);
+      setTransactionDetail(null);
+      return;
+    }
+    let reachedWallet = false;
     setTransactionError(null);
     setTransactionDetail(null);
     setBuyPhase("preparing");
@@ -444,6 +461,7 @@ export default function App() {
         wallet: walletSession,
         rpcUrl: DEVNET_RPC_URL,
         onPhase: (phase) => {
+          reachedWallet = true;
           setBuyPhase(phase);
           setTransactionMessage(buyPhaseLabel(phase));
         },
@@ -467,6 +485,23 @@ export default function App() {
       const shown = transactionFailure(message, reason instanceof ApiError ? reason.detail : null);
       if (/just closed|price changed|committed terms/i.test(shown.message)) void requestProtectionQuote();
       if (reason instanceof TransactionFailedError && reason.signature) setTransactionSignature(reason.signature);
+      // Before saying "Failed", check the chain: the wallet may have sent it (app closed, confirmation timed out) or it already exists.
+      const duplicate = isExistingPositionError(shown.message) || isExistingPositionError(shown.detail);
+      if (action === "open_position" && wallet && targetMarket && (duplicate || (reachedWallet && !isWalletDecline(shown.message)))) {
+        setBuyPhase("checking");
+        setTransactionMessage(buyPhaseLabel("checking"));
+        const found = await findPositionAfterBuy({ read: () => readFinalizedProtections(wallet), windowAddress: targetMarket, attempts: duplicate ? 2 : 4 });
+        if (found.protections) setChainPositions([...found.protections]);
+        if (found.position) {
+          setBuyPhase(null);
+          setTransactionMessage(null);
+          setTransactionError(null);
+          setTransactionDetail(null);
+          setQuote(null);
+          void loadWalletData(wallet, true);
+          return;
+        }
+      }
       setBuyPhase("failed");
       setTransactionMessage(buyPhaseLabel("failed"));
       setTransactionError(shown.message);
@@ -577,6 +612,7 @@ export default function App() {
               unavailableReason={protectionUnavailableReason}
               claimReadiness={claimReadiness}
               claimError={claimError}
+              coveredPosition={coveredPosition}
               transactionMessage={transactionMessage}
               transactionError={transactionError}
               transactionDetail={transactionDetail}
@@ -623,7 +659,7 @@ export default function App() {
             onBrowseMarkets={() => { setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
             onConnect={() => { void connect(); }}
             onRetryBalances={() => { if (wallet) void loadWalletData(wallet, true); }}
-            onDisconnect={() => { void clearWalletSession(); setWallet(null); setWalletSession(null); setPortfolio(null); setWalletBalances(null); setBalancesError(null); setBalancesLoading(false); setPortfolioError(null); setWalletError(null); setClaimReadiness(null); setQuote(null); }}
+            onDisconnect={() => { void clearWalletSession(); setWallet(null); setWalletSession(null); setPortfolio(null); setChainPositions(null); setWalletBalances(null); setBalancesError(null); setBalancesLoading(false); setPortfolioError(null); setWalletError(null); setClaimReadiness(null); setQuote(null); }}
           />
         ) : null}
         {!showLanding && tab === "wallet" ? (
@@ -648,6 +684,7 @@ export default function App() {
         const claimable = claimReadiness?.state === "claimable" && claimReadiness.action;
         if (claimable) return <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness?.action) void submitApprovedAction(claimReadiness.action); }} />;
         if (!wallet) return <StickyCta label="Connect wallet" busy={loading} onPress={() => { void connect(); }} />;
+        if (alreadyCovered && buyPhase !== "checking") return <StickyCta label="You’re covered for this window" disabled hint="One protection per wallet per window." onPress={() => {}} />;
         const quoteReady = !!quote && quote.protectedAmount === amountBase;
         const cta = buyCta({ premiumBase: quoteReady ? quote!.premium : null, busy: quoteBusy, error: quoteError, blockedReason: protectionUnavailableReason ? friendlyError(protectionUnavailableReason) : null, paymentReason: quotePaymentReason ? "Not enough SKYT in this wallet for this premium." : null });
         const threshold = activeWindow?.thresholdMmX100 && /^\d+$/.test(activeWindow.thresholdMmX100) ? Number(activeWindow.thresholdMmX100) / 100 : null;
@@ -659,7 +696,7 @@ export default function App() {
         const windowLabel = activeWindow ? committedWindowLabel(activeWindow) : null;
         const expiry = windowLabel?.split(" – ")[1] ?? (activeWindow ? expiryChipLabel(activeWindow)?.split(" · ")[0] ?? "expiry" : "expiry");
         const station = consumerCityBySlug(protectCity)?.source ?? "NOAA station";
-        const buying = buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending";
+        const buying = buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending" || buyPhase === "checking";
         return <StickyCta
           label={buyPhase === "failed" ? "Retry" : deal ? dealLabel : cta.label}
           hint={deal ? null : cta.hint}

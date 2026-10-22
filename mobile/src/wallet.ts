@@ -50,7 +50,13 @@ export async function signAndConfirmDevnetTransaction(input: {
   const signature = signatures[0];
   if (!signature) throw new Error("The wallet did not return a transaction signature.");
   input.onPhase?.("sending");
-  const confirmation = await connection.confirmTransaction(signature, "finalized");
+  let confirmation: Awaited<ReturnType<typeof connection.confirmTransaction>>;
+  try {
+    confirmation = await connection.confirmTransaction(signature, "finalized");
+  } catch (reason) {
+    // Sent but not yet confirmed (timeout or a busy RPC). Keep the signature so the app can check the chain.
+    throw new TransactionFailedError(reason instanceof Error ? reason.message : "Solana did not confirm the transaction in time.", signature);
+  }
   if (confirmation.value.err) throw new TransactionFailedError(describeChainError(confirmation.value.err), signature);
   return signature;
 }

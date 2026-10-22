@@ -1,6 +1,6 @@
 import { prepareFailure } from "../../shared/prepare-failure.ts";
 
-export type BuyPhase = "preparing" | "waiting" | "sending" | "confirmed" | "failed";
+export type BuyPhase = "preparing" | "waiting" | "sending" | "checking" | "confirmed" | "failed";
 
 const PROGRAM_ERRORS: Record<number, string> = {
   6000: "Protocol is paused",
@@ -58,6 +58,7 @@ export function buyPhaseLabel(phase: BuyPhase): string {
     case "preparing": return "Preparing your protection…";
     case "waiting": return "Waiting for approval";
     case "sending": return "Sending";
+    case "checking": return "Checking Solana for your position…";
     case "confirmed": return "Confirmed";
     case "failed": return "Failed";
   }
