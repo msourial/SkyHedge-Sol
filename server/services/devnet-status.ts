@@ -10,6 +10,11 @@ import { marketStateFromStatusJson } from "../../shared/des-moines-seed-plan.js"
 import { LIVE_CITY_SLUGS, tenorOf, type LiveCitySlug, type Tenor } from "../../shared/window-ladder.js";
 import type { WindowEvidencePackage } from "../../shared/window-chain.js";
 import { callWithRpcFailover, prepareRpcUrls } from "./rpc-failover.js";
+import { RainfallConsensusService } from "./consensus.js";
+import { CachedNoaaRainfallProvider } from "./noaa-cache.js";
+import { RainfallQuoteEngine } from "./quote-engine.js";
+import { finalizedEvidenceWindow } from "./des-moines-evidence.js";
+import { desMoinesSeedSchedule } from "../../shared/market-schedule.js";
 import { readStoredWindowEvidence } from "./window-evidence.js";
 
 const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
@@ -99,6 +104,7 @@ export class DevnetStatusReader {
   private readonly coder: BorshCoder;
   private evidenceCache: { expiresAt: number; value: DevnetStatus["noaaEvidence"] } | null = null;
   private statusCache: { at: number; value: Promise<DevnetStatus> } | null = null;
+  private evidenceInFlight: Promise<DevnetStatus["noaaEvidence"]> | null = null;
 
   constructor(connection?: Connection) {
     this.injected = connection != null;
@@ -117,8 +123,8 @@ export class DevnetStatusReader {
     this.statusCache = { at: Date.now(), value: run };
     try {
       const value = await run;
-      // Don't hold a "NOAA still loading" snapshot for the full cache window; the NOAA read keeps going.
-      if (value.noaaEvidence.status === "pending" && this.statusCache?.value === run) this.statusCache = null;
+      // Don't hold a "NOAA still loading" or "NOAA failed" snapshot for the full cache window; the NOAA read keeps going.
+      if (value.noaaEvidence.status !== "ready" && this.statusCache?.value === run) this.statusCache = null;
       return value;
     } catch (error) {
       if (this.statusCache?.value === run) this.statusCache = null;
@@ -279,10 +285,25 @@ export class DevnetStatusReader {
     });
   }
 
-  private async readNoaaEvidence(): Promise<DevnetStatus["noaaEvidence"]> {
-    if (this.evidenceCache && this.evidenceCache.expiresAt > Date.now()) return this.evidenceCache.value;
+  /** Concurrent status reads share one NOAA evidence read instead of each starting their own. */
+  private readNoaaEvidence(): Promise<DevnetStatus["noaaEvidence"]> {
+    if (this.evidenceCache && this.evidenceCache.expiresAt > Date.now()) return Promise.resolve(this.evidenceCache.value);
+    if (this.evidenceInFlight) return this.evidenceInFlight;
+    const run = this.loadNoaaEvidence();
+    this.evidenceInFlight = run;
+    void run.finally(() => { if (this.evidenceInFlight === run) this.evidenceInFlight = null; });
+    return run;
+  }
+
+  private async loadNoaaEvidence(): Promise<DevnetStatus["noaaEvidence"]> {
     try {
-      const pkg = await getDesMoinesEvidencePackage();
+      const provider = new CachedNoaaRainfallProvider();
+      const pkg = await getDesMoinesEvidencePackage(
+        finalizedEvidenceWindow(),
+        new RainfallConsensusService(provider),
+        desMoinesSeedSchedule(),
+        new RainfallQuoteEngine(provider),
+      );
       const value: DevnetStatus["noaaEvidence"] = {
         status: "ready",
         settlementSource: "NOAA",
@@ -297,7 +318,7 @@ export class DevnetStatusReader {
           evidence: pkg.evidence,
         },
       };
-      this.evidenceCache = { value, expiresAt: Date.now() + 60_000 };
+      this.evidenceCache = { value, expiresAt: Date.now() + 5 * 60_000 };
       return value;
     } catch (error) {
       const value: DevnetStatus["noaaEvidence"] = {
@@ -306,7 +327,8 @@ export class DevnetStatusReader {
         message: error instanceof Error ? error.message : "NOAA evidence validation is unavailable.",
         package: null,
       };
-      this.evidenceCache = { value, expiresAt: Date.now() + 15_000 };
+      // Failures are not cached; the next status read retries NOAA (sharing one in-flight read).
+      this.evidenceCache = null;
       return value;
     }
   }

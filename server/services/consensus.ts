@@ -1,4 +1,4 @@
-import { canonicalSourceHash, NoaaRainfallProvider, NOAA_STATIONS, cumulativeMillimeters, type DailyRainfall, type SkyHedgeCity } from "./noaa.js";
+import { canonicalSourceHash, NoaaRainfallProvider, NOAA_STATIONS, cumulativeMillimeters, type DailyRainfall, type RainfallProvider, type SkyHedgeCity } from "./noaa.js";
 import { loadMethodology } from "./methodology.js";
 
 const methodology = loadMethodology();
@@ -30,7 +30,7 @@ export interface ConsensusResult {
 }
 
 export class RainfallConsensusService {
-  constructor(private readonly noaa = new NoaaRainfallProvider()) {}
+  constructor(private readonly noaa: Pick<RainfallProvider, "dailyRainfall"> = new NoaaRainfallProvider()) {}
 
   async evidenceFor(city: SkyHedgeCity, windowStart: string, windowEnd: string): Promise<ConsensusResult> {
     const expectedDates = dailyDatesInclusive(windowStart, windowEnd);

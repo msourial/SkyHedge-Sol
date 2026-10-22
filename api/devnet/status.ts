@@ -19,7 +19,7 @@ export function createDevnetStatusHandler(loadStatus: StatusLoader = () => reade
     if (url.searchParams.get("resource") === "window-evidence") return createWindowEvidenceHandler()(req, res);
     try {
       const status = publicDevnetStatus(await loadStatus());
-      res.setHeader("Cache-Control", status.noaaEvidence.status === "pending" ? "no-store" : "s-maxage=30, stale-while-revalidate=60");
+      res.setHeader("Cache-Control", status.noaaEvidence.status !== "ready" ? "no-store" : "s-maxage=30, stale-while-revalidate=60");
       return res.status(200).json(status);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Devnet status unavailable";
