@@ -16,6 +16,7 @@ const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 const SKYT_MINT = process.env.SKYT_MINT ?? "3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g";
 const STATUS_CACHE_MS = 20_000;
+const NOAA_EVIDENCE_BUDGET_MS = 6_000;
 /** Public Devnet endpoints. web3.js 429 retry stays off; the first URL is retried with backoff, then the fallback, under a strict timeout. */
 function devnetRpcUrls(): string[] {
   return prepareRpcUrls();
@@ -109,28 +110,34 @@ export class DevnetStatusReader {
   async read(): Promise<DevnetStatus> {
     if (this.injected) return this.readUncached();
     if (this.statusCache && Date.now() - this.statusCache.at < STATUS_CACHE_MS) return this.statusCache.value;
-    const run = this.readWithFailover();
+    // NOAA evidence is an HTTP read, not RPC: start it once, outside the per-RPC attempt budget, so a slow
+    // NOAA response on a cold instance can't time out the Helius attempt and push us onto 429ing fallbacks.
+    const noaaEvidence = this.readNoaaEvidenceBounded();
+    const run = this.readWithFailover(noaaEvidence);
     this.statusCache = { at: Date.now(), value: run };
     try {
-      return await run;
+      const value = await run;
+      // Don't hold a "NOAA still loading" snapshot for the full cache window; the NOAA read keeps going.
+      if (value.noaaEvidence.status === "pending" && this.statusCache?.value === run) this.statusCache = null;
+      return value;
     } catch (error) {
       if (this.statusCache?.value === run) this.statusCache = null;
       throw error;
     }
   }
 
-  private async readWithFailover(): Promise<DevnetStatus> {
+  private async readWithFailover(noaaEvidence: Promise<DevnetStatus["noaaEvidence"]>): Promise<DevnetStatus> {
     return callWithRpcFailover(devnetRpcUrls(), async (url) => {
       this.connection = devnetConnection(url);
-      return this.readUncached();
+      return this.readUncached(noaaEvidence);
     });
   }
 
-  private async readUncached(): Promise<DevnetStatus> {
+  private async readUncached(noaaEvidenceRead?: Promise<DevnetStatus["noaaEvidence"]>): Promise<DevnetStatus> {
     const [programInfo, mintAccountInfo, noaaEvidence, windowEvidence] = await Promise.all([
       this.connection.getAccountInfo(this.programId, "confirmed"),
       this.connection.getAccountInfo(this.mint, "confirmed"),
-      this.readNoaaEvidence(),
+      noaaEvidenceRead ?? this.readNoaaEvidence(),
       readStoredWindowEvidence().catch(() => [] as WindowEvidencePackage[]),
     ]);
     const mintInfo = mintAccountInfo ? await getMint(this.connection, this.mint, "confirmed") : null;
@@ -256,6 +263,20 @@ export class DevnetStatusReader {
       }
     }
     return found;
+  }
+
+  /** NOAA can take many seconds on a cold read; report it as pending rather than holding up Devnet status. */
+  private readNoaaEvidenceBounded(timeoutMs = NOAA_EVIDENCE_BUDGET_MS): Promise<DevnetStatus["noaaEvidence"]> {
+    const read = this.readNoaaEvidence();
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => resolve({
+        status: "pending",
+        settlementSource: "NOAA",
+        message: "NOAA evidence is still loading.",
+        package: null,
+      }), timeoutMs);
+      read.then((value) => { clearTimeout(timer); resolve(value); });
+    });
   }
 
   private async readNoaaEvidence(): Promise<DevnetStatus["noaaEvidence"]> {
