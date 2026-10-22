@@ -11,6 +11,15 @@
     },
     "api/devnet/status.ts": {
       "maxDuration": 120
+    },
+    "api/quotes.ts": {
+      "maxDuration": 30
+    },
+    "api/transactions/unsigned.ts": {
+      "maxDuration": 30
+    },
+    "api/advisory.ts": {
+      "maxDuration": 30
     }
   },
   "crons": [

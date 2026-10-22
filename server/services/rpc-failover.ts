@@ -15,10 +15,15 @@ export function prepareRpcUrls(envUrl = process.env.SOLANA_RPC_URL): string[] {
 
 /** First URL is retried on HTTP 429. Later URLs are single-shot fallbacks. */
 export const RPC_RATE_LIMIT_BACKOFF_MS = [250, 750] as const;
-/** One RPC attempt may not outlive this. */
+/**
+ * The first (preferred) endpoint gets a longer budget: a cold Vercel instance needs several seconds for its
+ * first multi-call read, and cutting it at 3s only pushes the request onto rate-limited public fallbacks.
+ */
+export const RPC_PRIMARY_ATTEMPT_TIMEOUT_MS = 8_000;
+/** One fallback RPC attempt may not outlive this. */
 export const RPC_ATTEMPT_TIMEOUT_MS = 3_000;
-/** The whole failover, retries included, may not outlive this. */
-export const RPC_FAILOVER_DEADLINE_MS = 8_000;
+/** The whole failover, retries included, may not outlive this (primary 8s + two 3s fallbacks + backoff). */
+export const RPC_FAILOVER_DEADLINE_MS = 15_000;
 
 export function isRpcRateLimited(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
@@ -45,6 +50,9 @@ export async function callWithRpcFailover<T>(
   urls: readonly string[],
   call: (url: string) => Promise<T>,
   options: {
+    /** Per-attempt budget for urls[0]. */
+    primaryTimeoutMs?: number;
+    /** Per-attempt budget for fallback urls. */
     timeoutMs?: number;
     deadlineMs?: number;
     backoffMs?: readonly number[];
@@ -54,6 +62,7 @@ export async function callWithRpcFailover<T>(
 ): Promise<T> {
   if (urls.length === 0) throw new Error("No Devnet RPC endpoints configured.");
   const timeoutMs = options.timeoutMs ?? RPC_ATTEMPT_TIMEOUT_MS;
+  const primaryTimeoutMs = options.primaryTimeoutMs ?? RPC_PRIMARY_ATTEMPT_TIMEOUT_MS;
   const deadlineMs = options.deadlineMs ?? RPC_FAILOVER_DEADLINE_MS;
   const backoffMs = options.backoffMs ?? RPC_RATE_LIMIT_BACKOFF_MS;
   const sleep = options.sleep ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)));
@@ -68,7 +77,8 @@ export async function callWithRpcFailover<T>(
       const remaining = deadlineAt - now();
       if (remaining <= 0) throw last instanceof Error ? last : new Error("Devnet RPC timed out");
       try {
-        return await withTimeout(call(url), Math.min(timeoutMs, remaining));
+        const budget = index === 0 ? primaryTimeoutMs : timeoutMs;
+        return await withTimeout(call(url), Math.min(budget, remaining));
       } catch (error) {
         last = error;
         const retryHere = index === 0 && attempt < tries - 1 && isRpcRateLimited(error);
