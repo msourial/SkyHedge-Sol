@@ -7,7 +7,7 @@ import { consumerCityBySlug } from "../../../shared/consumer-cities";
 import { payGet } from "../../../shared/pay-get";
 import { COVERED_TITLE, EXPLORER_LINK_LABEL, ONE_PROTECTION_NOTE, coveredPlaceLine, coveredReceiptRows, devnetExplorerUrl, formatQuoteSkyt, gaugeWaterLevel, stationDisplayName, windowStamp } from "../../../shared/protect-copy";
 import { MixedCopy } from "@/components/figure";
-import { committedWindowLabel, windowStartLabel } from "../../../shared/window-chain";
+import { committedWindowLabel, windowEndLabel, windowStartLabel } from "../../../shared/window-chain";
 
 type WindowRow = NonNullable<DevnetStatus["cityWindows"]>[number];
 
@@ -54,6 +54,8 @@ function ProtectionGauge({ protection, window }: { protection: Portfolio["protec
     windowLabel,
     observedMm: observed,
     windowStart: window ? windowStartLabel(window) : null,
+    windowEnd: window ? windowEndLabel(window) : null,
+    paidOut: state === "claimed" && !refund,
   });
   const city = window ? consumerCityBySlug(window.city) : null;
   const place = coveredPlaceLine({ city: city?.city, station: stationDisplayName(city?.source), windowLabel });
@@ -108,6 +110,8 @@ export function DevStampPreview({ windows }: { windows: readonly WindowRow[] }) 
     windowLabel,
     observedMm: observed,
     windowStart: windowStartLabel(source),
+    windowEnd: windowEndLabel(source),
+    paidOut: kind === "paid",
   });
   const place = coveredPlaceLine({ city: city?.city, station: stationDisplayName(city?.source), windowLabel });
   const maxMm = trigger * 1.25;

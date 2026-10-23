@@ -9,12 +9,12 @@ export function MixedCopy({ text }: { text: string }) {
   })}</>;
 }
 
-/** "24.00 SKYT" renders as a large 24 and a quiet ".00 SKYT". */
+/** "24.00 SKYT" renders as a large 24 and a quiet ".00 SKYT", with no gap before the decimal. */
 export function QuoteAmount({ amount, unit = "SKYT", slicker = false, hero = false }: { amount: string; unit?: string; slicker?: boolean; hero?: boolean }) {
   const match = /^(\d+)(\.\d+)?$/.exec(amount.trim());
   const whole = match?.[1] ?? amount;
   const decimal = match?.[2] ?? "";
-  const minor = `${decimal}${decimal && unit ? " " : ""}${unit ?? ""}`;
+  const minor = `${decimal}${unit ? ` ${unit}` : ""}`;
   return <span className={hero ? "quote-amount quote-amount--hero" : "quote-amount"}>
     <span className={slicker ? "quote-amount__whole quote-amount__whole--slicker" : "quote-amount__whole"}>{whole}</span>
     {minor ? <span className="t-figure-minor">{minor}</span> : null}

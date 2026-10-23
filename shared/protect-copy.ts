@@ -199,6 +199,9 @@ export function coveredReceiptRows(input: {
   windowLabel?: string | null | undefined;
   observedMm?: number | null;
   windowStart?: string | null;
+  windowEnd?: string | null;
+  /** Settled payout. The start-date row is the wrong line once the window has paid. */
+  paidOut?: boolean;
   openedAt?: string | null;
 }): ReceiptRow[] {
   const paid = formatQuoteSkyt(input.premiumPaid ?? null, 2);
@@ -212,6 +215,9 @@ export function coveredReceiptRows(input: {
   ];
   if (input.observedMm != null && Number.isFinite(input.observedMm)) {
     rows.push({ label: "So far", value: `${formatMm(input.observedMm)} mm`, payout: false });
+  } else if (input.paidOut) {
+    const end = stripUtc(input.windowEnd) ?? (input.windowLabel?.includes("–") ? windowExpiryDay(input.windowLabel) : null);
+    rows.push({ label: "Closed", value: end ? `${end} · paid` : "Paid", payout: false });
   } else if (input.windowStart?.trim()) {
     rows.push({ label: "Counting starts", value: stripUtc(input.windowStart) ?? input.windowStart.trim(), payout: false });
   }

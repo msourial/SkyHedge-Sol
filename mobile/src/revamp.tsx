@@ -110,7 +110,7 @@ export function Landing(props: { onConnect: () => void; onBrowse: () => void; bu
             <Text style={{ color: C.ink, fontFamily: F.bodySemi }}>{chip}</Text>
           </Pressable>)}
         </View>
-        <Text style={g.caption}>You pay <Text style={{ fontFamily: F.mono, color: C.ink }}>{deal.payLabel.split(".")[0]}</Text><Text style={{ fontFamily: F.mono, color: C.muted }}>{deal.payLabel.includes(".") ? `.${deal.payLabel.split(".")[1]} SKYT` : " SKYT"}</Text></Text>
+        <Text style={g.caption}>You pay <Text style={{ fontFamily: F.mono, color: C.ink }}>{deal.payLabel.split(".")[0]}</Text>{deal.payLabel.includes(".") ? <Text style={{ fontFamily: F.mono, color: C.muted }}>{`.${deal.payLabel.split(".")[1]}`}</Text> : null}<Text style={{ fontFamily: F.mono, color: C.muted }}> SKYT</Text></Text>
         <Text style={g.caption}>You get <Text style={{ fontFamily: F.mono, fontSize: 32, lineHeight: 36, color: C.payout }}>{deal.getLabel}</Text><Text style={{ fontFamily: F.mono, color: C.muted }}> SKYT</Text></Text>
       </View>
     </View> : null}

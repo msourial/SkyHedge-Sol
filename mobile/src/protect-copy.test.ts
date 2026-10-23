@@ -109,6 +109,14 @@ describe("covered receipt rows", () => {
     assert.equal(rows.find((row) => row.label === "Opened")?.value, "Oct 20");
     assert.equal(rows.some((row) => row.label === "Counting starts"), false);
   });
+
+  it("replaces the start date with the close once the window has paid out", () => {
+    const rows = coveredReceiptRows({ premiumPaid: "24000000", coverAmount: "100000000", trigger: "≥ 69 mm", windowLabel: WINDOW, windowStart: "Oct 26 (UTC)", windowEnd: "Nov 2 (UTC)", paidOut: true });
+    assert.equal(rows.some((row) => row.label === "Counting starts"), false);
+    assert.deepEqual(rows.find((row) => row.label === "Closed"), { label: "Closed", value: "Nov 2 · paid", payout: false });
+    const fromLabel = coveredReceiptRows({ premiumPaid: "24000000", coverAmount: "100000000", trigger: "≥ 69 mm", windowLabel: WINDOW, paidOut: true });
+    assert.equal(fromLabel.find((row) => row.label === "Closed")?.value, "Nov 2 · paid");
+  });
 });
 
 describe("forecaster bands", () => {

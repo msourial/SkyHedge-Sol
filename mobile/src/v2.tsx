@@ -609,7 +609,7 @@ function CoveredCard(props: { position: ChainProtection; signature: string | nul
   const closed = state === "claimed" || state === "not_claimable" || state === "expired";
   const refund = state === "claimed" && (props.claim?.action === "claim_premium_refund" || /refund/i.test(props.claim?.result ?? ""));
   const stamp = windowStamp({ closed, paidOut: state === "claimed" && !refund, payoutLabel: formatQuoteSkyt(props.position.potentialPayout || props.position.protectedAmount, 0), observedMm: observed, triggerMm, monthly: false });
-  const rows = coveredReceiptRows({ premiumPaid: props.position.premiumPaid, coverAmount: props.position.protectedAmount, trigger: props.position.triggerLabel, windowLabel: props.position.windowLabel, observedMm: observed });
+  const rows = coveredReceiptRows({ premiumPaid: props.position.premiumPaid, coverAmount: props.position.protectedAmount, trigger: props.position.triggerLabel, windowLabel: props.position.windowLabel, observedMm: observed, paidOut: stamp?.tone === "paid" });
   const explorer = devnetExplorerUrl({ signature: props.signature, address: props.position.address });
   return <GlassCard>
     <View accessibilityRole="summary" accessibilityLabel="You’re covered on this window">
