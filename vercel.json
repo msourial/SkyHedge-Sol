@@ -37,6 +37,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/markets/des-moines/evidence-package",
+      "destination": "/api/evidence-package"
+    },
+    {
       "source": "/api/markets/:market/positions/:wallet/claim-readiness",
       "destination": "/api/mobile?resource=claim-readiness&market=:market&wallet=:wallet"
     },
