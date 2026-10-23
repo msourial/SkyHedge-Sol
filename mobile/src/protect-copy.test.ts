@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { marketStatus } from "../../shared/pay-get.ts";
-import { COVER_CHIPS, coveredReceiptRows, ladderTicks, marketStatusInk, protectButtonLabel, stakeSheetForCover, stationDisplayName } from "../../shared/protect-copy.ts";
+import { COVER_CHIPS, HOW_IT_SETTLES, WALLET_CHAIN_ERROR, coveredReceiptRows, forecasterBand, forecasterCopy, gaugeWaterLevel, ladderTicks, marketRowModel, marketStatusInk, moreTriggersSoon, protectButtonLabel, stakeSheetForCover, stationDisplayName, windowStamp } from "../../shared/protect-copy.ts";
 import { triggerRows } from "../../shared/window-chain.ts";
 
 const HASH = "ab".repeat(32);
@@ -14,24 +14,29 @@ describe("stake sheet math", () => {
     const hundred = stakeSheetForCover({ ...base, coverSkyt: 100 });
     assert.ok(hundred);
     assert.equal(hundred.payLine, "You pay 24.00 SKYT");
-    assert.equal(hundred.getLine, "You get 100 SKYT if Central Park hits ≥ 69 mm, Oct 26 – Nov 2 (UTC)");
+    assert.equal(hundred.getLine, "You get 100 SKYT");
+    assert.equal(hundred.conditionLine, "If Central Park ≥ 69 mm by Nov 2");
+    assert.equal(hundred.ledgerGetLine, "You get 100 SKYT if Central Park hits 69 mm by Nov 2");
+    assert.equal(hundred.ledgerMeta, "20.0% chance · 4.1× · 1.00 SKYT fee included");
     assert.equal(hundred.multiple, "4.1×");
-    assert.equal(hundred.feeLine, "Includes 1.00 SKYT protocol fee");
-    assert.equal(hundred.preSign, "You'll sign: pay 24.00 SKYT · cover 100 SKYT · Central Park ≥ 69 mm · Oct 26 – Nov 2 (UTC)");
+    assert.equal(hundred.feeLine, "1.00 SKYT fee, included in what you pay.");
+    assert.equal(hundred.preSign, "You're about to sign");
+    assert.equal(hundred.triggerLine, "Trigger ≥ 69 mm");
     assert.doesNotMatch(hundred.feeLine ?? "", /%/);
     assert.doesNotMatch(JSON.stringify(hundred), /insurance/i);
+    assert.equal(stakeSheetForCover({ ...base, city: "New York", coverSkyt: 100 })?.placeLine, "New York · Central Park · Oct 26 – Nov 2 (UTC)");
 
     assert.equal(stakeSheetForCover({ ...base, coverSkyt: 50 })?.payLine, "You pay 12.00 SKYT");
-    assert.equal(stakeSheetForCover({ ...base, coverSkyt: 50 })?.feeLine, "Includes 0.50 SKYT protocol fee");
+    assert.equal(stakeSheetForCover({ ...base, coverSkyt: 50 })?.feeLine, "0.50 SKYT fee, included in what you pay.");
     assert.equal(stakeSheetForCover({ ...base, coverSkyt: 250 })?.payLine, "You pay 60.00 SKYT");
-    assert.equal(stakeSheetForCover({ ...base, coverSkyt: 250 })?.getLine, "You get 250 SKYT if Central Park hits ≥ 69 mm, Oct 26 – Nov 2 (UTC)");
+    assert.equal(stakeSheetForCover({ ...base, coverSkyt: 250 })?.getLine, "You get 250 SKYT");
     assert.equal(stakeSheetForCover({ ...base, coverSkyt: 250 })?.multiple, "4.1×");
     assert.deepEqual(COVER_CHIPS.map((chip) => stakeSheetForCover({ ...base, coverSkyt: chip })?.premiumLabel), ["12.00", "24.00", "60.00"]);
   });
 
   it("prints the live quote fee and omits the line when the quote has none", () => {
     const overridden = stakeSheetForCover({ ...base, coverSkyt: 100, protocolFeeBase: "2500000" });
-    assert.equal(overridden?.feeLine, "Includes 2.50 SKYT protocol fee");
+    assert.equal(overridden?.feeLine, "2.50 SKYT fee, included in what you pay.");
     const unquoted = stakeSheetForCover({ ...base, coverSkyt: 100, inputsHash: null, protocolFeeBase: null });
     assert.equal(unquoted?.payLine, "You pay 24.00 SKYT");
     assert.equal(unquoted?.feeLine, null);
@@ -88,15 +93,93 @@ describe("trigger ladder states", () => {
 });
 
 describe("covered receipt rows", () => {
-  it("uses paid, cover, trigger, and window from the position", () => {
-    const rows = coveredReceiptRows({ premiumPaid: "24000000", coverAmount: "100000000", trigger: "≥ 69 mm", windowLabel: WINDOW });
-    assert.deepEqual(rows.map((row) => [row.label, row.value]), [
-      ["Paid", "24.00 SKYT"],
-      ["Cover", "100 SKYT"],
-      ["Trigger", "≥ 69 mm"],
-      ["Window", WINDOW],
+  it("uses cover, paid, and the pays line from the position", () => {
+    const rows = coveredReceiptRows({ premiumPaid: "24000000", coverAmount: "100000000", trigger: "≥ 69 mm", windowLabel: WINDOW, windowStart: "Oct 26 (UTC)" });
+    assert.deepEqual(rows.map((row) => [row.label, row.value, row.payout]), [
+      ["Cover", "100 SKYT", false],
+      ["Paid", "24.00 SKYT", false],
+      ["Pays", "100 SKYT if ≥ 69 mm", true],
+      ["Counting starts", "Oct 26", false],
     ]);
-    assert.equal(rows[1]?.payout, true);
-    assert.equal(rows[2]?.payout, true);
+  });
+
+  it("prints observed millimetres only when the reading exists", () => {
+    const rows = coveredReceiptRows({ premiumPaid: "24000000", coverAmount: "100000000", trigger: "≥ 69 mm", observedMm: 12, openedAt: "Oct 20" });
+    assert.equal(rows.find((row) => row.label === "So far")?.value, "12 mm");
+    assert.equal(rows.find((row) => row.label === "Opened")?.value, "Oct 20");
+    assert.equal(rows.some((row) => row.label === "Counting starts"), false);
+  });
+
+  it("replaces the start date with the close once the window has paid out", () => {
+    const rows = coveredReceiptRows({ premiumPaid: "24000000", coverAmount: "100000000", trigger: "≥ 69 mm", windowLabel: WINDOW, windowStart: "Oct 26 (UTC)", windowEnd: "Nov 2 (UTC)", paidOut: true });
+    assert.equal(rows.some((row) => row.label === "Counting starts"), false);
+    assert.deepEqual(rows.find((row) => row.label === "Closed"), { label: "Closed", value: "Nov 2 · paid", payout: false });
+    const fromLabel = coveredReceiptRows({ premiumPaid: "24000000", coverAmount: "100000000", trigger: "≥ 69 mm", windowLabel: WINDOW, paidOut: true });
+    assert.equal(fromLabel.find((row) => row.label === "Closed")?.value, "Nov 2 · paid");
+  });
+});
+
+describe("forecaster bands", () => {
+  it("picks the line from the quoted chance", () => {
+    assert.equal(forecasterBand(0), "Probably dry.");
+    assert.equal(forecasterBand(14.9), "Probably dry.");
+    assert.equal(forecasterBand(15), "Bring a jacket, maybe.");
+    assert.equal(forecasterBand(35), "Bring a jacket, maybe.");
+    assert.equal(forecasterBand(35.1), "Umbrella week.");
+    assert.equal(forecasterBand(100), "Umbrella week.");
+    assert.equal(forecasterBand(Number.NaN), null);
+    assert.equal(forecasterBand(-1), null);
+    const line = forecasterCopy({ probabilityBps: 2_000, station: "Central Park", triggerMm: 69 });
+    assert.deepEqual(line, { band: "Bring a jacket, maybe.", detail: "20.0% chance Central Park clears 69 mm." });
+    assert.equal(forecasterCopy({ probabilityBps: null, station: "Central Park", triggerMm: 69 }), null);
+    assert.doesNotMatch(JSON.stringify(line), /insurance/i);
+  });
+});
+
+describe("window stamps", () => {
+  it("stamps paid out in slicker copy and dry week or dry month without inventing a total", () => {
+    assert.equal(windowStamp({ closed: false, paidOut: true, payoutLabel: "100", observedMm: 80, triggerMm: 69, monthly: false }), null);
+    assert.deepEqual(windowStamp({ closed: true, paidOut: true, payoutLabel: "100", observedMm: 80, triggerMm: 69, monthly: false }), {
+      tone: "paid",
+      title: "Paid out · 100 SKYT",
+      subline: "It rained. You're paid.",
+    });
+    assert.deepEqual(windowStamp({ closed: true, paidOut: false, payoutLabel: "100", observedMm: 12, triggerMm: 69, monthly: false }), {
+      tone: "dry",
+      title: "Dry week · 12 of 69 mm",
+      subline: "No payout. Your plans stayed dry.",
+    });
+    assert.equal(windowStamp({ closed: true, paidOut: false, payoutLabel: "100", observedMm: 4, triggerMm: 40, monthly: true })?.title, "Dry month · 4 of 40 mm");
+    assert.equal(windowStamp({ closed: true, paidOut: false, payoutLabel: "100", observedMm: null, triggerMm: 69, monthly: false }), null);
+    assert.equal(windowStamp({ closed: true, paidOut: true, payoutLabel: null, observedMm: 80, triggerMm: 69, monthly: false }), null);
+  });
+});
+
+describe("gauge water", () => {
+  it("stays empty without a reading and follows observed millimetres", () => {
+    assert.equal(gaugeWaterLevel({ observedMm: null, maxMm: 86.25, triggerMm: 69 }), 0);
+    assert.equal(gaugeWaterLevel({ observedMm: 12, maxMm: 86.25, triggerMm: 69 }).toFixed(2), (12 / 86.25).toFixed(2));
+    const paid = gaugeWaterLevel({ observedMm: null, maxMm: 86.25, triggerMm: 69, paidOut: true });
+    assert.ok(paid > 69 / 86.25 && paid < 1);
+    assert.equal(WALLET_CHAIN_ERROR, "Can't read Devnet right now. Nothing is shown until it's back. Try again in a minute.");
+    assert.match(HOW_IT_SETTLES, /WeatherXM is context only/);
+  });
+});
+
+describe("market rows", () => {
+  it("keeps the multiple on its own figures line and gives unopened cities a dry status", () => {
+    const open = marketRowModel({ slug: "new-york", stationSource: "NOAA Central Park", open: true, tenor: "weekly", expiry: "Nov 2", triggerMm: 69, multiple: "4.1×", probabilityBps: 2_000 });
+    assert.equal(open.stationLine, "Central Park · weekly to Nov 2");
+    assert.equal(open.figures, "≥69 mm  4.1×");
+    assert.equal(open.status, "Open");
+    assert.equal(open.forecaster?.band, "Bring a jacket, maybe.");
+    const chicago = marketRowModel({ slug: "chicago", stationSource: "NOAA O'Hare", open: false, tenor: null, expiry: null, triggerMm: null, multiple: null, probabilityBps: null });
+    assert.equal(chicago.stationLine, "O'Hare");
+    assert.equal(chicago.status, "Not open yet");
+    assert.equal(chicago.ink, "dry");
+    const toronto = marketRowModel({ slug: "toronto", stationSource: "Environment Canada", open: false, tenor: null, expiry: null, triggerMm: null, multiple: null, probabilityBps: null });
+    assert.equal(toronto.status, "Waiting on Environment Canada data");
+    assert.equal(moreTriggersSoon(5), "5 more triggers soon");
+    assert.equal(moreTriggersSoon(0), null);
   });
 });

@@ -1,45 +1,33 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import { ONBOARDING_STEPS, TEST_TOKEN_NOTE } from "./consumer-flow";
+import React, { useEffect, useRef, useState } from "react";
+import { COVER_CHIPS, HOW_IT_SETTLES, HOW_IT_SETTLES_TITLE, HOW_IT_WORKS, LANDING_FINE, LANDING_HERO_LEAD, LANDING_HERO_TITLE, LANDING_OPEN_APP, type CoverChip } from "../../shared/protect-copy.ts";
+import { payGet } from "../../shared/pay-get.ts";
+import { RainGauge as Tube } from "./rain-gauge";
 import { Animated, Easing, Linking, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { accentGlow, C, F, glass, MIN_TOUCH, motion, space as S, statusGlow, type as T } from "./theme";
+import { C, F, glass, MIN_TOUCH, motion, space as S, type as T } from "./theme";
 import { Enter, SpringPress } from "./motion";
 import { ActionButton, AppIcon, Text } from "./ui";
-import { GlassTargetContext, useReducedMotion } from "./liquid-glass";
-import { BlurView } from "expo-blur";
-import { Platform } from "react-native";
-import { liquidGlassRecipe } from "./liquid-glass-config";
-import { RadarMap } from "./RadarMap";
+import { useReducedMotion } from "./liquid-glass";
 import { PerilSelector, ScreenTop } from "./journey";
-import { GROUP_ORDER, groupCounts, MARKETS, type CatalogMarket } from "./markets-catalog";
+import { groupCounts, type CatalogMarket } from "./markets-catalog";
 import { marketListChipTone } from "./presentation";
 
 const TAB = ["tabular-nums" as const];
 
-/** Storm Glass pane: frosted graphite, hairline glacier border, soft top sheen. */
-let entryOrder = 0;
-export function GlassCard({ children, style, accent, delay }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; accent?: string; delay?: number }) {
+/** Flat surface card. The name stays so existing screens keep one pane. */
+export function GlassCard({ children, style, delay }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; accent?: string; delay?: number }) {
   const reduced = useReducedMotion();
-  const blurTarget = useContext(GlassTargetContext);
-  const nativeBlur = liquidGlassRecipe(Number(Platform.Version), false).usesNativeBlur && !!blurTarget;
   const enter = useRef(new Animated.Value(reduced ? 1 : 0)).current;
   useEffect(() => {
     if (reduced) { enter.setValue(1); return; }
-    const d = delay ?? (entryOrder++ % 6) * motion.stagger;
-    Animated.timing(enter, { toValue: 1, duration: motion.slow, delay: d, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.timing(enter, { toValue: 1, duration: reduced ? 120 : 120, delay: delay ?? 0, easing: Easing.linear, useNativeDriver: true }).start();
   }, [enter, reduced, delay]);
-  return <Animated.View style={[g.card, accent ? { borderColor: accent + "66", boxShadow: accentGlow(accent) } : null, style, { opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [motion.enterOffset, 0] }) }] }]}>
-    {nativeBlur ? <BlurView pointerEvents="none" blurTarget={blurTarget!} tint="dark" intensity={55} blurReductionFactor={4} blurMethod="dimezisBlurViewSdk31Plus" style={StyleSheet.absoluteFill} /> : null}
-    <LinearGradient pointerEvents="none" colors={[...(nativeBlur ? glass.sheenBlur : glass.sheen)]} locations={[0, 0.5, 1]} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={StyleSheet.absoluteFill} />
-    <LinearGradient pointerEvents="none" colors={["rgba(255,255,255,0)", accent ? accent + "88" : glass.edge, "rgba(255,255,255,0)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={g.cardEdge} />
-    {children}
-  </Animated.View>;
+  return <Animated.View style={[g.card, style, { opacity: enter }]}>{children}</Animated.View>;
 }
 
 export function StatusTag({ status, label }: { status: CatalogMarket["status"]; label?: string }) {
   const tone = marketListChipTone(status, label);
-  const col = tone === "live" ? C.rain : tone === "closed" ? C.quiet : C.muted;
-  return <View style={[g.tag, { borderColor: col + "77", backgroundColor: col + "1F", boxShadow: statusGlow(col, status === "concept") }]} accessible accessibilityLabel={label ?? statusLabel(status)}>
+  const col = tone === "live" ? C.rain : C.dryText;
+  return <View accessible accessibilityLabel={label ?? statusLabel(status)}>
     <Text style={[g.tagText, { color: col }]}>{label ?? statusLabel(status)}</Text>
   </View>;
 }
@@ -74,7 +62,7 @@ export function RainGauge({ observedMm, triggerMm, color = C.rain, height = 150 
   const h = fill.interpolate({ inputRange: [0, 1], outputRange: [0, height] });
   return <View style={[g.gauge, { height }]} accessible accessibilityLabel={`Rain gauge: ${observedMm == null ? "no observed rain yet" : `${observedMm.toFixed(1)} mm observed`}${triggerMm != null ? `, trigger ${triggerMm} mm` : ""}`}>
     <Animated.View style={[g.gaugeFill, { height: h }]}>
-      <LinearGradient colors={[color, color + "55"]} style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: color }]} />
     </Animated.View>
     {triggerMm != null ? <View style={[g.gaugeLine, { bottom: (triggerMm / max) * height }]}>{Array.from({ length: 8 }).map((_, i) => <View key={i} style={g.gaugeDash} />)}</View> : null}
   </View>;
@@ -100,35 +88,49 @@ export function Ticker({ items }: { items: string[] }) {
 }
 
 /* ───────────── Landing ───────────── */
-export function Landing(props: { onConnect: () => void; onBrowse: () => void; busy: boolean; live: boolean; openLabel?: string }) {
+export function Landing(props: { onConnect: () => void; onBrowse: () => void; busy: boolean; live: boolean; openLabel?: string; quote?: { premiumRateBps: number; probabilityBps: number; triggerMm: number } | null }) {
+  const [cover, setCover] = useState<CoverChip>(100);
   const reduced = useReducedMotion();
+  const deal = props.quote ? payGet({ coverageSkyt: cover, premiumRateBps: props.quote.premiumRateBps, probabilityBps: props.quote.probabilityBps }) : null;
+  const trigger = props.quote?.triggerMm ?? null;
   const fade = useRef(new Animated.Value(reduced ? 1 : 0)).current;
   useEffect(() => {
     if (reduced) { fade.setValue(1); return; }
     Animated.timing(fade, { toValue: 1, duration: motion.slow + 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [fade, reduced]);
-  const concepts = MARKETS.filter((m) => m.status === "concept").length;
-  return <Animated.View style={{ opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [motion.enterOffset * 1.6, 0] }) }] }}>
+  return <Animated.View style={{ opacity: fade }}>
     <ScreenTop brand />
-    <Text style={g.hero}>Get paid when the{"\n"}<Text style={{ color: C.rain, textShadowColor: C.rain + "80", textShadowRadius: 16 }}>weather ruins your plans.</Text></Text>
-    <Text style={g.heroLead}>Pick a city and the dates you care about. If official weather data shows it rained past the limit, money lands in your wallet automatically. No forms, no calls.</Text>
+    <Text style={g.hero}>{LANDING_HERO_TITLE}</Text>
+    <Text style={g.heroLead}>{LANDING_HERO_LEAD}</Text>
+    {trigger != null && deal ? <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12, marginTop: S.lg }}>
+      <Tube width={120} height={168} level={0} maxMm={trigger * 1.25} showMm ticks={[{ mm: trigger, selected: true }]} label={`New York trigger line at ${trigger} mm`} />
+      <View style={{ flex: 1, gap: 8 }}>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {COVER_CHIPS.map((chip) => <Pressable key={chip} accessibilityRole="radio" accessibilityState={{ selected: chip === cover }} onPress={() => setCover(chip)} style={{ minHeight: MIN_TOUCH, flex: 1, alignItems: "center", justifyContent: "center", borderRadius: 999, backgroundColor: chip === cover ? C.rainSoft : C.surfaceRaised, borderWidth: chip === cover ? 1.5 : 0, borderColor: C.rain }}>
+            <Text style={{ color: C.ink, fontFamily: F.bodySemi }}>{chip}</Text>
+          </Pressable>)}
+        </View>
+        <Text style={g.caption}>You pay <Text style={{ fontFamily: F.mono, color: C.ink }}>{deal.payLabel.split(".")[0]}</Text>{deal.payLabel.includes(".") ? <Text style={{ fontFamily: F.mono, color: C.muted }}>{`.${deal.payLabel.split(".")[1]}`}</Text> : null}<Text style={{ fontFamily: F.mono, color: C.muted }}> SKYT</Text></Text>
+        <Text style={g.caption}>You get <Text style={{ fontFamily: F.mono, fontSize: 32, lineHeight: 36, color: C.payout }}>{deal.getLabel}</Text><Text style={{ fontFamily: F.mono, color: C.muted }}> SKYT</Text></Text>
+      </View>
+    </View> : null}
     <GlassCard style={{ marginTop: S.xl }}>
-      <Text style={g.overline}>How it works</Text>
-      {ONBOARDING_STEPS.map((st, i) => <Enter key={st.n} index={i + 2} style={g.how}>
-        <View style={g.howN}><Text style={g.howNText}>{st.n}</Text></View><View style={{ flex: 1, gap: S.xxs }}><Text style={g.body}>{st.title}</Text><Text style={g.caption}>{st.body}</Text></View>
-      </Enter>)}
+      <Text style={g.body}>How it works</Text>
+      {HOW_IT_WORKS.map((title) => <Text key={title} style={[g.caption, { marginTop: S.sm }]}>{title}</Text>)}
+    </GlassCard>
+    <GlassCard>
+      <Text style={g.overline}>{HOW_IT_SETTLES_TITLE}</Text>
+      <Text style={g.caption}>{HOW_IT_SETTLES}</Text>
     </GlassCard>
     <GlassCard>
       <View style={g.marketLine}>
-        <Text style={g.marketName} android_hyphenationFrequency="none">New York, NY</Text>
-        <StatusTag status={props.live ? "live" : "soon"} label={props.live ? "Open" : "Soon"} />
+        <Text style={g.marketName} android_hyphenationFrequency="none">New York</Text>
+        <StatusTag status={props.live ? "live" : "soon"} label={props.live ? "Open" : "Not open yet"} />
       </View>
-      <Text style={g.caption}>{MARKETS.filter((m) => m.status === "ready").length} more cities opening soon · {concepts} preview cities across {GROUP_ORDER.length} regions</Text>
     </GlassCard>
-    <RadarMap scope="region" onScope={() => props.onBrowse()} focusCode="NYC" highlight={new Set()} onSelect={() => props.onBrowse()} />
-    <View accessibilityRole="text" style={g.testNote}><AppIcon name="info" color={C.amber} size={16} /><Text style={g.testNoteText}>{TEST_TOKEN_NOTE}</Text></View>
-    <View style={{ marginTop: S.xl }}><ActionButton label="Get started · connect wallet" icon="credit-card" busy={props.busy} onPress={props.onConnect} /></View>
-    <SpringPress accessibilityRole="button" onPress={props.onBrowse} style={g.linkBtn}><Text style={g.link}>Look around first →</Text></SpringPress>
+    <Text style={[g.caption, { textAlign: "center" }]}>{LANDING_FINE}</Text>
+    <View style={{ marginTop: S.xl }}><ActionButton label={LANDING_OPEN_APP} icon="arrow-right" busy={props.busy} onPress={props.onBrowse} /></View>
+    <SpringPress accessibilityRole="button" onPress={props.onConnect} style={g.linkBtn}><Text style={g.link}>Connect wallet</Text></SpringPress>
   </Animated.View>;
 }
 
@@ -210,12 +212,12 @@ export function Receipt(props: { title: string; amountLabel: string | null; fact
 const g = StyleSheet.create({
   testNote: { flexDirection: "row", gap: 8, borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, borderRadius: 14, padding: S.md, marginTop: S.lg },
   testNoteText: { ...T.label, fontFamily: F.body, flex: 1, color: C.amber },
-  card: { backgroundColor: glass.fill, borderColor: glass.border, borderWidth: 1, borderRadius: glass.radius, padding: S.lg, marginBottom: S.lg, overflow: "hidden", boxShadow: glass.shadow },
+  card: { backgroundColor: C.surface, borderWidth: 0, borderRadius: 14, padding: S.lg, marginBottom: S.lg, overflow: "hidden" },
   cardEdge: { position: "absolute", top: 0, left: 24, right: 24, height: 1 },
   tag: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 6, borderWidth: 1, borderRadius: 14, paddingHorizontal: 11, minHeight: 28 },
   tagDot: { width: 7, height: 7, borderRadius: 4 },
   tagText: { fontFamily: F.bodyBold, fontSize: 12, letterSpacing: 0.3 },
-  gauge: { width: 52, borderRadius: 16, boxShadow: "inset 0px 2px 8px rgba(0,0,0,0.6)", borderWidth: 1, borderColor: C.border, backgroundColor: C.canvas, overflow: "hidden", justifyContent: "flex-end" },
+  gauge: { width: 52, borderRadius: 16, borderWidth: 1.5, borderColor: C.tick, backgroundColor: C.dryFill, overflow: "hidden", justifyContent: "flex-end" },
   gaugeFill: { width: "100%", overflow: "hidden" },
   gaugeLine: { position: "absolute", left: -2, right: -2, flexDirection: "row", justifyContent: "space-between" },
   gaugeDash: { width: 4, height: 2, backgroundColor: C.payout },

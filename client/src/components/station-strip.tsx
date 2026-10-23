@@ -10,7 +10,7 @@ export function StationStrip({ selected, onSelect }: { selected: string; onSelec
       <ul className="mt-3 flex gap-2 overflow-x-auto pb-2">
         {stations.map((city) => (
           <li key={city.slug}>
-            <button type="button" aria-pressed={city.slug === current} className="min-h-12 whitespace-nowrap rounded-full border px-3 text-left text-sm" style={city.slug === current ? { borderColor: "#F2C230" } : { borderColor: "var(--border)" }} onClick={() => onSelect(city.slug)}>
+            <button type="button" aria-pressed={city.slug === current} className="min-h-12 whitespace-nowrap rounded-[10px] border px-3 text-left text-sm" style={city.slug === current ? { borderColor: "var(--glacier)", background: "var(--glacier-dim)" } : { borderColor: "var(--line)" }} onClick={() => onSelect(city.slug)}>
               <span className="block font-semibold">{city.city}</span>
               <span className="sky-mono block text-xs text-[var(--muted-foreground)]">{city.stationId?.replace(/^GHCND:/, "")}</span>
             </button>

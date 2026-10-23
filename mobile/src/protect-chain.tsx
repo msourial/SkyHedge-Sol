@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import type { WindowEvidencePackage } from "../../shared/window-chain.ts";
 import {
   expiryChipCopy,
@@ -9,12 +8,12 @@ import {
   sortByExpiry,
   triggerRows,
 } from "../../shared/window-chain.ts";
-import { ladderTicks } from "../../shared/protect-copy.ts";
+import { gaugeMarkPlan, gaugeStateLine, ladderTicks, moreTriggersSoon, MARKETS_FOOTER } from "../../shared/protect-copy.ts";
 import { coverageChipOn, gaugeMode, gaugeReading, type ProtectSurface } from "../../shared/protect-surface.ts";
 import { windowStartLabel } from "../../shared/window-chain.ts";
 import { RainGauge } from "./rain-gauge";
 import { useReducedMotion } from "./liquid-glass";
-import { C, F, MIN_TOUCH, space as S, type as T } from "./theme";
+import { C, MIN_TOUCH, space as S, type as T } from "./theme";
 import { Text } from "./ui";
 import type { SellingWindow } from "./windows";
 
@@ -58,7 +57,7 @@ export function ProtectChain(props: {
 
   return <View>
     {props.cities?.length ? <View style={styles.chipWrap}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll} style={styles.chipScroller} accessibilityRole="radiogroup" accessibilityLabel="City, scroll for more">
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll} style={styles.chipScroller} accessibilityRole="radiogroup" accessibilityLabel="City">
         {props.cities.map((city) => {
           const on = city.slug === props.city;
           return <Pressable key={city.slug} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => props.onCity?.(city.slug)} style={[styles.chip, on && styles.chipOn]}>
@@ -66,8 +65,6 @@ export function ProtectChain(props: {
           </Pressable>;
         })}
       </ScrollView>
-      <LinearGradient pointerEvents="none" colors={["rgba(11,18,32,0)", C.canvas]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.chipFade} />
-      <View pointerEvents="none" style={styles.moreWrap}><Text style={styles.moreLabel}>More ›</Text></View>
     </View> : null}
     {windows.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll} style={styles.chipScroller} accessibilityRole="radiogroup" accessibilityLabel="Expiry">
       {windows.map((window) => {
@@ -89,16 +86,14 @@ export function ProtectChain(props: {
     {mode === "skeleton" ? <GaugeSkeleton /> : null}
     {mode === "gauge" ? <View style={{ flexDirection: "row", alignItems: "flex-end", gap: S.sm, marginTop: S.sm }}>
       <View style={{ alignItems: "center" }}>
-        <RainGauge showMm width={172} height={220} maxMm={gaugeMax} level={reading.levelMm / gaugeMax} ticks={ticks.map((tick) => ({ mm: tick.thresholdMm, selected: tick.state === "selected" }))} label={`Rain gauge. ${reading.caption}. Trigger line at ${chosen?.thresholdMm ?? "—"} mm.`} />
-        <Text style={styles.gaugeCaption} numberOfLines={2}>{reading.caption}</Text>
+        <RainGauge showMm width={172} height={220} maxMm={gaugeMax} level={0} ticks={gaugeMarkPlan(ticks.map((tick) => ({ mm: tick.thresholdMm, priced: tick.state !== "soon" })), chosen?.thresholdMm ?? null).map((mark) => ({ mm: mark.mm, selected: mark.selected, labelled: mark.labelled }))} label={`Rain gauge. Trigger line at ${chosen?.thresholdMm ?? "—"} mm.`} />
+        <Text style={styles.gaugeCaption} numberOfLines={2}>{gaugeStateLine({ observedMm: null, updated: null, windowStart: selected ? windowStartLabel(selected) : null })}</Text>
       </View>
       <View accessibilityRole="list" accessibilityLabel="Rain triggers" style={{ flex: 1 }}>
-        {ticks.map((tick) => tick.tappable ? <Pressable key={tick.thresholdMm} accessibilityRole="button" accessibilityState={{ selected: tick.state === "selected" }} onPress={() => setTriggerMm(tick.thresholdMm)} style={[styles.row, tick.state === "selected" && styles.rowOn]}>
-          <Text style={[styles.cell, tick.state === "selected" && styles.cellOn]}>{tick.label}</Text>
-        </Pressable> : <View key={tick.thresholdMm} style={[styles.row, styles.rowSoon]} accessibilityLabel={tick.label}>
-          <Text style={styles.cellSoon}>{tick.label}</Text>
-        </View>)}
-        {ladder.soonCount > 0 ? <Text style={styles.muted}>{ladder.soonCount} more triggers open soon</Text> : null}
+        {ticks.filter((tick) => tick.tappable).map((tick) => <Pressable key={tick.thresholdMm} accessibilityRole="button" accessibilityState={{ selected: tick.state === "selected" }} onPress={() => setTriggerMm(tick.thresholdMm)} style={[styles.row, tick.state === "selected" && styles.rowOn]}>
+          <Text style={styles.cell}>{tick.label}</Text>
+        </Pressable>)}
+        {moreTriggersSoon(ladder.soonCount) ? <Text style={styles.muted}>{moreTriggersSoon(ladder.soonCount)}</Text> : null}
       </View>
     </View> : null}
     {props.surface === "closed" ? <CalmCard
@@ -110,7 +105,7 @@ export function ProtectChain(props: {
     /> : null}
     {props.surface === "error" ? <CalmCard title="Couldn't load prices" action="Retry" onAction={props.onRefresh} /> : null}
     {props.surface === "ready" && mode === "hidden" ? <CalmCard title="Not ready to price yet. A validated NOAA evidence package is not available." action="Refresh" onAction={props.onRefresh} /> : null}
-    <Text style={styles.footnote}>Wind, snow and heat coming</Text>
+    <Text style={styles.footnote}>{MARKETS_FOOTER}</Text>
   </View>;
 }
 
@@ -158,25 +153,19 @@ function GaugeSkeleton() {
 const styles = StyleSheet.create({
   footnote: { ...T.caption, color: C.quiet, marginTop: S.md },
   gaugeCaption: { ...T.caption, color: C.muted, maxWidth: 172, textAlign: "center", marginTop: S.xs },
-  rowOn: { borderLeftWidth: 3, borderLeftColor: "#F2C230", borderColor: "#F2C230" },
-  rowSoon: { opacity: 0.45 },
-  cellOn: { color: "#F2C230" },
-  cellSoon: { ...T.body, color: C.quiet, fontVariant: ["tabular-nums"] },
+  rowOn: { borderWidth: 1.5, borderColor: C.rain, backgroundColor: C.rainSoft },
   amounts: { flexDirection: "row", flexWrap: "wrap", gap: S.sm, marginBottom: S.sm },
   chipWrap: { position: "relative" },
-  chipFade: { position: "absolute", right: 40, top: 0, bottom: S.md, width: 48 },
-  moreWrap: { position: "absolute", right: -18, top: 0, bottom: S.md, justifyContent: "center", paddingLeft: S.sm, paddingRight: 18, backgroundColor: C.canvas },
-  moreLabel: { ...T.caption, color: C.muted, fontFamily: F.bodyMedium },
   chipScroller: { marginHorizontal: -18 },
-  chipScroll: { gap: S.sm, paddingBottom: S.md, paddingLeft: 18, paddingRight: 88 },
-  chip: { minHeight: MIN_TOUCH, minWidth: 108, justifyContent: "center", paddingHorizontal: S.md, paddingVertical: S.xs, borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceRaised },
-  chipOn: { borderColor: "#F2C230", backgroundColor: C.surfaceRaised },
+  chipScroll: { gap: S.sm, paddingBottom: S.md, paddingLeft: 18, paddingRight: 18 },
+  chip: { minHeight: MIN_TOUCH, minWidth: 108, justifyContent: "center", paddingHorizontal: S.md, paddingVertical: S.xs, borderRadius: 999, borderWidth: 0, backgroundColor: C.surfaceRaised },
+  chipOn: { borderWidth: 1.5, borderColor: C.rain, backgroundColor: C.rainSoft },
   chipLabel: { ...T.bodyStrong, color: C.ink },
-  chipLabelOn: { color: C.rainBright },
-  row: { flexDirection: "row", gap: 8, alignItems: "center", alignSelf: "flex-start", minHeight: 36, borderRadius: 12, borderWidth: 1, borderColor: C.border, paddingHorizontal: 8 },
+  chipLabelOn: { color: C.ink },
+  row: { flexDirection: "row", gap: 8, alignItems: "center", alignSelf: "flex-start", minHeight: MIN_TOUCH, borderRadius: 10, borderWidth: 1, borderColor: C.tick, paddingHorizontal: 8 },
   cell: { ...T.bodyStrong, color: C.ink, fontVariant: ["tabular-nums"] },
   muted: { ...T.body, color: C.muted, marginBottom: S.md },
-  calm: { backgroundColor: C.mutedSurface, borderColor: C.border, borderWidth: 1, borderRadius: 16, padding: S.lg, marginBottom: S.md, gap: S.sm },
+  calm: { backgroundColor: C.surface, borderWidth: 0, borderRadius: 14, padding: S.lg, marginBottom: S.md, gap: S.sm },
   calmTitle: { ...T.body, color: C.ink },
   secondary: { alignSelf: "flex-start", minHeight: MIN_TOUCH, justifyContent: "center", paddingHorizontal: S.lg, borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceRaised },
   secondaryLabel: { ...T.bodyStrong, color: C.ink },
@@ -184,6 +173,6 @@ const styles = StyleSheet.create({
   linkLabel: { ...T.bodyStrong, color: C.rainBright },
   skeletonWrap: { flexDirection: "row", alignItems: "flex-end", gap: S.md, marginTop: S.sm, marginBottom: S.md },
   skeletonGauge: { width: 56, height: 180, borderRadius: 18, backgroundColor: C.surfaceRaised, borderWidth: 1, borderColor: C.border },
-  tick: { position: "absolute", right: -12, width: 18, height: 2, borderRadius: 1, backgroundColor: C.quiet },
+  tick: { position: "absolute", right: -12, width: 18, height: 2, borderRadius: 1, backgroundColor: C.tick },
   skeletonRow: { width: 148, height: 28, borderRadius: 10, backgroundColor: C.mutedSurface },
 });

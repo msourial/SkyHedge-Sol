@@ -28,7 +28,7 @@ export function ScreenTop(props: { onBack?: () => void; backIcon?: "chevron-left
 /** Hidden entirely when EXPO_PUBLIC_MARKETING_SHOTS=1 so landing mockups need no badge mask. */
 export function DevnetPill() {
   if (MARKETING_SHOTS) return null;
-  return <View style={j.devnet} accessible accessibilityLabel="Solana Devnet, test token"><Text style={j.devnetText}>Devnet · test token</Text></View>;
+  return <View style={j.devnet} accessible accessibilityLabel="Devnet"><Text style={j.devnetText}>Devnet</Text></View>;
 }
 
 /** Clearly-labelled banner for the hidden demo preview states. */
@@ -179,8 +179,8 @@ const j = StyleSheet.create({
   eyebrow: { ...T.label, color: C.muted, fontFamily: F.bodyMedium, marginBottom: 2 },
   title: { ...T.display, color: C.ink },
   lead: { ...T.lead, color: C.muted, marginTop: S.xs },
-  devnet: { borderWidth: 1, borderColor: C.amber + "8C", backgroundColor: C.amberSoft, borderRadius: 14, paddingHorizontal: 11, paddingVertical: 5, boxShadow: statusGlow(C.amber) },
-  devnetText: { ...T.label, color: C.amber, fontFamily: F.bodyBold, fontSize: 12, lineHeight: 16 },
+  devnet: { backgroundColor: C.surfaceRaised, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 },
+  devnetText: { ...T.label, color: C.muted, fontFamily: F.bodyBold, fontSize: 12, lineHeight: 16 },
   demo: { borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, backgroundColor: C.amberSoft, borderRadius: 14, padding: S.md, marginBottom: S.md },
   demoTitle: { color: C.amber, fontFamily: F.mono, fontWeight: "700", fontSize: 13, letterSpacing: 1.5 },
   demoBody: { ...T.caption, color: C.muted, marginTop: S.xs },

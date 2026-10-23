@@ -64,7 +64,7 @@ export function WalletButton() {
 
   return (
     <div
-      className="relative"
+      className="relative shrink-0"
       data-wallet-state={state}
       onClickCapture={() => {
         setAttempted(true);
@@ -98,7 +98,7 @@ export function WalletButton() {
         <div role="alert" className="absolute right-0 z-[70] mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-[var(--warning)]/50 bg-[var(--surface-2)] p-3 text-xs leading-relaxed text-[var(--muted-foreground)] shadow-2xl">
           <div className="flex items-start gap-2">
             {connected ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--success)]" aria-hidden="true" /> : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden="true" />}
-            <p className="flex-1">{error ?? "No Phantom or Solflare extension was detected here. Open SkyHedge in Chrome or Brave with your wallet extension installed."}</p>
+            <p className="flex-1">{error ?? "No wallet extension was detected. Open SkyHedge in a browser with a Solana wallet installed."}</p>
             <button type="button" onClick={() => { clearError(); setAttempted(false); }} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-[var(--muted-foreground)] hover:bg-[var(--surface-1)] hover:text-[var(--foreground)]" aria-label="Dismiss wallet message"><X className="h-4 w-4" aria-hidden="true" /></button>
           </div>
         </div>

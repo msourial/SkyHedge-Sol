@@ -12,7 +12,7 @@ export function SpringPress({ style, outerStyle, selected, children, ...rest }: 
   const scale = useRef(new Animated.Value(1)).current;
   const first = useRef(true);
   const [pressed, setPressed] = useState(false);
-  const to = (v: number) => { if (reduced) return; Animated.spring(scale, { toValue: v, ...motion.spring, useNativeDriver: true }).start(); };
+  const to = (v: number) => { if (reduced) return; Animated.timing(scale, { toValue: v, duration: motion.pressMs, easing: Easing.bezier(0.23, 1, 0.32, 1), useNativeDriver: true }).start(); };
   useEffect(() => {
     if (first.current) { first.current = false; return; }
     if (!selected || reduced) return;

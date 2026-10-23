@@ -43,6 +43,12 @@ export const C = {
   /** Money / payout figures — distinct from alert amber. */
   payout: "#F2C230",
   payoutSoft: "#2E2414",
+  /** Empty gauge and other non-text fills. 1.78:1 on surface-1, so never use it for type. */
+  dryFill: "#3A4556",
+  /** Closed, Not open yet, Dry week. 4.66:1 on surface-1 and 5.06:1 on canvas. */
+  dryText: "#7A8696",
+  /** Gauge ticks and ladder rungs. 3.30:1 on canvas, 3.04:1 on surface-1. */
+  tick: "#5B6878",
 } as const;
 
 /**
@@ -87,7 +93,8 @@ export const motion = {
   progress: 900,
   stagger: 90,
   enterOffset: 22,
-  pressScale: 0.97,
+  pressScale: 0.96,
+  pressMs: 150,
   spring: { damping: 18, stiffness: 260, mass: 0.9 },
 } as const;
 
