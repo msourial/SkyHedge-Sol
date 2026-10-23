@@ -385,6 +385,15 @@ export function protectGaugeHeight(windowHeight: number): number {
 }
 
 /**
+ * ViewBox font size for ladder labels ("114 mm") so they render at 14px
+ * even when the tube itself is shorter than the 168-unit viewBox.
+ */
+export function ladderLabelFontSize(gaugeHeight: number): number {
+  if (!Number.isFinite(gaugeHeight) || gaugeHeight <= 0) return 14;
+  return 14 * (168 / gaugeHeight);
+}
+
+/**
  * Tube fill as a fraction of max. Empty when there is no observed reading.
  * Paid out with no reading may sit just above the trigger. It never invents millimetres.
  */
