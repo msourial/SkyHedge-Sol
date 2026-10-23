@@ -14,7 +14,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { initialWindowMetrics, SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AdvisoryResponse, AgriculturalMarket, ApiError, ClaimReadiness, CityIndex, DevnetStatus, FinalizedWalletState, getJson, NotAvailableYetError, claimReadinessPath, Portfolio, postJson, ProtectionQuote, UnsignedTransaction } from "./src/api";
 import { DEVNET_RPC_URL, readFinalizedWalletStateAnyRpc, readWalletStateWithFallback } from "./src/chain";
 import { readFinalizedProtections, type ChainProtection } from "./src/positions";
@@ -41,6 +41,8 @@ import { liveMarketLabel, protectCityFor, sellingWindows, windowsForCity, type T
 import { committedWindowLabel, expiryChipLabel, matchingWindowPackage, sortByExpiry, type WindowEvidencePackage } from "../shared/window-chain.ts";
 import { payGet } from "../shared/pay-get.ts";
 import { coverBaseUnits, coverExceedsBalance, formatQuoteSkyt, notEnoughSkyt, protectButtonLabel, stakeSheetForCover, stationDisplayName, type CoverChip } from "../shared/protect-copy.ts";
+import { showCityStep } from "./src/consumer-flow";
+import { loadFirstRunDone, markFirstRunDone } from "./src/first-run";
 import { buyCtaVisible, nextWeeklyOpenCopy, openCityPrompt, protectSurface } from "../shared/protect-surface.ts";
 import { coverageOptions, type CoverageOption } from "./src/ticket";
 import { Landing, MarketDetail } from "./src/revamp";
@@ -70,7 +72,9 @@ export default function App() {
   });
   const [tab, setTab] = useState<Tab>("catalog");
   const [coverConfirm, setCoverConfirm] = useState<{ sentence: string; station: string; expiry: string; windowLabel: string; pay: string; getLabel: string; market: string; amount: string; multiple: string | null; feeLine: string | null; getLine: string | null; preSign: string | null; conditionLine: string | null; placeLine: string | null; triggerLine: string | null; shortLabel: string | null; coverSkyt: CoverChip } | null>(null);
-  const [showGuide, setShowGuide] = useState(true);
+  const [firstRun, setFirstRun] = useState(false);
+  const [stickyHeight, setStickyHeight] = useState(188);
+  const [tabHeight, setTabHeight] = useState(76);
   const [cities, setCities] = useState<CityIndex[]>([]);
   const [catalog, setCatalog] = useState<AgriculturalMarket[]>([]);
   const [status, setStatus] = useState<DevnetStatus | null>(null);
@@ -238,13 +242,22 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    loadWalletSession().then((session) => {
-      if (cancelled || !session) return;
-      setWalletSession(session);
-      setWallet(session.address);
-      setShowLanding(false);
-      void loadWalletData(session.address);
-    }).catch(() => {});
+    Promise.all([
+      loadFirstRunDone().catch(() => false),
+      loadWalletSession().catch(() => null),
+    ]).then(([done, session]) => {
+      if (cancelled) return;
+      if (session) {
+        setWalletSession(session);
+        setWallet(session.address);
+        setShowLanding(false);
+        setFirstRun(false);
+        void markFirstRunDone();
+        void loadWalletData(session.address);
+        return;
+      }
+      if (!done) setFirstRun(true);
+    }).catch(() => { if (!cancelled) setFirstRun(true); });
     return () => { cancelled = true; };
   }, [loadWalletData]);
 
@@ -314,6 +327,16 @@ export default function App() {
   const nextOpenCopy = nextWeeklyOpenCopy(protectCity, nowSeconds);
   const openCity = openCityPrompt(selling, protectCity);
   const activePackage = matchingWindowPackage(windowEvidence, protectCity, activeWindow?.observationStart, activeWindow?.observationEnd);
+  const hasPosition = (chainPositions?.length ?? 0) > 0;
+  const cityStep = showCityStep({ firstRun, walletConnected: !!wallet, hasPosition });
+  const safeBottom = initialWindowMetrics?.insets.bottom ?? 0;
+  const stickyOpen = !showLanding && tab === "protect" && (demo === "collect" || (!demo && buyCtaVisible(protectView, !!activePackage)));
+  const scrollBottom = (stickyOpen ? stickyHeight : 0) + (showLanding ? 0 : tabHeight) + safeBottom + 16;
+  useEffect(() => {
+    if (!wallet && !hasPosition) return;
+    setFirstRun(false);
+    void markFirstRunDone();
+  }, [wallet, hasPosition]);
   useEffect(() => {
     let cancelled = false;
     setEvidenceLoading(true);
@@ -537,7 +560,7 @@ export default function App() {
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottom }]}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.rain} />}
       >
@@ -563,8 +586,8 @@ export default function App() {
             city={city}
             indicativeQuote={indicativeQuote}
             nowSeconds={nowSeconds}
-            showGuide={showGuide}
-            onProtect={(code) => { const slug = consumerCityByCode(code)?.slug; if (!slug) return; setShowGuide(false); changeCity(slug); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
+            showGuide={cityStep}
+            onProtect={(code) => { const slug = consumerCityByCode(code)?.slug; if (!slug) return; setFirstRun(false); void markFirstRunDone(); changeCity(slug); setSelectedHazard("rainfall"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
             guide={<>
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: guideOpen }} accessibilityLabel="Describe your plans and let the guide find a market" onPress={() => setGuideOpen((open) => !open)} style={styles.guideToggle}><AppIcon name="message-circle" color={C.rain} size={20} /><Text style={styles.guideToggleText}>Describe your plans instead</Text><AppIcon name={guideOpen ? "chevron-up" : "chevron-down"} color={C.muted} size={18} /></Pressable>
               {guideOpen ? <GuidePanel turns={guideTurns} busy={guideBusy} onSend={(message) => { void askGuide(message); }} onViewMatch={(result) => { if (result.match?.slug !== "des-moines") return; changeCity("des-moines"); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} /> : null}
@@ -679,8 +702,8 @@ export default function App() {
         </ScreenTransition>
       </ScrollView>
 
-      {!showLanding && tab === "protect" && demo === "collect" ? <StickyCta label="Collect payout to wallet" disabled hint="DEMO preview — disabled, nothing to sign" onPress={() => {}} /> : null}
-      {!showLanding && tab === "protect" && !demo && buyCtaVisible(protectView, !!activePackage) ? (() => {
+      {!showLanding && tab === "protect" && demo === "collect" ? <View onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><StickyCta label="Collect payout to wallet" disabled hint="DEMO preview — disabled, nothing to sign" onPress={() => {}} /></View> : null}
+      {!showLanding && tab === "protect" && !demo && buyCtaVisible(protectView, !!activePackage) ? <View onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}>{(() => {
         if (!status) return null;
         const claimable = claimReadiness?.state === "claimable" && claimReadiness.action;
         if (claimable) return <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness?.action) void submitApprovedAction(claimReadiness.action); }} />;
@@ -748,7 +771,7 @@ export default function App() {
             });
           }}
         />;
-      })() : null}
+      })()}</View> : null}
       {coverConfirm ? <ConfirmCover {...coverConfirm} onClose={() => setCoverConfirm(null)} onCover={(skyt) => {
         const option = coverageOptions(walletBalances ? String(walletBalances.skytBaseUnits) : null).find((item) => item.id === String(skyt));
         if (option) chooseCoverage(option);
@@ -775,7 +798,7 @@ export default function App() {
         const pending = coverConfirm;
         handleConfirmApprove({ close: () => setCoverConfirm(null), signOpenPosition: () => { void submitApprovedAction("open_position", pending.market, pending.amount); } });
       }} /> : null}
-      {showLanding ? null : <View style={styles.bottomBar} accessibilityRole="tablist" accessibilityLabel="Main navigation">
+      {showLanding ? null : <View style={styles.bottomBar} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setTabHeight((prev) => prev === next ? prev : next); }} accessibilityRole="tablist" accessibilityLabel="Main navigation">
         <TabButton label="Markets" icon="map-pin" selected={tab === "catalog" || tab === "weather"} onPress={() => { setDemo(null); setTab("catalog"); setDetailCode(null); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} />
         <TabButton label="Protect" icon="shield" selected={tab === "protect"} onPress={() => setTab("protect")} />
         <TabButton label="Wallet" icon="credit-card" selected={tab === "wallet"} onPress={() => { setDemo(null); setTab("wallet"); }} />

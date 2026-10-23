@@ -14,6 +14,11 @@ export type FlowStep = 1 | 2 | 3;
 export const FLOW_STEP_LABELS: Record<FlowStep, string> = { 1: "Choose a city", 2: "Choose an amount", 3: "Review in wallet" };
 export function stepLabel(step: FlowStep): string { return `Step ${step} of 3 · ${FLOW_STEP_LABELS[step]}`; }
 
+/** Markets step label is first-run only, and only before a wallet or a position exists. */
+export function showCityStep(input: { firstRun: boolean; walletConnected: boolean; hasPosition: boolean }): boolean {
+  return input.firstRun && !input.walletConnected && !input.hasPosition;
+}
+
 function rainCondition(thresholdMmX100: string | null | undefined, operator: string | null | undefined): string | null {
   if (!thresholdMmX100 || !/^\d+$/.test(thresholdMmX100)) return null;
   const mm = trimMm(Number(thresholdMmX100) / 100);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { dealSentence, payoutStage, stepLabel, ONBOARDING_STEPS, TEST_TOKEN_NOTE } from "./consumer-flow.ts";
+import { dealSentence, payoutStage, showCityStep, stepLabel, ONBOARDING_STEPS, TEST_TOKEN_NOTE } from "./consumer-flow.ts";
 
 const B = 1_000_000n;
 describe("consumer flow copy", () => {
@@ -17,6 +17,12 @@ describe("consumer flow copy", () => {
     assert.equal(payoutStage({ state: "claimable", action: "claim_payout" })?.key, "triggered");
     assert.equal(payoutStage({ state: "claimable", action: "claim_premium_refund" })?.key, "refund");
     assert.equal(payoutStage({ state: "not_claimable", action: null })?.key, "not_triggered");
+  });
+  it("shows the city step only on a first run with no wallet and no position", () => {
+    assert.equal(showCityStep({ firstRun: true, walletConnected: false, hasPosition: false }), true);
+    assert.equal(showCityStep({ firstRun: false, walletConnected: false, hasPosition: false }), false);
+    assert.equal(showCityStep({ firstRun: true, walletConnected: true, hasPosition: false }), false);
+    assert.equal(showCityStep({ firstRun: true, walletConnected: false, hasPosition: true }), false);
   });
   it("avoids jargon", () => {
     const all = [TEST_TOKEN_NOTE, stepLabel(2), ...ONBOARDING_STEPS.flatMap((s) => [s.title, s.body])].join(" ").toLowerCase();

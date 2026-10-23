@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Animated, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Animated, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import type { WindowEvidencePackage } from "../../shared/window-chain.ts";
 import {
   expiryChipCopy,
@@ -8,7 +8,7 @@ import {
   sortByExpiry,
   triggerRows,
 } from "../../shared/window-chain.ts";
-import { gaugeMarkPlan, gaugeStateLine, ladderTicks, moreTriggersSoon, MARKETS_FOOTER } from "../../shared/protect-copy.ts";
+import { gaugeMarkPlan, gaugeStateLine, gaugeTickOffset, ladderTicks, MARKETS_FOOTER, protectGaugeHeight } from "../../shared/protect-copy.ts";
 import { coverageChipOn, gaugeMode, gaugeReading, type ProtectSurface } from "../../shared/protect-surface.ts";
 import { windowStartLabel } from "../../shared/window-chain.ts";
 import { RainGauge } from "./rain-gauge";
@@ -54,6 +54,17 @@ export function ProtectChain(props: {
   const gaugeMax = Math.max(1, reading.levelMm, ...ticks.map((tick) => tick.thresholdMm)) * 1.2;
   const priced = ladder.priced.length > 0 && props.surface === "ready";
   const mode = gaugeMode({ surface: props.surface, evidenceLoading: props.evidenceLoading, pricedRowCount: ladder.priced.length });
+  const { height: windowHeight } = useWindowDimensions();
+  const gaugeHeight = protectGaugeHeight(windowHeight);
+  const placed = ticks
+    .filter((tick) => tick.tappable)
+    .map((tick) => ({ tick, top: gaugeTickOffset(tick.thresholdMm, gaugeMax, gaugeHeight, MIN_TOUCH) }))
+    .sort((left, right) => left.top - right.top || left.tick.thresholdMm - right.tick.thresholdMm);
+  for (let index = 1; index < placed.length; index += 1) {
+    const previous = placed[index - 1];
+    const current = placed[index];
+    if (previous && current && current.top < previous.top + MIN_TOUCH + 4) current.top = Math.min(gaugeHeight - MIN_TOUCH, previous.top + MIN_TOUCH + 4);
+  }
 
   return <View>
     {props.cities?.length ? <View style={styles.chipWrap}>
@@ -84,17 +95,16 @@ export function ProtectChain(props: {
       })}
     </View> : null}
     {mode === "skeleton" ? <GaugeSkeleton /> : null}
-    {mode === "gauge" ? <View style={{ flexDirection: "row", alignItems: "flex-end", gap: S.sm, marginTop: S.sm }}>
-      <View style={{ alignItems: "center" }}>
-        <RainGauge showMm width={172} height={220} maxMm={gaugeMax} level={0} ticks={gaugeMarkPlan(ticks.map((tick) => ({ mm: tick.thresholdMm, priced: tick.state !== "soon" })), chosen?.thresholdMm ?? null).map((mark) => ({ mm: mark.mm, selected: mark.selected, labelled: mark.labelled }))} label={`Rain gauge. Trigger line at ${chosen?.thresholdMm ?? "—"} mm.`} />
-        <Text style={styles.gaugeCaption} numberOfLines={2}>{gaugeStateLine({ observedMm: null, updated: null, windowStart: selected ? windowStartLabel(selected) : null })}</Text>
+    {mode === "gauge" ? <View style={styles.gaugeBlock}>
+      <View style={styles.gaugeRow}>
+        <RainGauge showMm width={120} height={gaugeHeight} maxMm={gaugeMax} level={0} ticks={gaugeMarkPlan(ticks.map((tick) => ({ mm: tick.thresholdMm, priced: tick.state !== "soon" })), chosen?.thresholdMm ?? null).map((mark) => ({ mm: mark.mm, selected: mark.selected, labelled: mark.labelled }))} label={`Rain gauge. Trigger line at ${chosen?.thresholdMm ?? "—"} mm.`} />
+        <View accessibilityRole="list" accessibilityLabel="Rain triggers" style={[styles.triggerLane, { height: gaugeHeight }]}>
+          {placed.map(({ tick, top }) => <Pressable key={tick.thresholdMm} accessibilityRole="button" accessibilityState={{ selected: tick.state === "selected" }} onPress={() => setTriggerMm(tick.thresholdMm)} style={[styles.triggerChip, tick.state === "selected" && styles.triggerChipOn, { top }]}>
+            <Text style={styles.cell} numberOfLines={1}>{tick.label}</Text>
+          </Pressable>)}
+        </View>
       </View>
-      <View accessibilityRole="list" accessibilityLabel="Rain triggers" style={{ flex: 1 }}>
-        {ticks.filter((tick) => tick.tappable).map((tick) => <Pressable key={tick.thresholdMm} accessibilityRole="button" accessibilityState={{ selected: tick.state === "selected" }} onPress={() => setTriggerMm(tick.thresholdMm)} style={[styles.row, tick.state === "selected" && styles.rowOn]}>
-          <Text style={styles.cell}>{tick.label}</Text>
-        </Pressable>)}
-        {moreTriggersSoon(ladder.soonCount) ? <Text style={styles.muted}>{moreTriggersSoon(ladder.soonCount)}</Text> : null}
-      </View>
+      <Text style={styles.gaugeCaption} numberOfLines={2}>{gaugeStateLine({ observedMm: null, updated: null, windowStart: selected ? windowStartLabel(selected) : null })}</Text>
     </View> : null}
     {props.surface === "closed" ? <CalmCard
       title={props.nextOpenCopy ?? "The next weekly window is not on the schedule yet."}
@@ -152,8 +162,12 @@ function GaugeSkeleton() {
 
 const styles = StyleSheet.create({
   footnote: { ...T.caption, color: C.quiet, marginTop: S.md },
-  gaugeCaption: { ...T.caption, color: C.muted, maxWidth: 172, textAlign: "center", marginTop: S.xs },
-  rowOn: { borderWidth: 1.5, borderColor: C.rain, backgroundColor: C.rainSoft },
+  gaugeBlock: { marginTop: S.sm, marginBottom: S.md },
+  gaugeRow: { flexDirection: "row", alignItems: "flex-start", gap: S.md },
+  triggerLane: { flex: 1, minWidth: 0, position: "relative" },
+  triggerChip: { position: "absolute", left: 0, maxWidth: "100%", minHeight: MIN_TOUCH, justifyContent: "center", borderRadius: 999, borderWidth: 0, backgroundColor: C.surfaceRaised, paddingHorizontal: S.md },
+  triggerChipOn: { borderWidth: 1.5, borderColor: C.rain, backgroundColor: C.rainSoft },
+  gaugeCaption: { ...T.caption, color: C.muted, marginTop: S.sm },
   amounts: { flexDirection: "row", flexWrap: "wrap", gap: S.sm, marginBottom: S.sm },
   chipWrap: { position: "relative" },
   chipScroller: { marginHorizontal: -18 },
@@ -162,9 +176,7 @@ const styles = StyleSheet.create({
   chipOn: { borderWidth: 1.5, borderColor: C.rain, backgroundColor: C.rainSoft },
   chipLabel: { ...T.bodyStrong, color: C.ink },
   chipLabelOn: { color: C.ink },
-  row: { flexDirection: "row", gap: 8, alignItems: "center", alignSelf: "flex-start", minHeight: MIN_TOUCH, borderRadius: 10, borderWidth: 1, borderColor: C.tick, paddingHorizontal: 8 },
   cell: { ...T.bodyStrong, color: C.ink, fontVariant: ["tabular-nums"] },
-  muted: { ...T.body, color: C.muted, marginBottom: S.md },
   calm: { backgroundColor: C.surface, borderWidth: 0, borderRadius: 14, padding: S.lg, marginBottom: S.md, gap: S.sm },
   calmTitle: { ...T.body, color: C.ink },
   secondary: { alignSelf: "flex-start", minHeight: MIN_TOUCH, justifyContent: "center", paddingHorizontal: S.lg, borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceRaised },
