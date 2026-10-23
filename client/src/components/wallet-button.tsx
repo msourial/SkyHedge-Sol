@@ -64,7 +64,7 @@ export function WalletButton() {
 
   return (
     <div
-      className="relative"
+      className="relative shrink-0"
       data-wallet-state={state}
       onClickCapture={() => {
         setAttempted(true);

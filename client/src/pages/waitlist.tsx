@@ -5,7 +5,9 @@ import { PhoneMockup, PhoneMockupStack } from "@/components/phone-mockup";
 import { WaitlistForm } from "@/components/waitlist-form";
 import { CONSUMER_CITIES } from "../../../shared/consumer-cities";
 import { useSalesChips } from "@/lib/sales-chips";
-import { HOW_IT_SETTLES, HOW_IT_SETTLES_TITLE, HOW_IT_WORKS, LANDING_FINE, LANDING_HEADER_APP, LANDING_HERO_LEAD, LANDING_HERO_TITLE, LANDING_OPEN_APP, LANDING_WAITLIST, TORONTO_WAITING, productStatusLabel } from "../../../shared/protect-copy";
+import { COVER_CHIPS, HOW_IT_SETTLES, HOW_IT_SETTLES_TITLE, HOW_IT_WORKS, LANDING_FINE, LANDING_HEADER_APP, LANDING_HERO_LEAD, LANDING_HERO_TITLE, LANDING_OPEN_APP, LANDING_WAITLIST, TORONTO_WAITING, gaugeWaterLevel, productStatusLabel, type CoverChip } from "../../../shared/protect-copy";
+import { payGet } from "../../../shared/pay-get";
+import { QuoteAmount } from "@/components/figure";
 import { RainGauge, gaugeTicks } from "@/components/rain-gauge";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -83,45 +85,30 @@ function prefersReducedMotion() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function LandingGauge() {
+function LandingFigure() {
   const status = useQuery({ queryKey: ["devnet-status"], queryFn: () => api<DevnetStatus>("/api/devnet/status"), retry: false });
+  const [cover, setCover] = useState<CoverChip>(100);
   const now = Math.floor(Date.now() / 1000);
   const next = (status.data?.cityWindows ?? [])
-    .filter((window) => window.city === "new-york" && window.salesCloseAt != null && window.salesCloseAt > now && window.thresholdMmX100 && /^\d+$/.test(window.thresholdMmX100))
+    .filter((window) => window.city === "new-york" && window.salesCloseAt != null && window.salesCloseAt > now && window.thresholdMmX100 && /^\d+$/.test(window.thresholdMmX100) && window.premiumRateBps != null && window.quoteProbabilityBps != null)
     .sort((left, right) => left.observationEnd - right.observationEnd)[0];
   const mm = next?.thresholdMmX100 ? Number(next.thresholdMmX100) / 100 : null;
-  if (mm == null) return <RainGauge level={0} ticks={[]} label="Empty rain gauge" />;
-  return <RainGauge level={1} ticks={gaugeTicks([{ mm, selected: true }], mm)} label={`New York trigger line at ${mm} mm`} />;
-}
-
-function usePhoneParallax(enabled: boolean) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!enabled) return;
-    const node = ref.current;
-    if (!node) return;
-    if (prefersReducedMotion()) return;
-    let frame = 0;
-    const onScroll = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const rect = node.getBoundingClientRect();
-        const view = window.innerHeight || 1;
-        const progress = (rect.top + rect.height * 0.35) / view;
-        const offset = Math.max(-14, Math.min(14, (0.45 - progress) * 28));
-        const tilt = Math.max(-2.2, Math.min(2.2, (0.42 - progress) * 4.4));
-        node.style.setProperty("--wl-parallax", `${offset.toFixed(2)}px`);
-        node.style.setProperty("--wl-tilt", `${tilt.toFixed(2)}deg`);
-      });
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScroll);
-    };
-  }, [enabled]);
-  return ref;
+  const maxMm = mm != null && mm > 0 ? mm * 1.25 : 1;
+  const deal = next && mm != null && next.premiumRateBps != null && next.quoteProbabilityBps != null
+    ? payGet({ coverageSkyt: cover, premiumRateBps: next.premiumRateBps, probabilityBps: next.quoteProbabilityBps })
+    : null;
+  return <figure className="landing-figure">
+    <RainGauge labelled level={gaugeWaterLevel({ observedMm: null, maxMm, triggerMm: mm })} ticks={mm != null ? gaugeTicks([{ mm, selected: true }], maxMm) : []} label={mm != null ? `New York trigger line at ${mm} mm` : "Empty rain gauge"} />
+    <div className="landing-figure__quote">
+      <div className="landing-figure__chips" role="radiogroup" aria-label="New York cover amount">
+        {COVER_CHIPS.map((chip) => <button key={chip} type="button" role="radio" aria-checked={chip === cover} className={chip === cover ? "gauge-chip gauge-chip--on" : "gauge-chip"} onClick={() => setCover(chip)}>{chip}</button>)}
+      </div>
+      {deal ? <>
+        <p><span className="t-label">You pay</span> <QuoteAmount amount={deal.payLabel} /></p>
+        <p><span className="t-label">You get</span> <QuoteAmount amount={deal.getLabel} slicker hero /></p>
+      </> : <p className="t-small">New York isn't open yet.</p>}
+    </div>
+  </figure>;
 }
 
 function useStickyStepScreen() {
@@ -195,7 +182,6 @@ function usePauseWhenHidden(ref: { current: HTMLElement | null }) {
 
 export default function WaitlistPage() {
   const heroRef = useRef<HTMLElement>(null);
-  const heroPhoneRef = usePhoneParallax(true);
   const { active, stepRefs } = useStickyStepScreen();
   useStepRise(stepRefs);
   usePauseWhenHidden(heroRef);
@@ -237,6 +223,7 @@ export default function WaitlistPage() {
               {LANDING_HERO_TITLE}
             </h1>
             <p className="wl-hero__lead">{LANDING_HERO_LEAD}</p>
+            <LandingFigure />
             <div id="waitlist" className="wl-hero__form">
               <div className="wl-hero__cta">
                 <Link to="/app" className="wl-nav__cta">
@@ -248,9 +235,6 @@ export default function WaitlistPage() {
               </div>
               <p className="wl-hero__fine">{LANDING_FINE}</p>
             </div>
-          </div>
-          <div ref={heroPhoneRef} className="wl-hero__phone wl-hero__phone--enter">
-            <LandingGauge />
           </div>
         </section>
 
@@ -274,9 +258,6 @@ export default function WaitlistPage() {
                     aria-current={index === active ? "step" : undefined}
                   >
                     <div className="wl-how__copy">
-                      <span className="wl-how__num" aria-hidden="true">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
                       <h3>{step.title}</h3>
                       <p>{step.body}</p>
                     </div>

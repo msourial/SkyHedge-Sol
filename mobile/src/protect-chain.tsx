@@ -86,7 +86,7 @@ export function ProtectChain(props: {
     {mode === "skeleton" ? <GaugeSkeleton /> : null}
     {mode === "gauge" ? <View style={{ flexDirection: "row", alignItems: "flex-end", gap: S.sm, marginTop: S.sm }}>
       <View style={{ alignItems: "center" }}>
-        <RainGauge showMm width={172} height={220} maxMm={gaugeMax} level={chosen ? chosen.thresholdMm / gaugeMax : 0} ticks={gaugeMarkPlan(ticks.map((tick) => ({ mm: tick.thresholdMm, priced: tick.state !== "soon" })), chosen?.thresholdMm ?? null).map((mark) => ({ mm: mark.mm, selected: mark.selected, labelled: mark.labelled }))} label={`Rain gauge. Trigger line at ${chosen?.thresholdMm ?? "—"} mm.`} />
+        <RainGauge showMm width={172} height={220} maxMm={gaugeMax} level={0} ticks={gaugeMarkPlan(ticks.map((tick) => ({ mm: tick.thresholdMm, priced: tick.state !== "soon" })), chosen?.thresholdMm ?? null).map((mark) => ({ mm: mark.mm, selected: mark.selected, labelled: mark.labelled }))} label={`Rain gauge. Trigger line at ${chosen?.thresholdMm ?? "—"} mm.`} />
         <Text style={styles.gaugeCaption} numberOfLines={2}>{gaugeStateLine({ observedMm: null, updated: null, windowStart: selected ? windowStartLabel(selected) : null })}</Text>
       </View>
       <View accessibilityRole="list" accessibilityLabel="Rain triggers" style={{ flex: 1 }}>
@@ -158,14 +158,14 @@ const styles = StyleSheet.create({
   chipWrap: { position: "relative" },
   chipScroller: { marginHorizontal: -18 },
   chipScroll: { gap: S.sm, paddingBottom: S.md, paddingLeft: 18, paddingRight: 18 },
-  chip: { minHeight: MIN_TOUCH, minWidth: 108, justifyContent: "center", paddingHorizontal: S.md, paddingVertical: S.xs, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceRaised },
+  chip: { minHeight: MIN_TOUCH, minWidth: 108, justifyContent: "center", paddingHorizontal: S.md, paddingVertical: S.xs, borderRadius: 999, borderWidth: 0, backgroundColor: C.surfaceRaised },
   chipOn: { borderWidth: 1.5, borderColor: C.rain, backgroundColor: C.rainSoft },
   chipLabel: { ...T.bodyStrong, color: C.ink },
   chipLabelOn: { color: C.ink },
   row: { flexDirection: "row", gap: 8, alignItems: "center", alignSelf: "flex-start", minHeight: MIN_TOUCH, borderRadius: 10, borderWidth: 1, borderColor: C.tick, paddingHorizontal: 8 },
   cell: { ...T.bodyStrong, color: C.ink, fontVariant: ["tabular-nums"] },
   muted: { ...T.body, color: C.muted, marginBottom: S.md },
-  calm: { backgroundColor: C.mutedSurface, borderColor: C.border, borderWidth: 1, borderRadius: 16, padding: S.lg, marginBottom: S.md, gap: S.sm },
+  calm: { backgroundColor: C.surface, borderWidth: 0, borderRadius: 14, padding: S.lg, marginBottom: S.md, gap: S.sm },
   calmTitle: { ...T.body, color: C.ink },
   secondary: { alignSelf: "flex-start", minHeight: MIN_TOUCH, justifyContent: "center", paddingHorizontal: S.lg, borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceRaised },
   secondaryLabel: { ...T.bodyStrong, color: C.ink },

@@ -30,11 +30,11 @@ export function RainGauge({ level, ticks, label, rising = true, labelled = false
       {visible.map((tick) => {
         const y = 148 - 128 * Math.min(1, Math.max(0, tick.fraction));
         const showLabel = tick.labelled !== false && Boolean(tick.label);
-        const x2 = tick.selected ? 68 : showLabel ? 60 : 56;
+        const x2 = tick.selected ? (labelled ? 62 : 56) : showLabel ? 58 : 56;
         return (
           <g key={tick.id} className={tick.selected ? "rain-gauge__trigger" : undefined}>
             <line x1="48" x2={x2} y1={y} y2={y} stroke={tick.selected ? "var(--slicker)" : "var(--tick)"} strokeWidth={tick.selected ? 2 : 1.5} />
-            {showLabel ? <text x={labelled ? 72 : 62} y={y + 3} fill={tick.selected ? "var(--slicker)" : "var(--fg-3)"} fontSize={labelled ? 11 : 9} fontFamily="IBM Plex Mono, ui-monospace, monospace">{tick.label}</text> : null}
+            {showLabel ? <text className="t-tick" x={labelled ? 78 : 64} y={y + 4} fill={tick.selected ? "var(--slicker)" : "var(--fg-3)"} fontSize="11" fontWeight="500" fontFamily="IBM Plex Mono, ui-monospace, monospace">{tick.label}</text> : null}
           </g>
         );
       })}

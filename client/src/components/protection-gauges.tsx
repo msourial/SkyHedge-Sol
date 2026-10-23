@@ -5,7 +5,8 @@ import type { ClaimReadiness, DevnetStatus, Portfolio } from "@/lib/types";
 import { RainGauge, gaugeTicks } from "@/components/rain-gauge";
 import { consumerCityBySlug } from "../../../shared/consumer-cities";
 import { payGet } from "../../../shared/pay-get";
-import { COVERED_TITLE, EXPLORER_LINK_LABEL, ONE_PROTECTION_NOTE, coveredPlaceLine, coveredReceiptRows, devnetExplorerUrl, formatQuoteSkyt, stationDisplayName, windowStamp } from "../../../shared/protect-copy";
+import { COVERED_TITLE, EXPLORER_LINK_LABEL, ONE_PROTECTION_NOTE, coveredPlaceLine, coveredReceiptRows, devnetExplorerUrl, formatQuoteSkyt, gaugeWaterLevel, stationDisplayName, windowStamp } from "../../../shared/protect-copy";
+import { MixedCopy } from "@/components/figure";
 import { committedWindowLabel, windowStartLabel } from "../../../shared/window-chain";
 
 type WindowRow = NonNullable<DevnetStatus["cityWindows"]>[number];
@@ -33,8 +34,8 @@ function ProtectionGauge({ protection, window }: { protection: Portfolio["protec
   const trigger = millimetres(window?.thresholdMmX100);
   const observed = millimetres(claim.data?.observation?.rainfallMmX100);
   const maxMm = trigger ? trigger * 1.25 : 1;
-  const level = trigger != null && observed != null ? Math.min(1, observed / maxMm) : 0;
   const refund = state === "claimed" && (claim.data?.action === "claim_premium_refund" || /refund/i.test(claim.data?.result ?? ""));
+  const level = gaugeWaterLevel({ observedMm: observed, maxMm, triggerMm: trigger, paidOut: state === "claimed" && !refund });
   const payoutLabel = formatQuoteSkyt(protection.protectedAmount, 0);
   const stamp = windowStamp({
     closed: settled,
@@ -57,16 +58,16 @@ function ProtectionGauge({ protection, window }: { protection: Portfolio["protec
   const city = window ? consumerCityBySlug(window.city) : null;
   const place = coveredPlaceLine({ city: city?.city, station: stationDisplayName(city?.source), windowLabel });
   const explorer = devnetExplorerUrl({ address: protection.address });
-  return <article className="flex min-w-0 items-start gap-4 rounded-[14px] border border-[var(--line)] bg-[var(--surface-1)] p-4">
+  return <article className="flex min-w-0 items-start gap-4 rounded-[14px] bg-[var(--surface-1)] p-4">
     <RainGauge level={level} ticks={trigger != null ? gaugeTicks([{ mm: trigger, selected: true }], maxMm) : []} label={trigger != null ? `Trigger line at ${trigger} mm` : "Rain gauge"} />
     <div className="min-w-0 flex-1">
       {stamp ? <p className={`receipt-stamp receipt-stamp--${stamp.tone}`}>{stamp.title}<span className="mt-1 block font-sans text-[0.7rem] font-normal">{stamp.subline}</span></p> : null}
       <h3 className="text-base font-semibold">{COVERED_TITLE}</h3>
       {place ? <p className="mt-1 text-sm text-[var(--fg-2)]">{place}</p> : null}
-      <dl className="mt-2 space-y-1 font-mono text-sm">
+      <dl className="mt-2 space-y-1 text-sm">
         {rows.map((row) => <div key={row.label} className="flex items-baseline justify-between gap-3">
-          <dt className="text-[var(--fg-3)]">{row.label}</dt>
-          <dd className={row.payout ? "text-[var(--slicker)]" : "text-[var(--fg)]"}>{row.value}</dd>
+          <dt className="t-label">{row.label}</dt>
+          <dd className={row.payout ? "is-payout" : undefined}><MixedCopy text={row.value} /></dd>
         </div>)}
       </dl>
       {settled ? <p className="mt-2 text-sm font-semibold text-[var(--fg-2)]">Settled</p> : <p className="mt-2 text-sm font-semibold text-[var(--glacier)]">Active</p>}
@@ -109,16 +110,17 @@ export function DevStampPreview({ windows }: { windows: readonly WindowRow[] }) 
     windowStart: windowStartLabel(source),
   });
   const place = coveredPlaceLine({ city: city?.city, station: stationDisplayName(city?.source), windowLabel });
-  return <article className="flex min-w-0 items-start gap-4 rounded-[14px] border border-[var(--line)] bg-[var(--surface-1)] p-4">
-    <RainGauge level={observed != null ? Math.min(1, observed / (trigger * 1.25)) : 1} ticks={gaugeTicks([{ mm: trigger, selected: true }], trigger * 1.25)} label={`Trigger line at ${trigger} mm`} />
+  const maxMm = trigger * 1.25;
+  return <article className="flex min-w-0 items-start gap-4 rounded-[14px] bg-[var(--surface-1)] p-4">
+    <RainGauge level={gaugeWaterLevel({ observedMm: observed, maxMm, triggerMm: trigger, paidOut: kind === "paid" })} ticks={gaugeTicks([{ mm: trigger, selected: true }], maxMm)} label={`Trigger line at ${trigger} mm`} />
     <div className="min-w-0 flex-1">
       <p className={`receipt-stamp receipt-stamp--${stamp.tone}`}>{stamp.title}<span className="mt-1 block font-sans text-[0.7rem] font-normal">{stamp.subline}</span></p>
       <h3 className="text-base font-semibold">{COVERED_TITLE}</h3>
       {place ? <p className="mt-1 text-sm text-[var(--fg-2)]">{place}</p> : null}
-      <dl className="mt-2 space-y-1 font-mono text-sm">
+      <dl className="mt-2 space-y-1 text-sm">
         {rows.map((row) => <div key={row.label} className="flex items-baseline justify-between gap-3">
-          <dt className="text-[var(--fg-3)]">{row.label}</dt>
-          <dd className={row.payout ? "text-[var(--slicker)]" : "text-[var(--fg)]"}>{row.value}</dd>
+          <dt className="t-label">{row.label}</dt>
+          <dd className={row.payout ? "is-payout" : undefined}><MixedCopy text={row.value} /></dd>
         </div>)}
       </dl>
     </div>

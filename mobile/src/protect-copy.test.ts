@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { marketStatus } from "../../shared/pay-get.ts";
-import { COVER_CHIPS, coveredReceiptRows, forecasterBand, forecasterCopy, ladderTicks, marketRowModel, marketStatusInk, moreTriggersSoon, protectButtonLabel, stakeSheetForCover, stationDisplayName, windowStamp } from "../../shared/protect-copy.ts";
+import { COVER_CHIPS, HOW_IT_SETTLES, WALLET_CHAIN_ERROR, coveredReceiptRows, forecasterBand, forecasterCopy, gaugeWaterLevel, ladderTicks, marketRowModel, marketStatusInk, moreTriggersSoon, protectButtonLabel, stakeSheetForCover, stationDisplayName, windowStamp } from "../../shared/protect-copy.ts";
 import { triggerRows } from "../../shared/window-chain.ts";
 
 const HASH = "ab".repeat(32);
@@ -144,6 +144,17 @@ describe("window stamps", () => {
     assert.equal(windowStamp({ closed: true, paidOut: false, payoutLabel: "100", observedMm: 4, triggerMm: 40, monthly: true })?.title, "Dry month · 4 of 40 mm");
     assert.equal(windowStamp({ closed: true, paidOut: false, payoutLabel: "100", observedMm: null, triggerMm: 69, monthly: false }), null);
     assert.equal(windowStamp({ closed: true, paidOut: true, payoutLabel: null, observedMm: 80, triggerMm: 69, monthly: false }), null);
+  });
+});
+
+describe("gauge water", () => {
+  it("stays empty without a reading and follows observed millimetres", () => {
+    assert.equal(gaugeWaterLevel({ observedMm: null, maxMm: 86.25, triggerMm: 69 }), 0);
+    assert.equal(gaugeWaterLevel({ observedMm: 12, maxMm: 86.25, triggerMm: 69 }).toFixed(2), (12 / 86.25).toFixed(2));
+    const paid = gaugeWaterLevel({ observedMm: null, maxMm: 86.25, triggerMm: 69, paidOut: true });
+    assert.ok(paid > 69 / 86.25 && paid < 1);
+    assert.equal(WALLET_CHAIN_ERROR, "Can't read Devnet right now. Nothing is shown until it's back. Try again in a minute.");
+    assert.match(HOW_IT_SETTLES, /WeatherXM is context only/);
   });
 });
 

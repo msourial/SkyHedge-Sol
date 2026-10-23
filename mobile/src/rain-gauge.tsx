@@ -24,11 +24,11 @@ export function RainGauge({ level, ticks, label, width = 72, height = 168, showM
       {ticks.map((tick) => {
         const y = 148 - 128 * (tick.mm / max);
         const showLabel = tick.labelled !== false;
-        const x2 = tick.selected ? 68 : showLabel ? 60 : 56;
+        const x2 = tick.selected ? 62 : showLabel ? 58 : 56;
         return (
           <G key={tick.mm}>
             <Line x1={48} x2={x2} y1={y} y2={y} stroke={tick.selected ? C.payout : C.tick} strokeWidth={tick.selected ? 2 : 1.5} />
-            {showLabel ? <SvgText x={showMm ? 72 : 62} y={y + 4} fill={tick.selected ? C.payout : C.quiet} fontSize={showMm ? 11 : 9} fontFamily={F.mono}>{showMm ? `${tick.mm} mm` : tick.mm}</SvgText> : null}
+            {showLabel ? <SvgText x={80} y={y + 4} fill={tick.selected ? C.payout : C.quiet} fontSize={11} fontFamily={F.mono}>{showMm ? `${tick.mm} mm` : tick.mm}</SvgText> : null}
           </G>
         );
       })}

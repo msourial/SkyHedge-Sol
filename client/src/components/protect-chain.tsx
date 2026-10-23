@@ -11,6 +11,7 @@ import {
   COVER_AMOUNT_TITLE,
   COVER_CHIPS,
   MARKETS_FOOTER,
+  gaugeWaterLevel,
   PRE_SIGN_CTA,
   PRE_SIGN_TITLE,
   balanceSkytLine,
@@ -39,6 +40,7 @@ import {
   windowStartLabel,
   type WindowEvidencePackage,
 } from "../../../shared/window-chain";
+import { MixedCopy, QuoteAmount } from "@/components/figure";
 import { RainGauge, gaugeTicks } from "@/components/rain-gauge";
 import { buyCtaVisible, coverageChipOn, gaugeMode, nextWeeklyOpenCopy, openCityPrompt, protectSurface } from "../../../shared/protect-surface";
 
@@ -158,7 +160,7 @@ export function ProtectChain(props: { windows: readonly WindowRow[]; city?: stri
       </div> : null}
       {mode === "gauge" ? <div className="protect-ladder">
         <div>
-          <RainGauge labelled level={chosen ? chosen.thresholdMm / maxMm : 0} ticks={ticks} label={chosen ? `Trigger line at ${chosen.thresholdMm} millimetres` : "Rain gauge"} />
+          <RainGauge labelled level={gaugeWaterLevel({ observedMm: null, maxMm, triggerMm: chosen?.thresholdMm ?? null })} ticks={ticks} label={chosen ? `Trigger line at ${chosen.thresholdMm} millimetres` : "Rain gauge"} />
           <p className="protect-gauge-note">{gaugeNote}</p>
         </div>
         <div className="protect-rows" role="list" aria-label="Rain triggers">
@@ -175,9 +177,9 @@ export function ProtectChain(props: { windows: readonly WindowRow[]; city?: stri
     </div>
     {showCta && terms ? <aside className="protect-ticket" aria-label="Pay and payout">
       <div className="protect-ledger">
-        <p className="protect-ledger__pay">{terms.payLine}</p>
-        <p className="protect-ledger__get">You get <b>{terms.coverLabel} SKYT</b>{terms.ledgerGetLine.slice(terms.getLine.length)}</p>
-        <p className="protect-ledger__meta">{terms.ledgerMeta}</p>
+        <p className="protect-ledger__pay"><span className="t-label">You pay</span> <QuoteAmount amount={terms.premiumLabel} /></p>
+        <p className="protect-ledger__get"><span className="t-small">You get </span><QuoteAmount amount={terms.coverLabel} slicker /><span className="t-small">{terms.ledgerGetLine.slice(terms.getLine.length)}</span></p>
+        <p className="protect-ledger__meta"><MixedCopy text={terms.ledgerMeta} /></p>
       </div>
       <button type="button" className="gauge-cta mt-3" disabled={!ready} onClick={() => { if (ready) setSheet("amount"); }}>{button.label}</button>
     </aside> : null}
@@ -186,7 +188,7 @@ export function ProtectChain(props: { windows: readonly WindowRow[]; city?: stri
 }
 
 function CalmCard(props: { title: string; action: string; onAction: () => void; link?: { slug: string; label: string } | null; onLink?: () => void }) {
-  return <div className="mt-3 rounded-[14px] border border-[var(--line)] bg-[var(--surface-1)] p-4">
+  return <div className="mt-3 rounded-[14px] bg-[var(--surface-1)] p-4">
     <p className="text-sm text-[var(--fg)]">{props.title}</p>
     <button type="button" className="gauge-chip mt-3" onClick={props.onAction}>{props.action}</button>
     {props.link && props.onLink ? <button type="button" className="mt-2 block min-h-12 text-sm font-semibold text-[var(--glacier)]" onClick={props.onLink}>{props.link.label}</button> : null}
@@ -205,34 +207,40 @@ function StakeSheet(props: { step: "amount" | "sign"; terms: StakeSheetModel; am
   const balanceLabel = balanceBase ? formatQuoteSkyt(balanceBase, 2) : null;
   const short = coverExceedsBalance(props.terms.payBase, balanceBase);
   const balance = balanceSkytLine(balanceLabel);
+  const [leaving, setLeaving] = useState(false);
+  const close = () => {
+    if (leaving) return;
+    setLeaving(true);
+    window.setTimeout(props.onClose, 200);
+  };
   return <div className="stake-sheet" role="dialog" aria-modal="true" aria-label={props.step === "sign" ? PRE_SIGN_TITLE : COVER_AMOUNT_TITLE}>
-    <div className="stake-sheet__panel">
+    <div className={leaving ? "stake-sheet__panel stake-sheet__panel--out" : "stake-sheet__panel"}>
       <div className="stake-sheet__ticks" aria-hidden="true">{Array.from({ length: 16 }, (_, index) => <span key={index} />)}</div>
       {props.step === "amount" ? <>
         <h3 className="text-lg font-semibold">{COVER_AMOUNT_TITLE}</h3>
         <div className="mt-3 flex gap-2" role="radiogroup" aria-label="Cover amount">
           {CHIPS.map((choice) => <button key={choice} type="button" role="radio" aria-checked={choice === props.amount} className={choice === props.amount ? "gauge-chip gauge-chip--on flex-1" : "gauge-chip flex-1"} onClick={() => props.onAmount(choice)}>{choice}</button>)}
         </div>
-        <p className="sky-mono mt-4 text-sm text-[var(--fg)]">{props.terms.payLine}</p>
-        <p className="stake-figure">{props.terms.getLine}</p>
+        <p className="mt-4"><span className="t-label">You pay</span> <QuoteAmount amount={props.terms.premiumLabel} /></p>
+        <p className="stake-get"><span className="t-label">You get</span><QuoteAmount amount={props.terms.coverLabel} slicker hero /></p>
         <p className="mt-1 text-sm text-[var(--fg-2)]">{props.terms.conditionLine}</p>
         {props.terms.feeLine ? <p className="mt-2 text-xs text-[var(--fg-2)]">{props.terms.feeLine}</p> : null}
         {balance ? <p className="sky-mono mt-3 text-sm text-[var(--fg-2)]">{balance}</p> : null}
         {short && balanceLabel ? <p role="alert" className="mt-2 text-sm text-[var(--danger)]">{notEnoughSkyt(balanceLabel)}</p> : null}
         <div className="mt-4 flex gap-2">
-          <button type="button" className="gauge-chip flex-1" onClick={props.onClose}>Back</button>
+          <button type="button" className="gauge-chip flex-1" onClick={close}>Back</button>
           <button type="button" className="gauge-cta flex-1" disabled={short} onClick={props.onSign}>{`Protect for ${props.terms.premiumLabel} SKYT`}</button>
         </div>
       </> : <>
         <h3 className="text-lg font-semibold">{PRE_SIGN_TITLE}</h3>
-        <dl className="sky-mono mt-4 space-y-2 text-sm">
-          <div className="flex justify-between gap-3"><dt className="text-[var(--fg-2)]">Pay</dt><dd>{props.terms.premiumLabel} SKYT</dd></div>
-          <div className="flex justify-between gap-3"><dt className="text-[var(--fg-2)]">Cover</dt><dd className="text-[var(--slicker)]">{props.terms.coverLabel} SKYT</dd></div>
-          <div className="text-[var(--fg)]">{props.terms.placeLine}</div>
-          <div>{props.terms.triggerLine}</div>
+        <dl className="mt-4 space-y-2 text-sm">
+          <div className="flex justify-between gap-3"><dt className="t-label">Pay</dt><dd><QuoteAmount amount={props.terms.premiumLabel} /></dd></div>
+          <div className="flex justify-between gap-3"><dt className="t-label">Cover</dt><dd><QuoteAmount amount={props.terms.coverLabel} slicker /></dd></div>
+          <div className="t-small text-[var(--fg)]">{props.terms.placeLine}</div>
+          <div className="t-small"><MixedCopy text={props.terms.triggerLine} /></div>
         </dl>
         <div className="mt-4 flex gap-2">
-          <button type="button" className="gauge-chip flex-1" onClick={props.onClose}>Back</button>
+          <button type="button" className="gauge-chip flex-1" onClick={close}>Back</button>
           <button type="button" className="gauge-cta flex-1" onClick={props.onApprove}>{PRE_SIGN_CTA}</button>
         </div>
       </>}

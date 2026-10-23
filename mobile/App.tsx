@@ -545,7 +545,7 @@ export default function App() {
         {error ? <ErrorBanner message={error} onRetry={() => { void retryData(); }} /> : null}
         {!showLanding && homeLoading && cities.length === 0 && catalog.length === 0 ? <View style={styles.loadingPanel} accessibilityLabel="Loading"><ActivityIndicator color={C.rain} /><Text style={styles.emptyText}>Loading finalized weather, market catalog, and Devnet readiness…</Text></View> : null}
         {showLanding ? (
-          <Landing live={nycWindows.length > 0} openLabel={nycWindows.length > 0 ? liveMarketLabel(nycWindows) : undefined} busy={loading} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect().then(() => setShowLanding(false)); }} />
+          <Landing live={nycWindows.length > 0} openLabel={nycWindows.length > 0 ? liveMarketLabel(nycWindows) : undefined} busy={loading} quote={nycWindows[0]?.premiumRateBps != null && nycWindows[0]?.quoteProbabilityBps != null && nycWindows[0]?.thresholdMmX100 ? { premiumRateBps: nycWindows[0].premiumRateBps, probabilityBps: nycWindows[0].quoteProbabilityBps, triggerMm: Number(nycWindows[0].thresholdMmX100) / 100 } : null} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect().then(() => setShowLanding(false)); }} />
         ) : null}
         {!showLanding && tab === "catalog" && detailCode && marketByCode(detailCode) ? (
           <MarketDetail

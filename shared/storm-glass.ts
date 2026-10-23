@@ -93,7 +93,8 @@ export const motion = {
   progress: 900,
   stagger: 90,
   enterOffset: 22,
-  pressScale: 0.97,
+  pressScale: 0.96,
+  pressMs: 150,
   spring: { damping: 18, stiffness: 260, mass: 0.9 },
 } as const;
 

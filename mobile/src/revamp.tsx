@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { HOW_IT_SETTLES, HOW_IT_SETTLES_TITLE, HOW_IT_WORKS, LANDING_FINE, LANDING_HERO_LEAD, LANDING_HERO_TITLE, LANDING_OPEN_APP } from "../../shared/protect-copy.ts";
+import { COVER_CHIPS, HOW_IT_SETTLES, HOW_IT_SETTLES_TITLE, HOW_IT_WORKS, LANDING_FINE, LANDING_HERO_LEAD, LANDING_HERO_TITLE, LANDING_OPEN_APP, type CoverChip } from "../../shared/protect-copy.ts";
+import { payGet } from "../../shared/pay-get.ts";
+import { RainGauge as Tube } from "./rain-gauge";
 import { Animated, Easing, Linking, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { C, F, glass, MIN_TOUCH, motion, space as S, type as T } from "./theme";
 import { Enter, SpringPress } from "./motion";
@@ -86,8 +88,11 @@ export function Ticker({ items }: { items: string[] }) {
 }
 
 /* ───────────── Landing ───────────── */
-export function Landing(props: { onConnect: () => void; onBrowse: () => void; busy: boolean; live: boolean; openLabel?: string }) {
+export function Landing(props: { onConnect: () => void; onBrowse: () => void; busy: boolean; live: boolean; openLabel?: string; quote?: { premiumRateBps: number; probabilityBps: number; triggerMm: number } | null }) {
+  const [cover, setCover] = useState<CoverChip>(100);
   const reduced = useReducedMotion();
+  const deal = props.quote ? payGet({ coverageSkyt: cover, premiumRateBps: props.quote.premiumRateBps, probabilityBps: props.quote.probabilityBps }) : null;
+  const trigger = props.quote?.triggerMm ?? null;
   const fade = useRef(new Animated.Value(reduced ? 1 : 0)).current;
   useEffect(() => {
     if (reduced) { fade.setValue(1); return; }
@@ -97,11 +102,21 @@ export function Landing(props: { onConnect: () => void; onBrowse: () => void; bu
     <ScreenTop brand />
     <Text style={g.hero}>{LANDING_HERO_TITLE}</Text>
     <Text style={g.heroLead}>{LANDING_HERO_LEAD}</Text>
+    {trigger != null && deal ? <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12, marginTop: S.lg }}>
+      <Tube width={120} height={168} level={0} maxMm={trigger * 1.25} showMm ticks={[{ mm: trigger, selected: true }]} label={`New York trigger line at ${trigger} mm`} />
+      <View style={{ flex: 1, gap: 8 }}>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {COVER_CHIPS.map((chip) => <Pressable key={chip} accessibilityRole="radio" accessibilityState={{ selected: chip === cover }} onPress={() => setCover(chip)} style={{ minHeight: MIN_TOUCH, flex: 1, alignItems: "center", justifyContent: "center", borderRadius: 999, backgroundColor: chip === cover ? C.rainSoft : C.surfaceRaised, borderWidth: chip === cover ? 1.5 : 0, borderColor: C.rain }}>
+            <Text style={{ color: C.ink, fontFamily: F.bodySemi }}>{chip}</Text>
+          </Pressable>)}
+        </View>
+        <Text style={g.caption}>You pay <Text style={{ fontFamily: F.mono, color: C.ink }}>{deal.payLabel.split(".")[0]}</Text><Text style={{ fontFamily: F.mono, color: C.muted }}>{deal.payLabel.includes(".") ? `.${deal.payLabel.split(".")[1]} SKYT` : " SKYT"}</Text></Text>
+        <Text style={g.caption}>You get <Text style={{ fontFamily: F.mono, fontSize: 32, lineHeight: 36, color: C.payout }}>{deal.getLabel}</Text><Text style={{ fontFamily: F.mono, color: C.muted }}> SKYT</Text></Text>
+      </View>
+    </View> : null}
     <GlassCard style={{ marginTop: S.xl }}>
-      <Text style={g.overline}>How it works</Text>
-      {HOW_IT_WORKS.map((title, i) => <Enter key={title} index={i + 2} style={g.how}>
-        <View style={g.howN}><Text style={g.howNText}>{i + 1}</Text></View><View style={{ flex: 1 }}><Text style={g.body}>{title}</Text></View>
-      </Enter>)}
+      <Text style={g.body}>How it works</Text>
+      {HOW_IT_WORKS.map((title) => <Text key={title} style={[g.caption, { marginTop: S.sm }]}>{title}</Text>)}
     </GlassCard>
     <GlassCard>
       <Text style={g.overline}>{HOW_IT_SETTLES_TITLE}</Text>
@@ -197,7 +212,7 @@ export function Receipt(props: { title: string; amountLabel: string | null; fact
 const g = StyleSheet.create({
   testNote: { flexDirection: "row", gap: 8, borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, borderRadius: 14, padding: S.md, marginTop: S.lg },
   testNoteText: { ...T.label, fontFamily: F.body, flex: 1, color: C.amber },
-  card: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 14, padding: S.lg, marginBottom: S.lg, overflow: "hidden" },
+  card: { backgroundColor: C.surface, borderWidth: 0, borderRadius: 14, padding: S.lg, marginBottom: S.lg, overflow: "hidden" },
   cardEdge: { position: "absolute", top: 0, left: 24, right: 24, height: 1 },
   tag: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 6, borderWidth: 1, borderRadius: 14, paddingHorizontal: 11, minHeight: 28 },
   tagDot: { width: 7, height: 7, borderRadius: 4 },

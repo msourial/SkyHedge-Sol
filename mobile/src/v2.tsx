@@ -6,7 +6,7 @@ import { GROUP_ORDER, highlightParts, MARKETS, searchMarkets, type CatalogMarket
 import { useReducedMotion } from "./liquid-glass";
 import { ScreenTop } from "./journey";
 import type { CityIndex, ClaimReadiness, DevnetStatus, FinalizedWalletState, Portfolio, ProtectionQuote } from "./api";
-import { C, F, glass, MIN_TOUCH, motion, space as S, statusGlow, type as T } from "./theme";
+import { C, F, glass, MIN_TOUCH, motion, space as S, type as T } from "./theme";
 import { Enter, ProgressRail, SpringPress } from "./motion";
 import { ActionButton, AppIcon, Disclosure, Reveal, Text } from "./ui";
 import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } from "./friendly-errors";
@@ -16,7 +16,7 @@ import { isOnchainMarketOpen } from "./protection";
 import { expiryChipLabel, matchingWindowPackage, windowEndLabel, windowStartLabel, type WindowEvidencePackage } from "../../shared/window-chain.ts";
 import { tenorOf } from "../../shared/window-ladder.ts";
 import { marketStatus, notTriggeredLine, payGet } from "../../shared/pay-get.ts";
-import { COVER_AMOUNT_TITLE, COVER_CHIPS, EXPLORER_LINK_LABEL, MARKETS_FOOTER, MARKETS_SUB, ONE_PROTECTION_NOTE, PRE_SIGN_CTA, PRE_SIGN_TITLE, TECHNICAL_DETAILS, WALLET_CHAIN_ERROR, WALLET_CONNECT, WALLET_DISCONNECTED, WALLET_EMPTY, coveredReceiptRows, devnetExplorerUrl, formatQuoteSkyt, gaugeMarkPlan, marketRowModel, marketStatusInk, productStatusLabel, protectHeader, triggerMillimetres, windowStamp, type CoverChip } from "../../shared/protect-copy.ts";
+import { COVER_AMOUNT_TITLE, COVER_CHIPS, EXPLORER_LINK_LABEL, MARKETS_FOOTER, MARKETS_SUB, ONE_PROTECTION_NOTE, PRE_SIGN_CTA, PRE_SIGN_TITLE, TECHNICAL_DETAILS, WALLET_CHAIN_ERROR, WALLET_CONNECT, WALLET_DISCONNECTED, WALLET_EMPTY, coveredReceiptRows, devnetExplorerUrl, formatQuoteSkyt, gaugeMarkPlan, gaugeWaterLevel, marketRowModel, marketStatusInk, productStatusLabel, protectHeader, triggerMillimetres, windowStamp, type CoverChip } from "../../shared/protect-copy.ts";
 import { RainGauge } from "./rain-gauge";
 import { ProtectChain } from "./protect-chain";
 import { citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
@@ -182,7 +182,7 @@ export function MarketsScreen(props: {
         const on = highlight.has(m.code) && m.code === focusCode;
         const gaugeMax = trigger && trigger > 0 ? trigger : 1;
         return <SpringPress key={m.code} accessibilityRole="button" accessibilityLabel={`${m.name}. ${row?.stationLine ?? moment ?? `${m.region}, ${m.source}`}. ${row?.status ?? status?.label ?? ""}`} onPress={() => open(m)} style={[s.resultRow, on && { backgroundColor: C.surface, borderColor: C.rain }]}>
-          <RainGauge width={28} height={64} level={row?.ink === "glacier" && trigger ? 1 : 0} maxMm={gaugeMax} ticks={row?.ink === "glacier" && trigger ? gaugeMarkPlan([{ mm: trigger, priced: true }], trigger).map((mark) => ({ mm: mark.mm, selected: mark.selected, labelled: false })) : []} label="" />
+          <RainGauge width={28} height={64} level={0} maxMm={gaugeMax} ticks={row?.ink === "glacier" && trigger ? gaugeMarkPlan([{ mm: trigger, priced: true }], trigger).map((mark) => ({ mm: mark.mm, selected: mark.selected, labelled: false })) : []} label="" />
           <View style={s.resultCopy}>
             <Text style={s.resultName} android_hyphenationFrequency="none">{a}<Text style={{ fontFamily: F.bodyBold, color: C.ink }}>{b}</Text>{c}</Text>
             <Text style={s.resultSub} android_hyphenationFrequency="none">{row?.stationLine ?? moment ?? `${m.region} · ${m.source}`}</Text>
@@ -470,15 +470,12 @@ function CoverageTicket(props: {
     { label: "Watching NOAA", detail: props.watching ? `NOAA · ${props.station}` : props.settled ? "Settlement complete" : null, done: props.watching || props.settled, current: props.watching && !props.settled },
   ];
   const pillTone = props.status.tone;
-  const pillCol = pillTone === "live" ? C.mint : pillTone === "warn" ? C.amber : pillTone === "gold" ? C.payout : C.muted;
+  const word = pillTone === "gold" ? C.payout : pillTone === "live" ? C.rain : C.dryText;
 
-  return <GlassCard accent={pillCol} style={{ marginBottom: S.lg }}>
+  return <GlassCard style={{ marginBottom: S.lg }}>
     <View style={s.resultCopy}>
       <Text style={s.cardTitleSm} android_hyphenationFrequency="none">Coverage ticket</Text>
-      <View style={[s.statusPill, s.compactChip, { borderColor: pillCol + "77", backgroundColor: pillCol + "1F", boxShadow: statusGlow(pillCol) }]} accessible accessibilityLabel={props.status.label}>
-        <View style={[s.dot, { backgroundColor: pillCol }]} />
-        <Text style={[s.pillText, { color: pillCol }]}>{props.status.label}</Text>
-      </View>
+      <Text style={[s.pillText, { color: word, marginTop: 4 }]}>{props.status.label}</Text>
     </View>
     <View style={{ marginTop: S.md }}>
       <Row label="Trigger" value={props.trigger} gold />
@@ -564,7 +561,6 @@ export function StickyCta(props: { label: string; onPress: () => void; disabled?
 
 export function ConfirmCover(props: { sentence: string; station: string; expiry: string; windowLabel: string; pay: string; getLabel: string; multiple?: string | null; feeLine?: string | null; getLine?: string | null; preSign?: string | null; conditionLine?: string | null; placeLine?: string | null; triggerLine?: string | null; shortLabel?: string | null; coverSkyt?: CoverChip; onCover?: (skyt: CoverChip) => void; onClose: () => void; onApprove: () => void }) {
   const [step, setStep] = useState<"amount" | "sign">("amount");
-  const getLine = props.getLine ?? props.sentence;
   return <View style={s.sheetScrim}>
     <View style={s.sheet} accessibilityViewIsModal accessibilityLabel={step === "sign" ? PRE_SIGN_TITLE : COVER_AMOUNT_TITLE}>
       <View style={s.sheetTicks}>{[0, 1, 2, 3, 4, 5, 6, 7].map((tick) => <View key={tick} style={s.sheetTick} />)}</View>
@@ -578,7 +574,11 @@ export function ConfirmCover(props: { sentence: string; station: string; expiry:
             </Pressable>;
           })}
         </View>
-        <Text style={s.sheetFigure}>{getLine}</Text>
+        <View style={s.stakeGet}>
+          <Text style={s.tLabel}>You get</Text>
+          <Text style={s.sheetFigure}>{props.getLabel}</Text>
+          <Text style={s.figureMinor}>SKYT</Text>
+        </View>
         {props.conditionLine ? <Text style={s.feeLine}>{props.conditionLine}</Text> : null}
         {props.feeLine ? <Text style={s.feeLine}>{props.feeLine}</Text> : null}
         {props.shortLabel ? <Text accessibilityRole="alert" style={[s.feeLine, { color: C.coral }]}>{props.shortLabel}</Text> : null}
@@ -616,7 +616,7 @@ function CoveredCard(props: { position: ChainProtection; signature: string | nul
       {stamp ? <Text style={[s.stamp, { color: stamp.tone === "paid" ? C.payout : C.dryText, borderColor: stamp.tone === "paid" ? C.payout : C.dryText }]}>{stamp.title}{"\n"}{stamp.subline}</Text> : null}
       <Text style={s.cardTitleSm}>You’re covered</Text>
       <View style={{ flexDirection: "row", alignItems: "center", gap: S.md, marginTop: S.sm }}>
-        <RainGauge width={56} height={120} level={0} maxMm={triggerMm ? triggerMm * 1.25 : 1} ticks={triggerMm != null ? [{ mm: triggerMm, selected: true }] : []} label={triggerMm != null ? `Trigger line at ${triggerMm} mm` : "Rain gauge"} />
+        <RainGauge width={56} height={120} level={gaugeWaterLevel({ observedMm: Number.isFinite(observed ?? NaN) ? observed : null, maxMm: triggerMm ? triggerMm * 1.25 : 1, triggerMm, paidOut: stamp?.tone === "paid" })} maxMm={triggerMm ? triggerMm * 1.25 : 1} ticks={triggerMm != null ? [{ mm: triggerMm, selected: true }] : []} label={triggerMm != null ? `Trigger line at ${triggerMm} mm` : "Rain gauge"} />
         <View style={{ flex: 1 }}>
           {rows.map((row) => <View key={row.label} style={s.receiptRow}>
             <Text style={s.receiptLabel}>{row.label}</Text>
@@ -769,7 +769,7 @@ const s = StyleSheet.create({
   devnetTagText: { ...T.label, color: C.amber, fontSize: 12, lineHeight: 16 },
   search: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: S.md, paddingHorizontal: S.lg, borderRadius: glass.radius, backgroundColor: glass.fillField, borderWidth: 1, borderColor: glass.border, marginTop: S.lg, marginBottom: S.md, boxShadow: glass.fieldShadow },
   searchInput: { ...T.body, flex: 1, minHeight: 48, color: C.ink, fontSize: 16 },
-  regionChip: { minHeight: MIN_TOUCH, justifyContent: "center", paddingHorizontal: S.md, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceRaised },
+  regionChip: { minHeight: MIN_TOUCH, justifyContent: "center", paddingHorizontal: S.md, borderRadius: 999, borderWidth: 0, backgroundColor: C.surfaceRaised },
   regionChipOn: { borderWidth: 1.5, borderColor: C.rain, backgroundColor: C.rainSoft },
   regionChipText: { ...T.label, color: C.muted },
   regionChipTextOn: { color: C.ink, fontFamily: F.bodySemi },
@@ -852,7 +852,7 @@ const s = StyleSheet.create({
   inlineBtn: { minHeight: MIN_TOUCH, justifyContent: "center", alignSelf: "flex-start" },
   link: { ...T.label, fontSize: 14, lineHeight: 20, color: C.rain },
   checkRow: { minHeight: 40, flexDirection: "row", alignItems: "center" },
-  sticky: { paddingHorizontal: S.lg + 2, paddingTop: S.sm, paddingBottom: S.md, backgroundColor: C.canvas + "F2", borderTopWidth: 1, borderTopColor: glass.border },
+  sticky: { paddingHorizontal: S.lg + 2, paddingTop: S.sm, paddingBottom: S.md, backgroundColor: C.surface },
   ticketBars: { gap: 6, marginBottom: S.sm },
   ticketRow: { flexDirection: "row", alignItems: "center", gap: S.sm },
   ticketTrack: { flex: 1, height: 10, borderRadius: 5, overflow: "hidden" },
@@ -860,17 +860,20 @@ const s = StyleSheet.create({
   payBar: { height: 10, borderRadius: 5, backgroundColor: C.muted },
   getBar: { height: 10, borderRadius: 5, backgroundColor: C.payout },
   sheetScrim: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, zIndex: 40, justifyContent: "flex-end", backgroundColor: "rgba(11,18,32,0.72)" },
-  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, borderBottomWidth: 0, borderColor: C.border, backgroundColor: C.surfaceRaised, padding: S.lg, paddingTop: 0 },
+  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 0, backgroundColor: C.surfaceRaised, padding: S.lg, paddingTop: 0 },
   sheetTicks: { flexDirection: "row", gap: 8, height: 20, alignItems: "flex-end", marginHorizontal: -S.lg, marginBottom: S.md, paddingHorizontal: S.lg, paddingTop: 8, backgroundColor: C.canvas },
   sheetTick: { width: 1, height: 8, backgroundColor: C.tick },
-  sheetFigure: { color: C.payout, fontFamily: F.mono, fontSize: 40, lineHeight: 46, marginTop: S.sm },
+  sheetFigure: { color: C.payout, fontFamily: F.mono, fontSize: 40, lineHeight: 44, fontVariant: ["tabular-nums"] },
+  stakeGet: { flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: S.sm },
+  tLabel: { fontFamily: F.bodySemi, fontSize: 13, lineHeight: 16, color: C.muted },
+  figureMinor: { fontFamily: F.mono, fontSize: 13, lineHeight: 16, color: C.muted, fontVariant: ["tabular-nums"] },
   ledgerGet: { ...T.body, color: C.muted, marginTop: 2 },
   stamp: { fontFamily: F.mono, fontSize: 12, lineHeight: 16, borderWidth: 1.5, borderColor: "currentColor", alignSelf: "flex-start", paddingHorizontal: 6, paddingVertical: 2, marginBottom: S.sm },
   sheetActions: { flexDirection: "row", gap: S.sm, marginTop: S.md },
-  sheetBack: { paddingHorizontal: S.lg, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 10, borderWidth: 1, borderColor: C.border },
-  sheetGo: { flex: 1, paddingHorizontal: S.sm, paddingVertical: S.sm, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 10, backgroundColor: C.rain },
+  sheetBack: { paddingHorizontal: S.lg, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 999, borderWidth: 0, backgroundColor: C.surface },
+  sheetGo: { flex: 1, paddingHorizontal: S.sm, paddingVertical: S.sm, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 999, backgroundColor: C.rain },
   sheetChips: { flexDirection: "row", gap: S.sm, marginBottom: S.md, marginTop: S.md },
-  sheetChip: { flex: 1, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface },
+  sheetChip: { flex: 1, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 999, borderWidth: 0, backgroundColor: C.surface },
   sheetChipOn: { borderWidth: 1.5, borderColor: C.rain, backgroundColor: C.rainSoft },
   sheetChipText: { ...T.bodyStrong, color: C.muted, fontFamily: F.mono },
   payLine: { ...T.bodyStrong, color: C.ink, fontFamily: F.mono, fontVariant: TAB },

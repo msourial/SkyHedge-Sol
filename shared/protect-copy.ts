@@ -24,7 +24,7 @@ export const PRE_SIGN_CTA = "Approve in your wallet.";
 export const WALLET_DISCONNECTED = "Connect a wallet to see your SKYT and protections.";
 export const WALLET_CONNECT = "Connect wallet";
 export const WALLET_EMPTY = "No protections yet. Pick a city on Markets.";
-export const WALLET_CHAIN_ERROR = "Can't read Devnet right now. We show nothing rather than guess.";
+export const WALLET_CHAIN_ERROR = "Can't read Devnet right now. Nothing is shown until it's back. Try again in a minute.";
 export const TECHNICAL_DETAILS = "Technical details";
 export const LANDING_HERO_TITLE = "Rain on your plans? Get paid.";
 export const LANDING_HERO_LEAD = "Pick a city and a window. If NOAA's official gauge passes the trigger, the payout lands in your wallet.";
@@ -34,7 +34,7 @@ export const LANDING_WAITLIST = "Join the waitlist";
 export const LANDING_FINE = "Devnet only. Test SKYT, no real money.";
 export const HOW_IT_WORKS = ["Pick a city.", "Choose your cover.", "Approve in your wallet."] as const;
 export const HOW_IT_SETTLES_TITLE = "How it settles";
-export const HOW_IT_SETTLES = "NOAA publishes final daily rain for the station. After the window closes, the program reads it. Over the trigger: paid out. Under: dry week.";
+export const HOW_IT_SETTLES = "NOAA publishes final daily rain for the station. After the window closes, the program reads it. Over the trigger: paid out. Under: dry week. NOAA's final data alone decides payouts. WeatherXM is context only.";
 
 export function coverBaseUnits(coverSkyt: number): string | null {
   if (!Number.isInteger(coverSkyt) || coverSkyt <= 0) return null;
@@ -356,6 +356,23 @@ export function activeProtectionLine(input: { city: string | null | undefined; t
   const payout = input.payoutLabel?.trim();
   if (!city || input.triggerMm == null || !Number.isFinite(input.triggerMm) || !expiry || !payout) return null;
   return { title: `${city} · ≥${formatMm(input.triggerMm)} mm · ends ${expiry}`, payout: `${payout.replace(/\s*SKYT\s*$/i, "")} SKYT` };
+}
+
+/**
+ * Tube fill as a fraction of max. Empty when there is no observed reading.
+ * Paid out with no reading may sit just above the trigger. It never invents millimetres.
+ */
+export function gaugeWaterLevel(input: { observedMm?: number | null; maxMm: number; triggerMm?: number | null; paidOut?: boolean }): number {
+  const max = input.maxMm;
+  if (!Number.isFinite(max) || max <= 0) return 0;
+  if (input.observedMm != null && Number.isFinite(input.observedMm) && input.observedMm >= 0) {
+    return Math.min(1, input.observedMm / max);
+  }
+  if (input.paidOut && input.triggerMm != null && Number.isFinite(input.triggerMm) && input.triggerMm > 0 && input.triggerMm < max) {
+    const above = input.triggerMm + (max - input.triggerMm) * 0.4;
+    return Math.min(1, above / max);
+  }
+  return 0;
 }
 
 function formatMm(value: number): string {
