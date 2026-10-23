@@ -19,6 +19,7 @@ import { marketStatus, notTriggeredLine, payGet } from "../../shared/pay-get.ts"
 import { COVER_AMOUNT_TITLE, COVER_CHIPS, EXPLORER_LINK_LABEL, MARKETS_FOOTER, MARKETS_SUB, ONE_PROTECTION_NOTE, PRE_SIGN_CTA, PRE_SIGN_TITLE, TECHNICAL_DETAILS, WALLET_CHAIN_ERROR, WALLET_CONNECT, WALLET_DISCONNECTED, WALLET_EMPTY, coveredReceiptRows, devnetExplorerUrl, formatQuoteSkyt, gaugeMarkPlan, gaugeWaterLevel, marketRowModel, marketStatusInk, productStatusLabel, protectHeader, triggerMillimetres, windowStamp, type CoverChip } from "../../shared/protect-copy.ts";
 import { RainGauge } from "./rain-gauge";
 import { ProtectChain } from "./protect-chain";
+import { foldNudge } from "./scroll-fade";
 import { citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
 import type { ProtectSurface } from "../../shared/protect-surface.ts";
 import { CONSUMER_LEAD_CODES, consumerCityByCode, consumerCityBySlug } from "../../shared/consumer-cities.ts";
@@ -308,8 +309,21 @@ export function ProtectTicket(props: {
   surface: ProtectSurface;
   nextOpenCopy: string | null;
   openCity: { slug: string; label: string } | null;
+  /** Visible scroll height, so a card that only peeks past the fold can be pushed below it. */
+  scrollViewportHeight?: number;
+  /** Padding above the ticket inside the scroll content. Added to the card's layout y. */
+  scrollContentOffset?: number;
 }) {
   const [verifyOpen, setVerifyOpen] = useState(false);
+  const [foldGap, setFoldGap] = useState(0);
+  const cardTop = useRef<number | null>(null);
+  const viewportHeight = props.scrollViewportHeight ?? 0;
+  const contentOffset = props.scrollContentOffset ?? 0;
+  useEffect(() => {
+    if (cardTop.current == null) return;
+    const next = foldNudge(contentOffset + cardTop.current, viewportHeight);
+    setFoldGap((prev) => prev === next ? prev : next);
+  }, [contentOffset, viewportHeight]);
   const windows = props.windows ?? sellingWindows(props.status, props.nowSeconds);
   const market = windows.find((window) => window.address === props.selectedAddress) ?? windows[0] ?? null;
   const live = !!market;
@@ -412,6 +426,12 @@ export function ProtectTicket(props: {
     </GlassCard> : null}
     {!showTicket && props.claimError && props.walletConnected ? <Text style={s.caption}>{friendlyError(props.claimError)}</Text> : null}
 
+    <View onLayout={(event) => {
+      cardTop.current = event.nativeEvent.layout.y;
+      const next = foldNudge(contentOffset + event.nativeEvent.layout.y, viewportHeight);
+      setFoldGap((prev) => prev === next ? prev : next);
+    }}>
+    {foldGap > 0 ? <View style={{ height: foldGap }} /> : null}
     <GlassCard>
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: verifyOpen }} accessibilityLabel={`How it's verified, ${readyCount} of ${checks.length} checks passed`} onPress={() => setVerifyOpen((v) => !v)} style={[s.between, { minHeight: MIN_TOUCH }]}>
         <View style={{ flex: 1 }}><Text style={s.cardTitleSm}>How it’s verified</Text><Text style={s.caption}>{readyCount} of {checks.length} on-chain checks passed</Text></View>
@@ -425,6 +445,7 @@ export function ProtectTicket(props: {
         {market?.address ? <ExplorerButton url={`https://explorer.solana.com/address/${encodeURIComponent(market.address)}?cluster=devnet`} label="Market account on Explorer" /> : null}
       </View> : null}
     </GlassCard>
+    </View>
     <Disclosure>Devnet test token · parametric weather protection. SKYT has no monetary value. Your wallet shows and approves every transaction.</Disclosure>
   </>;
 }
@@ -852,7 +873,7 @@ const s = StyleSheet.create({
   inlineBtn: { minHeight: MIN_TOUCH, justifyContent: "center", alignSelf: "flex-start" },
   link: { ...T.label, fontSize: 14, lineHeight: 20, color: C.rain },
   checkRow: { minHeight: 40, flexDirection: "row", alignItems: "center" },
-  sticky: { paddingHorizontal: S.lg + 2, paddingTop: S.sm, paddingBottom: S.md, backgroundColor: C.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(152,163,176,0.32)" },
+  sticky: { paddingHorizontal: S.lg + 2, paddingTop: S.sm, paddingBottom: S.md, backgroundColor: C.surface },
   ticketBars: { gap: 6, marginBottom: S.sm },
   ticketRow: { flexDirection: "row", alignItems: "center", gap: S.sm },
   ticketTrack: { flex: 1, height: 10, borderRadius: 5, overflow: "hidden" },
