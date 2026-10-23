@@ -1,23 +1,13 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { Check, ChevronDown, Copy } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { WalletButton } from "@/components/wallet-button";
 import { cn } from "@/lib/utils";
 
-function DevnetTesterNotice() {
-  return <details className="border-b border-[var(--border)] bg-[var(--warning-dim)]">
-    <summary className="mx-auto flex min-h-11 max-w-[92rem] list-none items-center justify-between gap-3 px-4 py-2 text-sm text-[var(--foreground)] sm:px-6">
-      <span><strong>Test environment</strong><span className="hidden text-[var(--muted-foreground)] sm:inline"> — Devnet assets and positions have no real-world value.</span></span>
-      <ChevronDown className="h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden="true" />
-    </summary>
-    <div className="mx-auto max-w-[92rem] px-4 pb-3 text-sm leading-relaxed text-[var(--muted-foreground)] sm:px-6">SKYT, Devnet SOL, quotes, and test positions are not redeemable. Tester limits are 500 SKYT protection per wallet and 10,000 SKYT liquidity per seeded market. Actions unlock only after every required on-chain and evidence check is finalized.</div>
-  </details>;
-}
-
 function NetworkPill() {
   const network = import.meta.env.VITE_SOLANA_RPC_URL?.includes("8899") ? "Localnet" : "Devnet";
-  return <span className="hidden items-center rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--muted-foreground)] sm:flex">{network}</span>;
+  return <span className="devnet-tag">{network}</span>;
 }
 
 const PROGRAM_ID = import.meta.env.VITE_SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
@@ -40,7 +30,6 @@ export default function Layout() {
         <div className="flex items-center gap-2"><NavLink to="/" className="hidden min-h-12 items-center px-2 text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] sm:inline-flex">Waitlist</NavLink><NetworkPill /><WalletButton /></div>
       </div>
     </header>
-    <DevnetTesterNotice />
     <main id="main-content" className="mx-auto w-full max-w-[92rem] flex-1 px-4 py-6 sm:px-6 sm:py-8"><Outlet /></main>
     <footer className="border-t border-[var(--border)] bg-[var(--surface-1)] py-2"><TechnicalFooter /></footer>
   </div>;

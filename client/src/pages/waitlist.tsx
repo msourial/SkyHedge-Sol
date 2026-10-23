@@ -1,25 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BrandMark } from "@/components/brand-mark";
-import { PhoneMockup, PhoneMockupStack, PhonePlans } from "@/components/phone-mockup";
+import { PhoneMockup, PhoneMockupStack } from "@/components/phone-mockup";
 import { WaitlistForm } from "@/components/waitlist-form";
 import { CONSUMER_CITIES } from "../../../shared/consumer-cities";
-import { chipClass, useSalesChips } from "@/lib/sales-chips";
+import { useSalesChips } from "@/lib/sales-chips";
+import { HOW_IT_SETTLES, HOW_IT_SETTLES_TITLE, HOW_IT_WORKS, LANDING_FINE, LANDING_HEADER_APP, LANDING_HERO_LEAD, LANDING_HERO_TITLE, LANDING_OPEN_APP, LANDING_WAITLIST, TORONTO_WAITING, productStatusLabel } from "../../../shared/protect-copy";
+import { RainGauge, gaugeTicks } from "@/components/rain-gauge";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import type { DevnetStatus } from "@/lib/types";
 
 const STEPS = [
   {
-    title: "Pick a city",
-    body: "Open Markets, choose a rainfall window, and see the trigger before you pay.",
+    title: HOW_IT_WORKS[0],
+    body: "Open Markets and choose the city whose station settles the window.",
     screen: "markets" as const,
   },
   {
-    title: "Set your coverage",
+    title: HOW_IT_WORKS[1],
     body: "On Protect, pick how much SKYT you want back if the station hits the trigger.",
     screen: "protect" as const,
   },
   {
-    title: "Approve in your wallet",
-    body: "Connect Phantom or Seeker Wallet. Premium and payout rules are fixed on-chain.",
+    title: HOW_IT_WORKS[2],
+    body: "The premium and the payout are fixed before you approve.",
     screen: "wallet" as const,
   },
 ] as const;
@@ -74,88 +79,19 @@ const FAQ = [
   },
 ] as const;
 
-/**
- * October rainfall normal for NY CITY CENTRAL PARK, millimetres.
- * Source: CITY_INDEX `new-york` monthlyNormalsMm[9] in shared/cities.ts.
- * Climatology prior (1991–2020), not a live station total.
- */
-const NYC_OCTOBER_NORMAL_MM = 89;
-
 function prefersReducedMotion() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-/** Count a known figure once. The DOM already shows the final number if this never runs. */
-function RainCount({ value }: { value: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const node = ref.current;
-    if (!node || prefersReducedMotion() || typeof IntersectionObserver !== "function") return;
-    let frame = 0;
-    let played = false;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting || played) return;
-        played = true;
-        observer.disconnect();
-        const start = performance.now();
-        const duration = 600;
-        const tick = (now: number) => {
-          const t = Math.min(1, (now - start) / duration);
-          const eased = 1 - (1 - t) ** 3;
-          node.textContent = String(Math.round(value * eased));
-          if (t < 1) frame = requestAnimationFrame(tick);
-          else node.textContent = String(value);
-        };
-        frame = requestAnimationFrame(tick);
-      },
-      { threshold: 0.5 },
-    );
-    observer.observe(node);
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-      node.textContent = String(value);
-    };
-  }, [value]);
-  return (
-    <span ref={ref} className="wl-markets__rain-value">
-      {value}
-    </span>
-  );
-}
-
-function HeroWeather() {
-  return (
-    <div className="wl-hero__weather" aria-hidden="true">
-      <svg className="wl-hero__sky" viewBox="0 0 360 640" preserveAspectRatio="xMidYMid slice">
-        <g className="wl-cloud wl-cloud--a" fill="currentColor">
-          <ellipse cx="78" cy="108" rx="86" ry="18" />
-          <ellipse cx="132" cy="98" rx="42" ry="16" />
-        </g>
-        <g className="wl-cloud wl-cloud--b" fill="currentColor">
-          <ellipse cx="248" cy="196" rx="96" ry="16" />
-          <ellipse cx="304" cy="186" rx="38" ry="14" />
-        </g>
-        <g className="wl-rain" fill="none" stroke="#7CC4FF" strokeWidth="1.6" strokeLinecap="round">
-          <path d="M48 40 v28" />
-          <path d="M96 70 v22" />
-          <path d="M150 28 v26" />
-          <path d="M210 64 v24" />
-          <path d="M268 36 v30" />
-          <path d="M318 78 v20" />
-          <path d="M70 150 v24" />
-          <path d="M188 120 v28" />
-          <path d="M340 150 v22" />
-        </g>
-        <g transform="translate(150 430)">
-          <rect x="16" y="8" width="32" height="144" rx="16" fill="#1C2433" stroke="#2A3444" strokeWidth="2" />
-          <rect x="20" y="96" width="24" height="52" fill="#7CC4FF" />
-          <line x1="48" x2="64" y1="70" y2="70" stroke="#F2C230" strokeWidth="2" />
-        </g>
-      </svg>
-    </div>
-  );
+function LandingGauge() {
+  const status = useQuery({ queryKey: ["devnet-status"], queryFn: () => api<DevnetStatus>("/api/devnet/status"), retry: false });
+  const now = Math.floor(Date.now() / 1000);
+  const next = (status.data?.cityWindows ?? [])
+    .filter((window) => window.city === "new-york" && window.salesCloseAt != null && window.salesCloseAt > now && window.thresholdMmX100 && /^\d+$/.test(window.thresholdMmX100))
+    .sort((left, right) => left.observationEnd - right.observationEnd)[0];
+  const mm = next?.thresholdMmX100 ? Number(next.thresholdMmX100) / 100 : null;
+  if (mm == null) return <RainGauge level={0} ticks={[]} label="Empty rain gauge" />;
+  return <RainGauge level={1} ticks={gaugeTicks([{ mm, selected: true }], mm)} label={`New York trigger line at ${mm} mm`} />;
 }
 
 function usePhoneParallax(enabled: boolean) {
@@ -286,19 +222,10 @@ export default function WaitlistPage() {
             <BrandMark size={34} settle />
             <span>SkyHedge</span>
           </Link>
-          <nav className="wl-nav__links" aria-label="Primary">
-            <a href="#how">How it works</a>
-            <a href="#markets">Markets</a>
-            <a href="#faq">FAQ</a>
-            <Link to="/developers">Developers</Link>
-          </nav>
           <div className="wl-nav__actions">
-            <Link to="/app" className="wl-cta-secondary wl-nav__app">
-              Open web app
+            <Link to="/app" className="wl-nav__cta">
+              {LANDING_HEADER_APP}
             </Link>
-            <a href="#waitlist" className="wl-nav__cta">
-              Join waitlist
-            </a>
           </div>
         </div>
       </header>
@@ -307,28 +234,23 @@ export default function WaitlistPage() {
         <section ref={heroRef} className="wl-hero" aria-labelledby="wl-hero-title">
           <div className="wl-hero__copy">
             <h1 id="wl-hero-title" className="wl-hero__title">
-              Rain on your plans? Get paid.
+              {LANDING_HERO_TITLE}
             </h1>
-            <p className="wl-hero__lead">
-              Pick the city and the days. If NOAA rain at the station reaches the threshold, the payout lands in your
-              wallet.
-            </p>
+            <p className="wl-hero__lead">{LANDING_HERO_LEAD}</p>
             <div id="waitlist" className="wl-hero__form">
               <div className="wl-hero__cta">
-                <WaitlistForm variant="hero" />
-                <Link to="/app?tab=markets&city=new-york" className="wl-cta-secondary">
-                  Pick your city
+                <Link to="/app" className="wl-nav__cta">
+                  {LANDING_OPEN_APP}
                 </Link>
-                <Link to="/app" className="wl-cta-secondary">
-                  Open web app
-                </Link>
+                <a href="#join" className="wl-cta-secondary">
+                  {LANDING_WAITLIST}
+                </a>
               </div>
-              <p className="wl-hero__fine">Devnet only. No spam.</p>
+              <p className="wl-hero__fine">{LANDING_FINE}</p>
             </div>
           </div>
           <div ref={heroPhoneRef} className="wl-hero__phone wl-hero__phone--enter">
-            <HeroWeather />
-            <PhonePlans glow parallax float />
+            <LandingGauge />
           </div>
         </section>
 
@@ -366,7 +288,7 @@ export default function WaitlistPage() {
               </ol>
               <div className="wl-how__phone" aria-hidden="true">
                 <div className="wl-how__phone-sticky">
-                  <PhoneMockupStack active={activeScreen} glow />
+                  <PhoneMockupStack active={activeScreen} glow={false} />
                 </div>
               </div>
             </div>
@@ -383,24 +305,18 @@ export default function WaitlistPage() {
             </div>
             <ul className="wl-markets" aria-label="Rainfall cities">
               {CONSUMER_CITIES.map((market) => {
-                const chip = chips[market.code] ?? { label: "Opening shortly", tone: "soon" as const };
+                const chip = chips[market.code];
+                const status = market.slug === "toronto"
+                  ? { text: TORONTO_WAITING, ink: "dry" as const }
+                  : productStatusLabel(chip?.tone === "live" ? "live" : chip?.tone === "closed" ? "closed" : "soon");
                 return (
                 <li key={market.code} className="wl-markets__card">
                   <div className="wl-markets__top">
                     <p className="wl-markets__city">{market.city}</p>
-                    <span className={chipClass(chip, market.code === "NYC" && chip.tone === "live")}>
-                      {chip.label}
-                    </span>
+                    <span className={`status-word status-word--${status.ink}`}>{status.text}</span>
                   </div>
                   <p className="wl-markets__peril">{market.moment}</p>
-                  {market.code === "NYC" ? (
-                    <p className="wl-markets__rain" aria-label={`${NYC_OCTOBER_NORMAL_MM} millimetres, October normal at Central Park`}>
-                      <RainCount value={NYC_OCTOBER_NORMAL_MM} />
-                      <span className="wl-markets__rain-unit">mm</span>
-                      <span className="wl-markets__rain-note">October normal, Central Park</span>
-                    </p>
-                  ) : null}
-                  <p className="wl-markets__source">{market.payout}</p>
+                  <p className="wl-markets__source">{market.source}</p>
                 </li>
                 );
               })}
@@ -440,7 +356,12 @@ export default function WaitlistPage() {
             </div>
           </section>
 
-        <section className="wl-section wl-section--cta" aria-labelledby="wl-cta-title">
+        <section id="settle" className="wl-section" aria-labelledby="wl-settle-title">
+          <h2 id="wl-settle-title" className="wl-section__title">{HOW_IT_SETTLES_TITLE}</h2>
+          <p className="wl-section__lead">{HOW_IT_SETTLES}</p>
+        </section>
+
+        <section id="join" className="wl-section wl-section--cta" aria-labelledby="wl-cta-title">
             <h2 id="wl-cta-title" className="wl-section__title">
               Join the waitlist
             </h2>
@@ -448,7 +369,7 @@ export default function WaitlistPage() {
             <div className="wl-cta-row">
               <WaitlistForm variant="compact" />
               <Link to="/app" className="wl-cta-secondary">
-                Open web app
+                {LANDING_OPEN_APP}
               </Link>
             </div>
           </section>

@@ -13,9 +13,10 @@ import { friendlyError, quoteErrorTitle, stationLabel, transactionErrorTitle } f
 import { payoutStage, PAYOUT_STEPS, stepLabel, type FlowStep } from "./consumer-flow";
 import { formatWeekLabel } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
-import { expiryChipLabel, matchingWindowPackage, measuredAtLine, type WindowEvidencePackage } from "../../shared/window-chain.ts";
-import { marketStatus, notTriggeredLine, payGet, payGetBarWidths } from "../../shared/pay-get.ts";
-import { COVER_CHIPS, EXPLORER_LINK_LABEL, ONE_PROTECTION_NOTE, coveredReceiptRows, devnetExplorerUrl, marketStatusInk, triggerMillimetres, type CoverChip } from "../../shared/protect-copy.ts";
+import { expiryChipLabel, matchingWindowPackage, windowEndLabel, windowStartLabel, type WindowEvidencePackage } from "../../shared/window-chain.ts";
+import { tenorOf } from "../../shared/window-ladder.ts";
+import { marketStatus, notTriggeredLine, payGet } from "../../shared/pay-get.ts";
+import { COVER_AMOUNT_TITLE, COVER_CHIPS, EXPLORER_LINK_LABEL, MARKETS_FOOTER, MARKETS_SUB, ONE_PROTECTION_NOTE, PRE_SIGN_CTA, PRE_SIGN_TITLE, TECHNICAL_DETAILS, WALLET_CHAIN_ERROR, WALLET_CONNECT, WALLET_DISCONNECTED, WALLET_EMPTY, coveredReceiptRows, devnetExplorerUrl, formatQuoteSkyt, gaugeMarkPlan, marketRowModel, marketStatusInk, productStatusLabel, protectHeader, triggerMillimetres, windowStamp, type CoverChip } from "../../shared/protect-copy.ts";
 import { RainGauge } from "./rain-gauge";
 import { ProtectChain } from "./protect-chain";
 import { citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
@@ -89,6 +90,7 @@ export function MarketsScreen(props: {
   const [scope, setScope] = useState<MapScope>("region");
   const [group, setGroup] = useState<MarketGroup | null>(null);
   const [browseAll, setBrowseAll] = useState(false);
+  const [techOpen, setTechOpen] = useState(false);
   const pickGroup = (grp: MarketGroup | null) => { setGroup(grp); setScope(grp === "North America" ? "region" : "global"); };
   const allWindows = sellingWindows(props.status, props.nowSeconds);
   const windows = windowsForCity(allWindows, "des-moines");
@@ -130,7 +132,7 @@ export function MarketsScreen(props: {
 
   return <>
     {props.showGuide ? <StepBar step={1} /> : null}
-    <ScreenTop title="Where are your plans?" lead="Pick a city, then choose what to protect against inside it." />
+    <ScreenTop title="Where are your plans?" lead={MARKETS_SUB} />
 
     <Enter index={0}>
       <View style={s.search}>
@@ -160,17 +162,33 @@ export function MarketsScreen(props: {
         const slug = rawSlug && rawSlug !== "toronto" ? rawSlug : undefined;
         const cityWindows = slug ? windowsForCity(allWindows, slug) : [];
         const status = marketStatus(cityWindows, props.nowSeconds) ?? (slug && citySalesClosed(props.status, slug, props.nowSeconds) ? { tone: "closed" as const, label: "Closed" } : null);
-        const statusColor = status ? statusInk(status.tone) : C.muted;
         const moment = consumerCityByCode(m.code)?.moment;
-        const line = cityDataLine(cityWindows);
-        const trigger = cityWindows[0]?.thresholdMmX100 && /^\d+$/.test(cityWindows[0].thresholdMmX100) ? Number(cityWindows[0].thresholdMmX100) / 100 : null;
+        const next = cityWindows[0];
+        const trigger = next?.thresholdMmX100 && /^\d+$/.test(next.thresholdMmX100) ? Number(next.thresholdMmX100) / 100 : null;
+        const quote = next && trigger != null && next.premiumRateBps != null && next.quoteProbabilityBps != null
+          ? payGet({ coverageSkyt: 100, premiumRateBps: next.premiumRateBps, probabilityBps: next.quoteProbabilityBps })
+          : null;
+        const row = consumerCityByCode(m.code) ? marketRowModel({
+          slug: consumerCityByCode(m.code)!.slug,
+          stationSource: consumerCityByCode(m.code)!.source,
+          open: status?.tone === "open" && quote != null,
+          closed: status?.tone === "closed",
+          tenor: next ? tenorOf(next.observationStart, next.observationEnd) : null,
+          expiry: next ? expiryChipLabel(next)?.split(" · ")[0] ?? null : null,
+          triggerMm: trigger,
+          multiple: quote?.multiple ?? null,
+          probabilityBps: next?.quoteProbabilityBps ?? null,
+        }) : null;
         const on = highlight.has(m.code) && m.code === focusCode;
-        return <SpringPress key={m.code} accessibilityRole="button" accessibilityLabel={`${m.name}. ${moment ?? `${m.region}, ${m.source}`}. ${status?.label ?? ""}`} onPress={() => open(m)} style={[s.resultRow, on && { backgroundColor: C.surfaceRaised, borderColor: "#F2C230" }]}>
-          {trigger != null ? <RainGauge width={28} height={64} level={0} ticks={[{ mm: trigger, selected: true }]} label="" /> : null}
+        const gaugeMax = trigger && trigger > 0 ? trigger : 1;
+        return <SpringPress key={m.code} accessibilityRole="button" accessibilityLabel={`${m.name}. ${row?.stationLine ?? moment ?? `${m.region}, ${m.source}`}. ${row?.status ?? status?.label ?? ""}`} onPress={() => open(m)} style={[s.resultRow, on && { backgroundColor: C.surface, borderColor: C.rain }]}>
+          <RainGauge width={28} height={64} level={row?.ink === "glacier" && trigger ? 1 : 0} maxMm={gaugeMax} ticks={row?.ink === "glacier" && trigger ? gaugeMarkPlan([{ mm: trigger, priced: true }], trigger).map((mark) => ({ mm: mark.mm, selected: mark.selected, labelled: false })) : []} label="" />
           <View style={s.resultCopy}>
             <Text style={s.resultName} android_hyphenationFrequency="none">{a}<Text style={{ fontFamily: F.bodyBold, color: C.ink }}>{b}</Text>{c}</Text>
-            <Text style={s.resultSub} android_hyphenationFrequency="none">{line ?? moment ?? `${m.region} · ${m.source}`}</Text>
-            {status ? <Text style={[s.caption, { color: statusColor }]}>{status.label}</Text> : null}
+            <Text style={s.resultSub} android_hyphenationFrequency="none">{row?.stationLine ?? moment ?? `${m.region} · ${m.source}`}</Text>
+            {row?.figures ? <Text style={[s.resultSub, { color: C.ink }]} android_hyphenationFrequency="none">{row.figures}</Text> : null}
+            {row?.forecaster ? <Text style={s.caption}>{row.forecaster.band} {row.forecaster.detail}</Text> : null}
+            <Text style={[s.caption, { color: row?.ink === "glacier" ? C.rain : C.dryText }]}>{row?.status ?? (m.code === "YYZ" ? "Waiting on Environment Canada data" : productStatusLabel("soon").text)}</Text>
           </View>
           <AppIcon name="chevron-right" color={C.quiet} size={16} />
         </SpringPress>;
@@ -185,7 +203,8 @@ export function MarketsScreen(props: {
 
     {browseAll && scope === "global" && !filtering ? <GlobalGroups onPick={pickGroup} /> : null}
 
-    <GlassCard accent={live ? C.rain : undefined} delay={4 * motion.stagger}>
+    <Pressable accessibilityRole="button" accessibilityState={{ expanded: techOpen }} onPress={() => setTechOpen((open) => !open)} style={{ minHeight: MIN_TOUCH, justifyContent: "center" }}><Text style={s.link}>{TECHNICAL_DETAILS}</Text></Pressable>
+    {techOpen ? <GlassCard delay={4 * motion.stagger}>
       <View style={s.resultCopy}>
         <Text style={s.cardTitle} android_hyphenationFrequency="none">Des Moines, IA</Text>
         <Text style={s.cardSub}>NOAA · {station}</Text>
@@ -196,14 +215,14 @@ export function MarketsScreen(props: {
         <View>
           <Text style={s.sectionLabel}>{thresholdMm != null ? "Trigger" : "Rain this window"}</Text>
           {thresholdMm != null ? <Text style={s.triggerBig}>{symbol} {trimMm(thresholdMm)} <Text style={s.unitMono}>mm</Text></Text>
-            : <View style={s.baseline}><CountUp value={city?.cumulativeMm ?? null} style={s.bigFigure} /><Text style={s.unit}>mm</Text></View>}
+            : <View style={s.baseline}><Text style={s.bigFigure}>{city?.cumulativeMm == null ? "—" : city.cumulativeMm.toFixed(1)}</Text><Text style={s.unit}>mm</Text></View>}
         </View>
         {per100 ? <View style={{ alignItems: "flex-end" }}>
           <Text style={s.sectionLabel}>From</Text>
           <Text style={s.fromFigure}>{per100} <Text style={s.unitMono}>SKYT / 100</Text></Text>
         </View> : thresholdMm != null ? <View style={{ alignItems: "flex-end" }}>
           <Text style={s.sectionLabel}>Rain so far</Text>
-          <View style={s.baseline}><CountUp value={city?.cumulativeMm ?? null} style={s.fromFigure} /><Text style={s.unitMono}> mm</Text></View>
+          <View style={s.baseline}><Text style={s.fromFigure}>{city?.cumulativeMm == null ? "—" : city.cumulativeMm.toFixed(1)}</Text><Text style={s.unitMono}> mm</Text></View>
         </View> : null}
       </View>
       {city?.cumulativeMm == null ? <Text style={s.caption}>Not reported by NOAA yet</Text> : city.observedThrough ? <Text style={s.caption}>Observed through {city.observedThrough}</Text> : null}
@@ -214,18 +233,18 @@ export function MarketsScreen(props: {
             {Array.from({ length: 40 }).map((_, i) => <View key={i} style={s.dash} />)}
           </View> : null}
           {values.map((v, i) => <View key={history[i].week} style={s.barCol}>
-            {v == null ? <View style={s.barUnknown} /> : <GrowBar height={Math.max(2, (v / scale) * CHART_H)} delay={i * 90} style={[s.bar, i === lastKnown && s.barCurrent, thresholdMm != null && v >= thresholdMm && s.barHit]} />}
+            {v == null ? <View style={s.barUnknown} /> : <View style={[s.bar, { height: Math.max(2, (v / scale) * CHART_H) }, i === lastKnown && s.barCurrent, thresholdMm != null && v >= thresholdMm && s.barHit]} />}
           </View>)}
         </View>
-        <View style={s.between}><Text style={s.caption}>{history.length}-week rainfall · NOAA · mm</Text>{thresholdMm != null ? <Text style={[s.caption, { color: C.payout }]}>– – trigger</Text> : null}</View>
+        <View style={s.between}><Text style={s.caption}>{history.length}-week rainfall · NOAA · mm</Text>{thresholdMm != null ? <Text style={s.caption}>trigger</Text> : null}</View>
       </View> : <Text style={[s.caption, { marginTop: S.md }]}>Weekly history isn’t available yet — nothing is estimated.</Text>}
 
       {live ? <Text style={[s.caption, { marginTop: S.md }]}>{nextDates}</Text> : <Text style={[s.caption, { marginTop: S.md }]}>{citySalesClosed(props.status, "des-moines", props.nowSeconds) ? "Sales closed" : NEXT_WINDOW_COPY}</Text>}
       <View style={{ marginTop: S.lg }}><ActionButton label={live ? "View coverage" : "See markets"} icon="arrow-right" onPress={() => props.onProtect("DSM")} /></View>
-    </GlassCard>
+    </GlassCard> : null}
 
     {props.guide}
-    <Disclosure>Devnet test token. Parametric weather protection. Concept markets are previews: no prices, triggers or rainfall figures exist for them. Observed station data only — missing values are never estimated.</Disclosure>
+    <Text style={[s.caption, { marginTop: S.md }]}>{MARKETS_FOOTER}</Text>
   </>;
 }
 
@@ -330,9 +349,9 @@ export function ProtectTicket(props: {
   const payoutLabel = props.amountBase ? `${formatSkytFixed(props.amountBase, 0)} SKYT` : "—";
 
   const sourceName = consumer?.source ?? "NOAA station";
-  const expiryBit = market ? expiryChipLabel(market)?.split(" · ")[0] ?? "expiry" : "expiry";
+  const header = protectHeader({ station: sourceName, windowStart: market ? windowStartLabel(market) : null, windowEnd: market ? windowEndLabel(market) : null });
   return <>
-    <ScreenTop hideDevnet onBack={props.onBackToMarkets} eyebrow="Rain" title={place} lead={measuredAtLine(sourceName, expiryBit)} />
+    <ScreenTop hideDevnet onBack={props.onBackToMarkets} title={place} lead={`${header.stationLine}. ${header.settleLine}`} />
     <ProtectChain
       city={props.city ?? market?.city ?? props.windows?.[0]?.city ?? "new-york"}
       windows={windows}
@@ -360,7 +379,7 @@ export function ProtectTicket(props: {
     {!props.buyPhase && props.transactionMessage ? <Text accessibilityLiveRegion="polite" style={[s.body, { color: C.rain, marginBottom: S.md }]}>{props.transactionMessage}</Text> : null}
     {!props.buyPhase && props.transactionError && !covered ? <View style={[s.notice, { borderColor: C.coral }]} accessibilityRole="alert"><Text style={s.noticeTitle}>{transactionErrorTitle(props.transactionError, props.walletName)}</Text><Text style={s.noticeBody}>{props.transactionError}</Text><Pressable accessibilityRole="button" onPress={props.onRetryBuy} style={s.inlineBtn}><Text style={s.link}>Retry</Text></Pressable></View> : null}
 
-    {covered ? <Reveal><CoveredCard position={covered} signature={props.transactionSignature} onWallet={props.onViewWallet} /></Reveal> : null}
+    {covered ? <Reveal><CoveredCard position={covered} signature={props.transactionSignature} claim={props.claimReadiness} onWallet={props.onViewWallet} /></Reveal> : null}
     {showTicket && !covered ? <Reveal><CoverageTicket
       status={coverageTicketStatus(props.claimReadiness)}
       trigger={thresholdMm ? `${triggerLabel} cumulative` : "—"}
@@ -467,7 +486,7 @@ function CoverageTicket(props: {
       <Row label="Paid" value={props.paid} />
       <Row label="Payout" value={props.payout} gold />
       {props.signature ? <Row label="Tx" value={`${shortAddress(props.signature)} ↗`} /> : null}
-      <View style={s.row}><Text style={s.rowLabel}>Network</Text><Text style={[s.rowValue, { color: C.payout }]}>Solana Devnet</Text></View>
+      <View style={s.row}><Text style={s.rowLabel}>Network</Text><Text style={s.rowValue}>Solana Devnet</Text></View>
       {props.signature ? <Pressable accessibilityRole="link" onPress={() => { void Linking.openURL(`https://explorer.solana.com/tx/${encodeURIComponent(props.signature!)}?cluster=devnet`); }} style={s.inlineBtn}><Text style={s.link}>View on Explorer ↗</Text></Pressable> : null}
     </View>
     <View style={s.ticketHr} />
@@ -484,7 +503,7 @@ function CoverageTicket(props: {
     })}
     {props.positionReason ? <Text style={[s.caption, { marginTop: S.md }]}>{props.positionReason}</Text> : null}
     {props.observationMm != null ? <Row label="Verified rainfall" value={`${props.observationMm.toFixed(1)} mm · NOAA`} /> : null}
-    {props.observationMm != null && props.triggerMm != null && notTriggeredLine(props.observationMm, props.triggerMm) ? <Text style={[s.caption, { color: C.payout, marginTop: S.sm }]}>{notTriggeredLine(props.observationMm, props.triggerMm)}</Text> : null}
+    {props.observationMm != null && props.triggerMm != null && notTriggeredLine(props.observationMm, props.triggerMm) ? <Text style={[s.caption, { color: C.dryText, marginTop: S.sm }]}>{notTriggeredLine(props.observationMm, props.triggerMm)}</Text> : null}
     {props.resolutionSignature ? <ExplorerButton url={`https://explorer.solana.com/tx/${encodeURIComponent(props.resolutionSignature)}?cluster=devnet`} label="Settlement proof" /> : null}
     <View style={{ marginTop: S.lg }}><ActionButton label="Protect again" icon="shield" onPress={props.onAgain} /></View>
     <Pressable accessibilityRole="button" onPress={props.onMarkets} style={[s.inlineBtn, { alignSelf: "center", marginTop: S.sm }]}><Text style={s.link}>Back to markets</Text></Pressable>
@@ -532,51 +551,69 @@ export function PayoutStatusCard({ stage, dates }: { stage: NonNullable<ReturnTy
   </View>;
 }
 
-export function StickyCta(props: { label: string; onPress: () => void; disabled?: boolean; busy?: boolean; busyLabel?: string; hint?: string | null; pay?: string | null; getLabel?: string | null; payBase?: string | null; getBase?: string | null }) {
-  const bars = payGetBarWidths(props.payBase, props.getBase);
-  return <View style={s.sticky}>
-    {props.pay && props.getLabel && bars ? <View style={s.ticketBars} accessibilityLabel={`You pay ${props.pay} SKYT, you get ${props.getLabel} SKYT`}>
-      <View style={s.ticketRow}><View style={s.ticketTrack}><View style={[s.payBar, { width: `${bars.pay * 100}%` }]} /></View><Text numberOfLines={1} style={s.ticketLabel}>You pay {props.pay} SKYT</Text></View>
-      <View style={s.ticketRow}><View style={s.ticketTrack}><View style={[s.getBar, { width: `${bars.get * 100}%` }]} /></View><Text numberOfLines={1} style={[s.ticketLabel, { color: C.payout }]}>You get {props.getLabel} SKYT</Text></View>
-    </View> : null}
+export function StickyCta(props: { label: string; onPress: () => void; disabled?: boolean; busy?: boolean; busyLabel?: string; hint?: string | null; pay?: string | null; getLabel?: string | null; payBase?: string | null; getBase?: string | null; payLine?: string | null; ledgerGet?: string | null; ledgerMeta?: string | null }) {
+  const payout = props.ledgerGet?.match(/^You get (\S+ SKYT)/);
+  return <View style={[s.sticky, props.payLine ? { minHeight: 168 } : null]}>
+    {props.payLine ? <Text style={s.payLine}>{props.payLine}</Text> : null}
+    {props.ledgerGet ? <Text style={s.ledgerGet}>{payout ? <>You get <Text style={{ color: C.payout }}>{payout[1]}</Text>{props.ledgerGet.slice(`You get ${payout[1]}`.length)}</> : props.ledgerGet}</Text> : null}
+    {props.ledgerMeta ? <Text style={s.feeLine}>{props.ledgerMeta}</Text> : null}
     {props.hint ? <Text style={[s.caption, { textAlign: "center", marginBottom: S.sm }]}>{props.hint}</Text> : null}
     <ActionButton label={props.label} busyLabel={props.busyLabel} icon="arrow-right" disabled={props.disabled} busy={props.busy} onPress={props.onPress} />
   </View>;
 }
 
-export function ConfirmCover(props: { sentence: string; station: string; expiry: string; windowLabel: string; pay: string; getLabel: string; multiple?: string | null; feeLine?: string | null; getLine?: string | null; preSign?: string | null; coverSkyt?: CoverChip; onCover?: (skyt: CoverChip) => void; onClose: () => void; onApprove: () => void }) {
-  const payLine = `You pay ${props.pay} SKYT`;
+export function ConfirmCover(props: { sentence: string; station: string; expiry: string; windowLabel: string; pay: string; getLabel: string; multiple?: string | null; feeLine?: string | null; getLine?: string | null; preSign?: string | null; conditionLine?: string | null; placeLine?: string | null; triggerLine?: string | null; shortLabel?: string | null; coverSkyt?: CoverChip; onCover?: (skyt: CoverChip) => void; onClose: () => void; onApprove: () => void }) {
+  const [step, setStep] = useState<"amount" | "sign">("amount");
   const getLine = props.getLine ?? props.sentence;
   return <View style={s.sheetScrim}>
-    <View style={s.sheet} accessibilityViewIsModal accessibilityLabel="Confirm protection">
-      <View accessibilityRole="radiogroup" accessibilityLabel="Coverage amount in SKYT" style={s.sheetChips}>
-        {COVER_CHIPS.map((chip) => {
-          const on = chip === props.coverSkyt;
-          return <Pressable key={chip} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => props.onCover?.(chip)} style={[s.sheetChip, on && s.sheetChipOn]}>
-            <Text style={[s.sheetChipText, on && { color: C.ink }]}>{chip}</Text>
-          </Pressable>;
-        })}
-      </View>
-      <Text style={s.payLine}>{payLine}</Text>
-      <Text style={s.getLine}>{getLine}</Text>
-      {props.multiple ? <Text style={s.multiple}>{props.multiple}</Text> : null}
-      {props.feeLine ? <Text style={s.feeLine}>{props.feeLine}</Text> : null}
-      {props.preSign ? <Text style={s.preSign}>{props.preSign}</Text> : null}
-      <View style={s.sheetActions}>
-        <Pressable accessibilityRole="button" onPress={props.onClose} style={s.sheetBack}><Text style={s.bodyStrong}>Back</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={approveInPhantomLabel(props.pay)} onPress={props.onApprove} style={s.sheetGo}><Text style={[s.bodyStrong, { color: C.canvas, textAlign: "center" }]}>{approveInPhantomLabel(props.pay)}</Text></Pressable>
-      </View>
+    <View style={s.sheet} accessibilityViewIsModal accessibilityLabel={step === "sign" ? PRE_SIGN_TITLE : COVER_AMOUNT_TITLE}>
+      <View style={s.sheetTicks}>{[0, 1, 2, 3, 4, 5, 6, 7].map((tick) => <View key={tick} style={s.sheetTick} />)}</View>
+      {step === "amount" ? <>
+        <Text style={s.cardTitleSm}>{COVER_AMOUNT_TITLE}</Text>
+        <View accessibilityRole="radiogroup" accessibilityLabel="Coverage amount in SKYT" style={s.sheetChips}>
+          {COVER_CHIPS.map((chip) => {
+            const on = chip === props.coverSkyt;
+            return <Pressable key={chip} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => props.onCover?.(chip)} style={[s.sheetChip, on && s.sheetChipOn]}>
+              <Text style={[s.sheetChipText, on && { color: C.ink }]}>{chip}</Text>
+            </Pressable>;
+          })}
+        </View>
+        <Text style={s.sheetFigure}>{getLine}</Text>
+        {props.conditionLine ? <Text style={s.feeLine}>{props.conditionLine}</Text> : null}
+        {props.feeLine ? <Text style={s.feeLine}>{props.feeLine}</Text> : null}
+        {props.shortLabel ? <Text accessibilityRole="alert" style={[s.feeLine, { color: C.coral }]}>{props.shortLabel}</Text> : null}
+        <View style={s.sheetActions}>
+          <Pressable accessibilityRole="button" onPress={props.onClose} style={s.sheetBack}><Text style={s.bodyStrong}>Back</Text></Pressable>
+          <Pressable accessibilityRole="button" disabled={!!props.shortLabel} onPress={() => setStep("sign")} style={[s.sheetGo, props.shortLabel ? { backgroundColor: C.surface } : null]}><Text style={[s.bodyStrong, { color: props.shortLabel ? C.muted : C.actionText, textAlign: "center" }]}>{`Protect for ${props.pay} SKYT`}</Text></Pressable>
+        </View>
+      </> : <>
+        <Text style={s.cardTitleSm}>{props.preSign ?? PRE_SIGN_TITLE}</Text>
+        <View style={s.row}><Text style={s.rowLabel}>Pay</Text><Text style={s.rowValue}>{props.pay} SKYT</Text></View>
+        <View style={s.row}><Text style={s.rowLabel}>Cover</Text><Text style={[s.rowValue, { color: C.payout }]}>{props.getLabel} SKYT</Text></View>
+        {props.placeLine ? <Text style={s.feeLine}>{props.placeLine}</Text> : null}
+        {props.triggerLine ? <Text style={s.feeLine}>{props.triggerLine}</Text> : null}
+        <View style={s.sheetActions}>
+          <Pressable accessibilityRole="button" onPress={() => setStep("amount")} style={s.sheetBack}><Text style={s.bodyStrong}>Back</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={approveInPhantomLabel(props.pay)} onPress={props.onApprove} style={s.sheetGo}><Text style={[s.bodyStrong, { color: C.actionText, textAlign: "center" }]}>{PRE_SIGN_CTA}</Text></Pressable>
+        </View>
+      </>}
     </View>
   </View>;
 }
 
 /** Calm state when this wallet already holds the selected window. Values come from the position account only. */
-function CoveredCard(props: { position: ChainProtection; signature: string | null; onWallet?: () => void }) {
-  const rows = coveredReceiptRows({ premiumPaid: props.position.premiumPaid, coverAmount: props.position.protectedAmount, trigger: props.position.triggerLabel, windowLabel: props.position.windowLabel });
+function CoveredCard(props: { position: ChainProtection; signature: string | null; onWallet?: () => void; claim?: ClaimReadiness | null }) {
   const triggerMm = triggerMillimetres(props.position.triggerLabel);
+  const observed = props.claim?.observation ? Number(props.claim.observation.rainfallMmX100) / 100 : null;
+  const state = props.claim?.state;
+  const closed = state === "claimed" || state === "not_claimable" || state === "expired";
+  const refund = state === "claimed" && (props.claim?.action === "claim_premium_refund" || /refund/i.test(props.claim?.result ?? ""));
+  const stamp = windowStamp({ closed, paidOut: state === "claimed" && !refund, payoutLabel: formatQuoteSkyt(props.position.potentialPayout || props.position.protectedAmount, 0), observedMm: observed, triggerMm, monthly: false });
+  const rows = coveredReceiptRows({ premiumPaid: props.position.premiumPaid, coverAmount: props.position.protectedAmount, trigger: props.position.triggerLabel, windowLabel: props.position.windowLabel, observedMm: observed });
   const explorer = devnetExplorerUrl({ signature: props.signature, address: props.position.address });
-  return <GlassCard accent={C.rain}>
+  return <GlassCard>
     <View accessibilityRole="summary" accessibilityLabel="You’re covered on this window">
+      {stamp ? <Text style={[s.stamp, { color: stamp.tone === "paid" ? C.payout : C.dryText, borderColor: stamp.tone === "paid" ? C.payout : C.dryText }]}>{stamp.title}{"\n"}{stamp.subline}</Text> : null}
       <Text style={s.cardTitleSm}>You’re covered</Text>
       <View style={{ flexDirection: "row", alignItems: "center", gap: S.md, marginTop: S.sm }}>
         <RainGauge width={56} height={120} level={0} maxMm={triggerMm ? triggerMm * 1.25 : 1} ticks={triggerMm != null ? [{ mm: triggerMm, selected: true }] : []} label={triggerMm != null ? `Trigger line at ${triggerMm} mm` : "Rain gauge"} />
@@ -643,12 +680,11 @@ export function WalletV2(props: {
   const stage = payoutStage(props.claimReadiness);
   const readingBalances = !props.balances && !props.balancesError && (props.balancesLoading || props.loading);
   return <>
-    <ScreenTop title="Wallet" lead="Devnet balances and positions, read from Solana." />
+    <ScreenTop title="Wallet" />
     {props.walletError ? <View style={s.notice} accessibilityRole="alert"><Text style={s.noticeTitle}>Wallet didn’t connect — try again</Text><Text style={s.noticeBody}>{friendlyError(props.walletError)}</Text></View> : null}
     {!props.wallet ? <Enter index={0}><GlassCard>
-      <Text style={s.cardTitle}>Connect a Solana wallet</Text>
-      <Text style={[s.body, { color: C.muted, marginTop: S.sm }]}>Your wallet asks before sharing your address. Keys never leave it, and you approve every transaction there.</Text>
-      <View style={{ marginTop: S.lg }}><ActionButton label="Connect wallet" icon="credit-card" busy={props.loading} onPress={props.onConnect} /></View>
+      <Text style={s.cardTitle}>{WALLET_DISCONNECTED}</Text>
+      <View style={{ marginTop: S.lg }}><ActionButton label={WALLET_CONNECT} icon="credit-card" busy={props.loading} onPress={props.onConnect} /></View>
     </GlassCard></Enter> : <>
       <GlassCard accent={C.rain} delay={0}>
         <View style={s.between}>
@@ -670,7 +706,7 @@ export function WalletV2(props: {
           <Text style={s.caption}>{props.balances.sol.toFixed(4)} SOL for fees</Text>
         ) : props.balancesError ? (
           <View style={{ marginTop: S.xs }} accessibilityRole="alert">
-            <Text style={s.caption}>{friendlyError(props.balancesError, "Couldn’t read balances from Solana.")}</Text>
+            <Text style={s.caption}>{WALLET_CHAIN_ERROR}</Text>
             {props.onRetryBalances ? (
               <Pressable accessibilityRole="button" onPress={props.onRetryBalances} style={s.inlineBtn} disabled={props.balancesLoading}>
                 <Text style={s.link}>{props.balancesLoading ? "Retrying…" : "Retry balance read"}</Text>
@@ -702,11 +738,11 @@ export function WalletV2(props: {
           </View>;
         }) : props.portfolio?.indexed ? <View style={s.emptyCard}>
           <AppIcon name="umbrella" color={C.rain} size={22} />
-          <Text style={s.body}>No protections yet</Text>
+          <Text style={s.body}>{WALLET_EMPTY}</Text>
           {props.onBrowseMarkets ? <Pressable accessibilityRole="link" onPress={props.onBrowseMarkets} style={s.inlineBtn}><Text style={s.link}>Protect</Text></Pressable> : null}
         </View> : props.portfolioError ? <View style={s.emptyCard} accessibilityRole="alert">
           <AppIcon name="alert-circle" color={C.coral} size={22} />
-          <Text style={s.body}>{friendlyError(props.portfolioError, "Couldn’t read protections from Solana.")}</Text>
+          <Text style={s.body}>{WALLET_CHAIN_ERROR}</Text>
           {props.onRetryBalances ? <Pressable accessibilityRole="button" onPress={props.onRetryBalances} style={s.inlineBtn}><Text style={s.link}>Retry</Text></Pressable> : null}
         </View> : <View style={s.emptyCard}>
           <ActivityIndicator color={C.rain} />
@@ -733,10 +769,10 @@ const s = StyleSheet.create({
   devnetTagText: { ...T.label, color: C.amber, fontSize: 12, lineHeight: 16 },
   search: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: S.md, paddingHorizontal: S.lg, borderRadius: glass.radius, backgroundColor: glass.fillField, borderWidth: 1, borderColor: glass.border, marginTop: S.lg, marginBottom: S.md, boxShadow: glass.fieldShadow },
   searchInput: { ...T.body, flex: 1, minHeight: 48, color: C.ink, fontSize: 16 },
-  regionChip: { minHeight: 36, justifyContent: "center", paddingHorizontal: S.md, borderRadius: 999, borderWidth: 1, borderColor: glass.borderStrong, backgroundColor: C.surfaceRaised },
-  regionChipOn: { borderColor: "#F2C230", backgroundColor: C.surfaceRaised },
+  regionChip: { minHeight: MIN_TOUCH, justifyContent: "center", paddingHorizontal: S.md, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceRaised },
+  regionChipOn: { borderWidth: 1.5, borderColor: C.rain, backgroundColor: C.rainSoft },
   regionChipText: { ...T.label, color: C.muted },
-  regionChipTextOn: { color: C.actionText, fontFamily: F.bodySemi },
+  regionChipTextOn: { color: C.ink, fontFamily: F.bodySemi },
   regionChipN: { fontFamily: F.mono, fontSize: 12, color: C.quiet, fontVariant: TAB },
   regionChipNOn: { color: C.actionText },
   resultRow: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: S.md, paddingHorizontal: S.sm, paddingVertical: S.sm, borderRadius: 16, borderWidth: 1, borderColor: "transparent", marginBottom: S.xs },
@@ -747,10 +783,10 @@ const s = StyleSheet.create({
   compactChipText: { fontFamily: F.bodyBold, fontSize: 12, lineHeight: 16 },
   browseLink: { minHeight: MIN_TOUCH, justifyContent: "center", alignSelf: "flex-start", marginTop: -S.sm, marginBottom: S.lg },
   moreRow: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: S.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
-  triggerBig: { ...T.amountL, color: C.payout, textShadowColor: C.payout + "73", textShadowRadius: 14 },
+  triggerBig: { ...T.amountL, color: C.ink },
   fromFigure: { ...T.amountM, fontSize: 30, lineHeight: 38, color: C.ink },
   unitMono: { ...T.unit, color: C.muted, fontWeight: "400", letterSpacing: 0 },
-  barHit: { backgroundColor: C.payout, opacity: 1 },
+  barHit: { backgroundColor: C.rain, opacity: 1 },
   payoutBig: { ...T.amountXL, lineHeight: 58, color: C.mint, textShadowColor: "rgba(52,211,153,0.55)", textShadowRadius: 18, marginBottom: S.sm },
   h1: { ...T.display, color: C.ink, letterSpacing: -1 },
   lead: { ...T.lead, color: C.muted, marginTop: S.xs, marginBottom: S.lg },
@@ -823,14 +859,19 @@ const s = StyleSheet.create({
   ticketLabel: { ...T.caption, width: 136, textAlign: "right", color: C.muted, fontVariant: ["tabular-nums"] },
   payBar: { height: 10, borderRadius: 5, backgroundColor: C.muted },
   getBar: { height: 10, borderRadius: 5, backgroundColor: C.payout },
-  sheetScrim: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, zIndex: 40, justifyContent: "flex-end", backgroundColor: "#00000066", padding: S.lg },
-  sheet: { borderRadius: 18, borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceRaised, padding: S.lg },
+  sheetScrim: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, zIndex: 40, justifyContent: "flex-end", backgroundColor: "rgba(11,18,32,0.72)" },
+  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, borderBottomWidth: 0, borderColor: C.border, backgroundColor: C.surfaceRaised, padding: S.lg, paddingTop: 0 },
+  sheetTicks: { flexDirection: "row", gap: 8, height: 20, alignItems: "flex-end", marginHorizontal: -S.lg, marginBottom: S.md, paddingHorizontal: S.lg, paddingTop: 8, backgroundColor: C.canvas },
+  sheetTick: { width: 1, height: 8, backgroundColor: C.tick },
+  sheetFigure: { color: C.payout, fontFamily: F.mono, fontSize: 40, lineHeight: 46, marginTop: S.sm },
+  ledgerGet: { ...T.body, color: C.muted, marginTop: 2 },
+  stamp: { fontFamily: F.mono, fontSize: 12, lineHeight: 16, borderWidth: 1.5, borderColor: "currentColor", alignSelf: "flex-start", paddingHorizontal: 6, paddingVertical: 2, marginBottom: S.sm },
   sheetActions: { flexDirection: "row", gap: S.sm, marginTop: S.md },
-  sheetBack: { paddingHorizontal: S.lg, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 24, borderWidth: 1, borderColor: C.border },
-  sheetGo: { flex: 1, paddingHorizontal: S.sm, paddingVertical: S.sm, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 24, backgroundColor: C.ink },
-  sheetChips: { flexDirection: "row", gap: S.sm, marginBottom: S.md },
-  sheetChip: { flex: 1, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface },
-  sheetChipOn: { borderColor: "#F2C230" },
+  sheetBack: { paddingHorizontal: S.lg, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 10, borderWidth: 1, borderColor: C.border },
+  sheetGo: { flex: 1, paddingHorizontal: S.sm, paddingVertical: S.sm, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 10, backgroundColor: C.rain },
+  sheetChips: { flexDirection: "row", gap: S.sm, marginBottom: S.md, marginTop: S.md },
+  sheetChip: { flex: 1, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface },
+  sheetChipOn: { borderWidth: 1.5, borderColor: C.rain, backgroundColor: C.rainSoft },
   sheetChipText: { ...T.bodyStrong, color: C.muted, fontFamily: F.mono },
   payLine: { ...T.bodyStrong, color: C.ink, fontFamily: F.mono, fontVariant: TAB },
   getLine: { ...T.body, color: C.payout, fontFamily: F.body, marginTop: S.xs },
