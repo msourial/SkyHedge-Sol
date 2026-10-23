@@ -15,6 +15,9 @@
     "api/quotes.ts": {
       "maxDuration": 30
     },
+    "api/x402/quote.ts": {
+      "maxDuration": 60
+    },
     "api/transactions/unsigned.ts": {
       "maxDuration": 30
     },

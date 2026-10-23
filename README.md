@@ -8,7 +8,7 @@
 |---|---|
 | Live site | **https://skyhedge.app** (waitlist) · **https://skyhedge.app/app** (Devnet product) |
 | Hackathon | Encode Club Solana Hackathon 2026 · readiness checklist: [docs/encode-readiness.md](docs/encode-readiness.md) |
-| Tracks | **Best Consumer App on Solana** · **Best Use of x402 on Solana** (x402 is *planned / under evaluation*, not integrated; see below) |
+| Tracks | **Best Consumer App on Solana** · **Best Use of x402 on Solana** (`GET /api/x402/quote`, Devnet USDC; see below) |
 | Repo | [msourial/SkyHedge-Sol @ seeker-revamp](https://github.com/msourial/SkyHedge-Sol/tree/seeker-revamp) |
 | APK | See [Releases](https://github.com/msourial/SkyHedge-Sol/releases) (Devnet build; SHA-256 in the release notes). Local release path: `mobile/android/app/build/outputs/apk/release/app-release.apk` |
 | Demo | `<<DEMO_VIDEO_URL>>` · script: [docs/demo-script.md](docs/demo-script.md) |
@@ -45,7 +45,7 @@
 - **Des Moines:** still has open Devnet windows in the status API. It is not the demo path.
 - **Soon on the first Markets screen (18 Oct 2026):** Chicago, Miami, Dallas–Fort Worth, Los Angeles. Toronto stays closed. Wind, snow, and heat have no prices.
 
-**x402 (Best Use of x402 track).** x402 is **not integrated yet**. It is planned and under evaluation, for example for pay-per-request access to premium weather feeds. Today the app only checks a free WeatherXM health endpoint, and x402-paid data is never used for settlement.
+**x402 (Best Use of x402 track).** `GET /api/x402/quote` sells one NOAA rainfall quote with x402 V2 `exact` on Solana Devnet, paid in Devnet USDC. The facilitator at `https://x402.org/facilitator` verifies and settles, and pays the Solana fee, so the server stores no signing key. A submitted transfer that Devnet has not finalized yet is HTTP 202 `SETTLEMENT_PENDING`: the same payment is retried, not a second charge. Notes: `/developers`. Demo script: [docs/demo-script-x402.md](docs/demo-script-x402.md). The route returns `PAYMENT_NOT_CONFIGURED` until `X402_PAY_TO` is set. x402-paid WeatherXM data is still not used for settlement.
 
 No traction numbers are claimed; SkyHedge is pre-launch.
 

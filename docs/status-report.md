@@ -60,4 +60,4 @@ Des Moines market **2** is open on Devnet (create `3BKexk…`, fund `5Uqswf…`,
 
 - Connected Wallet marketing frame (MWA unlock on device).
 - Map WIP still uncommitted (intentional).
-- x402 not integrated.
+- x402 quote endpoint is in the repo (`GET /api/x402/quote`). It is not live until `X402_PAY_TO` is set and the branch is deployed. See `docs/demo-script-x402.md`.

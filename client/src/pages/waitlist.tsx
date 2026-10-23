@@ -290,6 +290,7 @@ export default function WaitlistPage() {
             <a href="#how">How it works</a>
             <a href="#markets">Markets</a>
             <a href="#faq">FAQ</a>
+            <Link to="/developers">Developers</Link>
           </nav>
           <div className="wl-nav__actions">
             <Link to="/app" className="wl-cta-secondary wl-nav__app">
