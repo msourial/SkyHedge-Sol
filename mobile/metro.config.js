@@ -14,4 +14,23 @@ config.resolver.extraNodeModules = {
   buffer: require.resolve("buffer"),
 };
 
+// shared/ uses ".js" specifiers so Vercel's Node ESM functions resolve at runtime.
+// Metro does not map "./x.js" to "x.ts", so try the .ts source first for relative imports from shared/.
+const defaultResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  const resolve = defaultResolveRequest ?? context.resolveRequest;
+  if (
+    moduleName.startsWith(".") &&
+    moduleName.endsWith(".js") &&
+    context.originModulePath.startsWith(sharedRoot + path.sep)
+  ) {
+    try {
+      return resolve(context, moduleName.slice(0, -3) + ".ts", platform);
+    } catch {
+      // Fall through to the specifier as written.
+    }
+  }
+  return resolve(context, moduleName, platform);
+};
+
 module.exports = config;

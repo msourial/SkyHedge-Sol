@@ -2,8 +2,8 @@
  * Protect screen states. A failed read is not a closed window, and an empty
  * gauge is never a stand-in for a price.
  */
-import { consumerCityName } from "./consumer-cities.ts";
-import { openWeeklyWindows } from "./window-ladder.ts";
+import { consumerCityName } from "./consumer-cities.js";
+import { openWeeklyWindows } from "./window-ladder.js";
 
 export type ProtectSurface = "loading" | "error" | "closed" | "ready";
 

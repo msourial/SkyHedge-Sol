@@ -2,7 +2,7 @@
  * Customer pay versus payout. Figures come only from a pinned premium rate
  * and a chosen coverage amount. The chips are the payout, not the price.
  */
-import { chanceLabel, premiumBaseFor } from "./window-chain.ts";
+import { chanceLabel, premiumBaseFor } from "./window-chain.js";
 
 const BASE = 1_000_000n;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

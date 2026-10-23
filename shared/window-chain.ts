@@ -10,7 +10,7 @@ import {
   tenorOf,
   type LiveCitySlug,
   type Tenor,
-} from "./window-ladder.ts";
+} from "./window-ladder.js";
 
 const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAY_SECONDS = 86_400;
