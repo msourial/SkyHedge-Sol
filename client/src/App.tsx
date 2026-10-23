@@ -5,6 +5,7 @@ import { queryClient } from "./lib/queryClient";
 import WaitlistPage from "@/pages/waitlist";
 
 const AppShell = lazy(() => import("@/pages/app-shell"));
+const DevelopersPage = lazy(() => import("@/pages/developers"));
 const AppDashboard = lazy(() => import("@/pages/app-shell").then((mod) => ({ default: mod.AppDashboard })));
 
 function ScrollToTop() {
@@ -60,6 +61,14 @@ function App() {
           <Route path="/settlements" element={<Navigate to="/app?tab=evidence" replace />} />
           <Route path="/portfolio" element={<Navigate to="/app?tab=portfolio" replace />} />
           <Route path="/explore" element={<Navigate to="/app" replace />} />
+          <Route
+            path="/developers"
+            element={
+              <Suspense fallback={null}>
+                <DevelopersPage />
+              </Suspense>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

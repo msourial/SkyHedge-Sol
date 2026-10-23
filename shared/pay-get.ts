@@ -22,15 +22,23 @@ export function payGet(input: { coverageSkyt: number; premiumRateBps: number; pr
   const payBase = premiumBaseFor(getBase, input.premiumRateBps);
   const chance = chanceLabel(input.probabilityBps);
   if (payBase == null || payBase <= 0n || chance == null) return null;
-  const tenths = (getBase * 10n) / payBase;
+  const multiple = multipleLabel(getBase, payBase);
+  if (!multiple) return null;
   return {
     payBase: payBase.toString(),
     getBase: getBase.toString(),
     payLabel: twoDecimals(payBase),
     getLabel: String(input.coverageSkyt),
-    multiple: `${tenths / 10n}.${tenths % 10n}×`,
+    multiple,
     chance,
   };
+}
+
+/** Payout divided by premium, to one decimal, using the same integer tenths as the app. */
+export function multipleLabel(payoutBase: bigint, premiumBase: bigint): string | null {
+  if (payoutBase <= 0n || premiumBase <= 0n) return null;
+  const tenths = (payoutBase * 10n) / premiumBase;
+  return `${tenths / 10n}.${tenths % 10n}×`;
 }
 
 export function protectCta(input: { connected: boolean; quote: PayGet | null; thresholdMm: number | null }): string {

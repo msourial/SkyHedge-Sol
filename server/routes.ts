@@ -26,6 +26,7 @@ import { createMobileApiHandler } from "./services/mobile-api";
 import { createAdvisoryHandler } from "./services/advisory-api";
 import { extractProtectionIntent } from "./services/advisory";
 import { createWaitlistCountHandler, createWaitlistExportHandler, createWaitlistHandler } from "./services/waitlist";
+import x402Quote from "../api/x402/quote";
 
 const provider = new NoaaRainfallProvider();
 const quotes = new RainfallQuoteEngine(provider);
@@ -311,6 +312,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
     return sendWeatherXmLatest(req.params.city, res);
   });
+
+  app.all("/api/x402/quote", (req, res) => { void x402Quote(req as never, res as never); });
 
   app.post("/api/quotes", async (req, res) => {
     if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });

@@ -1,6 +1,6 @@
 # Encode Club Solana Hackathon 2026: readiness
 
-Tracks: **Best Consumer App on Solana**, **Best Use of x402 on Solana** (x402 not integrated yet; planned / under evaluation).
+Tracks: **Best Consumer App on Solana**, **Best Use of x402 on Solana** (`GET /api/x402/quote` is in the repo; Devnet USDC via the x402.org facilitator. Live only after `X402_PAY_TO` is set).
 
 ## Deadlines (ET)
 
@@ -22,7 +22,7 @@ Owner: **Miro** = needs Miro's account or decision · **On-chain** = needs an ad
 | Checkpoint 1: project exists; confirm solo team | Miro | Confirm solo in Encode dashboard |
 | Waitlist live (Neon free + migrations + signup/CSV) | Done | 2026-10-16 — see `docs/status-report.md` |
 | Encode submission pack + deck PDF | Done | `docs/submission/` |
-| Decide whether to keep the x402 track (needs a real x402 integration to be credible) | Miro | Open |
+| x402 quote endpoint (`GET /api/x402/quote`, V2 exact, Devnet USDC). Set `X402_PAY_TO`, create the receiving USDC account, fund the agent wallet, then deploy | Miro | In the repo. Not deployed. See `docs/demo-script-x402.md` |
 | Commit or drop the uncommitted map work-in-progress files, then redeploy web | Miro | Open |
 | Set `OPENROUTER_API_KEY` on Vercel (guide currently runs in offline mode) | Miro | Open |
 | Demo video (narrated, max 3 min) on Vimeo; replace `<<DEMO_VIDEO_URL>>` | Miro | Open |
