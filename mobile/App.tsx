@@ -54,7 +54,11 @@ import { formatSkytFixed, shortAddress } from "./src/ticket";
 import { consumerCityByCode } from "../shared/consumer-cities.ts";
 import { marketByCode, type CatalogMarket } from "./src/markets-catalog";
 import { LinearGradient } from "expo-linear-gradient";
+import { ScrollEdgeFade } from "./src/scroll-edge-fade";
+import { SCROLL_FADE_HEIGHT } from "./src/scroll-fade";
 import { APP_BUILD, APP_VERSION } from "./src/version";
+
+const SCROLL_CONTENT_PADDING_TOP = 18;
 
 type Tab = "weather" | "catalog" | "protect" | "wallet";
 type AmountMode = "usd-preview" | "devnet-test";
@@ -75,6 +79,7 @@ export default function App() {
   const [firstRun, setFirstRun] = useState(false);
   const [stickyHeight, setStickyHeight] = useState(188);
   const [tabHeight, setTabHeight] = useState(76);
+  const [scrollViewportHeight, setScrollViewportHeight] = useState(0);
   const [cities, setCities] = useState<CityIndex[]>([]);
   const [catalog, setCatalog] = useState<AgriculturalMarket[]>([]);
   const [status, setStatus] = useState<DevnetStatus | null>(null);
@@ -331,7 +336,7 @@ export default function App() {
   const cityStep = showCityStep({ firstRun, walletConnected: !!wallet, hasPosition });
   const safeBottom = initialWindowMetrics?.insets.bottom ?? 0;
   const stickyOpen = !showLanding && tab === "protect" && (demo === "collect" || (!demo && buyCtaVisible(protectView, !!activePackage)));
-  const scrollBottom = (stickyOpen ? stickyHeight : 0) + (showLanding ? 0 : tabHeight) + safeBottom + 16;
+  const scrollBottom = (stickyOpen ? stickyHeight + SCROLL_FADE_HEIGHT : 0) + (showLanding ? 0 : tabHeight) + safeBottom + 16;
   useEffect(() => {
     if (!wallet && !hasPosition) return;
     setFirstRun(false);
@@ -557,7 +562,7 @@ export default function App() {
         <LinearGradient colors={["#122033", C.canvas, C.canvas, "#121820"]} locations={[0, 0.35, 0.75, 1]} style={StyleSheet.absoluteFill} />
       </BlurTargetView></View>
 
-      <View style={styles.scrollWrap}>
+      <View style={styles.scrollWrap} onLayout={(event) => { const next = Math.round(event.nativeEvent.layout.height); setScrollViewportHeight((prev) => prev === next ? prev : next); }}>
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
@@ -663,6 +668,8 @@ export default function App() {
               surface={protectView}
               nextOpenCopy={nextOpenCopy}
               openCity={openCity}
+              scrollViewportHeight={scrollViewportHeight}
+              scrollContentOffset={SCROLL_CONTENT_PADDING_TOP}
             />
           )
         ) : null}
@@ -702,11 +709,10 @@ export default function App() {
         ) : null}
         </ScreenTransition>
       </ScrollView>
-      {stickyOpen ? <LinearGradient pointerEvents="none" colors={["rgba(11,18,32,0)", "rgba(11,18,32,0)", C.canvas]} locations={[0, 0.42, 1]} style={styles.scrollFade} /> : null}
       </View>
 
-      {!showLanding && tab === "protect" && demo === "collect" ? <View onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><StickyCta label="Collect payout to wallet" disabled hint="DEMO preview — disabled, nothing to sign" onPress={() => {}} /></View> : null}
-      {!showLanding && tab === "protect" && !demo && buyCtaVisible(protectView, !!activePackage) ? <View onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}>{(() => {
+      {!showLanding && tab === "protect" && demo === "collect" ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><ScrollEdgeFade style={styles.scrollEdgeFade} /><StickyCta label="Collect payout to wallet" disabled hint="DEMO preview — disabled, nothing to sign" onPress={() => {}} /></View> : null}
+      {!showLanding && tab === "protect" && !demo && buyCtaVisible(protectView, !!activePackage) ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><ScrollEdgeFade style={styles.scrollEdgeFade} />{(() => {
         if (!status) return null;
         const claimable = claimReadiness?.state === "claimable" && claimReadiness.action;
         if (claimable) return <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness?.action) void submitApprovedAction(claimReadiness.action); }} />;
@@ -850,16 +856,17 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
 
 const styles = StyleSheet.create({
   fontLoading: { flex: 1, backgroundColor: C.canvas, justifyContent: "center", alignItems: "center" },
-  safe: { flex: 1, backgroundColor: C.canvas },
+  safe: { flex: 1, backgroundColor: C.canvas, overflow: "visible" },
   versionText: { color: C.quiet, fontFamily: F.mono, fontSize: 12, padding: 10 },
   demoPanel: { width: "100%", borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, backgroundColor: C.amberSoft, borderRadius: glass.radius - 8, padding: S.md, marginTop: S.sm },
   demoTitle: { color: C.amber, fontFamily: F.mono, fontSize: 13, letterSpacing: 1.2, marginBottom: 4 },
   demoBtn: { flex: 1, minHeight: MIN_TOUCH, borderRadius: 14, borderWidth: 1, borderColor: C.amber, alignItems: "center", justifyContent: "center" },
   demoBtnText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 14 },
-  scrollWrap: { flex: 1 },
+  scrollWrap: { flex: 1, zIndex: 0 },
   scroll: { flex: 1 },
-  scrollFade: { position: "absolute", left: 0, right: 0, bottom: 0, height: 28 },
-  scrollContent: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 18, paddingTop: 18, paddingBottom: 168 },
+  scrollEdgeFade: { position: "absolute", left: 0, right: 0, top: -SCROLL_FADE_HEIGHT },
+  payPanel: { overflow: "visible" },
+  scrollContent: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 18, paddingTop: SCROLL_CONTENT_PADDING_TOP, paddingBottom: 168 },
   loadingPanel: { minHeight: 110, alignItems: "center", justifyContent: "center", gap: S.md - 2, backgroundColor: glass.fill, borderColor: glass.border, borderWidth: 1, borderRadius: glass.radius, padding: S.lg, marginBottom: S.md, boxShadow: glass.shadow },
   emptyText: { ...T.caption, color: C.muted, fontSize: 13, lineHeight: 20 },
   guideToggle: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: glass.border, marginTop: S.xs },
@@ -871,7 +878,7 @@ const styles = StyleSheet.create({
   retryButtonText: { ...T.label, color: C.ink },
   emptyState: { backgroundColor: glass.fill, borderColor: glass.border, borderWidth: 1, borderRadius: glass.radius, padding: S.lg, marginTop: S.sm, boxShadow: glass.shadow },
   emptyTitle: { ...T.heading, color: C.ink, marginBottom: S.xs },
-  bottomBar: { minHeight: 76, backgroundColor: C.canvas + "F0", borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: "0px -8px 24px rgba(0,0,0,0.45)", borderTopWidth: 1, borderTopColor: glass.border, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10, paddingHorizontal: S.sm },
+  bottomBar: { zIndex: 6, minHeight: 76, backgroundColor: C.canvas + "F0", borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: "0px -8px 24px rgba(0,0,0,0.45)", borderTopWidth: 1, borderTopColor: glass.border, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10, paddingHorizontal: S.sm },
   tabButtonWrap: { flex: 1, minWidth: 0 },
   tabButton: { flex: 1, minWidth: 0, minHeight: 58, alignItems: "center", justifyContent: "center", borderRadius: 14, paddingHorizontal: 2 },
   tabButtonSelected: { backgroundColor: C.surfaceRaised, borderWidth: 1, borderColor: C.border, borderRadius: 16 },

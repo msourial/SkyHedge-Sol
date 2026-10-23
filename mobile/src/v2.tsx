@@ -19,6 +19,28 @@ import { marketStatus, notTriggeredLine, payGet } from "../../shared/pay-get.ts"
 import { COVER_AMOUNT_TITLE, COVER_CHIPS, EXPLORER_LINK_LABEL, MARKETS_FOOTER, MARKETS_SUB, ONE_PROTECTION_NOTE, PRE_SIGN_CTA, PRE_SIGN_TITLE, TECHNICAL_DETAILS, WALLET_CHAIN_ERROR, WALLET_CONNECT, WALLET_DISCONNECTED, WALLET_EMPTY, coveredReceiptRows, devnetExplorerUrl, formatQuoteSkyt, gaugeMarkPlan, gaugeWaterLevel, marketRowModel, marketStatusInk, productStatusLabel, protectHeader, triggerMillimetres, windowStamp, type CoverChip } from "../../shared/protect-copy.ts";
 import { RainGauge } from "./rain-gauge";
 import { ProtectChain } from "./protect-chain";
+import { foldNudge } from "./scroll-fade";
+
+/** Pushes a card that is only a sliver above the pay panel fully below the fold. */
+function FoldClearance({ children, viewportHeight, contentOffset }: { children: React.ReactNode; viewportHeight: number; contentOffset: number }) {
+  const [gap, setGap] = useState(0);
+  const top = useRef<number | null>(null);
+  useEffect(() => {
+    if (top.current == null) return;
+    const next = foldNudge(contentOffset + top.current, viewportHeight);
+    setGap((prev) => prev === next ? prev : next);
+  }, [contentOffset, viewportHeight]);
+  return (
+    <View onLayout={(event) => {
+      top.current = event.nativeEvent.layout.y;
+      const next = foldNudge(contentOffset + event.nativeEvent.layout.y, viewportHeight);
+      setGap((prev) => prev === next ? prev : next);
+    }}>
+      {gap > 0 ? <View style={{ height: gap }} /> : null}
+      {children}
+    </View>
+  );
+}
 import { citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
 import type { ProtectSurface } from "../../shared/protect-surface.ts";
 import { CONSUMER_LEAD_CODES, consumerCityByCode, consumerCityBySlug } from "../../shared/consumer-cities.ts";
@@ -308,8 +330,14 @@ export function ProtectTicket(props: {
   surface: ProtectSurface;
   nextOpenCopy: string | null;
   openCity: { slug: string; label: string } | null;
+  /** Visible scroll height, so a card that only peeks past the fold can be pushed below it. */
+  scrollViewportHeight?: number;
+  /** Padding above the ticket inside the scroll content. Added to the card's layout y. */
+  scrollContentOffset?: number;
 }) {
   const [verifyOpen, setVerifyOpen] = useState(false);
+  const viewportHeight = props.scrollViewportHeight ?? 0;
+  const contentOffset = props.scrollContentOffset ?? 0;
   const windows = props.windows ?? sellingWindows(props.status, props.nowSeconds);
   const market = windows.find((window) => window.address === props.selectedAddress) ?? windows[0] ?? null;
   const live = !!market;
@@ -369,7 +397,7 @@ export function ProtectTicket(props: {
       openCity={props.openCity}
       onRefresh={props.onRefresh}
     />
-    {showTicket ? null : stage ? <PayoutStatusCard stage={stage} dates={trackerDates(market, props.claimReadiness)} /> : null}
+    {showTicket ? null : stage ? <FoldClearance viewportHeight={viewportHeight} contentOffset={contentOffset}><PayoutStatusCard stage={stage} dates={trackerDates(market, props.claimReadiness)} /></FoldClearance> : null}
 
     {balance === "short" && q && !showTicket ? <Text style={[s.chipMsg, { color: C.coral }]} accessibilityRole="alert">Not enough SKYT: you need {formatSkytFixed(q.premium, 2)} SKYT. Pick less coverage or top up your wallet.</Text> : null}
 
@@ -379,8 +407,8 @@ export function ProtectTicket(props: {
     {!props.buyPhase && props.transactionMessage ? <Text accessibilityLiveRegion="polite" style={[s.body, { color: C.rain, marginBottom: S.md }]}>{props.transactionMessage}</Text> : null}
     {!props.buyPhase && props.transactionError && !covered ? <View style={[s.notice, { borderColor: C.coral }]} accessibilityRole="alert"><Text style={s.noticeTitle}>{transactionErrorTitle(props.transactionError, props.walletName)}</Text><Text style={s.noticeBody}>{props.transactionError}</Text><Pressable accessibilityRole="button" onPress={props.onRetryBuy} style={s.inlineBtn}><Text style={s.link}>Retry</Text></Pressable></View> : null}
 
-    {covered ? <Reveal><CoveredCard position={covered} signature={props.transactionSignature} claim={props.claimReadiness} onWallet={props.onViewWallet} /></Reveal> : null}
-    {showTicket && !covered ? <Reveal><CoverageTicket
+    {covered ? <FoldClearance viewportHeight={viewportHeight} contentOffset={contentOffset}><Reveal><CoveredCard position={covered} signature={props.transactionSignature} claim={props.claimReadiness} onWallet={props.onViewWallet} /></Reveal></FoldClearance> : null}
+    {showTicket && !covered ? <FoldClearance viewportHeight={viewportHeight} contentOffset={contentOffset}><Reveal><CoverageTicket
       status={coverageTicketStatus(props.claimReadiness)}
       trigger={thresholdMm ? `${triggerLabel} cumulative` : "—"}
       window={windowLabel}
@@ -400,18 +428,19 @@ export function ProtectTicket(props: {
       resolutionSignature={props.claimReadiness?.resolutionSignature ?? null}
       onAgain={() => props.onProtectAgain?.()}
       onMarkets={() => props.onBackToMarkets?.()}
-    /></Reveal> : null}
+    /></Reveal></FoldClearance> : null}
     {isExistingPosition && !props.transactionSignature && !covered ? <Text style={[s.caption, { marginBottom: S.sm, textAlign: "center" }]}>{ONE_PROTECTION_NOTE}</Text> : null}
 
-    {props.claimReadiness?.state === "claimable" && props.claimReadiness.action === "claim_payout" ? <GlassCard accent={C.mint}>
+    {props.claimReadiness?.state === "claimable" && props.claimReadiness.action === "claim_payout" ? <FoldClearance viewportHeight={viewportHeight} contentOffset={contentOffset}><GlassCard accent={C.mint}>
       <Text style={s.overlineIn}>Trigger hit · payout ready</Text>
       {props.claimReadiness.amount ? <Text style={s.payoutBig}>+{formatSkytFixed(props.claimReadiness.amount, 0)} <Text style={s.unitMono}>SKYT</Text></Text> : null}
       {props.claimReadiness.observation ? <Row label="Observed" value={`${(Number(props.claimReadiness.observation.rainfallMmX100) / 100).toFixed(1)} mm · NOAA`} /> : null}
       {thresholdMm ? <Row label="Trigger" value={`${thresholdMm} mm`} gold /> : null}
       <Text style={s.caption}>No claims form. Tap “Collect payout to wallet” below and approve once in your wallet.</Text>
-    </GlassCard> : null}
+    </GlassCard></FoldClearance> : null}
     {!showTicket && props.claimError && props.walletConnected ? <Text style={s.caption}>{friendlyError(props.claimError)}</Text> : null}
 
+    <FoldClearance viewportHeight={viewportHeight} contentOffset={contentOffset}>
     <GlassCard>
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: verifyOpen }} accessibilityLabel={`How it's verified, ${readyCount} of ${checks.length} checks passed`} onPress={() => setVerifyOpen((v) => !v)} style={[s.between, { minHeight: MIN_TOUCH }]}>
         <View style={{ flex: 1 }}><Text style={s.cardTitleSm}>How it’s verified</Text><Text style={s.caption}>{readyCount} of {checks.length} on-chain checks passed</Text></View>
@@ -425,6 +454,7 @@ export function ProtectTicket(props: {
         {market?.address ? <ExplorerButton url={`https://explorer.solana.com/address/${encodeURIComponent(market.address)}?cluster=devnet`} label="Market account on Explorer" /> : null}
       </View> : null}
     </GlassCard>
+    </FoldClearance>
     <Disclosure>Devnet test token · parametric weather protection. SKYT has no monetary value. Your wallet shows and approves every transaction.</Disclosure>
   </>;
 }
@@ -852,7 +882,7 @@ const s = StyleSheet.create({
   inlineBtn: { minHeight: MIN_TOUCH, justifyContent: "center", alignSelf: "flex-start" },
   link: { ...T.label, fontSize: 14, lineHeight: 20, color: C.rain },
   checkRow: { minHeight: 40, flexDirection: "row", alignItems: "center" },
-  sticky: { paddingHorizontal: S.lg + 2, paddingTop: S.sm, paddingBottom: S.md, backgroundColor: C.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(152,163,176,0.32)" },
+  sticky: { paddingHorizontal: S.lg + 2, paddingTop: S.sm, paddingBottom: S.md, backgroundColor: C.surface },
   ticketBars: { gap: 6, marginBottom: S.sm },
   ticketRow: { flexDirection: "row", alignItems: "center", gap: S.sm },
   ticketTrack: { flex: 1, height: 10, borderRadius: 5, overflow: "hidden" },
