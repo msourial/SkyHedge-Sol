@@ -365,6 +365,26 @@ export function activeProtectionLine(input: { city: string | null | undefined; t
 }
 
 /**
+ * Top offset for a trigger chip so its centre sits on that millimetre.
+ * The tube matches RainGauge: 168 viewBox units, the scale running from y=148 down 128 units.
+ */
+export function gaugeTickOffset(mm: number, maxMm: number, gaugeHeight: number, chipHeight: number): number {
+  if (!Number.isFinite(mm) || !Number.isFinite(maxMm) || maxMm <= 0 || !Number.isFinite(gaugeHeight) || gaugeHeight <= 0) return 0;
+  const span = Math.max(0, chipHeight);
+  const y = 148 - 128 * Math.min(1, Math.max(0, mm / maxMm));
+  const centre = (y / 168) * gaugeHeight;
+  return Math.max(0, Math.min(Math.max(0, gaugeHeight - span), centre - span / 2));
+}
+
+/** Shorter tube when the viewport cannot hold a 220px gauge above the pay panel. */
+export function protectGaugeHeight(windowHeight: number): number {
+  if (!Number.isFinite(windowHeight) || windowHeight <= 0) return 168;
+  if (windowHeight < 780) return 128;
+  if (windowHeight < 920) return 144;
+  return 168;
+}
+
+/**
  * Tube fill as a fraction of max. Empty when there is no observed reading.
  * Paid out with no reading may sit just above the trigger. It never invents millimetres.
  */

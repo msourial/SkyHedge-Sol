@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { marketStatus } from "../../shared/pay-get.ts";
-import { COVER_CHIPS, HOW_IT_SETTLES, WALLET_CHAIN_ERROR, coveredReceiptRows, forecasterBand, forecasterCopy, gaugeWaterLevel, ladderTicks, marketRowModel, marketStatusInk, moreTriggersSoon, protectButtonLabel, stakeSheetForCover, stationDisplayName, windowStamp } from "../../shared/protect-copy.ts";
+import { COVER_CHIPS, HOW_IT_SETTLES, WALLET_CHAIN_ERROR, coveredReceiptRows, forecasterBand, forecasterCopy, gaugeTickOffset, gaugeWaterLevel, ladderTicks, marketRowModel, marketStatusInk, moreTriggersSoon, protectButtonLabel, protectGaugeHeight, stakeSheetForCover, stationDisplayName, windowStamp } from "../../shared/protect-copy.ts";
 import { triggerRows } from "../../shared/window-chain.ts";
 
 const HASH = "ab".repeat(32);
@@ -152,6 +152,20 @@ describe("window stamps", () => {
     assert.equal(windowStamp({ closed: true, paidOut: false, payoutLabel: "100", observedMm: 4, triggerMm: 40, monthly: true })?.title, "Dry month · 4 of 40 mm");
     assert.equal(windowStamp({ closed: true, paidOut: false, payoutLabel: "100", observedMm: null, triggerMm: 69, monthly: false }), null);
     assert.equal(windowStamp({ closed: true, paidOut: true, payoutLabel: null, observedMm: 80, triggerMm: 69, monthly: false }), null);
+  });
+});
+
+describe("gauge tick anchor", () => {
+  it("centres the chip on the trigger and keeps it inside the tube", () => {
+    const top = gaugeTickOffset(69, 86.25, 168, 48);
+    const centre = top + 24;
+    const y = 148 - 128 * (69 / 86.25);
+    assert.ok(Math.abs(centre - y) < 1);
+    assert.ok(top >= 0 && top <= 168 - 48);
+    assert.equal(gaugeTickOffset(Number.NaN, 86, 168, 48), 0);
+    assert.equal(protectGaugeHeight(1024), 168);
+    assert.equal(protectGaugeHeight(800), 144);
+    assert.equal(protectGaugeHeight(700), 128);
   });
 });
 

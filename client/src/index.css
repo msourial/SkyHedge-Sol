@@ -628,7 +628,8 @@
   .protect-main .min-h-12 { min-height: 48px; }
   .protect-ladder { margin-top: .35rem; }
   .protect-layout { display: flex; flex-direction: column; min-height: 0; padding-bottom: 0; }
-  .protect-main { padding-bottom: .5rem; }
+  .protect-main { padding-bottom: 1.25rem; }
+  .rain-gauge--ladder { height: 168px; }
   .protect-ticket { position: sticky; z-index: 35; right: auto; bottom: calc(64px + env(safe-area-inset-bottom)); left: auto; margin: .5rem -1rem 0; min-height: var(--ledger-h); border-top: 0; background: var(--surface-1); padding: .7rem 1.25rem .75rem; }
   .protect-ticket button { min-height: 48px; margin-top: .55rem; }
   .protect-amounts { position: relative; z-index: 1; }
