@@ -557,6 +557,7 @@ export default function App() {
         <LinearGradient colors={["#122033", C.canvas, C.canvas, "#121820"]} locations={[0, 0.35, 0.75, 1]} style={StyleSheet.absoluteFill} />
       </BlurTargetView></View>
 
+      <View style={styles.scrollWrap}>
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
@@ -701,6 +702,8 @@ export default function App() {
         ) : null}
         </ScreenTransition>
       </ScrollView>
+      {stickyOpen ? <LinearGradient pointerEvents="none" colors={["rgba(11,18,32,0)", "rgba(11,18,32,0)", C.canvas]} locations={[0, 0.42, 1]} style={styles.scrollFade} /> : null}
+      </View>
 
       {!showLanding && tab === "protect" && demo === "collect" ? <View onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><StickyCta label="Collect payout to wallet" disabled hint="DEMO preview — disabled, nothing to sign" onPress={() => {}} /></View> : null}
       {!showLanding && tab === "protect" && !demo && buyCtaVisible(protectView, !!activePackage) ? <View onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}>{(() => {
@@ -853,7 +856,9 @@ const styles = StyleSheet.create({
   demoTitle: { color: C.amber, fontFamily: F.mono, fontSize: 13, letterSpacing: 1.2, marginBottom: 4 },
   demoBtn: { flex: 1, minHeight: MIN_TOUCH, borderRadius: 14, borderWidth: 1, borderColor: C.amber, alignItems: "center", justifyContent: "center" },
   demoBtnText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 14 },
+  scrollWrap: { flex: 1 },
   scroll: { flex: 1 },
+  scrollFade: { position: "absolute", left: 0, right: 0, bottom: 0, height: 28 },
   scrollContent: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 18, paddingTop: 18, paddingBottom: 168 },
   loadingPanel: { minHeight: 110, alignItems: "center", justifyContent: "center", gap: S.md - 2, backgroundColor: glass.fill, borderColor: glass.border, borderWidth: 1, borderRadius: glass.radius, padding: S.lg, marginBottom: S.md, boxShadow: glass.shadow },
   emptyText: { ...T.caption, color: C.muted, fontSize: 13, lineHeight: 20 },

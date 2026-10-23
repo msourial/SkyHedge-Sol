@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { marketStatus } from "../../shared/pay-get.ts";
-import { COVER_CHIPS, HOW_IT_SETTLES, WALLET_CHAIN_ERROR, coveredReceiptRows, forecasterBand, forecasterCopy, gaugeTickOffset, gaugeWaterLevel, ladderTicks, marketRowModel, marketStatusInk, moreTriggersSoon, protectButtonLabel, protectGaugeHeight, stakeSheetForCover, stationDisplayName, windowStamp } from "../../shared/protect-copy.ts";
+import { COVER_CHIPS, HOW_IT_SETTLES, WALLET_CHAIN_ERROR, coveredReceiptRows, forecasterBand, forecasterCopy, gaugeTickOffset, gaugeWaterLevel, ladderLabelFontSize, ladderTicks, marketRowModel, marketStatusInk, moreTriggersSoon, protectButtonLabel, protectGaugeHeight, stakeSheetForCover, stationDisplayName, windowStamp } from "../../shared/protect-copy.ts";
 import { triggerRows } from "../../shared/window-chain.ts";
 
 const HASH = "ab".repeat(32);
@@ -166,6 +166,10 @@ describe("gauge tick anchor", () => {
     assert.equal(protectGaugeHeight(1024), 168);
     assert.equal(protectGaugeHeight(800), 144);
     assert.equal(protectGaugeHeight(700), 128);
+    assert.equal(ladderLabelFontSize(168), 14);
+    assert.ok(Math.abs(ladderLabelFontSize(144) * (144 / 168) - 14) < 0.01);
+    assert.ok(Math.abs(ladderLabelFontSize(128) * (128 / 168) - 14) < 0.01);
+    assert.equal(ladderLabelFontSize(0), 14);
   });
 });
 

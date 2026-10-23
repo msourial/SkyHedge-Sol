@@ -1,5 +1,6 @@
 import { useId } from "react";
 import Svg, { ClipPath, Defs, G, Line, Rect, Text as SvgText } from "react-native-svg";
+import { ladderLabelFontSize } from "../../shared/protect-copy.ts";
 import { C, F } from "./theme";
 
 /** Graduated cylinder shared with the web gauge. Empty tube is dry-fill. Water is glacier. The selected line is slicker. */
@@ -12,8 +13,12 @@ export function RainGauge({ level, ticks, label, width = 72, height = 168, showM
   const labels = ticks.filter((tick) => tick.labelled !== false).map((tick) => (showMm ? `${tick.mm} mm` : String(tick.mm)));
   const longest = labels.reduce((count, value) => Math.max(count, value.length), 0);
   const textX = 70;
-  const box = Math.max(showMm ? 132 : 72, longest === 0 ? 0 : textX + longest * 8 + 12);
-  const displayWidth = longest > 0 ? Math.max(width, Math.ceil(box * (height / 168))) : width;
+  const scale = height > 0 ? height / 168 : 1;
+  // Ladder labels stay 14px on screen. Other gauges keep the unscaled 11-unit mark.
+  const fontSize = showMm ? ladderLabelFontSize(height) : 11;
+  const charWidth = showMm ? fontSize * 0.62 : 8;
+  const box = Math.max(72, longest === 0 ? 0 : textX + longest * charWidth + (showMm ? 18 : 12));
+  const displayWidth = longest > 0 ? Math.max(width, Math.ceil(box * scale)) : width;
   return (
     <Svg width={displayWidth} height={height} viewBox={`0 0 ${box} 168`} accessibilityRole="image" accessibilityLabel={label ?? "Rain gauge"}>
       <Rect x={16} y={8} width={32} height={144} rx={16} fill={C.dryFill} stroke={C.tick} strokeWidth={1.5} />
@@ -33,7 +38,7 @@ export function RainGauge({ level, ticks, label, width = 72, height = 168, showM
         return (
           <G key={tick.mm}>
             <Line x1={miniTrigger ? 22 : 48} x2={miniTrigger ? 42 : x2} y1={y} y2={y} stroke={tick.selected ? C.payout : C.tick} strokeWidth={miniTrigger ? 3 : tick.selected ? 2 : 1.5} vectorEffect={miniTrigger ? "non-scaling-stroke" : undefined} />
-            {showLabel ? <SvgText x={textX} y={y + 4} fill={tick.selected ? C.payout : C.quiet} fontSize={11} fontFamily={F.mono}>{showMm ? `${tick.mm} mm` : tick.mm}</SvgText> : null}
+            {showLabel ? <SvgText x={textX} y={y + fontSize * 0.35} fill={tick.selected ? C.payout : C.quiet} fontSize={fontSize} fontFamily={F.mono}>{showMm ? `${tick.mm} mm` : tick.mm}</SvgText> : null}
           </G>
         );
       })}

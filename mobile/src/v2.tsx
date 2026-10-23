@@ -852,7 +852,7 @@ const s = StyleSheet.create({
   inlineBtn: { minHeight: MIN_TOUCH, justifyContent: "center", alignSelf: "flex-start" },
   link: { ...T.label, fontSize: 14, lineHeight: 20, color: C.rain },
   checkRow: { minHeight: 40, flexDirection: "row", alignItems: "center" },
-  sticky: { paddingHorizontal: S.lg + 2, paddingTop: S.sm, paddingBottom: S.md, backgroundColor: C.surface },
+  sticky: { paddingHorizontal: S.lg + 2, paddingTop: S.sm, paddingBottom: S.md, backgroundColor: C.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(152,163,176,0.32)" },
   ticketBars: { gap: 6, marginBottom: S.sm },
   ticketRow: { flexDirection: "row", alignItems: "center", gap: S.sm },
   ticketTrack: { flex: 1, height: 10, borderRadius: 5, overflow: "hidden" },
