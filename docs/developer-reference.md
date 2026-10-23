@@ -130,7 +130,7 @@ npm run skyt:seed                        # create city markets
 | `GET /api/weather/:city/forecast` | NOAA forecast for a window |
 | `GET /api/weatherxm/:city/latest` | Supplemental WeatherXM Agent API status; uses the free health endpoint and reports that live observations are x402-paid and not settlement eligible |
 | `POST /api/quotes` | Premium quote (city, window, threshold, operator, amount) |
-| `GET /api/x402/quote` | Same pricing path, paid per request with x402 V2 `exact` on Solana Devnet USDC. 402 until a facilitator settlement. Unknown city or window is a 400 before payment. See `/developers` and `docs/demo-script-x402.md`. |
+| `GET /api/x402/quote` | Same pricing path, paid per request with x402 V2 `exact` on Solana Devnet USDC. 402 until a facilitator settlement. HTTP 202 `SETTLEMENT_PENDING` means the transfer was submitted: re-send the same payment, do not pay again. Unknown city or window is a 400 before payment. See `/developers` and `docs/demo-script-x402.md`. |
 | `POST /api/advisory` | Advisory-only natural-language intent (`message`, optional previous `context`). Matches only researched locations and finalized contract state; never returns a quote or transaction. Uses OpenRouter, then Anthropic, then the labelled offline guide. |
 | `GET /api/portfolio/:wallet` | Indexer-backed positions (never simulated) |
 | `POST /api/transactions/unsigned` | Build a base64 VersionedTransaction (`approved: true` required) |

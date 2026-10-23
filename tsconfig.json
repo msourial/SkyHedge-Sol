@@ -21,6 +21,7 @@
     "server/services/x402-facilitator.ts",
     "server/services/x402-quote.ts",
     "server/services/x402-quote-body.ts",
+    "server/services/x402-settlement.ts",
     "server/services/consensus.ts",
     "server/services/methodology.ts",
     "server/services/solana-indexer.ts",

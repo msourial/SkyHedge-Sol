@@ -5,6 +5,7 @@ import { PublicKey } from "@solana/web3.js";
 import { decodePaymentRequiredHeader, encodePaymentSignatureHeader } from "@x402/core/http";
 import type { DevnetStatus } from "./devnet-status";
 import { FacilitatorUnavailableError, SOLANA_DEVNET_CAIP2, DEVNET_USDC_MINT, usdcToAtomic } from "./x402-facilitator";
+import type { SignatureView } from "./x402-settlement";
 import { createX402QuoteHandler, readX402QuoteConfig, type X402QuoteConfig } from "./x402-quote";
 import type { ApiRequest, ApiResponse } from "./vercel-api";
 import type { QuoteFacilitator } from "./x402-facilitator";
@@ -13,6 +14,7 @@ const PAY_TO = PublicKey.unique().toBase58();
 const FEE = PublicKey.unique().toBase58();
 const PAYER = PublicKey.unique().toBase58();
 const TX = "cGF5bWVudC10eA==";
+const CHAIN_SIG = "1".repeat(88);
 const QUERY = "/api/x402/quote?city=des-moines&observationStart=2026-11-02&observationEnd=2026-11-09&thresholdMm=50&operator=gte&protectedAmount=100000000";
 const CONFIG: X402QuoteConfig = { payTo: PAY_TO, priceAtomic: "10000", priceUsdc: "0.01", facilitatorUrl: "https://x402.org/facilitator" };
 const LIVE_QUOTE = { probabilityBps: 2_000, premiumRateBps: 2_400, premium: 24_000_000n, protocolFee: 1_000_000n, inputsHash: "a".repeat(64), modelVersion: "noaa-rain-v1" as const, historicalWindows: 10, forecastWeight: 0.3 };
@@ -54,12 +56,13 @@ function facilitator(partial: Partial<QuoteFacilitator> = {}): { calls: string[]
 
 const closedStatus = { desMoinesMarket: { status: "pending", evidenceStatus: "researching_evidence", onchainStatus: null, vaultBalance: null }, cityWindows: [] } as unknown as DevnetStatus;
 
-function handler(options: { quote?: () => Promise<typeof LIVE_QUOTE>; status?: DevnetStatus; client?: QuoteFacilitator; config?: X402QuoteConfig | null } = {}) {
+function handler(options: { quote?: () => Promise<typeof LIVE_QUOTE>; status?: DevnetStatus; client?: QuoteFacilitator; config?: X402QuoteConfig | null; observe?: (signature: string) => Promise<SignatureView> } = {}) {
   return createX402QuoteHandler({
     readStatus: async () => options.status ?? closedStatus,
     quote: options.quote ?? (async () => LIVE_QUOTE),
     facilitator: options.client ?? facilitator().client,
     config: options.config === undefined ? CONFIG : options.config,
+    observeSignature: options.observe,
   });
 }
 
@@ -158,10 +161,16 @@ describe("x402 quote", () => {
   });
 
   it("rejects a replayed or unsettled payment and a down facilitator", async () => {
-    const replay = facilitator({ verify: async () => ({ isValid: false, invalidReason: "duplicate_settlement" }) });
+    let settlements = 0;
+    const replay = facilitator({
+      verify: async () => ({ isValid: false, invalidReason: "duplicate_settlement" }),
+      settle: async () => { settlements += 1; return { success: false, errorReason: "duplicate_settlement", transaction: "" }; },
+    });
     const replayed = new ResponseStub();
     await handler({ client: replay.client })(request(QUERY, { "payment-signature": signature("cmVwbGF5") }), replayed as unknown as ApiResponse);
     expect(replayed.body).to.include({ error: "PAYMENT_REPLAYED" });
+    expect(settlements).to.equal(1);
+    expect(JSON.stringify(replayed.body)).to.not.match(/"premium"/);
 
     const unsettledGate = facilitator({ settle: async () => ({ success: false, errorReason: "insufficient_funds", transaction: "" }) });
     const unsettled = new ResponseStub();
@@ -176,22 +185,105 @@ describe("x402 quote", () => {
     expect(offline.body).to.include({ error: "FACILITATOR_UNAVAILABLE" });
   });
 
-  it("does not quote again for a payment it already settled", async () => {
+  it("returns the same quote for the same payment and refuses a second quote", async () => {
     let settlements = 0;
     const gate = facilitator({ settle: async () => { settlements += 1; return { success: true, transaction: "sig", network: SOLANA_DEVNET_CAIP2 }; } });
     const paid = handler({ client: gate.client });
     const first = new ResponseStub();
     const second = new ResponseStub();
+    const other = new ResponseStub();
     await paid(request(QUERY, { "payment-signature": signature("c2FtZQ==") }), first as unknown as ApiResponse);
     await paid(request(QUERY, { "payment-signature": signature("c2FtZQ==") }), second as unknown as ApiResponse);
+    await paid(request(QUERY.replace("des-moines", "chicago"), { "payment-signature": signature("c2FtZQ==") }), other as unknown as ApiResponse);
     expect(first.code).to.equal(200);
-    expect(second.code).to.equal(402);
-    expect(second.body).to.include({ error: "PAYMENT_REPLAYED" });
+    expect(second.code).to.equal(200);
+    expect(second.body).to.deep.equal(first.body);
+    expect(other.code).to.equal(402);
+    expect(other.body).to.include({ error: "PAYMENT_REPLAYED" });
+    expect(JSON.stringify(other.body)).to.not.match(/"premium"/);
     expect(settlements).to.equal(1);
   });
 
+  it("confirms a 429 settlement on Devnet and does not settle again", async () => {
+    let settlements = 0;
+    const gate = facilitator({
+      settle: async () => {
+        settlements += 1;
+        return { success: false, errorReason: "invalid_exact_svm_transaction_failed", errorMessage: "HTTP 429 Too Many Requests", transaction: CHAIN_SIG, payer: PAYER };
+      },
+    });
+    const paid = handler({ client: gate.client, observe: async () => "confirmed" });
+    const first = new ResponseStub();
+    const second = new ResponseStub();
+    await paid(request(QUERY, { "payment-signature": signature("cmF0ZQ==") }), first as unknown as ApiResponse);
+    await paid(request(QUERY, { "payment-signature": signature("cmF0ZQ==") }), second as unknown as ApiResponse);
+    expect(first.code).to.equal(200);
+    expect((first.body as { payment: { transaction: string; explorer: string } }).payment.transaction).to.equal(CHAIN_SIG);
+    expect((first.body as { payment: { explorer: string } }).payment.explorer).to.equal(`https://explorer.solana.com/tx/${CHAIN_SIG}?cluster=devnet`);
+    expect(first.body).to.include({ premium: "24000000" });
+    expect(second.body).to.deep.equal(first.body);
+    expect(settlements).to.equal(1);
+  });
+
+  it("holds an unfinalized signature as pending and redeems it without a second payment", async () => {
+    const views: SignatureView[] = ["submitted", "confirmed"];
+    let settlements = 0;
+    let quotes = 0;
+    const gate = facilitator({
+      settle: async () => {
+        settlements += 1;
+        return { success: false, errorReason: "settlement_pending", errorMessage: "429 Too Many Requests", transaction: CHAIN_SIG, payer: PAYER };
+      },
+    });
+    const paid = handler({
+      client: gate.client,
+      observe: async () => views.shift() ?? "confirmed",
+      quote: async () => { quotes += 1; return LIVE_QUOTE; },
+    });
+    const pending = new ResponseStub();
+    const otherCity = new ResponseStub();
+    const redeemed = new ResponseStub();
+    await paid(request(QUERY, { "payment-signature": signature("cGVuZA==") }), pending as unknown as ApiResponse);
+    await paid(request(QUERY.replace("des-moines", "chicago"), { "payment-signature": signature("cGVuZA==") }), otherCity as unknown as ApiResponse);
+    await paid(request(QUERY, { "payment-signature": signature("cGVuZA==") }), redeemed as unknown as ApiResponse);
+    expect(pending.code).to.equal(202);
+    expect(pending.body).to.include({ error: "SETTLEMENT_PENDING", transaction: CHAIN_SIG });
+    expect(JSON.stringify(pending.body)).to.not.match(/"premium"/);
+    expect(String((pending.body as { message: string }).message)).to.match(/do not pay a second time/i);
+    expect(otherCity.code).to.equal(402);
+    expect(otherCity.body).to.include({ error: "PAYMENT_REPLAYED" });
+    expect(JSON.stringify(otherCity.body)).to.not.match(/"premium"/);
+    expect(redeemed.code).to.equal(200);
+    expect(redeemed.body).to.include({ premium: "24000000" });
+    expect(settlements).to.equal(1);
+    expect(quotes).to.equal(2);
+  });
+
+  it("does not quote when the chain reports the transfer failed", async () => {
+    const gate = facilitator({
+      settle: async () => ({ success: false, errorReason: "settlement_pending", transaction: CHAIN_SIG }),
+    });
+    const response = new ResponseStub();
+    await handler({ client: gate.client, observe: async () => "failed" })(request(QUERY, { "payment-signature": signature("ZmFpbA==") }), response as unknown as ApiResponse);
+    expect(response.code).to.equal(402);
+    expect(response.body).to.include({ error: "PAYMENT_UNSETTLED" });
+    expect(JSON.stringify(response.body)).to.not.match(/"premium"/);
+  });
+
+  it("asks for the same payment again when settlement times out with no signature", async () => {
+    const gate = facilitator({
+      settle: async () => ({ success: false, errorReason: "settlement_timeout", errorMessage: "The facilitator did not confirm settlement in time." }),
+    });
+    const response = new ResponseStub();
+    await handler({ client: gate.client, observe: async () => { throw new Error("rpc"); } })(request(QUERY, { "payment-signature": signature("dGltZW91dA==") }), response as unknown as ApiResponse);
+    expect(response.code).to.equal(202);
+    expect(response.body).to.include({ error: "SETTLEMENT_PENDING" });
+    expect(response.body).to.not.have.property("transaction");
+    expect(JSON.stringify(response.body)).to.not.match(/"premium"/);
+  });
+
   it("does not describe the product as insurance", () => {
-    const sources = ["x402-quote.ts", "x402-quote-body.ts", "x402-facilitator.ts"].map((file) => readFileSync(new URL(`./${file}`, import.meta.url), "utf8"));
+    const sources = ["x402-quote.ts", "x402-quote-body.ts", "x402-facilitator.ts", "x402-settlement.ts"].map((file) => readFileSync(new URL(`./${file}`, import.meta.url), "utf8"));
     sources.push(readFileSync(new URL("../../client/src/pages/developers.tsx", import.meta.url), "utf8"));
     sources.push(readFileSync(new URL("../../docs/demo-script-x402.md", import.meta.url), "utf8"));
     sources.push(readFileSync(new URL("../../scripts/x402-agent-demo.ts", import.meta.url), "utf8"));

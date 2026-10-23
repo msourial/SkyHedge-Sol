@@ -74,12 +74,25 @@ export default function DevelopersPage() {
         </section>
 
         <section className="sky-card mt-4">
+          <h2 className="sky-display text-2xl">Settlement pending</h2>
+          <p className="mt-3 text-sm leading-relaxed text-[var(--muted-foreground)]">
+            If the transfer is submitted and Devnet has not finalized it — a public RPC <span className="sky-mono text-[var(--foreground)]">429</span> is enough — the response is HTTP 202 <span className="sky-mono text-[var(--foreground)]">SETTLEMENT_PENDING</span>. The body carries the signature and a Devnet Explorer link. There is no quote. Send the same <span className="sky-mono text-[var(--foreground)]">PAYMENT-SIGNATURE</span> again. Do not pay a second time. When that signature finalizes, that same payment returns the quote. The server checks <span className="sky-mono text-[var(--foreground)]">SOLANA_RPC_URL</span> before it will call a transfer unsettled.
+          </p>
+          <pre className="sky-mono mt-4 overflow-x-auto rounded-[var(--radius-control)] bg-[var(--surface-2)] p-4 text-xs leading-relaxed text-[var(--foreground)]">{`{
+  "error": "SETTLEMENT_PENDING",
+  "transaction": "<signature>",
+  "explorer": "https://explorer.solana.com/tx/<signature>?cluster=devnet"
+}`}</pre>
+          <p className="mt-3 text-xs leading-relaxed text-[var(--muted-foreground)]">Example response. The signature is the one the facilitator submitted, not a sample payment.</p>
+        </section>
+
+        <section className="sky-card mt-4">
           <h2 className="sky-display text-2xl">When it refuses</h2>
           <ul className="mt-3 space-y-2 text-sm leading-relaxed text-[var(--muted-foreground)]">
-            <li><span className="sky-mono text-[var(--foreground)]">WRONG_AMOUNT</span>, <span className="sky-mono text-[var(--foreground)]">WRONG_NETWORK</span>, <span className="sky-mono text-[var(--foreground)]">WRONG_ASSET</span> — 402, no quote.</li>
-            <li><span className="sky-mono text-[var(--foreground)]">PAYMENT_REPLAYED</span> — that transfer was already used. 402, no quote.</li>
-            <li><span className="sky-mono text-[var(--foreground)]">PAYMENT_UNSETTLED</span> — the facilitator did not land it. 402, no quote.</li>
-            <li><span className="sky-mono text-[var(--foreground)]">FACILITATOR_UNAVAILABLE</span> — 503, no quote. A quote is never given away because the facilitator blinked.</li>
+            <li><span className="sky-mono text-[var(--foreground)]">WRONG_AMOUNT</span>, <span className="sky-mono text-[var(--foreground)]">WRONG_NETWORK</span>, <span className="sky-mono text-[var(--foreground)]">WRONG_ASSET</span> — 402, no quote. A new payment is required.</li>
+            <li><span className="sky-mono text-[var(--foreground)]">PAYMENT_REPLAYED</span> — that transfer was already used for another quote. 402, no second quote.</li>
+            <li><span className="sky-mono text-[var(--foreground)]">PAYMENT_UNSETTLED</span> — the transfer failed on Devnet. 402, no quote.</li>
+            <li><span className="sky-mono text-[var(--foreground)]">FACILITATOR_UNAVAILABLE</span> — 503 before anything is submitted. No quote.</li>
           </ul>
         </section>
 
@@ -92,7 +105,7 @@ export default function DevelopersPage() {
         <section className="sky-card mt-4">
           <h2 className="sky-display text-2xl">Agent</h2>
           <p className="mt-3 text-sm leading-relaxed text-[var(--muted-foreground)]">
-            <span className="sky-mono text-[var(--foreground)]">scripts/x402-agent-demo.ts</span> prints the 402, then pays from <span className="sky-mono text-[var(--foreground)]">X402_AGENT_KEYPAIR</span> (a path to a local keypair file, never committed). <span className="sky-mono text-[var(--foreground)]">--dry-run</span> stops after the requirements. <span className="sky-mono text-[var(--foreground)]">--bad-payment</span> resends a one-base-unit amount and expects <span className="sky-mono text-[var(--foreground)]">WRONG_AMOUNT</span>.
+            <span className="sky-mono text-[var(--foreground)]">scripts/x402-agent-demo.ts</span> prints the 402, then pays from <span className="sky-mono text-[var(--foreground)]">X402_AGENT_KEYPAIR</span> (a path to a local keypair file, never committed). <span className="sky-mono text-[var(--foreground)]">--dry-run</span> stops after the requirements. <span className="sky-mono text-[var(--foreground)]">--bad-payment</span> resends a one-base-unit amount and expects <span className="sky-mono text-[var(--foreground)]">WRONG_AMOUNT</span>. If settlement is pending, the script re-sends that same payment. It checks the signature on Devnet before it will sign a new one.
           </p>
           <pre className="sky-mono mt-4 overflow-x-auto rounded-[var(--radius-control)] bg-[var(--surface-2)] p-4 text-xs leading-relaxed text-[var(--foreground)]">{`npx tsx scripts/x402-agent-demo.ts --dry-run \\
   --city des-moines --observation-start START --observation-end END \\

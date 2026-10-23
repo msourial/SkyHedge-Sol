@@ -16,11 +16,18 @@ import {
   SOLANA_DEVNET_CAIP2,
   X402_FACILITATOR_URL,
   usdcToAtomic,
+  type FacilitatorSettleResult,
   type QuoteFacilitator,
 } from "./x402-facilitator.js";
+import { devnetExplorerTx, isAmbiguousSettlement, observeDevnetSignature, type SignatureView } from "./x402-settlement.js";
 import type { ApiRequest, ApiResponse } from "./vercel-api.js";
 
-const REPLAY_TTL_MS = 120_000;
+const ATTEMPT_TTL_MS = 120_000;
+
+type Attempt =
+  | { state: "inflight"; at: number }
+  | { state: "pending"; at: number; queryKey: string; signature: string; payer?: string }
+  | { state: "fulfilled"; at: number; queryKey: string; body: unknown; paymentResponse: string };
 
 export interface X402QuoteConfig {
   payTo: string;
@@ -59,9 +66,11 @@ export function createX402QuoteHandler(dependencies: {
   facilitator: QuoteFacilitator;
   config: X402QuoteConfig | null;
   now?: () => number;
+  observeSignature?: (signature: string) => Promise<SignatureView>;
 }) {
-  const seen = new Map<string, number>();
+  const attempts = new Map<string, Attempt>();
   const now = dependencies.now ?? Date.now;
+  const observe = dependencies.observeSignature ?? observeDevnetSignature;
 
   return async function x402Quote(req: ApiRequest, res: ApiResponse) {
     paymentCors(req, res);
@@ -98,54 +107,143 @@ export function createX402QuoteHandler(dependencies: {
 
     const transaction = typeof payload.payload.transaction === "string" ? payload.payload.transaction : "";
     if (!transaction) return paymentRequired(res, requirements, resourceUrl(req), "PAYMENT_INVALID", "The exact scheme on Solana needs a partially signed transaction. No quote was returned.");
-    if (remember(seen, transaction, now())) return paymentRequired(res, requirements, resourceUrl(req), "PAYMENT_REPLAYED", "This payment was already used. Send a new one. No quote was returned.");
+    const key = queryKey(parsed.value);
+    const prior = currentAttempt(attempts, transaction, now());
+    if (prior?.state === "fulfilled") {
+      if (prior.queryKey !== key) return paymentRequired(res, requirements, resourceUrl(req), "PAYMENT_REPLAYED", "This payment was already used for a different quote. No quote was returned.");
+      res.setHeader("PAYMENT-RESPONSE", prior.paymentResponse);
+      res.setHeader("Cache-Control", "no-store");
+      return send(res, 200, prior.body);
+    }
+    if (prior?.state === "inflight") return settlementPending(res);
+    if (prior && prior.state === "pending" && prior.queryKey !== key) {
+      return paymentRequired(res, requirements, resourceUrl(req), "PAYMENT_REPLAYED", "This payment is already tied to another quote request. Re-present that request. Do not pay a second time.");
+    }
+    if (prior?.state === "pending" && prior.signature) {
+      return deliverIfConfirmed(req, res, requirements, prior.signature, prior.payer, key, transaction, parsed.value, attempts, now, observe, dependencies);
+    }
+    if (!prior) attempts.set(transaction, { state: "inflight", at: now() });
 
     let verify;
     try {
       verify = await dependencies.facilitator.verify(payload, requirements);
     } catch (error) {
-      forget(seen, transaction);
+      if (attempts.get(transaction)?.state === "inflight") attempts.delete(transaction);
       if (error instanceof FacilitatorUnavailableError) return send(res, 503, { error: "FACILITATOR_UNAVAILABLE", message: error.message });
       return send(res, 503, { error: "FACILITATOR_UNAVAILABLE", message: "The Solana Devnet facilitator could not verify the payment." });
     }
-    if (!verify.isValid) {
-      forget(seen, transaction);
+    if (!verify.isValid && isDefinitiveVerifyFailure(verify.invalidReason)) {
+      attempts.delete(transaction);
       const failure = classify(verify.invalidReason);
       return paymentRequired(res, requirements, resourceUrl(req), failure.error, failure.message);
     }
 
     let priced;
-    try {
-      priced = await priceQuote(parsed.value, dependencies.readStatus, dependencies.quote);
-    } catch (error) {
-      forget(seen, transaction);
-      if (error instanceof DataUnavailableError) return send(res, 503, { error: error.code, message: error.message });
-      return send(res, 503, { error: "QUOTE_UNAVAILABLE", message: "The quote could not be prepared. The payment was not settled." });
+    if (verify.isValid) {
+      try {
+        priced = await priceQuote(parsed.value, dependencies.readStatus, dependencies.quote);
+      } catch (error) {
+        if (attempts.get(transaction)?.state === "inflight") attempts.delete(transaction);
+        if (error instanceof DataUnavailableError) return send(res, 503, { error: error.code, message: error.message });
+        return send(res, 503, { error: "QUOTE_UNAVAILABLE", message: "The quote could not be prepared. The payment was not settled." });
+      }
     }
 
-    let settled;
+    let settled: FacilitatorSettleResult;
     try {
       settled = await dependencies.facilitator.settle(payload, requirements);
     } catch (error) {
-      if (error instanceof FacilitatorUnavailableError) return send(res, 503, { error: "FACILITATOR_UNAVAILABLE", message: `${error.message} No quote was returned.` });
-      return send(res, 503, { error: "FACILITATOR_UNAVAILABLE", message: "The facilitator could not settle the payment. No quote was returned." });
-    }
-    if (!settled.success || !settled.transaction) {
-      const failure = classify(settled.errorReason);
-      if (failure.error !== "PAYMENT_REPLAYED" && settled.errorReason !== "settlement_timeout") forget(seen, transaction);
-      return paymentRequired(res, requirements, resourceUrl(req), failure.error, settled.errorMessage || failure.message);
+      attempts.set(transaction, { state: "pending", at: now(), queryKey: key, signature: "" });
+      const detail = error instanceof FacilitatorUnavailableError ? error.message : "The facilitator could not settle the payment.";
+      return settlementPending(res, undefined, undefined, `${detail} Send the same PAYMENT-SIGNATURE again. Do not pay a second time.`);
     }
 
-    const body = presentQuote(parsed.value, priced.quote, priced.pricing, settled.transaction, settled.payer);
-    res.setHeader("PAYMENT-RESPONSE", encodePaymentResponseHeader({
-      success: true,
-      transaction: settled.transaction,
-      network: SOLANA_DEVNET_CAIP2,
-      payer: settled.payer,
-    }));
-    res.setHeader("Cache-Control", "no-store");
-    return send(res, 200, body);
+    const signature = settled.transaction?.trim() ?? "";
+    if (!settled.success && isAmbiguousSettlement(settled.errorReason, settled.errorMessage)) {
+      attempts.set(transaction, { state: "pending", at: now(), queryKey: key, signature, payer: settled.payer });
+      if (!signature) return settlementPending(res);
+      return deliverIfConfirmed(req, res, requirements, signature, settled.payer, key, transaction, parsed.value, attempts, now, observe, dependencies, priced);
+    }
+    if (!settled.success || !signature) {
+      attempts.delete(transaction);
+      const failure = classify(settled.errorReason);
+      return paymentRequired(res, requirements, resourceUrl(req), failure.error, settled.errorMessage || failure.message);
+    }
+    return deliverQuote(req, res, requirements, signature, settled.payer, key, transaction, parsed.value, attempts, now, dependencies, priced);
   };
+}
+
+async function deliverIfConfirmed(
+  req: ApiRequest,
+  res: ApiResponse,
+  requirements: PaymentRequirements,
+  signature: string,
+  payer: string | undefined,
+  key: string,
+  transaction: string,
+  query: QuoteQuery,
+  attempts: Map<string, Attempt>,
+  now: () => number,
+  observe: (signature: string) => Promise<SignatureView>,
+  dependencies: { readStatus: () => Promise<DevnetStatus>; quote: (request: QuoteArgs) => Promise<Quote> },
+  priced?: { quote: Quote; pricing: "committed-market" | "live-noaa" },
+) {
+  let view: SignatureView = "unknown";
+  try { view = await observe(signature); } catch { view = "unknown"; }
+  if (view === "failed") {
+    attempts.delete(transaction);
+    return paymentRequired(res, requirements, resourceUrl(req), "PAYMENT_UNSETTLED", "The transfer failed on Devnet. No quote was returned.");
+  }
+  if (view !== "confirmed") return settlementPending(res, signature, payer);
+  return deliverQuote(req, res, requirements, signature, payer, key, transaction, query, attempts, now, dependencies, priced);
+}
+
+async function deliverQuote(
+  req: ApiRequest,
+  res: ApiResponse,
+  requirements: PaymentRequirements,
+  signature: string,
+  payer: string | undefined,
+  key: string,
+  transaction: string,
+  query: QuoteQuery,
+  attempts: Map<string, Attempt>,
+  now: () => number,
+  dependencies: { readStatus: () => Promise<DevnetStatus>; quote: (request: QuoteArgs) => Promise<Quote> },
+  priced?: { quote: Quote; pricing: "committed-market" | "live-noaa" },
+) {
+  let settledPrice = priced;
+  if (!settledPrice) {
+    try {
+      settledPrice = await priceQuote(query, dependencies.readStatus, dependencies.quote);
+    } catch (error) {
+      attempts.set(transaction, { state: "pending", at: now(), queryKey: key, signature, payer });
+      const detail = error instanceof DataUnavailableError ? error.message : "The quote could not be prepared.";
+      const code = error instanceof DataUnavailableError ? error.code : "QUOTE_UNAVAILABLE";
+      return send(res, 503, {
+        error: code,
+        message: `${detail} The payment stands. Send the same PAYMENT-SIGNATURE again. Do not pay a second time.`,
+        transaction: signature,
+        explorer: devnetExplorerTx(signature),
+      });
+    }
+  }
+  const body = presentQuote(query, settledPrice.quote, settledPrice.pricing, signature, payer);
+  const paymentResponse = encodePaymentResponseHeader({ success: true, transaction: signature, network: SOLANA_DEVNET_CAIP2, payer });
+  attempts.set(transaction, { state: "fulfilled", at: now(), queryKey: key, body, paymentResponse });
+  res.setHeader("PAYMENT-RESPONSE", paymentResponse);
+  res.setHeader("Cache-Control", "no-store");
+  return send(res, 200, body);
+}
+
+function settlementPending(res: ApiResponse, signature?: string, payer?: string, message = "The Devnet USDC transfer was submitted and has not finalized. No quote was returned. Send the same PAYMENT-SIGNATURE again. Do not pay a second time.") {
+  res.setHeader("Cache-Control", "no-store");
+  return send(res, 202, {
+    error: "SETTLEMENT_PENDING",
+    message,
+    ...(signature ? { transaction: signature, explorer: devnetExplorerTx(signature) } : {}),
+    ...(payer ? { payer } : {}),
+  });
 }
 
 function paymentRequirements(config: X402QuoteConfig, feePayer: string): PaymentRequirements {
@@ -184,6 +282,19 @@ function isReplay(reason: string | undefined): boolean {
   return /replay|duplicate|already (?:been )?(?:used|settled|processed|confirmed)|transaction already/i.test(reason ?? "");
 }
 
+function isDefinitiveVerifyFailure(reason: string | undefined): boolean {
+  return /amount|mint|asset|recipient|signature_invalid|network_mismatch|unsupported_scheme|insufficient/i.test(reason ?? "");
+}
+
+function queryKey(query: QuoteQuery): string {
+  return [query.city, query.observationStart, query.observationEnd, String(query.thresholdMm), query.operator, query.protectedAmount].join("\n");
+}
+
+function currentAttempt(attempts: Map<string, Attempt>, transaction: string, at: number): Attempt | undefined {
+  for (const [key, attempt] of attempts) if (attempt.at + ATTEMPT_TTL_MS <= at) attempts.delete(key);
+  return attempts.get(transaction);
+}
+
 async function priceQuote(request: QuoteQuery, readStatus: () => Promise<DevnetStatus>, quote: (request: QuoteArgs) => Promise<Quote>): Promise<{ quote: Quote; pricing: "committed-market" | "live-noaa" }> {
   const amount = BigInt(request.protectedAmount);
   const status = await readStatus();
@@ -210,18 +321,6 @@ function paymentRequired(res: ApiResponse, requirements: PaymentRequirements, ur
   res.setHeader("PAYMENT-REQUIRED", encodePaymentRequiredHeader(paymentRequiredBody));
   res.setHeader("Cache-Control", "no-store");
   return send(res, 402, { error, message, paymentRequired: paymentRequiredBody });
-}
-
-function remember(seen: Map<string, number>, transaction: string, at: number): boolean {
-  for (const [key, expires] of seen) if (expires <= at) seen.delete(key);
-  const existing = seen.get(transaction);
-  if (existing && existing > at) return true;
-  seen.set(transaction, at + REPLAY_TTL_MS);
-  return false;
-}
-
-function forget(seen: Map<string, number>, transaction: string) {
-  seen.delete(transaction);
 }
 
 function sameAmount(left: string, right: string): boolean {

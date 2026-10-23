@@ -19,7 +19,7 @@ Here is the unpaid call. Exact scheme, Solana Devnet, Devnet USDC. The fee payer
 
 The agent loads a local Devnet key, signs the transfer, and retries. That is the quote: city, window, trigger, premium, payout, multiple, probability, fee, and the NOAA station and inputs hash behind it. The Explorer link is the USDC payment. The premium is still test SKYT.
 
-Send the wrong amount and it stays a 402. Wrong network, wrong asset, a replay, or a facilitator that is down do the same. No quote until a payment actually settles.”
+Send the wrong amount and it stays a 402. If Devnet is late confirming, the script waits on that same signature instead of paying again. No quote until that payment finalizes.”
 
 ## Shot list
 
@@ -27,7 +27,7 @@ Send the wrong amount and it stays a 402. Wrong network, wrong asset, a replay, 
 | --- | --- | --- | --- |
 | 0:00–0:12 | `/developers` | Hold on the title and the request. | First two sentences. |
 | 0:12–0:38 | Terminal, dry run | Run the dry-run command. Pause on `402`, `exact`, the Devnet network, and `feePayer`. | The unpaid-call paragraph. |
-| 0:38–1:12 | Terminal, paid run | Run without `--dry-run`. Pause on premium, payout, evidence, then the Explorer URL. Open the Explorer link if it has landed. | The agent paragraph. Read the figures from the terminal. |
+| 0:38–1:12 | Terminal, paid run | Run without `--dry-run`. Pause on premium, payout, evidence, then the Explorer URL. If the terminal shows `SETTLEMENT_PENDING`, leave it: the script re-sends that signature and does not start a second payment. | The agent paragraph. Read the figures from the terminal. |
 | 1:12–1:32 | Terminal, bad payment | Run `--bad-payment`. Pause on `WRONG_AMOUNT`. | The refusal paragraph. |
 | 1:32–1:45 | `/developers`, “When it refuses” | Hold. | Stop. Do not invent a second price. |
 
@@ -58,6 +58,7 @@ Server (Vercel project `skyhedge`, or local `.env`). Public values only. No priv
 | `X402_QUOTE_PRICE_USDC` | No | Access price. Default `0.01`. At most `1`. |
 | `X402_FACILITATOR_URL` | No | Default `https://x402.org/facilitator`. |
 | `SOLANA_NETWORK` | Yes | Must be `devnet`. |
+| `SOLANA_RPC_URL` | No | Devnet RPC used to confirm a submitted signature. In production this is Helius. Public Devnet is the fallback. A 429 here does not become a new charge. |
 | `NOAA_TOKEN` | For a live quote | Already used by `/api/quotes`. A matching open market can be priced from committed terms without a fresh NOAA read. |
 
 Agent machine only. Never put these on Vercel.
@@ -66,7 +67,8 @@ Agent machine only. Never put these on Vercel.
 | --- | --- |
 | `X402_AGENT_KEYPAIR` | Path to a Solana CLI keypair JSON file. `.local-secrets/` is gitignored. |
 | `X402_QUOTE_URL` | Optional. Default `https://skyhedge.app/api/x402/quote`. Use localhost until this is deployed. |
-| `SOLANA_RPC_URL` | Optional Devnet RPC for the agent. Default public Devnet. |
+| `SOLANA_RPC_URL` | Optional Devnet RPC for the agent’s own signature check. Default public Devnet. |
+| `X402_PENDING_PATH` | Optional. Default `.local-secrets/x402-pending-quote.json`. The script writes the last payment here so a re-run reuses it. Gitignored. Not a key. |
 
 ## One-time setup (Miro)
 
