@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import type { ClaimReadiness, DevnetStatus, Portfolio } from "@/lib/types";
 import { RainGauge, gaugeTicks } from "@/components/rain-gauge";
 import { consumerCityBySlug } from "../../../shared/consumer-cities";
+import { payGet } from "../../../shared/pay-get";
 import { COVERED_TITLE, EXPLORER_LINK_LABEL, ONE_PROTECTION_NOTE, coveredPlaceLine, coveredReceiptRows, devnetExplorerUrl, formatQuoteSkyt, stationDisplayName, windowStamp } from "../../../shared/protect-copy";
 import { committedWindowLabel, windowStartLabel } from "../../../shared/window-chain";
 
@@ -70,6 +71,56 @@ function ProtectionGauge({ protection, window }: { protection: Portfolio["protec
       </dl>
       {settled ? <p className="mt-2 text-sm font-semibold text-[var(--fg-2)]">Settled</p> : <p className="mt-2 text-sm font-semibold text-[var(--glacier)]">Active</p>}
       {explorer ? <a href={explorer} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-12 items-center text-sm font-medium text-[var(--glacier)]">{EXPLORER_LINK_LABEL}</a> : null}
+    </div>
+  </article>;
+}
+
+/** Dev-only receipt for screenshots. Figures come from a loaded window. Production builds drop this. */
+export function DevStampPreview({ windows }: { windows: readonly WindowRow[] }) {
+  if (!import.meta.env.DEV) return null;
+  const params = new URLSearchParams(window.location.search);
+  const kind = params.get("stamp");
+  if (kind !== "paid" && kind !== "dry") return null;
+  const source = windows.find((row) => row.city === "new-york" && row.thresholdMmX100 && row.premiumRateBps && row.quoteProbabilityBps) ?? windows.find((row) => row.thresholdMmX100 && row.premiumRateBps && row.quoteProbabilityBps);
+  if (!source?.thresholdMmX100 || source.premiumRateBps == null || source.quoteProbabilityBps == null) return null;
+  const trigger = Number(source.thresholdMmX100) / 100;
+  if (!Number.isFinite(trigger)) return null;
+  const deal = payGet({ coverageSkyt: 100, premiumRateBps: source.premiumRateBps, probabilityBps: source.quoteProbabilityBps });
+  if (!deal) return null;
+  const observedRaw = params.get("observed");
+  const observed = observedRaw && /^\d+(\.\d+)?$/.test(observedRaw) ? Number(observedRaw) : null;
+  const stamp = windowStamp({
+    closed: true,
+    paidOut: kind === "paid",
+    payoutLabel: deal.getLabel,
+    observedMm: observed,
+    triggerMm: trigger,
+    monthly: source.tenor === "monthly",
+  });
+  if (!stamp) return null;
+  const city = consumerCityBySlug(source.city);
+  const windowLabel = committedWindowLabel(source);
+  const rows = coveredReceiptRows({
+    premiumPaid: deal.payBase,
+    coverAmount: deal.getBase,
+    trigger: `≥ ${trigger} mm`,
+    windowLabel,
+    observedMm: observed,
+    windowStart: windowStartLabel(source),
+  });
+  const place = coveredPlaceLine({ city: city?.city, station: stationDisplayName(city?.source), windowLabel });
+  return <article className="flex min-w-0 items-start gap-4 rounded-[14px] border border-[var(--line)] bg-[var(--surface-1)] p-4">
+    <RainGauge level={observed != null ? Math.min(1, observed / (trigger * 1.25)) : 1} ticks={gaugeTicks([{ mm: trigger, selected: true }], trigger * 1.25)} label={`Trigger line at ${trigger} mm`} />
+    <div className="min-w-0 flex-1">
+      <p className={`receipt-stamp receipt-stamp--${stamp.tone}`}>{stamp.title}<span className="mt-1 block font-sans text-[0.7rem] font-normal">{stamp.subline}</span></p>
+      <h3 className="text-base font-semibold">{COVERED_TITLE}</h3>
+      {place ? <p className="mt-1 text-sm text-[var(--fg-2)]">{place}</p> : null}
+      <dl className="mt-2 space-y-1 font-mono text-sm">
+        {rows.map((row) => <div key={row.label} className="flex items-baseline justify-between gap-3">
+          <dt className="text-[var(--fg-3)]">{row.label}</dt>
+          <dd className={row.payout ? "text-[var(--slicker)]" : "text-[var(--fg)]"}>{row.value}</dd>
+        </div>)}
+      </dl>
     </div>
   </article>;
 }

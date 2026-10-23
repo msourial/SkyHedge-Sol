@@ -18,7 +18,7 @@ import { PlanCities } from "@/components/plan-cities";
 import { WalletButton } from "@/components/wallet-button";
 import { TECHNICAL_DETAILS, WALLET_CHAIN_ERROR, WALLET_DISCONNECTED, WALLET_EMPTY, formatQuoteSkyt } from "../../../shared/protect-copy";
 import { ProtectChain } from "@/components/protect-chain";
-import { ProtectionGauges } from "@/components/protection-gauges";
+import { DevStampPreview, ProtectionGauges } from "@/components/protection-gauges";
 import { AGRICULTURAL_MARKETS, agriculturalMarketBySlug, agriculturalMarketLocation, millimetersToInches, searchAgriculturalMarkets, type AgriculturalMarketSlug } from "../../../shared/agricultural-markets";
 import { LIVE_CITY_SLUGS } from "../../../shared/window-ladder";
 import { consumerCityBySlug } from "../../../shared/consumer-cities";
@@ -164,7 +164,7 @@ export default function DashboardPage() {
       {tab === "markets" && <Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} onOpenCity={openProtectCity} selectedSlug={marketId} focusSlug={query.get("city")} status={devnetStatus.data} />}
       {chainOn ? <ProtectChain windows={devnetStatus.data?.cityWindows ?? []} city={protectCity} connected={wallet.connected} onCityChange={openProtectCity} onCovered={() => switchTab("wallet")} statusLoading={devnetStatus.isPending && !devnetStatus.data} statusFailed={devnetStatus.isError && !devnetStatus.data} onRetry={() => { void devnetStatus.refetch(); }} /> : tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") { setQuoteActive(true); setQuoteRequest((count) => count + 1); } }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" && quoteActive ? quoteQuery.error : undefined} />}
       {tab === "liquidity" && <Liquidity />}
-      {tab === "wallet" && <div className="space-y-8"><PortfolioView windows={devnetStatus.data?.cityWindows ?? []} /><details className="reference-explorer"><summary className="text-sm font-semibold text-[var(--fg-2)]">{TECHNICAL_DETAILS}</summary><Evidence /></details></div>}
+      {tab === "wallet" && <div className="space-y-8"><DevStampPreview windows={devnetStatus.data?.cityWindows ?? []} /><PortfolioView windows={devnetStatus.data?.cityWindows ?? []} /><details className="reference-explorer"><summary className="text-sm font-semibold text-[var(--fg-2)]">{TECHNICAL_DETAILS}</summary><Evidence /></details></div>}
       {tab === "builders" && <div className="space-y-6"><OwnerConsole status={devnetStatus.data} /><BuilderProof /></div>}
     </div>
     <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-[var(--border)] bg-[var(--surface-1)] px-1 pb-[env(safe-area-inset-bottom)] lg:hidden">
