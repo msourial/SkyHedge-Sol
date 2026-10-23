@@ -4,14 +4,18 @@ import { api } from "@/lib/api";
 import type { ClaimReadiness, DevnetStatus, Portfolio } from "@/lib/types";
 import { RainGauge, gaugeTicks } from "@/components/rain-gauge";
 import { notTriggeredLine } from "../../../shared/pay-get.ts";
-import { daysToExpiry, daysToExpiryLabel, expiryChipLabel } from "../../../shared/window-chain.ts";
+import { committedWindowLabel, daysToExpiry, daysToExpiryLabel } from "../../../shared/window-chain.ts";
+import { EXPLORER_LINK_LABEL, ONE_PROTECTION_NOTE, coveredReceiptRows, devnetExplorerUrl } from "../../../shared/protect-copy.ts";
 
 type WindowRow = NonNullable<DevnetStatus["cityWindows"]>[number];
 
-/** One indexed protection. Water and the trigger come only from claim and window records. */
+/** One indexed protection, shown as a gauge receipt. Figures come from the position and its window. */
 export function ProtectionGauges({ protections, windows }: { protections: Portfolio["protections"]; windows: readonly WindowRow[] }) {
   if (!protections.length) return null;
-  return <ul className="space-y-4">{protections.map((protection) => <li key={protection.address}><ProtectionGauge protection={protection} window={windows.find((row) => row.address === protection.market)} /></li>)}</ul>;
+  return <div className="space-y-3">
+    <ul className="space-y-4">{protections.map((protection) => <li key={protection.address}><ProtectionGauge protection={protection} window={windows.find((row) => row.address === protection.market)} /></li>)}</ul>
+    <p className="text-xs text-[var(--muted-foreground)]">{ONE_PROTECTION_NOTE}</p>
+  </div>;
 }
 
 function ProtectionGauge({ protection, window }: { protection: Portfolio["protections"][number]; window?: WindowRow }) {
@@ -27,17 +31,25 @@ function ProtectionGauge({ protection, window }: { protection: Portfolio["protec
   const maxMm = trigger ? trigger * 1.25 : 1;
   const level = trigger != null && observed != null ? Math.min(1, observed / maxMm) : 0;
   const missed = observed != null && trigger != null ? notTriggeredLine(observed, trigger) : null;
-  const date = window ? expiryChipLabel(window)?.split(" · ")[0] ?? null : null;
-  const days = window ? daysToExpiry(window.observationEnd, Math.floor(Date.now() / 1000)) : null;
   const settledMiss = claim.data?.state === "not_claimable" || claim.data?.state === "expired";
-  return <article className="flex min-w-0 items-end gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-4">
-    <RainGauge level={level} ticks={trigger != null ? gaugeTicks([{ mm: trigger, selected: true }], maxMm) : []} label={window ? `${window.city} rain gauge` : "Rain gauge"} />
-    <div className="min-w-0">
-      <h3 className="text-base font-semibold">{window?.city ?? "Protection"}</h3>
-      {missed && settledMiss ? <p className="sky-mono mt-1 text-sm text-[var(--payout)]">{missed}</p> : date && !settledMiss ? <p className="mt-1 text-sm">You're covered through {date}</p> : null}
-      <p className="sky-mono mt-1 text-sm text-[var(--muted-foreground)]">{observed != null && trigger != null && !missed ? `${observed} of ${trigger} mm` : observed == null ? "Rainfall to date is not in this record." : null}</p>
-      {days != null ? <p className="sky-mono mt-1 text-sm text-[var(--muted-foreground)]">{daysToExpiryLabel(days)}</p> : null}
-      <a href="/app?tab=wallet" className="mt-2 inline-flex min-h-11 items-center text-sm font-medium">Wallet</a>
+  const triggerLabel = trigger != null ? `≥ ${Number.isInteger(trigger) ? String(trigger) : trigger.toFixed(1)} mm` : null;
+  const windowLabel = window ? committedWindowLabel(window) : null;
+  const rows = coveredReceiptRows({ premiumPaid: protection.premiumPaid, coverAmount: protection.protectedAmount, trigger: triggerLabel, windowLabel });
+  const explorer = devnetExplorerUrl({ address: protection.address });
+  const days = window ? daysToExpiry(window.observationEnd, Math.floor(Date.now() / 1000)) : null;
+  return <article className="flex min-w-0 items-start gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-4">
+    <RainGauge level={level} ticks={trigger != null ? gaugeTicks([{ mm: trigger, selected: true }], maxMm) : []} label={trigger != null ? `Trigger line at ${trigger} mm` : "Rain gauge"} />
+    <div className="min-w-0 flex-1">
+      <h3 className="text-base font-semibold">You're covered</h3>
+      <dl className="sky-mono mt-2 space-y-1 text-sm">
+        {rows.map((row) => <div key={row.label} className="flex items-baseline justify-between gap-3">
+          <dt className="text-[var(--muted-foreground)]">{row.label}</dt>
+          <dd className={row.payout ? "text-[var(--slicker)]" : "text-[var(--foreground)]"}>{row.value}</dd>
+        </div>)}
+      </dl>
+      {missed && settledMiss ? <p className="sky-mono mt-2 text-sm text-[var(--slicker)]">{missed}</p> : null}
+      {days != null ? <p className="sky-mono mt-1 text-xs text-[var(--muted-foreground)]">{daysToExpiryLabel(days)}</p> : null}
+      {explorer ? <a href={explorer} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-[var(--identity)]">{EXPLORER_LINK_LABEL}</a> : null}
     </div>
   </article>;
 }

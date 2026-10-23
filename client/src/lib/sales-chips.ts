@@ -26,7 +26,7 @@ function chipForCity(city: ConsumerCity, status: LadderStatus | null | undefined
 }
 
 export function chipClass(chip: SalesChip, pulse = false): string {
-  const tone = chip.tone === "live" ? "wl-markets__status--live" : chip.tone === "closed" ? "wl-markets__status--closed" : "wl-markets__status--soon";
+  const tone = chip.tone === "live" ? "wl-markets__status--open" : chip.tone === "closed" ? "wl-markets__status--closed" : "wl-markets__status--opens";
   return `wl-markets__status ${tone}${pulse ? " wl-markets__status--pulse" : ""}`;
 }
 

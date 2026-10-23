@@ -38,9 +38,8 @@ export function GlassCard({ children, style, accent, delay }: { children: React.
 
 export function StatusTag({ status, label }: { status: CatalogMarket["status"]; label?: string }) {
   const tone = marketListChipTone(status, label);
-  const col = tone === "live" ? C.mint : tone === "soon" ? C.amber : tone === "closed" ? C.muted : C.rain;
+  const col = tone === "live" ? C.rain : tone === "closed" ? C.quiet : C.muted;
   return <View style={[g.tag, { borderColor: col + "77", backgroundColor: col + "1F", boxShadow: statusGlow(col, status === "concept") }]} accessible accessibilityLabel={label ?? statusLabel(status)}>
-    {status !== "concept" ? <View style={[g.tagDot, { backgroundColor: col }]} /> : <View style={[g.tagDot, { borderWidth: 1.5, borderColor: col }]} />}
     <Text style={[g.tagText, { color: col }]}>{label ?? statusLabel(status)}</Text>
   </View>;
 }
