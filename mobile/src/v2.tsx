@@ -15,6 +15,7 @@ import { formatWeekLabel } from "./presentation";
 import { isOnchainMarketOpen } from "./protection";
 import { expiryChipLabel, matchingWindowPackage, measuredAtLine, type WindowEvidencePackage } from "../../shared/window-chain.ts";
 import { marketStatus, notTriggeredLine, payGet, payGetBarWidths } from "../../shared/pay-get.ts";
+import { COVER_CHIPS, EXPLORER_LINK_LABEL, ONE_PROTECTION_NOTE, coveredReceiptRows, devnetExplorerUrl, marketStatusInk, triggerMillimetres, type CoverChip } from "../../shared/protect-copy.ts";
 import { RainGauge } from "./rain-gauge";
 import { ProtectChain } from "./protect-chain";
 import { citySalesClosed, expiryLabel, NEXT_WINDOW_COPY, positionLabel, sellingWindows, windowsForCity, type SellingWindow, type Tenor } from "./windows";
@@ -24,8 +25,12 @@ import { MARKETING_SHOTS } from "./marketing";
 import { approveInPhantomLabel } from "./confirm-buy";
 import { balanceCheck, coverageOptions, formatSkytFixed, premiumPer100, payState, reviewReason, shortAddress, shortUtcDate, trimMm, utcDateTime, type CoverageOption } from "./ticket";
 import { buyPhaseLabel, type BuyPhase } from "./buy-phase";
-import { coveredLead, coveredRows } from "./covered";
 import type { ChainProtection } from "./positions";
+
+function statusInk(tone: "open" | "opens" | "closed") {
+  const ink = marketStatusInk(tone);
+  return ink === "glacier" ? C.rain : ink === "neutral" ? C.muted : C.quiet;
+}
 
 const TAB = ["tabular-nums" as const];
 
@@ -155,7 +160,7 @@ export function MarketsScreen(props: {
         const slug = rawSlug && rawSlug !== "toronto" ? rawSlug : undefined;
         const cityWindows = slug ? windowsForCity(allWindows, slug) : [];
         const status = marketStatus(cityWindows, props.nowSeconds) ?? (slug && citySalesClosed(props.status, slug, props.nowSeconds) ? { tone: "closed" as const, label: "Closed" } : null);
-        const statusColor = status?.tone === "open" ? C.rain : status?.tone === "closed" ? C.quiet : C.muted;
+        const statusColor = status ? statusInk(status.tone) : C.muted;
         const moment = consumerCityByCode(m.code)?.moment;
         const line = cityDataLine(cityWindows);
         const trigger = cityWindows[0]?.thresholdMmX100 && /^\d+$/.test(cityWindows[0].thresholdMmX100) ? Number(cityWindows[0].thresholdMmX100) / 100 : null;
@@ -180,11 +185,11 @@ export function MarketsScreen(props: {
 
     {browseAll && scope === "global" && !filtering ? <GlobalGroups onPick={pickGroup} /> : null}
 
-    <GlassCard accent={live ? C.mint : undefined} delay={4 * motion.stagger}>
+    <GlassCard accent={live ? C.rain : undefined} delay={4 * motion.stagger}>
       <View style={s.resultCopy}>
         <Text style={s.cardTitle} android_hyphenationFrequency="none">Des Moines, IA</Text>
         <Text style={s.cardSub}>NOAA · {station}</Text>
-        {dsmStatus ? <Text style={[s.caption, { color: dsmStatus.tone === "open" ? C.rain : dsmStatus.tone === "closed" ? C.quiet : C.muted }]}>{dsmStatus.label}</Text> : null}
+        {dsmStatus ? <Text style={[s.caption, { color: statusInk(dsmStatus.tone) }]}>{dsmStatus.label}</Text> : null}
       </View>
       <Text style={s.caption}>Wind, snow and heat coming</Text>
       <View style={[s.between, { marginTop: S.lg, alignItems: "flex-end" }]}>
@@ -376,8 +381,8 @@ export function ProtectTicket(props: {
       resolutionSignature={props.claimReadiness?.resolutionSignature ?? null}
       onAgain={() => props.onProtectAgain?.()}
       onMarkets={() => props.onBackToMarkets?.()}
-    /><Text style={[s.caption, { marginTop: S.sm, marginBottom: S.sm, textAlign: "center" }]}>One protection per wallet per window.</Text></Reveal> : null}
-    {isExistingPosition && !props.transactionSignature && !covered ? <Text style={[s.caption, { marginBottom: S.sm }]}>One protection per wallet per window — this wallet is already covered.</Text> : null}
+    /></Reveal> : null}
+    {isExistingPosition && !props.transactionSignature && !covered ? <Text style={[s.caption, { marginBottom: S.sm, textAlign: "center" }]}>{ONE_PROTECTION_NOTE}</Text> : null}
 
     {props.claimReadiness?.state === "claimable" && props.claimReadiness.action === "claim_payout" ? <GlassCard accent={C.mint}>
       <Text style={s.overlineIn}>Trigger hit · payout ready</Text>
@@ -539,16 +544,24 @@ export function StickyCta(props: { label: string; onPress: () => void; disabled?
   </View>;
 }
 
-export function ConfirmCover(props: { sentence: string; station: string; expiry: string; windowLabel: string; pay: string; getLabel: string; onClose: () => void; onApprove: () => void }) {
+export function ConfirmCover(props: { sentence: string; station: string; expiry: string; windowLabel: string; pay: string; getLabel: string; multiple?: string | null; feeLine?: string | null; getLine?: string | null; preSign?: string | null; coverSkyt?: CoverChip; onCover?: (skyt: CoverChip) => void; onClose: () => void; onApprove: () => void }) {
+  const payLine = `You pay ${props.pay} SKYT`;
+  const getLine = props.getLine ?? props.sentence;
   return <View style={s.sheetScrim}>
     <View style={s.sheet} accessibilityViewIsModal accessibilityLabel="Confirm protection">
-      <Text style={s.bodyStrong}>{props.sentence}</Text>
-      <Text style={[s.caption, { marginTop: S.sm }]}>Station · {props.station}</Text>
-      <Text style={s.caption}>Window · {props.windowLabel}</Text>
-      <Text style={s.caption}>Settlement · after {props.expiry}</Text>
-      <Text style={s.caption}>You pay {props.pay} SKYT</Text>
-      <Text style={[s.caption, { color: C.payout }]}>You get {props.getLabel} SKYT</Text>
-      <Text style={[s.caption, { marginTop: S.sm }]}>Phantom will ask you to approve this protection.</Text>
+      <View accessibilityRole="radiogroup" accessibilityLabel="Coverage amount in SKYT" style={s.sheetChips}>
+        {COVER_CHIPS.map((chip) => {
+          const on = chip === props.coverSkyt;
+          return <Pressable key={chip} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => props.onCover?.(chip)} style={[s.sheetChip, on && s.sheetChipOn]}>
+            <Text style={[s.sheetChipText, on && { color: C.ink }]}>{chip}</Text>
+          </Pressable>;
+        })}
+      </View>
+      <Text style={s.payLine}>{payLine}</Text>
+      <Text style={s.getLine}>{getLine}</Text>
+      {props.multiple ? <Text style={s.multiple}>{props.multiple}</Text> : null}
+      {props.feeLine ? <Text style={s.feeLine}>{props.feeLine}</Text> : null}
+      {props.preSign ? <Text style={s.preSign}>{props.preSign}</Text> : null}
       <View style={s.sheetActions}>
         <Pressable accessibilityRole="button" onPress={props.onClose} style={s.sheetBack}><Text style={s.bodyStrong}>Back</Text></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={approveInPhantomLabel(props.pay)} onPress={props.onApprove} style={s.sheetGo}><Text style={[s.bodyStrong, { color: C.canvas, textAlign: "center" }]}>{approveInPhantomLabel(props.pay)}</Text></Pressable>
@@ -559,14 +572,24 @@ export function ConfirmCover(props: { sentence: string; station: string; expiry:
 
 /** Calm state when this wallet already holds the selected window. Values come from the position account only. */
 function CoveredCard(props: { position: ChainProtection; signature: string | null; onWallet?: () => void }) {
+  const rows = coveredReceiptRows({ premiumPaid: props.position.premiumPaid, coverAmount: props.position.protectedAmount, trigger: props.position.triggerLabel, windowLabel: props.position.windowLabel });
+  const triggerMm = triggerMillimetres(props.position.triggerLabel);
+  const explorer = devnetExplorerUrl({ signature: props.signature, address: props.position.address });
   return <GlassCard accent={C.rain}>
     <View accessibilityRole="summary" accessibilityLabel="You’re covered on this window">
-      <View style={s.baseline}><AppIcon name="check" color={C.rain} size={18} /><Text style={[s.noticeTitle, { marginLeft: S.sm }]}>You’re covered</Text></View>
-      <Text style={[s.noticeBody, { marginBottom: S.sm }]}>{coveredLead(props.position)}</Text>
-      {coveredRows(props.position).map((row) => <Row key={row.label} label={row.label} value={row.value} gold={row.gold} />)}
-      {props.signature ? <ExplorerButton url={`https://explorer.solana.com/tx/${encodeURIComponent(props.signature)}?cluster=devnet`} label="Transaction on Explorer" /> : null}
-      <ExplorerButton url={props.position.explorerUrl} label="Position on Explorer" />
+      <Text style={s.cardTitleSm}>You’re covered</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: S.md, marginTop: S.sm }}>
+        <RainGauge width={56} height={120} level={0} maxMm={triggerMm ? triggerMm * 1.25 : 1} ticks={triggerMm != null ? [{ mm: triggerMm, selected: true }] : []} label={triggerMm != null ? `Trigger line at ${triggerMm} mm` : "Rain gauge"} />
+        <View style={{ flex: 1 }}>
+          {rows.map((row) => <View key={row.label} style={s.receiptRow}>
+            <Text style={s.receiptLabel}>{row.label}</Text>
+            <Text style={[s.receiptValue, row.payout && { color: C.payout }]}>{row.value}</Text>
+          </View>)}
+        </View>
+      </View>
+      {explorer ? <ExplorerButton url={explorer} label={EXPLORER_LINK_LABEL} /> : null}
       {props.onWallet ? <Pressable accessibilityRole="button" onPress={props.onWallet} style={s.inlineBtn}><Text style={s.link}>View in Wallet</Text></Pressable> : null}
+      <Text style={[s.caption, { marginTop: S.sm }]}>{ONE_PROTECTION_NOTE}</Text>
     </View>
   </GlassCard>;
 }
@@ -805,6 +828,18 @@ const s = StyleSheet.create({
   sheetActions: { flexDirection: "row", gap: S.sm, marginTop: S.md },
   sheetBack: { paddingHorizontal: S.lg, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 24, borderWidth: 1, borderColor: C.border },
   sheetGo: { flex: 1, paddingHorizontal: S.sm, paddingVertical: S.sm, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 24, backgroundColor: C.ink },
+  sheetChips: { flexDirection: "row", gap: S.sm, marginBottom: S.md },
+  sheetChip: { flex: 1, minHeight: MIN_TOUCH, alignItems: "center", justifyContent: "center", borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface },
+  sheetChipOn: { borderColor: "#F2C230" },
+  sheetChipText: { ...T.bodyStrong, color: C.muted, fontFamily: F.mono },
+  payLine: { ...T.bodyStrong, color: C.ink, fontFamily: F.mono, fontVariant: TAB },
+  getLine: { ...T.body, color: C.payout, fontFamily: F.body, marginTop: S.xs },
+  multiple: { ...T.caption, color: C.muted, fontFamily: F.mono, marginTop: S.xs },
+  feeLine: { ...T.caption, color: C.quiet, marginTop: S.sm },
+  preSign: { ...T.caption, color: C.ink, marginTop: S.md },
+  receiptRow: { flexDirection: "row", justifyContent: "space-between", gap: S.sm, minHeight: 28, alignItems: "center" },
+  receiptLabel: { ...T.caption, color: C.muted, fontFamily: F.mono },
+  receiptValue: { ...T.caption, color: C.ink, fontFamily: F.mono, flexShrink: 1, textAlign: "right" },
   netPill: { minHeight: 32, flexDirection: "row", alignItems: "center", gap: S.sm, borderWidth: 1, borderColor: C.border, borderRadius: 16, paddingHorizontal: S.md, backgroundColor: C.surface },
   netPillText: { ...T.label, fontSize: 12, lineHeight: 16, color: C.ink },
   pill: { minHeight: 28, flexShrink: 0, flexDirection: "row", alignItems: "center", gap: S.sm - 2, borderRadius: 14, paddingHorizontal: S.md - 2 },

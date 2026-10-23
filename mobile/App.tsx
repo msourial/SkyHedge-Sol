@@ -39,9 +39,10 @@ import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
 import { ConfirmCover, MarketsScreen, ProtectTicket, StickyCta, WalletV2 } from "./src/v2";
 import { liveMarketLabel, protectCityFor, sellingWindows, windowsForCity, type Tenor } from "./src/windows";
 import { committedWindowLabel, expiryChipLabel, matchingWindowPackage, sortByExpiry, type WindowEvidencePackage } from "../shared/window-chain.ts";
-import { confirmSentence, payGet, protectCta } from "../shared/pay-get.ts";
+import { payGet } from "../shared/pay-get.ts";
+import { coverBaseUnits, protectButtonLabel, stakeSheetForCover, stationDisplayName, type CoverChip } from "../shared/protect-copy.ts";
 import { buyCtaVisible, nextWeeklyOpenCopy, openCityPrompt, protectSurface } from "../shared/protect-surface.ts";
-import { buyCta, coverageOptions, type CoverageOption } from "./src/ticket";
+import { coverageOptions, type CoverageOption } from "./src/ticket";
 import { Landing, MarketDetail } from "./src/revamp";
 import { CollectPayoutView, ReceiptView } from "./src/journey";
 import { BrandMark } from "./src/BrandMark";
@@ -68,7 +69,7 @@ export default function App() {
     BarlowCondensed_600SemiBold, BarlowCondensed_700Bold, IBMPlexMono_500Medium,
   });
   const [tab, setTab] = useState<Tab>("catalog");
-  const [coverConfirm, setCoverConfirm] = useState<{ sentence: string; station: string; expiry: string; windowLabel: string; pay: string; getLabel: string; market: string; amount: string } | null>(null);
+  const [coverConfirm, setCoverConfirm] = useState<{ sentence: string; station: string; expiry: string; windowLabel: string; pay: string; getLabel: string; market: string; amount: string; multiple: string | null; feeLine: string | null; getLine: string | null; preSign: string | null; coverSkyt: CoverChip } | null>(null);
   const [showGuide, setShowGuide] = useState(true);
   const [cities, setCities] = useState<CityIndex[]>([]);
   const [catalog, setCatalog] = useState<AgriculturalMarket[]>([]);
@@ -683,47 +684,86 @@ export default function App() {
         if (!status) return null;
         const claimable = claimReadiness?.state === "claimable" && claimReadiness.action;
         if (claimable) return <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness?.action) void submitApprovedAction(claimReadiness.action); }} />;
-        if (!wallet) return <StickyCta label="Connect wallet" busy={loading} onPress={() => { void connect(); }} />;
-        if (alreadyCovered && buyPhase !== "checking") return <StickyCta label="You’re covered for this window" disabled hint="One protection per wallet per window." onPress={() => {}} />;
+        if (alreadyCovered && buyPhase !== "checking") return null;
         const quoteReady = !!quote && quote.protectedAmount === amountBase;
-        const cta = buyCta({ premiumBase: quoteReady ? quote!.premium : null, busy: quoteBusy, error: quoteError, blockedReason: protectionUnavailableReason ? friendlyError(protectionUnavailableReason) : null, paymentReason: quotePaymentReason ? "Not enough SKYT in this wallet for this premium." : null });
         const threshold = activeWindow?.thresholdMmX100 && /^\d+$/.test(activeWindow.thresholdMmX100) ? Number(activeWindow.thresholdMmX100) / 100 : null;
         const deal = quoteReady && quote?.premiumRateBps && quote.probabilityBps && amountBase
           ? payGet({ coverageSkyt: Number(BigInt(amountBase) / 1_000_000n), premiumRateBps: quote.premiumRateBps, probabilityBps: quote.probabilityBps })
           : null;
-        const dealLabel = protectCta({ connected: !!wallet, quote: deal, thresholdMm: threshold });
-        if (!deal && cta.disabled && !quoteBusy) return null;
+        const button = protectButtonLabel({ connected: !!wallet, premiumLabel: deal?.payLabel ?? null, triggerChosen: threshold != null && !!activeWindow });
         const windowLabel = activeWindow ? committedWindowLabel(activeWindow) : null;
-        const expiry = windowLabel?.split(" – ")[1] ?? (activeWindow ? expiryChipLabel(activeWindow)?.split(" · ")[0] ?? "expiry" : "expiry");
-        const station = consumerCityBySlug(protectCity)?.source ?? "NOAA station";
+        const expiry = windowLabel?.split(" – ")[1] ?? (activeWindow ? expiryChipLabel(activeWindow)?.split(" · ")[0] ?? "" : "");
+        const station = stationDisplayName(consumerCityBySlug(protectCity)?.source ?? null);
         const buying = buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending" || buyPhase === "checking";
+        const sheetFor = (skyt: CoverChip) => {
+          if (threshold == null || !activeWindow || !windowLabel || !station || !expiry) return null;
+          const amount = coverBaseUnits(skyt);
+          return stakeSheetForCover({
+            coverSkyt: skyt,
+            probabilityBps: activeWindow.quoteProbabilityBps,
+            premiumRateBps: activeWindow.premiumRateBps,
+            inputsHash: activeWindow.quoteInputsHash,
+            protocolFeeBase: quote && amount && quote.protectedAmount === amount ? quote.protocolFee : null,
+            station,
+            triggerMm: threshold,
+            windowLabel,
+          });
+        };
         return <StickyCta
-          label={buyPhase === "failed" ? "Retry" : deal ? dealLabel : cta.label}
-          hint={deal ? null : cta.hint}
-          disabled={buying ? true : deal ? false : cta.disabled}
-          busy={buying}
+          label={buyPhase === "failed" ? "Retry" : button.label}
+          disabled={buying ? true : button.action === "connect" ? false : button.disabled}
+          busy={buying || (button.action === "connect" && loading)}
           busyLabel={buying && buyPhase ? buyPhaseLabel(buyPhase) : undefined}
           pay={deal?.payLabel ?? null}
           getLabel={deal?.getLabel ?? null}
           payBase={deal?.payBase ?? null}
           getBase={deal?.getBase ?? null}
           onPress={() => {
+            if (button.action === "connect") { void connect(); return; }
             if (buyPhase === "failed") { void submitApprovedAction("open_position"); return; }
-            if (!deal || threshold == null || !activeWindow || !amountBase || !windowLabel) return;
+            if (button.action !== "protect" || !activeWindow || !amountBase) return;
+            const skyt = (["50", "100", "250"] as const).includes(coverageId as "50" | "100" | "250") ? Number(coverageId) as CoverChip : 100;
+            const model = sheetFor(skyt);
+            if (!model) return;
             setCoverConfirm({
-              sentence: confirmSentence({ thresholdMm: threshold, station, expiry, getLabel: deal.getLabel }),
-              station,
+              sentence: model.getLine,
+              station: station ?? "",
               expiry,
-              windowLabel,
-              pay: deal.payLabel,
-              getLabel: deal.getLabel,
+              windowLabel: windowLabel ?? "",
+              pay: model.premiumLabel,
+              getLabel: model.coverLabel,
               market: activeWindow.address,
-              amount: amountBase,
+              amount: coverBaseUnits(skyt) ?? amountBase,
+              multiple: model.multiple,
+              feeLine: model.feeLine,
+              getLine: model.getLine,
+              preSign: model.preSign,
+              coverSkyt: skyt,
             });
           }}
         />;
       })() : null}
-      {coverConfirm ? <ConfirmCover {...coverConfirm} onClose={() => setCoverConfirm(null)} onApprove={() => {
+      {coverConfirm ? <ConfirmCover {...coverConfirm} onClose={() => setCoverConfirm(null)} onCover={(skyt) => {
+        const option = coverageOptions(walletBalances ? String(walletBalances.skytBaseUnits) : null).find((item) => item.id === String(skyt));
+        if (option) chooseCoverage(option);
+        if (!activeWindow) return;
+        const windowLabel = committedWindowLabel(activeWindow);
+        const station = stationDisplayName(consumerCityBySlug(protectCity)?.source ?? null);
+        const threshold = activeWindow.thresholdMmX100 && /^\d+$/.test(activeWindow.thresholdMmX100) ? Number(activeWindow.thresholdMmX100) / 100 : null;
+        const amount = coverBaseUnits(skyt);
+        const model = windowLabel && station && threshold != null ? stakeSheetForCover({
+          coverSkyt: skyt,
+          probabilityBps: activeWindow.quoteProbabilityBps,
+          premiumRateBps: activeWindow.premiumRateBps,
+          inputsHash: activeWindow.quoteInputsHash,
+          protocolFeeBase: quote && amount && quote.protectedAmount === amount ? quote.protocolFee : null,
+          station,
+          triggerMm: threshold,
+          windowLabel,
+        }) : null;
+        if (!model || !amount) return;
+        setCoverConfirm((prev) => prev ? { ...prev, ...model, sentence: model.getLine, pay: model.premiumLabel, getLabel: model.coverLabel, amount, coverSkyt: skyt } : prev);
+      }} onApprove={() => {
         const pending = coverConfirm;
         handleConfirmApprove({ close: () => setCoverConfirm(null), signOpenPosition: () => { void submitApprovedAction("open_position", pending.market, pending.amount); } });
       }} /> : null}
@@ -783,7 +823,7 @@ const styles = StyleSheet.create({
   demoBtn: { flex: 1, minHeight: MIN_TOUCH, borderRadius: 14, borderWidth: 1, borderColor: C.amber, alignItems: "center", justifyContent: "center" },
   demoBtnText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 14 },
   scroll: { flex: 1 },
-  scrollContent: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 18, paddingTop: 18, paddingBottom: 76 + 34 },
+  scrollContent: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 18, paddingTop: 18, paddingBottom: 168 },
   loadingPanel: { minHeight: 110, alignItems: "center", justifyContent: "center", gap: S.md - 2, backgroundColor: glass.fill, borderColor: glass.border, borderWidth: 1, borderRadius: glass.radius, padding: S.lg, marginBottom: S.md, boxShadow: glass.shadow },
   emptyText: { ...T.caption, color: C.muted, fontSize: 13, lineHeight: 20 },
   guideToggle: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: glass.border, marginTop: S.xs },

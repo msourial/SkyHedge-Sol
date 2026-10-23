@@ -4,7 +4,9 @@ import { api } from "@/lib/api";
 import type { DevnetStatus } from "@/lib/types";
 import { consumerCityBySlug } from "../../../shared/consumer-cities";
 import { LIVE_CITY_SLUGS } from "../../../shared/window-ladder";
-import { confirmSentence, payGet, protectCta } from "../../../shared/pay-get";
+import { payGet } from "../../../shared/pay-get";
+import { COVER_CHIPS, ladderTicks, protectButtonLabel, stakeSheetForCover, stationDisplayName } from "../../../shared/protect-copy";
+import { committedWindowLabel } from "../../../shared/window-chain";
 import {
   expiryChipCopy,
   expiryChipLabel,
@@ -19,7 +21,7 @@ import { RainGauge, gaugeTicks } from "@/components/rain-gauge";
 import { buyCtaVisible, coverageChipOn, gaugeMode, nextWeeklyOpenCopy, openCityPrompt, protectSurface } from "../../../shared/protect-surface";
 
 type WindowRow = NonNullable<DevnetStatus["cityWindows"]>[number];
-const CHIPS = [50, 100, 250] as const;
+const CHIPS = COVER_CHIPS;
 
 function cityRank(slug: string): number {
   const index = (LIVE_CITY_SLUGS as readonly string[]).indexOf(slug);
@@ -62,14 +64,24 @@ export function ProtectChain(props: { windows: readonly WindowRow[]; city?: stri
   const now = Math.floor(Date.now() / 1000);
   const source = consumerCityBySlug(city)?.source ?? "NOAA station";
   const place = consumerCityBySlug(city)?.city ?? city;
+  const station = stationDisplayName(source);
   const expiryDate = active ? expiryChipLabel(active)?.split(" · ")[0] ?? "" : "";
+  const windowLabel = active ? committedWindowLabel(active) : null;
   const quote = chosen ? payGet({ coverageSkyt: amount, premiumRateBps: chosen.premiumRateBps, probabilityBps: chosen.probabilityBps }) : null;
-  const cta = protectCta({ connected: props.connected, quote, thresholdMm: chosen?.thresholdMm ?? null });
-  const ready = props.connected && quote != null && chosen != null;
-  const maxMm = Math.max(1, ...rows.map((row) => row.thresholdMm));
-  const sentence = chosen && quote && expiryDate ? confirmSentence({ thresholdMm: chosen.thresholdMm, station: source, expiry: expiryDate, getLabel: quote.getLabel }) : null;
-
-  const ticks = gaugeTicks(ladder.priced.map((row) => ({ mm: row.thresholdMm, selected: row.thresholdMm === chosen?.thresholdMm })), maxMm).map((tick) => ({ ...tick, label: `${tick.id} mm` }));
+  const button = protectButtonLabel({ connected: props.connected, premiumLabel: quote?.payLabel ?? null, triggerChosen: chosen != null });
+  const ready = button.action === "protect";
+  const maxMm = Math.max(1, ...rows.map((row) => row.thresholdMm), 1);
+  const terms = chosen && windowLabel && station ? stakeSheetForCover({
+    coverSkyt: amount,
+    probabilityBps: chosen.probabilityBps,
+    premiumRateBps: chosen.premiumRateBps,
+    inputsHash: active?.quoteInputsHash ?? null,
+    station,
+    triggerMm: chosen.thresholdMm,
+    windowLabel,
+  }) : null;
+  const ladderMarks = ladderTicks(rows, chosen?.thresholdMm ?? null);
+  const ticks = gaugeTicks(ladderMarks.map((tick) => ({ mm: tick.thresholdMm, selected: tick.state === "selected" })), maxMm);
   const surface = protectSurface({
     loading: !!props.statusLoading || (windows.length > 0 && evidence.isLoading),
     failed: !!props.statusFailed || (windows.length > 0 && evidence.isError),
@@ -101,7 +113,7 @@ export function ProtectChain(props: { windows: readonly WindowRow[]; city?: stri
           </button>;
         })}
       </div><div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-r from-transparent to-[var(--background)]" aria-hidden="true" /></div> : null}
-      {priced ? <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Coverage amount in SKYT">
+      {priced ? <div className="protect-amounts mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Coverage amount in SKYT">
         {CHIPS.map((choice) => {
           const on = coverageChipOn(priced, String(choice), String(amount));
           return <button key={choice} type="button" aria-checked={on} className="min-h-12 rounded-full border px-4" style={on ? selectedStyle : idleStyle} onClick={() => setAmount(choice)}>{choice} SKYT</button>;
@@ -123,15 +135,9 @@ export function ProtectChain(props: { windows: readonly WindowRow[]; city?: stri
       {mode === "gauge" ? <div className="protect-ladder">
         <RainGauge labelled level={chosen ? chosen.thresholdMm / maxMm : 0} ticks={ticks} label={chosen ? `Water at ${chosen.thresholdMm} millimetres` : "Rain gauge"} />
         <div className="protect-rows" role="list" aria-label="Rain triggers">
-          {ladder.priced.map((row) => {
-            const on = row.thresholdMm === chosen?.thresholdMm;
-            const rowQuote = payGet({ coverageSkyt: 100, premiumRateBps: row.premiumRateBps, probabilityBps: row.probabilityBps });
-            return <button key={row.thresholdMm} type="button" aria-pressed={on} className="protect-row" style={on ? selectedStyle : idleStyle} onClick={() => setTriggerMm(row.thresholdMm)}>
-              <span className="sky-mono">{`≥${row.thresholdMm} mm`}</span>
-              <span className="sky-mono">{rowQuote ? rowQuote.chance : "—"}</span>
-              <span className="sky-mono">{rowQuote ? rowQuote.multiple : "—"}</span>
-            </button>;
-          })}
+          {ladderMarks.map((tick) => tick.tappable ? <button key={tick.thresholdMm} type="button" aria-pressed={tick.state === "selected"} className={tick.state === "selected" ? "protect-row protect-row--selected" : "protect-row"} onClick={() => setTriggerMm(tick.thresholdMm)}>
+            <span className="sky-mono">{tick.label}</span>
+          </button> : <p key={tick.thresholdMm} className="protect-row protect-row--soon"><span className="sky-mono">{tick.label}</span></p>)}
           {ladder.soonCount > 0 ? <p className="mt-1 text-sm text-[var(--muted-foreground)]">{ladder.soonCount} more triggers open soon</p> : null}
         </div>
       </div> : null}
@@ -142,9 +148,9 @@ export function ProtectChain(props: { windows: readonly WindowRow[]; city?: stri
     </div>
     {showCta ? <aside className="protect-ticket" aria-label="Pay and payout">
       {quote && chosen && active ? <PayGetBars pay={quote.payLabel} getLabel={quote.getLabel} chance={quote.chance} multiple={quote.multiple} thresholdMm={chosen.thresholdMm} expiry={expiryDate} /> : null}
-      <button type="button" className="mt-3 min-h-12 w-full rounded-full bg-[var(--foreground)] px-5 font-semibold text-[var(--background)] disabled:opacity-60" disabled={!ready} onClick={() => { if (ready) setSheet(true); }}>{cta}</button>
+      <button type="button" className="mt-3 min-h-12 w-full rounded-full bg-[var(--foreground)] px-5 font-semibold text-[var(--background)] disabled:opacity-60" disabled={!ready} onClick={() => { if (ready) setSheet(true); }}>{button.label}</button>
     </aside> : null}
-    {sheet && sentence && quote && chosen ? <ConfirmSheet sentence={sentence} station={source} expiry={expiryDate} pay={quote.payLabel} getLabel={quote.getLabel} onClose={() => setSheet(false)} onWallet={() => { setSheet(false); props.onCovered?.(); }} /> : null}
+    {sheet && terms ? <ConfirmSheet terms={terms} amount={amount} onAmount={setAmount} onClose={() => setSheet(false)} onWallet={() => { setSheet(false); props.onCovered?.(); }} /> : null}
   </section>;
 }
 
@@ -175,17 +181,17 @@ function PayGetBars(props: { pay: string; getLabel: string; chance: string; mult
   </div>;
 }
 
-function ConfirmSheet(props: { sentence: string; station: string; expiry: string; pay: string; getLabel: string; onClose: () => void; onWallet: () => void }) {
+function ConfirmSheet(props: { terms: NonNullable<ReturnType<typeof stakeSheetForCover>>; amount: (typeof CHIPS)[number]; onAmount: (amount: (typeof CHIPS)[number]) => void; onClose: () => void; onWallet: () => void }) {
   return <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center" role="dialog" aria-modal="true" aria-label="Confirm protection">
     <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-5">
-      <p className="text-base font-semibold">{props.sentence}</p>
-      <dl className="mt-4 space-y-2 text-sm">
-        <div className="flex justify-between gap-3"><dt>Station</dt><dd>{props.station}</dd></div>
-        <div className="flex justify-between gap-3"><dt>Settlement</dt><dd>{props.expiry}</dd></div>
-        <div className="flex justify-between gap-3"><dt>You pay</dt><dd className="sky-mono">{props.pay} SKYT</dd></div>
-        <div className="flex justify-between gap-3"><dt className="text-[var(--slicker)]">You get</dt><dd className="sky-mono text-[var(--slicker)]">{props.getLabel} SKYT</dd></div>
-      </dl>
-      <p className="mt-3 text-xs text-[var(--muted-foreground)]">This sheet does not sign a transaction.</p>
+      <div className="flex gap-2" role="radiogroup" aria-label="Coverage amount in SKYT">
+        {CHIPS.map((choice) => <button key={choice} type="button" aria-checked={choice === props.amount} className="min-h-12 flex-1 rounded-full border px-3" style={choice === props.amount ? selectedStyle : idleStyle} onClick={() => props.onAmount(choice)}>{choice}</button>)}
+      </div>
+      <p className="sky-mono mt-4 text-sm text-[var(--foreground)]">{props.terms.payLine}</p>
+      <p className="mt-1 text-sm text-[var(--slicker)]">{props.terms.getLine}</p>
+      <p className="sky-mono mt-1 text-sm text-[var(--muted-foreground)]">{props.terms.multiple}</p>
+      {props.terms.feeLine ? <p className="mt-2 text-xs text-[var(--muted-foreground)]">{props.terms.feeLine}</p> : null}
+      <p className="mt-4 text-sm text-[var(--foreground)]">{props.terms.preSign}</p>
       <div className="mt-4 flex gap-2">
         <button type="button" className="min-h-12 flex-1 rounded-full border px-4" onClick={props.onClose}>Back</button>
         <button type="button" className="min-h-12 flex-1 rounded-full bg-[var(--foreground)] px-4 font-semibold text-[var(--background)]" onClick={props.onWallet}>Wallet</button>

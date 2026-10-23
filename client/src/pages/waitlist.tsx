@@ -378,7 +378,7 @@ export default function WaitlistPage() {
                 Where are your plans?
               </h2>
               <p className="wl-section__lead">
-                New York through Des Moines sit on the same NOAA weekly and monthly ladder. Toronto opens when Environment Canada data is in. Green means both windows are selling on Devnet.
+                New York through Des Moines sit on the same NOAA weekly and monthly ladder. Toronto opens when Environment Canada data is in. Glacier blue means both windows are selling on Devnet.
               </p>
             </div>
             <ul className="wl-markets" aria-label="Rainfall cities">

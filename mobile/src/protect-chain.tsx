@@ -9,7 +9,7 @@ import {
   sortByExpiry,
   triggerRows,
 } from "../../shared/window-chain.ts";
-import { payGet } from "../../shared/pay-get.ts";
+import { ladderTicks } from "../../shared/protect-copy.ts";
 import { coverageChipOn, gaugeMode, gaugeReading, type ProtectSurface } from "../../shared/protect-surface.ts";
 import { windowStartLabel } from "../../shared/window-chain.ts";
 import { RainGauge } from "./rain-gauge";
@@ -49,9 +49,10 @@ export function ProtectChain(props: {
   }) : [];
   const ladder = pricedTriggers(rows);
   const chosen = ladder.priced.find((row) => row.thresholdMm === triggerMm) ?? ladder.priced[0] ?? null;
+  const ticks = ladderTicks(rows, chosen?.thresholdMm ?? null);
   const reading = gaugeReading({ forecastMm: pkg?.forecastCumulativeMm, observationStart: selected?.observationStart, nowSeconds: props.nowSeconds, startLabel: selected ? windowStartLabel(selected) : null });
   // Water and ticks share one scale, with headroom above the highest line.
-  const gaugeMax = Math.max(1, reading.levelMm, ...ladder.priced.map((row) => row.thresholdMm)) * 1.2;
+  const gaugeMax = Math.max(1, reading.levelMm, ...ticks.map((tick) => tick.thresholdMm)) * 1.2;
   const priced = ladder.priced.length > 0 && props.surface === "ready";
   const mode = gaugeMode({ surface: props.surface, evidenceLoading: props.evidenceLoading, pricedRowCount: ladder.priced.length });
 
@@ -88,19 +89,15 @@ export function ProtectChain(props: {
     {mode === "skeleton" ? <GaugeSkeleton /> : null}
     {mode === "gauge" ? <View style={{ flexDirection: "row", alignItems: "flex-end", gap: S.sm, marginTop: S.sm }}>
       <View style={{ alignItems: "center" }}>
-        <RainGauge showMm width={172} height={220} maxMm={gaugeMax} level={reading.levelMm / gaugeMax} ticks={ladder.priced.map((row) => ({ mm: row.thresholdMm, selected: row.thresholdMm === chosen?.thresholdMm }))} label={`Rain gauge. ${reading.caption}. Trigger line at ${chosen?.thresholdMm ?? "—"} mm.`} />
+        <RainGauge showMm width={172} height={220} maxMm={gaugeMax} level={reading.levelMm / gaugeMax} ticks={ticks.map((tick) => ({ mm: tick.thresholdMm, selected: tick.state === "selected" }))} label={`Rain gauge. ${reading.caption}. Trigger line at ${chosen?.thresholdMm ?? "—"} mm.`} />
         <Text style={styles.gaugeCaption} numberOfLines={2}>{reading.caption}</Text>
       </View>
-      <View accessibilityRole="list" accessibilityLabel="Rain triggers">
-        {ladder.priced.map((row) => {
-          const quote = payGet({ coverageSkyt: 100, premiumRateBps: row.premiumRateBps, probabilityBps: row.probabilityBps });
-          const on = row.thresholdMm === chosen?.thresholdMm;
-          return <Pressable key={row.thresholdMm} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setTriggerMm(row.thresholdMm)} style={[styles.row, on && styles.rowOn]}>
-            <Text style={styles.cell}>{`≥${row.thresholdMm} mm`}</Text>
-            <Text style={styles.cell}>{quote ? quote.chance : "—"}</Text>
-            <Text style={styles.cell}>{quote ? quote.multiple : "—"}</Text>
-          </Pressable>;
-        })}
+      <View accessibilityRole="list" accessibilityLabel="Rain triggers" style={{ flex: 1 }}>
+        {ticks.map((tick) => tick.tappable ? <Pressable key={tick.thresholdMm} accessibilityRole="button" accessibilityState={{ selected: tick.state === "selected" }} onPress={() => setTriggerMm(tick.thresholdMm)} style={[styles.row, tick.state === "selected" && styles.rowOn]}>
+          <Text style={[styles.cell, tick.state === "selected" && styles.cellOn]}>{tick.label}</Text>
+        </Pressable> : <View key={tick.thresholdMm} style={[styles.row, styles.rowSoon]} accessibilityLabel={tick.label}>
+          <Text style={styles.cellSoon}>{tick.label}</Text>
+        </View>)}
         {ladder.soonCount > 0 ? <Text style={styles.muted}>{ladder.soonCount} more triggers open soon</Text> : null}
       </View>
     </View> : null}
@@ -161,7 +158,10 @@ function GaugeSkeleton() {
 const styles = StyleSheet.create({
   footnote: { ...T.caption, color: C.quiet, marginTop: S.md },
   gaugeCaption: { ...T.caption, color: C.muted, maxWidth: 172, textAlign: "center", marginTop: S.xs },
-  rowOn: { borderColor: "#F2C230" },
+  rowOn: { borderLeftWidth: 3, borderLeftColor: "#F2C230", borderColor: "#F2C230" },
+  rowSoon: { opacity: 0.45 },
+  cellOn: { color: "#F2C230" },
+  cellSoon: { ...T.body, color: C.quiet, fontVariant: ["tabular-nums"] },
   amounts: { flexDirection: "row", flexWrap: "wrap", gap: S.sm, marginBottom: S.sm },
   chipWrap: { position: "relative" },
   chipFade: { position: "absolute", right: 40, top: 0, bottom: S.md, width: 48 },
