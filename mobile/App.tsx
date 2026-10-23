@@ -710,10 +710,9 @@ export default function App() {
         </ScreenTransition>
       </ScrollView>
       </View>
-      {stickyOpen ? <ScrollEdgeFade style={[styles.scrollEdgeFade, { bottom: stickyHeight + tabHeight }]} /> : null}
 
-      {!showLanding && tab === "protect" && demo === "collect" ? <View style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><StickyCta label="Collect payout to wallet" disabled hint="DEMO preview — disabled, nothing to sign" onPress={() => {}} /></View> : null}
-      {!showLanding && tab === "protect" && !demo && buyCtaVisible(protectView, !!activePackage) ? <View style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}>{(() => {
+      {!showLanding && tab === "protect" && demo === "collect" ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><ScrollEdgeFade style={styles.scrollEdgeFade} /><StickyCta label="Collect payout to wallet" disabled hint="DEMO preview — disabled, nothing to sign" onPress={() => {}} /></View> : null}
+      {!showLanding && tab === "protect" && !demo && buyCtaVisible(protectView, !!activePackage) ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><ScrollEdgeFade style={styles.scrollEdgeFade} />{(() => {
         if (!status) return null;
         const claimable = claimReadiness?.state === "claimable" && claimReadiness.action;
         if (claimable) return <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness?.action) void submitApprovedAction(claimReadiness.action); }} />;
@@ -857,7 +856,7 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
 
 const styles = StyleSheet.create({
   fontLoading: { flex: 1, backgroundColor: C.canvas, justifyContent: "center", alignItems: "center" },
-  safe: { flex: 1, backgroundColor: C.canvas },
+  safe: { flex: 1, backgroundColor: C.canvas, overflow: "visible" },
   versionText: { color: C.quiet, fontFamily: F.mono, fontSize: 12, padding: 10 },
   demoPanel: { width: "100%", borderWidth: 1, borderStyle: "dashed", borderColor: C.amber, backgroundColor: C.amberSoft, borderRadius: glass.radius - 8, padding: S.md, marginTop: S.sm },
   demoTitle: { color: C.amber, fontFamily: F.mono, fontSize: 13, letterSpacing: 1.2, marginBottom: 4 },
@@ -865,8 +864,8 @@ const styles = StyleSheet.create({
   demoBtnText: { color: C.amber, fontFamily: F.bodySemi, fontSize: 14 },
   scrollWrap: { flex: 1, zIndex: 0 },
   scroll: { flex: 1 },
-  scrollEdgeFade: { position: "absolute", left: 0, right: 0, zIndex: 4 },
-  payPanel: { zIndex: 6 },
+  scrollEdgeFade: { position: "absolute", left: 0, right: 0, top: -SCROLL_FADE_HEIGHT },
+  payPanel: { overflow: "visible" },
   scrollContent: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 18, paddingTop: SCROLL_CONTENT_PADDING_TOP, paddingBottom: 168 },
   loadingPanel: { minHeight: 110, alignItems: "center", justifyContent: "center", gap: S.md - 2, backgroundColor: glass.fill, borderColor: glass.border, borderWidth: 1, borderRadius: glass.radius, padding: S.lg, marginBottom: S.md, boxShadow: glass.shadow },
   emptyText: { ...T.caption, color: C.muted, fontSize: 13, lineHeight: 20 },

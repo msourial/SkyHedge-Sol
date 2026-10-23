@@ -2,9 +2,8 @@ import { View, type StyleProp, type ViewStyle } from "react-native";
 import { canvasFadeColor, fadeBandAlphas, SCROLL_FADE_HEIGHT } from "./scroll-fade";
 
 /**
- * Native Android fade. Each band is a real view with its own background alpha,
- * drawn above the scroll view. A transparent gradient shader stayed under the
- * scroll content on the Seeker, so the card met a hard edge.
+ * Native Android fade. Each band is a real view with its own background alpha.
+ * The parent pins this view so its bottom edge is the pay panel's top.
  */
 export function ScrollEdgeFade({ style }: { style?: StyleProp<ViewStyle> }) {
   const alphas = fadeBandAlphas();

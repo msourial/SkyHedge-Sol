@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { canvasFadeColor, fadeBandAlphas, foldNudge, scrollFadeKind, SCROLL_FADE_HEIGHT } from "./scroll-fade.ts";
+import { canvasFadeColor, fadeBandAlphas, foldNudge, scrollFadeKind, SCROLL_FADE_HEIGHT, SCROLL_FADE_START } from "./scroll-fade.ts";
 
 describe("native scroll fade", () => {
   it("paints Android with view bands and other platforms with a gradient", () => {
@@ -15,18 +15,22 @@ describe("native scroll fade", () => {
     assert.match(android, /protect-scroll-fade-bands/);
     assert.match(other, /expo-linear-gradient/);
     assert.match(other, /protect-scroll-fade-gradient/);
+    const app = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
+    assert.equal(app.includes("stickyHeight + tabHeight"), false);
+    assert.match(app, /top:\s*-\s*SCROLL_FADE_HEIGHT/);
   });
 
-  it("eases from clear canvas to solid graphite, one band per dp", () => {
+  it("eases from 18% canvas to solid graphite at the panel edge", () => {
     const alphas = fadeBandAlphas();
     assert.equal(alphas.length, SCROLL_FADE_HEIGHT);
-    assert.equal(alphas[0], 0);
+    assert.equal(alphas[0], SCROLL_FADE_START);
+    assert.ok(SCROLL_FADE_START >= 0.15 && SCROLL_FADE_START <= 0.2);
     assert.equal(alphas[alphas.length - 1], 1);
-    assert.ok(alphas.slice(-12).every((alpha) => alpha === 1));
     for (let i = 1; i < alphas.length; i++) assert.ok(alphas[i] >= alphas[i - 1]);
+    assert.ok(alphas[Math.floor(alphas.length / 2)] > 0.5);
     assert.equal(canvasFadeColor(0), "rgba(11,18,32,0)");
     assert.equal(canvasFadeColor(1), "rgba(11,18,32,1)");
-    assert.ok(alphas[Math.floor(alphas.length / 2)] < 0.2);
+    assert.equal(canvasFadeColor(SCROLL_FADE_START), "rgba(11,18,32,0.18)");
   });
 
   it("clears a peeking card on an 800dp viewport and leaves a real card alone", () => {

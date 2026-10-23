@@ -9,16 +9,21 @@ export const SCROLL_FADE_HEIGHT = 48;
  */
 export const SCROLL_FADE_BANDS = SCROLL_FADE_HEIGHT;
 
+/** Top of the ramp. The rest of the 48dp eases to solid canvas at the panel edge. */
+export const SCROLL_FADE_START = 0.18;
+
 /**
- * Clear through the upper half so the footnote stays readable, then solid
- * canvas over the last 12dp so a clipped card edge cannot sit on the panel.
+ * Smoothstep from 18% canvas at the top to fully opaque canvas on the last dp.
+ * The previous curve stayed clear for the first 42%, which is all that showed
+ * once the fade sat under the panel.
  */
 export function fadeBandAlphas(steps = SCROLL_FADE_BANDS): number[] {
   const count = Math.max(2, Math.round(steps));
+  const last = count - 1;
   return Array.from({ length: count }, (_, index) => {
-    const t = (index + 1) / count;
-    const ramp = Math.min(1, Math.max(0, (t - 0.42) / 0.33));
-    return Math.round(ramp * ramp * 1000) / 1000;
+    const t = last === 0 ? 1 : index / last;
+    const eased = t * t * (3 - 2 * t);
+    return Math.round((SCROLL_FADE_START + (1 - SCROLL_FADE_START) * eased) * 1000) / 1000;
   });
 }
 
