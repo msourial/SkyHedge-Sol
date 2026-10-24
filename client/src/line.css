@@ -30,7 +30,9 @@
   line-height: 22px;
   font-weight: 400;
 }
-.ln-frame { width: 393px; min-height: 852px; margin: 0 auto; background: var(--ln-bg); position: relative; }
+.ln-frame { width: 393px; height: 852px; margin: 0 auto; background: var(--ln-bg); position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.ln-frame .ln { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; position: relative; }
+.ln-frame .ln-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .ln-status { display: flex; align-items: center; justify-content: flex-end; height: 24px; color: var(--ln-fg-2); font-size: 13px; line-height: 18px; font-weight: 500; }
 .ln-head { display: flex; align-items: center; justify-content: space-between; min-height: 44px; gap: 12px; }
 .ln-city { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--ln-fg); }
@@ -46,7 +48,7 @@
 .ln-switch button span { display: inline-flex; align-items: center; gap: 4px; }
 .ln-switch button[data-open="false"] { color: var(--ln-dry); }
 .ln-dot { width: 8px; height: 8px; border-radius: 50%; }
-.ln-stage { position: relative; display: grid; grid-template-columns: 168px minmax(0, 1fr); align-items: start; height: 256px; margin: 0 calc(var(--ln-pad) * -1) 4px; }
+.ln-stage { position: relative; display: grid; grid-template-columns: 180px minmax(0, 1fr); align-items: start; height: 256px; margin: 0 calc(var(--ln-pad) * -1) 4px; }
 .ln-rule { position: absolute; left: 0; right: 0; z-index: 0; height: 2px; background: var(--ln-slicker); pointer-events: none; }
 .ln-rule[data-paid="true"] { height: 6px; }
 .ln-instrument { position: relative; z-index: 1; display: grid; place-items: center; }
@@ -108,10 +110,15 @@
   border-radius: 20px 20px 0 0;
   background: var(--ln-raised);
 }
-.ln-frame .ln-pay { position: absolute; bottom: 64px; }
-.ln-pay-figures { display: flex; align-items: baseline; gap: 16px; }
+.ln-frame .ln-pay { position: relative; left: auto; bottom: auto; transform: none; width: auto; flex: none; margin-left: calc(var(--ln-pad) * -1); margin-right: calc(var(--ln-pad) * -1); }
+.ln-pay-figures { display: flex; align-items: baseline; gap: 12px; min-height: 24px; }
+.ln-pay-side { display: flex; align-items: baseline; gap: 6px; margin: 0; }
+.ln-pay-side .ln-label { white-space: nowrap; }
 .ln-pay-figures .ln-money-figure { margin: 0; }
 .ln-pay-figures .ln-fig-minor { margin-left: auto; }
+.ln-pay--receipt { min-height: 104px; }
+.ln-receipt-title { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ln-fg); font-size: 15px; font-weight: 600; }
+.ln-tick-glyph { color: var(--ln-glacier); flex: none; }
 .ln-cta { height: 56px; width: 100%; border: 0; border-radius: 999px; background: var(--ln-glacier); color: var(--ln-on-glacier); font-size: 15px; font-weight: 600; }
 .ln-cta:disabled { background: var(--ln-surface-2); color: var(--ln-dry); }
 .ln-text-btn { min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--ln-glacier); font-size: 15px; font-weight: 600; text-align: left; }
@@ -127,7 +134,7 @@
 .ln-city-list button { display: flex; align-items: center; width: 100%; min-height: 56px; padding: 0 8px; border: 0; border-radius: 12px; background: transparent; color: var(--ln-fg); font-size: 15px; text-align: left; }
 .ln-city-list button[aria-current="true"] { background: var(--ln-raised); }
 .ln-tabs { position: fixed; z-index: 40; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(3, 1fr); height: calc(64px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: var(--ln-bg); }
-.ln-frame .ln-tabs { position: absolute; }
+.ln-frame .ln-tabs { position: relative; flex: none; left: auto; right: auto; bottom: auto; }
 .ln-tab { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 64px; border: 0; background: transparent; color: var(--ln-fg-2); font-size: 13px; font-weight: 500; }
 .ln-tab[aria-selected="true"] { color: var(--ln-fg); }
 .ln-tab[aria-selected="true"]::before { content: ""; position: absolute; top: 0; left: 50%; width: 24px; height: 3px; transform: translateX(-50%); background: var(--ln-glacier); }

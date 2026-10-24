@@ -1,4 +1,4 @@
-import { APPROVE_WALLET, DONE, GETTING_QUOTE, PAID_OUT, DRY_WINDOW, TRY_AGAIN, VIEW_WALLET, WAITING_WALLET, infoSheetTitle } from "../../../../shared/ui-copy.ts";
+import { APPROVE_WALLET, DONE, GETTING_QUOTE, MAX_GAIN, MAX_LOSS, PAID_OUT, DRY_WINDOW, TRY_AGAIN, VIEW_WALLET, WAITING_WALLET, infoSheetTitle } from "../../../../shared/ui-copy.ts";
 import type { PanelModel, TicketModel } from "../../../../shared/ui-view.ts";
 
 export function PayBar({ panel, ticket, onConnect, onProtect, onApprove, onWallet, onRetry, onGo }: {
@@ -56,8 +56,8 @@ export function PayBar({ panel, ticket, onConnect, onProtect, onApprove, onWalle
   }
   if (panel.kind === "covered") {
     return (
-      <div className="ln-pay" style={{ minHeight: 104 }}>
-        <p className="ln-label">{panel.title}</p>
+      <div className="ln-pay ln-pay--receipt">
+        <p className="ln-receipt-title"><GlacierTick />{panel.title}</p>
         <Figures loss={panel.loss} gain={panel.gain} />
         <button type="button" className="ln-text-btn" onClick={onWallet}>{VIEW_WALLET}</button>
       </div>
@@ -73,12 +73,22 @@ export function PayBar({ panel, ticket, onConnect, onProtect, onApprove, onWalle
 }
 
 function Figures({ loss, gain }: { loss: { sign: string; whole: string; fraction: string }; gain: { sign: string; whole: string; fraction: string } }) {
+  const lossText = `${loss.sign}${loss.whole}.${loss.fraction}`;
+  const gainText = `${gain.sign}${gain.whole}.${gain.fraction}`;
   return (
     <div className="ln-pay-figures">
-      <p className="ln-money-figure ln-fig-m">{loss.sign}{loss.whole}.{loss.fraction}</p>
-      <p className="ln-money-figure ln-fig-m">{gain.sign}{gain.whole}.{gain.fraction}</p>
+      <p className="ln-pay-side"><span className="ln-label">{MAX_LOSS}</span><span className="ln-money-figure ln-fig-m">{lossText}</span></p>
+      <p className="ln-pay-side"><span className="ln-label">{MAX_GAIN}</span><span className="ln-money-figure ln-fig-m">{gainText}</span></p>
       <span className="ln-fig-minor">SKYT</span>
     </div>
+  );
+}
+
+function GlacierTick() {
+  return (
+    <svg className="ln-tick-glyph" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M3.5 9.2 7.1 12.8 14.5 5.2" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -92,6 +102,8 @@ export function SignSheet({ ticket, busy, error, onClose, onApprove }: { ticket:
             <div key={row.label} className="ln-sign-row"><dt>{row.label}</dt><dd data-payout={row.payout ? "true" : "false"}>{row.value}</dd></div>
           ))}
         </dl>
+        <p className="ln-sentence">{ticket.sentence}</p>
+        {ticket.salesClose ? <p className="ln-note">{ticket.salesClose}</p> : null}
         {error ? <p className="ln-alert" role="alert">{error}</p> : null}
         <button type="button" className="ln-cta ln-press" disabled={busy} onClick={onApprove}>{busy ? WAITING_WALLET : APPROVE_WALLET}</button>
       </div>

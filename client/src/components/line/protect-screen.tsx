@@ -51,6 +51,7 @@ export function ProtectScreen(props: {
   };
   return (
     <div className="ln" data-motion={props.motion} data-peril={model.peril}>
+      <div className="ln-scroll">
       <div className="ln-status"><span>{DEVNET_TAG}</span></div>
       <header className="ln-head">
         <button type="button" className="ln-city ln-press" onClick={() => props.onSheet("city")}>
@@ -108,6 +109,7 @@ export function ProtectScreen(props: {
       {model.showChain ? <Chain unit={model.unit} rows={model.rows} footnote={model.footnote} onSelect={props.onSelect} /> : model.footnote ? <p className="ln-note">{model.footnote}</p> : null}
       {model.blocked ? <p className="ln-note">{model.blocked}</p> : null}
       {model.ticket ? <Ticket ticket={model.ticket} chips={model.chips} cap={model.capMessage} onCover={props.onCover} onInfo={() => props.onSheet("info")} /> : null}
+      </div>
       <PayBar panel={model.panel} ticket={model.ticket} onConnect={props.onConnect} onProtect={() => props.onSheet("sign")} onApprove={props.onApprove} onWallet={props.onWallet} onRetry={props.onRetry} onGo={props.onCity} />
       {props.sheet === "sign" && model.ticket ? <SignSheet ticket={model.ticket} busy={model.panel.kind === "signing"} error={props.signError} onClose={() => props.onSheet(null)} onApprove={props.onApprove} /> : null}
       {props.sheet === "info" && model.ticket?.sheet ? <InfoSheet body={model.ticket.sheet} onClose={() => props.onSheet(null)} /> : null}

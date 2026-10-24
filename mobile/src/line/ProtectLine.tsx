@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View, Vibration } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { PERILS, perilOpen } from "../../../shared/peril-registry.ts";
 import {
-  APPROVE_WALLET, CHANCE, DEVNET_TAG, DONE, DRY_WINDOW, GETTING_QUOTE, MONTH, NOT_OPEN_WORD, PAID_OUT,
+  APPROVE_WALLET, CHANCE, DEVNET_TAG, DONE, DRY_WINDOW, GETTING_QUOTE, MAX_GAIN, MAX_LOSS, MONTH, NOT_OPEN_WORD, PAID_OUT,
   SO_FAR, TRIGGER, TRY_AGAIN, VIEW_WALLET, WAITING_WALLET, WEEK, gainCaption, infoSheetTitle, lossCaption,
 } from "../../../shared/ui-copy.ts";
 import { lineGlyphs } from "../../../shared/ui-glyphs.ts";
@@ -128,16 +128,12 @@ export function LinePay(props: { line: LineController; onConnect: () => void; on
   if (panel.kind === "closed") return <View style={styles.pay}><Text style={styles.body}>{panel.line}</Text></View>;
   if (panel.kind === "paid") return <View style={styles.pay}><Text style={styles.paid}>{panel.result}</Text><Text style={styles.stamp}>{PAID_OUT}</Text></View>;
   if (panel.kind === "dry") return <View style={styles.pay}><Text style={styles.figM}>{panel.result}</Text><Text style={styles.dryStamp}>{DRY_WINDOW}</Text></View>;
-  if (panel.kind === "covered") return <View style={styles.pay}><Text style={styles.label}>{panel.title}</Text><Text style={styles.link} onPress={props.onWallet}>{VIEW_WALLET}</Text></View>;
+  if (panel.kind === "covered") return <View style={styles.pay}><Text style={styles.label}>{panel.title}</Text><PayFigs loss={panel.loss} gain={panel.gain} /><Text style={styles.link} onPress={props.onWallet}>{VIEW_WALLET}</Text></View>;
   if (panel.kind === "connect" || panel.kind === "ready" || panel.kind === "signing") {
     const press = panel.kind === "connect" ? props.onConnect : panel.kind === "signing" ? undefined : () => { Vibration.vibrate(10); props.line.setSheet("sign"); };
     return (
       <View style={styles.pay}>
-        <View style={styles.payFigs}>
-          <Text style={styles.figM}>{panel.loss.sign}{panel.loss.whole}.{panel.loss.fraction}</Text>
-          <Text style={styles.figM}>{panel.gain.sign}{panel.gain.whole}.{panel.gain.fraction}</Text>
-          <Text style={styles.minor}>SKYT</Text>
-        </View>
+        <PayFigs loss={panel.loss} gain={panel.gain} />
         <Pressable disabled={panel.kind === "signing"} onPress={press} style={panel.kind === "signing" ? styles.ctaDim : styles.cta}>
           <Text style={panel.kind === "signing" ? styles.ctaTextDim : styles.ctaText}>{panel.kind === "signing" ? WAITING_WALLET : panel.cta}</Text>
         </Pressable>
@@ -150,6 +146,16 @@ export function LinePay(props: { line: LineController; onConnect: () => void; on
 
 export function TabGlyph({ name, color }: { name: "markets" | "protect" | "wallet"; color: string }) {
   return <Glyph name={name} color={color} />;
+}
+
+function PayFigs({ loss, gain }: { loss: { sign: string; whole: string; fraction: string }; gain: { sign: string; whole: string; fraction: string } }) {
+  return (
+    <View style={styles.payFigs}>
+      <View style={styles.paySide}><Text style={styles.label}>{MAX_LOSS}</Text><Text style={styles.figM}>{loss.sign}{loss.whole}.{loss.fraction}</Text></View>
+      <View style={styles.paySide}><Text style={styles.label}>{MAX_GAIN}</Text><Text style={styles.figM}>{gain.sign}{gain.whole}.{gain.fraction}</Text></View>
+      <Text style={styles.minor}>SKYT</Text>
+    </View>
+  );
 }
 
 function Glyph({ name, color }: { name: keyof typeof lineGlyphs; color: string }) {
@@ -201,7 +207,8 @@ const styles = StyleSheet.create({
   sheet: { marginTop: 12, backgroundColor: C.surface1, borderRadius: 20, padding: 16 },
   cityRow: { minHeight: 56, justifyContent: "center" },
   pay: { backgroundColor: C.bgRaised, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, gap: 8, minHeight: 120 },
-  payFigs: { flexDirection: "row", alignItems: "baseline", gap: 16 },
+  payFigs: { flexDirection: "row", alignItems: "baseline", gap: 12 },
+  paySide: { flexDirection: "row", alignItems: "baseline", gap: 6 },
   cta: { height: 56, borderRadius: 999, backgroundColor: C.glacier, alignItems: "center", justifyContent: "center" },
   ctaDim: { height: 56, borderRadius: 999, backgroundColor: C.surface2, alignItems: "center", justifyContent: "center" },
   ctaText: { color: C.onGlacier, fontFamily: F.bodySemi, fontSize: 15 },
