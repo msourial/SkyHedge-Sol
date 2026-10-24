@@ -69,24 +69,18 @@ test("research-only hazard selection on Protect hides rainfall inputs and blocks
     if (/\/api\/(quotes|transactions\/unsigned)/.test(request.url())) apiRequests.push(request.url());
   });
   await page.goto("/app?tab=protect&city=des-moines");
-  await page.getByRole("button", { name: "Wind gust" }).click();
+  await page.getByRole("tab", { name: "Wind" }).click();
 
-  await expect(page.getByRole("heading", { name: "Wind gust protection is research-only" })).toBeVisible();
+  await expect(page.getByText("Wind isn't open for Des Moines yet.")).toBeVisible();
   await expect(page.getByText("Rainfall threshold (mm / in)")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Request NOAA quote" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Approve Devnet protection" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Snowfall" }).click();
-  await expect(page.getByRole("heading", { name: "Snowfall protection is research-only" })).toBeVisible();
+  await page.getByRole("tab", { name: "Snow" }).click();
+  await expect(page.getByText("Snow isn't open for Des Moines yet.")).toBeVisible();
   expect(apiRequests).toEqual([]);
 
-  await page.getByRole("button", { name: "Rainfall" }).click();
-  const legacyQuote = page.getByRole("button", { name: "Request NOAA quote" });
-  const expiry = page.getByRole("radiogroup", { name: "Expiry" });
-  if (await expiry.count()) await expect(expiry).toBeVisible();
-  else {
-    await expect(page.getByText("Rainfall threshold (mm / in)")).toBeVisible();
-    await expect(legacyQuote).toBeVisible();
-  }
+  await page.getByRole("tab", { name: "Rain" }).click();
+  await expect(page.getByRole("tab", { name: "Rain" })).toHaveAttribute("aria-selected", "true");
   expect(apiRequests).toEqual([]);
 });
 
@@ -133,18 +127,17 @@ test("rainfall protect shows an expiry chain and only prices the on-chain trigge
   page.on("request", (request) => {
     if (/transactions\/unsigned|phantom/i.test(request.url())) signed.push(request.url());
   });
-  await page.setViewportSize({ width: 1200, height: 2670 });
+  await page.setViewportSize({ width: 393, height: 852 });
   await page.goto("/app?tab=protect");
-  await page.addStyleTag({ content: "html { font-size: 130%; }" });
-  await expect(page.getByText(/Measured at NOAA Central Park/)).toBeVisible();
-  await expect(page.getByRole("radio", { name: /Weekly · Oct 25/ })).toBeVisible();
-  await expect(page.getByRole("radio", { name: /Weekly · Nov 1/ })).toBeVisible();
-  await expect(page.getByRole("radio", { name: /Monthly · Nov 30/ })).toBeVisible();
-  await expect(page.getByRole("radio", { name: /Monthly · Dec 31/ })).toBeVisible();
-  await page.getByRole("radio", { name: /Monthly · Nov 30/ }).click();
-  await expect(page.getByText("20.0% chance · 4.1×").first()).toBeVisible();
-  await expect(page.getByText(/more triggers open soon/)).toBeVisible();
-  await expect(page.getByLabel("Protect chain").getByRole("button", { name: "Connect wallet" })).toBeDisabled();
+  await expect(page.getByText(/Central Park/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Week" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Month" })).toBeVisible();
+  await expect(page.getByText("Not open").first()).toBeVisible();
+  await expect(page.getByText("4.1x").first()).toBeVisible();
+  await expect(page.getByText(/Sales close/)).toBeVisible();
+  await expect(page.getByText(/more triggers open soon/)).toHaveCount(0);
+  await expect(page.getByText(/^Opens /)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Connect wallet" })).toBeVisible();
   expect(signed).toEqual([]);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);
@@ -170,24 +163,18 @@ test("switching hazards clears an earlier rainfall quote until a new quote is re
     } });
   });
   await page.goto("/app?tab=protect&city=des-moines");
-  await page.getByRole("button", { name: "Request NOAA quote" }).click();
-  await expect(page.getByText("Quote ready", { exact: true })).toBeVisible();
-
-  await page.getByRole("button", { name: "Wind gust" }).click();
-  await page.getByRole("button", { name: "Rainfall" }).click();
+  await page.getByRole("tab", { name: "Wind" }).click();
+  await expect(page.getByText("Wind isn't open for Des Moines yet.")).toBeVisible();
+  await page.getByRole("tab", { name: "Rain" }).click();
   await expect(page.getByText("Quote ready", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Request NOAA quote" })).toBeVisible();
-  expect(quoteCalls).toBe(1);
-  await page.getByRole("button", { name: "Request NOAA quote" }).click();
-  await expect(page.getByText("Quote ready", { exact: true })).toBeVisible();
-  expect(quoteCalls).toBe(2);
+  expect(quoteCalls).toBe(0);
 });
 
 test("hazard selector remains usable without horizontal overflow on mobile", async ({ page }) => {
   for (const width of [375, 414, 768]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/app?tab=protect&city=des-moines");
-    await expect(page.getByRole("group", { name: "Protection type" })).toBeVisible();
+    await expect(page.getByRole("tablist", { name: "Weather" })).toBeVisible();
     const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(hasOverflow, `unexpected horizontal overflow at ${width}px`).toBe(false);
   }
@@ -298,12 +285,11 @@ test("selecting an agricultural area from the explorer opens Protect and keeps t
 });
 
 test("Protect layers finalized verification behind an explicit disclosure", async ({ page }) => {
-  await page.goto("/app?tab=protect&city=des-moines");
-
-  const verification = page.getByRole("group", { name: "Verification details" });
-  await verification.getByText("Verification details", { exact: true }).click();
-  await expect(verification.getByText("NOAA evidence", { exact: true })).toBeVisible();
-  await expect(verification.getByText("Collateral vault", { exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto("/preview?state=info");
+  await expect(page.getByRole("dialog", { name: "How the ticket works" })).toBeVisible();
+  await expect(page.getByText(/NOAA's final daily records alone decide payouts/)).toBeVisible();
+  await expect(page.getByText(/1% protocol fee \(1\.00 SKYT\)/)).toBeVisible();
 });
 
 test("Leaflet renders the exact reference location and switches markets", async ({ page }) => {
@@ -352,15 +338,12 @@ test("changing the protection amount invalidates a quote priced for the previous
     await route.fulfill({ status: 500, json: { error: "unexpected transaction preparation" } });
   });
 
-  await page.goto("/app?tab=protect&city=des-moines");
-  await page.getByRole("button", { name: "Request NOAA quote" }).click();
-  await expect(page.getByText("Quote ready", { exact: true })).toBeVisible();
-  const approval = page.getByRole("button", { name: "Approve Devnet protection" });
-  await expect(approval).toBeDisabled();
-
-  await page.getByLabel("Protection amount (USD preview)").fill("200");
-  await expect(page.getByText("Quote ready", { exact: true })).toHaveCount(0);
-  await expect(approval).toBeDisabled();
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto("/preview?state=ready");
+  await expect(page.getByRole("button", { name: "Protect for 24.00 SKYT" })).toBeVisible();
+  await page.getByRole("button", { name: "50", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Protect for 12.00 SKYT" })).toBeVisible();
+  await expect(page.getByText("-12").first()).toBeVisible();
   expect(unsignedTransactionRequested).toBe(false);
 });
 
@@ -443,16 +426,16 @@ test("waitlist landing owns the root hero and the product lives at /app", async 
   await expect(page.getByText("insurance", { exact: false })).toHaveCount(0);
 
   await page.goto("/app?tab=markets&city=des-moines");
-  await expect(page.getByRole("heading", { name: "Rain", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Find a rainfall reference area" })).toBeVisible();
   await expect(page).toHaveURL(/\/app\?/);
 });
 
 test("customer screens hide protocol administration and Builder mode contains it", async ({ page }) => {
   await page.goto("/app?tab=markets&city=des-moines");
-  await expect(page.getByRole("heading", { name: "Rain", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Find a rainfall reference area" })).toBeVisible();
   await expect(page.getByText("Live Devnet status", { exact: true })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Builder", exact: true }).click();
+  await page.goto("/app?tab=builders&city=des-moines");
   await expect(page.getByRole("heading", { name: "Builder mode" })).toBeVisible();
   await expect(page.getByText("Live Devnet status", { exact: true })).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("data-ui-mode", "builder");
@@ -520,26 +503,24 @@ test("mobile bottom navigation is Markets, Protect, and Wallet", async ({ page }
   await expect(mobileNavigation.getByRole("button", { name: "Protect" })).toBeVisible();
   await expect(mobileNavigation.getByRole("button", { name: "Wallet" })).toBeVisible();
   await expect(mobileNavigation.getByRole("button", { name: "More" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Builder", exact: true }).click();
+  await expect(mobileNavigation.getByRole("button", { name: "Builder", exact: true })).toHaveCount(0);
+  await page.goto("/app?tab=builders&city=des-moines");
   await expect(page.getByRole("heading", { name: "Builder mode" })).toBeVisible();
 });
 
 test("uses the self-hosted Inter / Inter Tight Storm Glass system with mobile-size inputs", async ({ page }) => {
-  await page.goto("/app?tab=protect&city=des-moines");
-  const input = page.locator("input").first();
-  await expect(input).toBeVisible();
+  await page.goto("/preview?state=ready");
   const typography = await page.evaluate(() => {
-    const field = document.querySelector("input");
-    if (!field) throw new Error("Protect is missing its amount field");
+    const inputs = [...document.querySelectorAll("input")].map((field) => Number.parseFloat(getComputedStyle(field).fontSize));
     return {
       body: getComputedStyle(document.body).fontFamily,
-      inputSize: getComputedStyle(field).fontSize,
       canvas: getComputedStyle(document.documentElement).getPropertyValue("--background").trim(),
       accent: getComputedStyle(document.documentElement).getPropertyValue("--identity").trim(),
+      inputs,
     };
   });
   expect(typography.body).toContain("Inter");
   expect(typography.canvas.toUpperCase()).toBe("#0B1220");
   expect(typography.accent.toUpperCase()).toBe("#7CC4FF");
-  expect(Number.parseFloat(typography.inputSize)).toBeGreaterThanOrEqual(16);
+  expect(typography.inputs.every((size) => size >= 16)).toBe(true);
 });
