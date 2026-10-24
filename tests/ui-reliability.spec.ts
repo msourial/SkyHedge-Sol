@@ -54,7 +54,8 @@ test("wind gust and snowfall are research-only in Markets and never request quot
   });
   await page.goto("/app?tab=markets&city=des-moines");
 
-  await expect(page.getByText("Wind, snow and heat coming")).toBeVisible();
+  await expect(page.getByText("Wind, snow and heat coming")).toHaveCount(0);
+  await expect(page.getByText("Rain only for now")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Wind gust" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Snowfall" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Wind gust protection is research-only" })).toHaveCount(0);
@@ -129,7 +130,7 @@ test("rainfall protect shows an expiry chain and only prices the on-chain trigge
   });
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto("/app?tab=protect");
-  await expect(page.getByText(/Central Park/)).toBeVisible();
+  await expect(page.locator(".ln-sub")).toContainText("Central Park");
   await expect(page.getByRole("button", { name: "Week" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Month" })).toBeVisible();
   await expect(page.getByText("Not open").first()).toBeVisible();
@@ -137,7 +138,7 @@ test("rainfall protect shows an expiry chain and only prices the on-chain trigge
   await expect(page.getByText(/Sales close/)).toBeVisible();
   await expect(page.getByText(/more triggers open soon/)).toHaveCount(0);
   await expect(page.getByText(/^Opens /)).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Connect wallet" })).toBeVisible();
+  await expect(page.locator("#main-content").getByRole("button", { name: "Connect wallet" })).toBeVisible();
   expect(signed).toEqual([]);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);
@@ -406,12 +407,13 @@ test("waitlist landing owns the root hero and the product lives at /app", async 
   await page.goto("/");
   const hero = page.getByRole("region", { name: /Rain on your plans/i });
   await expect(hero.getByRole("heading", { name: "Rain on your plans? Get paid." })).toBeVisible();
-  await expect(hero.getByRole("button", { name: "Join waitlist" })).toBeVisible();
-  await expect(hero.getByText("Weekend in Central Park?")).toBeVisible();
-  await expect(hero.getByText("Lollapalooza weekend?")).toBeVisible();
-  await expect(hero.getByText("Beach day in South Beach?")).toBeVisible();
-  await expect(hero.getByText("Rained-out game day?")).toBeVisible();
-  await expect(hero.getByText("Rooftop party?")).toBeVisible();
+  await expect(hero.getByRole("link", { name: "Join the waitlist" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Join waitlist" })).toBeVisible();
+  await expect(page.getByText("Weekend in Central Park?")).toBeVisible();
+  await expect(page.getByText("Lollapalooza weekend?")).toBeVisible();
+  await expect(page.getByText("Beach day in South Beach?")).toBeVisible();
+  await expect(page.getByText("Rained-out game day?")).toBeVisible();
+  await expect(page.getByText("Rooftop party?")).toBeVisible();
   await expect(hero.getByText("Toronto")).toHaveCount(0);
   await expect(hero.getByText("Des Moines")).toHaveCount(0);
   const examples = page.getByRole("list", { name: "Rainfall cities" });
@@ -420,18 +422,20 @@ test("waitlist landing owns the root hero and the product lives at /app", async 
   await expect(examples.getByText("Austin", { exact: true })).toBeVisible();
   await expect(examples.getByText("Des Moines", { exact: true })).toBeVisible();
   await expect(examples.getByText("Toronto")).toBeVisible();
-  await expect(examples.getByText("Opens soon")).toBeVisible();
+  await expect(examples.getByText("Waiting on Environment Canada data")).toBeVisible();
+  await expect(examples.getByText("Opens soon")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Open web app" }).first()).toHaveAttribute("href", "/app");
-  await expect(page.getByText("October normal, Central Park")).toBeVisible();
   await expect(page.getByText("insurance", { exact: false })).toHaveCount(0);
 
   await page.goto("/app?tab=markets&city=des-moines");
+  await openReferenceExplorer(page);
   await expect(page.getByRole("heading", { name: "Find a rainfall reference area" })).toBeVisible();
   await expect(page).toHaveURL(/\/app\?/);
 });
 
 test("customer screens hide protocol administration and Builder mode contains it", async ({ page }) => {
   await page.goto("/app?tab=markets&city=des-moines");
+  await openReferenceExplorer(page);
   await expect(page.getByRole("heading", { name: "Find a rainfall reference area" })).toBeVisible();
   await expect(page.getByText("Live Devnet status", { exact: true })).toHaveCount(0);
 
