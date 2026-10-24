@@ -18,6 +18,8 @@ import { finalizedEvidenceWindow, getDesMoinesEvidencePackage } from "./services
 import { ensureCityWindowEvidence } from "./services/window-evidence";
 import { LIVE_CITY_SLUGS, type LiveCitySlug } from "../shared/window-ladder";
 import { desMoinesQuoteUnavailableReason, matchingOpenWindow, testerProtectionUnavailableReason } from "./services/tester-readiness";
+import { isPerilId, PERILS, perilOpenForCity, type PerilId } from "../shared/perils";
+import { marketsForWindowQuote, readCatalogueWindowQuote } from "./services/window-quote-read";
 import { prepareFailure } from "../shared/prepare-failure";
 import { isRpcRateLimited } from "./services/rpc-failover";
 import { settlementWorkerReadiness } from "./services/settlement-config";
@@ -38,7 +40,16 @@ const weatherXm = new WeatherXmProvider();
 const devnetStatus = new DevnetStatusReader();
 const programId = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const citySchema = z.enum(Object.keys(NOAA_STATIONS) as [SkyHedgeCity, ...SkyHedgeCity[]]);
-const quoteSchema = z.object({ city: citySchema, observationStart: z.string().date(), observationEnd: z.string().date(), thresholdMm: z.number().positive(), operator: z.enum(["gt", "gte", "lt", "lte"]), protectedAmount: z.string().regex(/^\d+$/) });
+const quoteSchema = z.object({
+  city: citySchema,
+  observationStart: z.string().date(),
+  observationEnd: z.string().date(),
+  thresholdMm: z.number().positive().optional(),
+  triggerValue: z.number().positive().optional(),
+  peril: z.enum(["rain", "snow", "wind", "heat", "cold"]).optional(),
+  operator: z.enum(["gt", "gte", "lt", "lte"]),
+  protectedAmount: z.string().regex(/^\d+$/),
+}).refine((value) => value.thresholdMm != null || value.triggerValue != null, "A trigger is required");
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const limiter = new RateLimiter(60, 30); // 30 requests per 60s per key
@@ -315,6 +326,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.all("/api/x402/quote", (req, res) => { void x402Quote(req as never, res as never); });
 
+  app.get("/api/quotes", async (req, res) => {
+    if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
+    const peril = typeof req.query.peril === "string" ? req.query.peril : "rain";
+    const cityId = typeof req.query.city === "string" ? req.query.city : typeof req.query.cityId === "string" ? req.query.cityId : "";
+    const windowStart = typeof req.query.observationStart === "string" ? req.query.observationStart : "";
+    const windowEnd = typeof req.query.observationEnd === "string" ? req.query.observationEnd : "";
+    if (!cityId || !windowStart || !windowEnd || !isPerilId(peril)) return res.status(400).json({ error: "INVALID_WINDOW_QUOTE", message: "city, peril, observationStart, and observationEnd are required." });
+    try {
+      const markets = await marketsForWindowQuote(() => devnetStatus.read(), cityId, peril, windowStart, windowEnd);
+      return res.json(await readCatalogueWindowQuote({ peril, cityId, windowStart, windowEnd, markets }));
+    } catch (error) {
+      const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+      if (code === "PERIL_NOT_OPEN" || code === "PERIL_NOT_AVAILABLE") return res.status(409).json({ error: code, message: error instanceof Error ? error.message : "This peril is not open." });
+      return dataUnavailable(res, error);
+    }
+  });
+
   app.post("/api/quotes", async (req, res) => {
     if (!limiter.allow(req.ip ?? "unknown")) return res.status(429).json({ error: "RATE_LIMITED", message: "Too many requests; try again shortly." });
     
@@ -322,17 +350,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!parsed.success) return res.status(400).json({ error: "Invalid protection parameters", details: parsed.error.flatten() });
     try {
       const request = parsed.data;
+      const peril: PerilId = request.peril ?? "rain";
+      const trigger = request.thresholdMm ?? request.triggerValue;
+      if (trigger == null) return res.status(400).json({ error: "Invalid protection parameters", details: {} });
+      if (!PERILS[peril].open) return res.status(409).json({ error: "PERIL_NOT_OPEN", message: PERILS[peril].closedReason });
+      if (!perilOpenForCity(peril, request.city)) return res.status(409).json({ error: "PERIL_NOT_AVAILABLE", message: `${PERILS[peril].label} is not open for this city.` });
       const finalizedStatus = await devnetStatus.read();
-      if (request.city === "des-moines") {
-        const reason = desMoinesQuoteUnavailableReason(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator);
+      const now = Math.floor(Date.now() / 1_000);
+      if (peril === "rain" && request.city === "des-moines") {
+        const reason = desMoinesQuoteUnavailableReason(finalizedStatus, request.observationStart, request.observationEnd, trigger, request.operator);
         if (reason) return res.status(409).json({ error: "TESTER_QUOTE_UNAVAILABLE", message: reason });
-      } else if (!matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator, Math.floor(Date.now() / 1_000), request.city)) {
-        return res.status(409).json({ error: "TESTER_QUOTE_UNAVAILABLE", message: "That city's open window does not match this quote." });
+      } else if (!matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, trigger, request.operator, now, request.city, peril)) {
+        return res.status(409).json({ error: "TESTER_QUOTE_UNAVAILABLE", message: peril === "rain" ? "That city's open window does not match this quote." : "That trigger is not an open market." });
       }
-      const matched = matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator, Math.floor(Date.now() / 1_000), request.city);
+      const matched = matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, trigger, request.operator, now, request.city, peril);
       const quote = matched
-        ? quoteFromCommittedMarketTerms({ protectedAmount: BigInt(request.protectedAmount), probabilityBps: matched.quoteProbabilityBps!, premiumRateBps: matched.premiumRateBps!, inputsHash: matched.quoteInputsHash! })
-        : await quotes.quote({ ...request, stationId: NOAA_STATIONS[request.city].stationId, protectedAmount: BigInt(request.protectedAmount), operator: request.operator as TriggerOperator });
+        ? quoteFromCommittedMarketTerms({ protectedAmount: BigInt(request.protectedAmount), probabilityBps: matched.quoteProbabilityBps!, premiumRateBps: matched.premiumRateBps!, inputsHash: matched.quoteInputsHash!, ...(peril === "rain" ? {} : { modelVersion: PERILS[peril].modelVersion ?? "noaa-rain-v1" }) })
+        : await quotes.quote({ city: request.city, stationId: NOAA_STATIONS[request.city].stationId, observationStart: request.observationStart, observationEnd: request.observationEnd, thresholdMm: trigger, protectedAmount: BigInt(request.protectedAmount), operator: request.operator as TriggerOperator });
       return res.json({ ...quote, premium: quote.premium.toString(), protocolFee: quote.protocolFee.toString(), protectedAmount: request.protectedAmount, source: "NOAA", explicitApprovalRequired: true });
     } catch (error) { return dataUnavailable(res, error); }
   });

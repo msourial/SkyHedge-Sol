@@ -1,0 +1,19 @@
+{
+  "readAt": "2026-10-24",
+  "rpc": "https://api.devnet.solana.com",
+  "network": "devnet",
+  "nextMarketId": "11",
+  "markets": [
+    {"city": "des-moines", "peril": "rain", "state": "cancelled", "scaledX100": 5000, "operator": "gte", "observationStart": 1790726400, "observationEnd": 1791158400, "address": "9UUNQPXnrzUEDsra8PMMzByp9J9un1yysGdGuaz9JqVJ"},
+    {"city": "des-moines", "peril": "rain", "state": "open", "scaledX100": 5000, "operator": "gte", "observationStart": 1791936000, "observationEnd": 1792368000, "address": "8pCnTVkAN3PtjSxsZuQt1QWmmZHbYKi4UAUpES8Utyho"},
+    {"city": "des-moines", "peril": "rain", "state": "open", "scaledX100": 5000, "operator": "gte", "observationStart": 1792368000, "observationEnd": 1792800000, "address": "HDJiTEYSnaeUNZWAHvgWrMaefKemFq61S32bE2RVyiEZ"},
+    {"city": "des-moines", "peril": "rain", "state": "open", "scaledX100": 3200, "operator": "gte", "observationStart": 1792368000, "observationEnd": 1792972800, "address": "8Dvx6RcPasUb3aahbWyohAKWMc3j2wpxnmKAWjmEqp9s"},
+    {"city": "des-moines", "peril": "rain", "state": "open", "scaledX100": 3300, "operator": "gte", "observationStart": 1792972800, "observationEnd": 1793577600, "address": "8tAPwdDQsW6ab1TDceZ9qzfS3scG5Kn7nwFhrFALNg9Y"},
+    {"city": "des-moines", "peril": "rain", "state": "open", "scaledX100": 6300, "operator": "gte", "observationStart": 1793491200, "observationEnd": 1796083200, "address": "BWLUtPtJf7NTa1X7gEuMxdyxhYoGnKSSt6SCFcXwmsmv"},
+    {"city": "des-moines", "peril": "rain", "state": "open", "scaledX100": 5000, "operator": "gte", "observationStart": 1796083200, "observationEnd": 1798761600, "address": "9L9xAU8xJ84uGN87s6FH8MzVfKmZPEJDpJ7hNc5WWdH4"},
+    {"city": "new-york", "peril": "rain", "state": "open", "scaledX100": 2900, "operator": "gte", "observationStart": 1792368000, "observationEnd": 1792972800, "address": "Bi7RnLKP7cvp4Q8F5YzZmaRiR9J9p51k2SbtEToGbd7U"},
+    {"city": "new-york", "peril": "rain", "state": "open", "scaledX100": 6900, "operator": "gte", "observationStart": 1792972800, "observationEnd": 1793577600, "address": "4MVypmwGhpNTvLhpEUTPu6AHEXL5aRzuprkPWT9o6ygq"},
+    {"city": "new-york", "peril": "rain", "state": "open", "scaledX100": 10200, "operator": "gte", "observationStart": 1793491200, "observationEnd": 1796083200, "address": "67Xi3JFHAHyPAfYP6nTzaEzYp1UU5cFzvTu8gwGZATZe"},
+    {"city": "new-york", "peril": "rain", "state": "open", "scaledX100": 16600, "operator": "gte", "observationStart": 1796083200, "observationEnd": 1798761600, "address": "2dra67fraFWM7TJ8NXGAuuGVde8LnUDXFKmEGVHCDPFa"}
+  ]
+}
