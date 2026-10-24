@@ -6,6 +6,10 @@ import { createClaimReadinessHandler, type ApiRequest as ClaimRequest, type ApiR
 import type { ClaimReadiness } from "./unsigned-tx.js";
 import { allCityIndexStates, cityIndexState, weeklyHistory } from "./weather-index.js";
 import { applyCorsHeaders } from "./cors.js";
+import { isPerilId } from "../../shared/perils.js";
+import { marketsForWindowQuote, readCatalogueWindowQuote } from "./window-quote-read.js";
+import { DevnetStatusReader } from "./devnet-status.js";
+import type { WindowQuote } from "../../shared/ui-quote-types.js";
 
 type ApiRequest = IncomingMessage & { query?: Record<string, unknown> };
 type ApiResponse = ServerResponse & {
@@ -28,6 +32,7 @@ export function createMobileApiHandler(dependencies: {
   readWalletState?: (wallet: string) => Promise<unknown>;
   readPortfolio?: (wallet: string) => Promise<unknown[]>;
   readClaimReadiness?: (market: string, wallet: string) => Promise<ClaimReadiness>;
+  readWindowQuote?: (query: { peril: string; cityId: string; windowStart: string; windowEnd: string }) => Promise<WindowQuote>;
 } = {}) {
   const loadCities = dependencies.loadCities ?? allCityIndexStates;
   const resolveCity = dependencies.resolveCity ?? cityBySlug;
@@ -114,6 +119,31 @@ export function createMobileApiHandler(dependencies: {
         });
         res.setHeader("Cache-Control", "no-store");
         return res.status(200).json(await read(canonicalWallet));
+      }
+
+      if (resource === "window-quote") {
+        const cityId = queryValue(req, "city") ?? queryValue(req, "cityId");
+        const peril = queryValue(req, "peril") ?? "rain";
+        const windowStart = queryValue(req, "observationStart") ?? queryValue(req, "windowStart");
+        const windowEnd = queryValue(req, "observationEnd") ?? queryValue(req, "windowEnd");
+        if (!cityId || !windowStart || !windowEnd || !isPerilId(peril)) {
+          return res.status(400).json({ error: "INVALID_WINDOW_QUOTE", message: "city, peril, observationStart, and observationEnd are required." });
+        }
+        const read = dependencies.readWindowQuote ?? (async (query: { peril: string; cityId: string; windowStart: string; windowEnd: string }) => {
+          const reader = new DevnetStatusReader();
+          if (!isPerilId(query.peril)) throw Object.assign(new Error("Unknown peril."), { code: "DATA_UNAVAILABLE" });
+          const markets = await marketsForWindowQuote(() => reader.read(), query.cityId, query.peril, query.windowStart, query.windowEnd);
+          return readCatalogueWindowQuote({ ...query, markets });
+        });
+        try {
+          res.setHeader("Cache-Control", "no-store");
+          return res.status(200).json(await read({ peril, cityId, windowStart, windowEnd }));
+        } catch (error) {
+          const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+          const message = error instanceof Error ? error.message : "The window quote could not be prepared.";
+          if (code === "PERIL_NOT_OPEN" || code === "PERIL_NOT_AVAILABLE") return res.status(409).json({ error: code, message });
+          return res.status(503).json({ error: "DATA_UNAVAILABLE", message });
+        }
       }
 
       if (resource === "claim-readiness") {

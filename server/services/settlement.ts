@@ -10,7 +10,9 @@ type BNInstance = InstanceType<typeof BN>;
 import type { Db } from "../db";
 import { settlementEvidence } from "../../shared/schema.js";
 import { RainfallConsensusService, utcDailyObservationRange, type ConsensusResult } from "./consensus.js";
+import { PerilConsensusService } from "./peril-consensus.js";
 import { canonicalSourceHash, NOAA_STATIONS, type SkyHedgeCity } from "./noaa.js";
+import { PERILS, resolveCityPeril, type PerilId } from "../../shared/perils.js";
 import { DATA_GRACE_SECONDS } from "./settlement-constants.js";
 
 const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
@@ -42,6 +44,7 @@ export class SettlementRunner {
   private readonly program: Program;
   private readonly programId = new PublicKey(PROGRAM_ID);
   private readonly consensus = new RainfallConsensusService();
+  private readonly perilConsensus = new PerilConsensusService();
   private readonly settlementKeypair: Keypair;
   private readonly provider: AnchorProvider;
   private running = false;
@@ -107,8 +110,8 @@ export class SettlementRunner {
         if (lifecycleStatus !== "awaitingsettlement") { pending.push(marketAddress.toBase58()); continue; }
 
         if (now > market.dataDeadline.toNumber()) {
-          const city = this.cityForHash(Buffer.from(market.cityHash).toString("hex"));
-          const evidence = await this.deadlineEvidence(marketAddress.toBase58(), city, market.observationStart.toNumber(), market.observationEnd.toNumber());
+          const resolved = this.cityForHash(Buffer.from(market.cityHash).toString("hex"));
+          const evidence = await this.deadlineEvidence(marketAddress.toBase58(), resolved?.city ?? null, market.observationStart.toNumber(), market.observationEnd.toNumber(), resolved?.peril ?? null);
           const sourceHash = evidence.sourceHash;
           const unavailableSignature = await this.program.methods.markDataUnavailable(sourceHashBytes(sourceHash))
             // Anchor's client resolves omitted optional accounts as their PDA. Pass
@@ -123,13 +126,24 @@ export class SettlementRunner {
           continue;
         }
 
-        const city = this.cityForHash(Buffer.from(market.cityHash).toString("hex"));
-        if (!city) { pending.push(marketAddress.toBase58()); continue; }
+        const resolved = this.cityForHash(Buffer.from(market.cityHash).toString("hex"));
+        if (!resolved || !PERILS[resolved.peril].open) { pending.push(marketAddress.toBase58()); continue; }
+        const city = resolved.city;
+        const peril = resolved.peril;
         const { start: windowStart, end: windowEnd } = utcDailyObservationRange(market.observationStart.toNumber(), market.observationEnd.toNumber());
 
         let result: ConsensusResult;
+        let perilScaledX100: number | null = null;
         try {
-          result = await this.consensus.evidenceFor(city, windowStart, windowEnd);
+          if (peril === "rain") {
+            result = await this.consensus.evidenceFor(city, windowStart, windowEnd);
+          } else if (peril === "snow" || peril === "wind" || peril === "heat") {
+            const agreed = await this.perilConsensus.evidenceFor(city, peril, windowStart, windowEnd);
+            perilScaledX100 = agreed.finalScaledX100;
+            result = { verdict: agreed.verdict, finalValueMm: agreed.finalValue, evidence: agreed.evidence };
+          } else {
+            throw new Error("This peril is not open.");
+          }
         } catch {
           pending.push(marketAddress.toBase58());
           continue;
@@ -151,7 +165,8 @@ export class SettlementRunner {
           continue;
         }
 
-        const valueMmX100 = Math.round(result.finalValueMm! * 100);
+        const valueMmX100 = peril === "rain" ? Math.round(result.finalValueMm! * 100) : perilScaledX100;
+        if (valueMmX100 == null || !Number.isSafeInteger(valueMmX100) || valueMmX100 < 0) { pending.push(marketAddress.toBase58()); continue; }
         const authority = this.authority();
         const stationHashBytes = Array.from(Buffer.from(canonicalSourceHash(station.stationId), "hex"));
         const methodologyHashBytes = Array.from(Buffer.from(methodologyHash, "hex"));
@@ -203,7 +218,8 @@ export class SettlementRunner {
         }
         await this.persistEvidence(result.evidence, marketAddress.toBase58(), "AGREED", { authority: authority.publicKey.toBase58(), observationSignature, settlementSignature, commitment: "finalized" });
         settled.push(marketAddress.toBase58());
-        console.log(`[settlement] market ${marketAddress.toBase58()} settled with ${valueMmX100 / 100}mm (${city})`);
+        if (peril === "rain") console.log(`[settlement] market ${marketAddress.toBase58()} settled with ${valueMmX100 / 100}mm (${city})`);
+        else console.log(`[settlement] market ${marketAddress.toBase58()} settled with ${valueMmX100 / 100} ${PERILS[peril].unit} (${city})`);
       }
       return { scanned: Number(protocol.nextMarketId), advanced, settled, markedUnavailable, pending };
     } finally {
@@ -215,10 +231,11 @@ export class SettlementRunner {
     return this.settlementKeypair;
   }
 
-  private async deadlineEvidence(marketAddress: string, city: SkyHedgeCity | null, startSeconds: number, endSeconds: number): Promise<UnavailableEvidence> {
+  private async deadlineEvidence(marketAddress: string, city: SkyHedgeCity | null, startSeconds: number, endSeconds: number, peril: PerilId | null): Promise<UnavailableEvidence> {
     const generatedAt = new Date().toISOString();
     const range = utcDailyObservationRange(startSeconds, endSeconds);
-    const evidence: UnavailableEvidence = { methodologyVersion: "methodology-v1", city: city ?? "unknown", windowStart: range.start, windowEnd: range.end, noaa: { stationId: city ? NOAA_STATIONS[city].stationId : "unknown", cumulativeMm: null, records: [] }, verdict: "DATA_UNAVAILABLE", rule: "NOAA quality-screened daily observation", reason: "No complete NOAA observation package passed quality checks by the immutable on-chain deadline.", sourceHash: "", generatedAt };
+    const methodologyVersion = peril && PERILS[peril].methodologyVersion ? PERILS[peril].methodologyVersion : "methodology-v1";
+    const evidence: UnavailableEvidence = { methodologyVersion, city: city ?? "unknown", windowStart: range.start, windowEnd: range.end, noaa: { stationId: city ? NOAA_STATIONS[city].stationId : "unknown", cumulativeMm: null, records: [] }, verdict: "DATA_UNAVAILABLE", rule: "NOAA quality-screened daily observation", reason: "No complete NOAA observation package passed quality checks by the immutable on-chain deadline.", sourceHash: "", generatedAt };
     evidence.sourceHash = canonicalHash({ marketAddress, reason: "data_deadline_exceeded", generatedAt });
     return evidence;
   }
@@ -241,11 +258,11 @@ export class SettlementRunner {
     }).onConflictDoNothing();
   }
 
-  private cityForHash(hash: string): SkyHedgeCity | null {
-    for (const city of Object.keys(NOAA_STATIONS) as SkyHedgeCity[]) {
-      if (createHash("sha256").update(city).digest("hex") === hash) return city;
-    }
-    return null;
+  private cityForHash(hash: string): { city: SkyHedgeCity; peril: PerilId } | null {
+    const resolved = resolveCityPeril(hash);
+    if (!resolved) return null;
+    if (!(resolved.city in NOAA_STATIONS)) return null;
+    return resolved;
   }
 }
 

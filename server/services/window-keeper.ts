@@ -5,7 +5,8 @@
 import { createHash } from "node:crypto";
 import { canonicalSourceHash, NOAA_STATIONS, NoaaRainfallProvider } from "./noaa.js";
 import { RainfallQuoteEngine } from "./quote-engine.js";
-import methodology from "../../shared/methodology-v1.json" with { type: "json" };
+import { methodologyHashes } from "./methodology-docs.js";
+import { perilCityHashInput, type PerilId } from "../../shared/perils.js";
 import {
   historicHitBps,
   planCityLadders,
@@ -21,6 +22,10 @@ export const DEVNET_RPC = "https://api.devnet.solana.com";
 
 export type PricedLadderStep = LadderStep & {
   thresholdMm: number | null;
+  scaledX100?: number;
+  triggerValue?: number;
+  peril?: PerilId;
+  unit?: string;
   probabilityBps: number | null;
   premiumRateBps: number | null;
   forecastIncluded: boolean | null;
@@ -111,16 +116,23 @@ export async function priceKeeperSteps(steps: readonly LadderStep[], engine = ne
   return priced;
 }
 
-export function evidenceHashes(stationId: string): { stationIdHash: string; providerHash: string; methodologyHash: string } {
+export function evidenceHashes(stationId: string, peril: PerilId = "rain"): { stationIdHash: string; providerHash: string; methodologyHash: string } {
+  const hashes = methodologyHashes(peril === "cold" ? "rain" : peril);
   return {
     stationIdHash: canonicalSourceHash(stationId),
-    providerHash: canonicalSourceHash(methodology),
-    methodologyHash: canonicalSourceHash(methodology.version),
+    providerHash: hashes.providerHash,
+    methodologyHash: hashes.methodologyHash,
   };
 }
 
-export function cityHashBytes(slug: string): Buffer {
-  return createHash("sha256").update(slug).digest();
+export function cityHashBytes(slug: string, peril: PerilId = "rain"): Buffer {
+  return createHash("sha256").update(perilCityHashInput(slug, peril)).digest();
+}
+
+/** On-chain i64. Rain whole millimetres stay threshold × 100. Tenths use scaledX100. */
+export function encodeStrike(step: { thresholdMm: number | null; scaledX100?: number }): bigint {
+  if (step.scaledX100 != null) return BigInt(step.scaledX100);
+  return BigInt(step.thresholdMm ?? 0) * 100n;
 }
 
 function unpriced(step: LadderStep, stationId: string, skipReason: string): PricedLadderStep {

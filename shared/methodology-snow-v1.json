@@ -1,0 +1,16 @@
+{
+  "version": "methodology-snow-v1",
+  "updatedAt": "2026-10-24T00:00:00Z",
+  "settlement": {
+    "finalSource": "NOAA",
+    "rule": "A single normalized NOAA snowfall total is committed by the settlement authority. Missing or malformed NOAA data resolves DATA_UNAVAILABLE after the on-chain deadline; never synthesize a value.",
+    "unavailableAction": "DATA_UNAVAILABLE"
+  },
+  "observation": {
+    "metric": "cumulative_snowfall_mm",
+    "units": "mm",
+    "element": "SNOW",
+    "aggregator": "sum",
+    "window": "UTC midnight-to-midnight over the market observation window"
+  }
+}

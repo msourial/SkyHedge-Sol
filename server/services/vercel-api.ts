@@ -2,8 +2,10 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
 import { PublicKey } from "@solana/web3.js";
 import { DataUnavailableError, NOAA_STATIONS, type SkyHedgeCity } from "./noaa.js";
-import { MARKET_LIMITS, quoteFromCommittedMarketTerms, type Quote, type TriggerOperator } from "./quote-engine.js";
+import { MARKET_LIMITS, quoteFromCommittedMarketTerms, type Quote, type QuoteModelVersion, type TriggerOperator } from "./quote-engine.js";
 import { desMoinesQuoteUnavailableReason, matchingOpenWindow, testerProtectionUnavailableReason } from "./tester-readiness.js";
+import { PERILS, isPerilId, perilOpenForCity, type PerilId } from "../../shared/perils.js";
+import type { WindowQuote } from "../../shared/ui-quote-types.js";
 import { prepareFailure } from "../../shared/prepare-failure.js";
 import { isRpcRateLimited } from "./rpc-failover.js";
 import type { DevnetStatus } from "./devnet-status";
@@ -18,10 +20,13 @@ const quoteSchema = z.object({
   city: citySchema,
   observationStart: z.string().date(),
   observationEnd: z.string().date(),
-  thresholdMm: z.number().finite().positive(),
+  thresholdMm: z.number().finite().positive().optional(),
+  triggerValue: z.number().finite().positive().optional(),
+  peril: z.enum(["rain", "snow", "wind", "heat", "cold"]).optional(),
   operator: z.enum(["gt", "gte", "lt", "lte"]),
   protectedAmount: z.string().regex(/^\d+$/),
-}).refine(({ observationStart, observationEnd }) => observationStart < observationEnd, "Observation start must precede end");
+}).refine(({ observationStart, observationEnd }) => observationStart < observationEnd, "Observation start must precede end")
+  .refine((value) => value.thresholdMm != null || value.triggerValue != null, "A trigger is required");
 
 function publicKeySchema() {
   return z.string().min(32).max(44).refine((value) => {
@@ -50,37 +55,58 @@ function methodNotAllowed(res: ApiResponse, allowed: string) {
 export function createQuoteHandler(dependencies: {
   readStatus: () => Promise<DevnetStatus>;
   quote: (request: { city: SkyHedgeCity; stationId: string; observationStart: string; observationEnd: string; thresholdMm: number; operator: TriggerOperator; protectedAmount: bigint }) => Promise<Quote>;
+  readWindowQuote?: (query: { peril: string; cityId: string; windowStart: string; windowEnd: string }) => Promise<WindowQuote>;
 }) {
   return async function quoteHandler(req: ApiRequest, res: ApiResponse) {
     applyCorsHeaders(req, res);
-    if (req.method && req.method !== "POST") return methodNotAllowed(res, "POST");
+    if (req.method === "GET") return windowQuoteResponse(req, res, dependencies.readWindowQuote);
+    if (req.method && req.method !== "POST") return methodNotAllowed(res, "GET, POST");
     const parsed = quoteSchema.safeParse(req.body);
-    if (!parsed.success) return sendJson(res, 400, { error: "INVALID_PROTECTION_PARAMETERS", message: "Provide valid rainfall protection parameters." });
+    if (!parsed.success) {
+      const named = req.body && typeof req.body === "object" && "peril" in req.body ? (req.body as { peril?: unknown }).peril : undefined;
+      const message = named && named !== "rain"
+        ? "Provide a valid city, window, trigger, and amount."
+        : "Provide valid rainfall protection parameters.";
+      return sendJson(res, 400, { error: "INVALID_PROTECTION_PARAMETERS", message });
+    }
     const request = parsed.data;
+    const peril: PerilId = request.peril ?? "rain";
+    const trigger = request.thresholdMm ?? request.triggerValue;
+    if (trigger == null || (request.thresholdMm != null && request.triggerValue != null && request.thresholdMm !== request.triggerValue)) {
+      return sendJson(res, 400, { error: "INVALID_PROTECTION_PARAMETERS", message: peril === "rain" ? "Provide valid rainfall protection parameters." : "Provide a valid city, window, trigger, and amount." });
+    }
     const amount = BigInt(request.protectedAmount);
     if (amount === 0n || amount > MARKET_LIMITS.perWallet) {
       return sendJson(res, 400, { error: "PROTECTION_LIMIT_EXCEEDED", message: "Protection must be greater than zero and no more than 500 SKYT." });
     }
+    if (!PERILS[peril].open) return sendJson(res, 409, { error: "PERIL_NOT_OPEN", message: PERILS[peril].closedReason ?? "This peril is not open." });
+    if (!perilOpenForCity(peril, request.city)) return sendJson(res, 409, { error: "PERIL_NOT_AVAILABLE", message: `${PERILS[peril].label} is not open for this city.` });
 
     try {
       const finalizedStatus = await dependencies.readStatus();
-      if (request.city === "des-moines") {
-        const reason = desMoinesQuoteUnavailableReason(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator);
+      const now = Math.floor(Date.now() / 1_000);
+      if (peril === "rain" && request.city === "des-moines") {
+        const reason = desMoinesQuoteUnavailableReason(finalizedStatus, request.observationStart, request.observationEnd, trigger, request.operator);
         if (reason) return sendJson(res, 409, { error: "TESTER_QUOTE_UNAVAILABLE", message: reason });
-      } else if (!matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator, Math.floor(Date.now() / 1_000), request.city)) {
-        return sendJson(res, 409, { error: "TESTER_QUOTE_UNAVAILABLE", message: "That city's open window does not match this quote." });
+      } else if (!matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, trigger, request.operator, now, request.city, peril)) {
+        return sendJson(res, 409, { error: "TESTER_QUOTE_UNAVAILABLE", message: peril === "rain" ? "That city's open window does not match this quote." : "That trigger is not an open market." });
       }
-      const matched = matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, request.thresholdMm, request.operator, Math.floor(Date.now() / 1_000), request.city);
+      const matched = matchingOpenWindow(finalizedStatus, request.observationStart, request.observationEnd, trigger, request.operator, now, request.city, peril);
+      const modelVersion = PERILS[peril].modelVersion ?? "noaa-rain-v1";
       const quote = matched
         ? quoteFromCommittedMarketTerms({
           protectedAmount: amount,
           probabilityBps: matched.quoteProbabilityBps!,
           premiumRateBps: matched.premiumRateBps!,
           inputsHash: matched.quoteInputsHash!,
+          ...(peril === "rain" ? {} : { modelVersion: modelVersion as QuoteModelVersion }),
         })
         : await dependencies.quote({
-          ...request,
+          city: request.city,
           stationId: NOAA_STATIONS[request.city].stationId,
+          observationStart: request.observationStart,
+          observationEnd: request.observationEnd,
+          thresholdMm: trigger,
           protectedAmount: amount,
           operator: request.operator as TriggerOperator,
         });
@@ -156,6 +182,31 @@ export function createClaimReadinessHandler(dependencies: {
 
 function queryValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
+}
+
+async function windowQuoteResponse(
+  req: ApiRequest,
+  res: ApiResponse,
+  readWindowQuote: ((query: { peril: string; cityId: string; windowStart: string; windowEnd: string }) => Promise<WindowQuote>) | undefined,
+) {
+  if (!readWindowQuote) return sendJson(res, 503, { error: "WINDOW_QUOTE_UNAVAILABLE", message: "Window quotes are not configured." });
+  const peril = queryValue(req.query?.peril) ?? "rain";
+  const cityId = queryValue(req.query?.city) ?? queryValue(req.query?.cityId);
+  const windowStart = queryValue(req.query?.observationStart) ?? queryValue(req.query?.windowStart);
+  const windowEnd = queryValue(req.query?.observationEnd) ?? queryValue(req.query?.windowEnd);
+  if (!cityId || !windowStart || !windowEnd || !isPerilId(peril)) {
+    return sendJson(res, 400, { error: "INVALID_WINDOW_QUOTE", message: "city, peril, observationStart, and observationEnd are required." });
+  }
+  try {
+    res.setHeader("Cache-Control", "no-store");
+    return sendJson(res, 200, await readWindowQuote({ peril, cityId, windowStart, windowEnd }));
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+    const message = error instanceof Error ? error.message : "The window quote could not be prepared.";
+    if (code === "PERIL_NOT_OPEN" || code === "PERIL_NOT_AVAILABLE") return sendJson(res, 409, { error: code, message });
+    if (code === "DATA_UNAVAILABLE") return sendJson(res, 503, { error: code, message });
+    return sendJson(res, 400, { error: "INVALID_WINDOW_QUOTE", message });
+  }
 }
 
 export type { UnsignedTxResult };

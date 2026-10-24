@@ -57,7 +57,7 @@ async function main() {
 <body style="font-family:system-ui;padding:24px;background:#0b1220;color:#e8eef8;max-width:720px">
 <h1>${city ?? "Live city"} ladder (Devnet)</h1>
 <p>Unlock Phantom as <code>${EXPECTED_ADMIN}</code> on Devnet. Approve each missing rung: create, fund 2,000 SKYT, then open. This page does not use a stored admin key.</p>
-<ul>${payload.summary.map((row) => `<li>${row.label}: ≥${row.thresholdMm} mm, premium ${row.premiumRateBps} bps</li>`).join("")}</ul>
+<ul>${payload.summary.map((row) => `<li>${row.label}: ≥${row.triggerValue} ${row.unit}, premium ${row.premiumRateBps} bps</li>`).join("")}</ul>
 <button id="start" style="font-size:18px;padding:12px 20px;cursor:pointer">Start with Phantom</button>
 <pre id="log" style="margin-top:16px;white-space:pre-wrap"></pre>
 <script>${readFileSync(bundlePath, "utf8")}</script>

@@ -3,11 +3,12 @@ import { BorshCoder, type Idl } from "@coral-xyz/anchor";
 import { getMint } from "@solana/spl-token";
 import { Connection, PublicKey } from "@solana/web3.js";
 import committedIdl from "../../shared/idl/skyhedge_protection.json" with { type: "json" };
-import methodology from "../../shared/methodology-v1.json" with { type: "json" };
-import { canonicalSourceHash, NOAA_STATIONS } from "./noaa.js";
+import { NOAA_STATIONS } from "./noaa.js";
 import { getDesMoinesEvidencePackage, type DesMoinesEvidencePackage } from "./des-moines-evidence.js";
 import { marketStateFromStatusJson } from "../../shared/des-moines-seed-plan.js";
-import { LIVE_CITY_SLUGS, tenorOf, type LiveCitySlug, type Tenor } from "../../shared/window-ladder.js";
+import { tenorOf, type LiveCitySlug, type Tenor } from "../../shared/window-ladder.js";
+import { resolveCityPeril, type PerilId } from "../../shared/perils.js";
+import { perilForPinnedHashes } from "./methodology-docs.js";
 import type { WindowEvidencePackage } from "../../shared/window-chain.js";
 import { callWithRpcFailover, prepareRpcUrls } from "./rpc-failover.js";
 import { RainfallConsensusService } from "./consensus.js";
@@ -69,10 +70,14 @@ export interface LadderMarketSnapshot {
   observationEnd: number | null;
   vaultBalance: string | null;
   tenor: Tenor | null;
+  peril: PerilId;
+  thresholdMmX100: string | null;
+  operator: "gt" | "gte" | "lt" | "lte" | null;
 }
 
 export interface CityWindowSnapshot {
   city: LiveCitySlug;
+  peril: PerilId;
   tenor: Tenor;
   status: "ready";
   address: string;
@@ -247,8 +252,10 @@ export class DevnetStatusReader {
         if (!account) continue;
         const decoded = this.decodeAccount<Record<string, unknown>>("Market", account.data);
         const marketCityHash = bytesHex(decoded?.city_hash);
-        const slug = slugForCityHash(marketCityHash);
-        if (!slug) continue;
+        const resolved = slugForCityHash(marketCityHash);
+        if (!resolved) continue;
+        const slug = resolved.city;
+        const peril = resolved.peril;
         const marketAddress = addresses[index];
         const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), marketAddress.toBuffer()], this.programId);
         found.push({
@@ -263,6 +270,7 @@ export class DevnetStatusReader {
           onchainStatus: JSON.stringify(decoded?.status ?? null),
           ...marketTermsFields(decoded),
           evidenceStatus: hasPinnedStationEvidence(decoded, NOAA_STATIONS[slug].stationId) ? "validated" : "researching_evidence",
+          peril,
           targetCityHash: marketCityHash,
           raw: decoded ?? {},
         });
@@ -350,10 +358,10 @@ export function latestMatchingMarket<T extends { id: bigint; cityHash: string }>
   return latest;
 }
 
-type ListedMarket = DevnetStatus["desMoinesMarket"] & { raw: Record<string, unknown>; id: bigint; city: LiveCitySlug; cityHash: string };
+type ListedMarket = DevnetStatus["desMoinesMarket"] & { raw: Record<string, unknown>; id: bigint; city: LiveCitySlug; cityHash: string; peril: PerilId };
 
 function marketStatus(market: ListedMarket): DevnetStatus["desMoinesMarket"] {
-  const { raw: _raw, id: _id, city: _city, cityHash: _cityHash, ...status } = market;
+  const { raw: _raw, id: _id, city: _city, cityHash: _cityHash, peril: _peril, ...status } = market;
   return status;
 }
 
@@ -372,15 +380,15 @@ function ladderSnapshot(market: ListedMarket): LadderMarketSnapshot {
     observationEnd: market.observationEnd,
     vaultBalance: market.vaultBalance,
     tenor,
+    peril: market.peril,
+    thresholdMmX100: market.thresholdMmX100,
+    operator: market.operator,
   };
 }
 
-function slugForCityHash(hash: string): LiveCitySlug | null {
-  for (const slug of LIVE_CITY_SLUGS) {
-    if (cityHash(slug) === hash) return slug;
-  }
-  if (hash === cityHash("Des Moines")) return "des-moines";
-  return null;
+/** Rain stays sha256(city slug), including the legacy "Des Moines" spelling. Other perils use sha256(`${city}:${peril}`). */
+function slugForCityHash(hash: string): { city: LiveCitySlug; peril: PerilId } | null {
+  return resolveCityPeril(hash);
 }
 
 function sellingWindow(market: ListedMarket, nowSeconds: number): CityWindowSnapshot[] {
@@ -395,6 +403,7 @@ function sellingWindow(market: ListedMarket, nowSeconds: number): CityWindowSnap
   if (!market.vaultBalance || !/^\d+$/.test(market.vaultBalance) || BigInt(market.vaultBalance) === 0n) return [];
   return [{
     city: market.city,
+    peril: market.peril,
     tenor,
     status: "ready",
     address: market.address,
@@ -485,9 +494,13 @@ export function hasPinnedDesMoinesEvidenceCommitment(decoded: Record<string, unk
 }
 
 export function hasPinnedStationEvidence(decoded: Record<string, unknown> | null | undefined, stationId: string): boolean {
-  if (bytesHex(decoded?.station_id_hash) !== canonicalSourceHash(stationId)) return false;
-  if (bytesHex(decoded?.provider_hash) !== canonicalSourceHash(methodology)) return false;
-  if (bytesHex(decoded?.methodology_hash) !== canonicalSourceHash(methodology.version)) return false;
+  const peril = perilForPinnedHashes(
+    stationId,
+    bytesHex(decoded?.station_id_hash),
+    bytesHex(decoded?.provider_hash),
+    bytesHex(decoded?.methodology_hash),
+  );
+  if (!peril) return false;
   const quoteInputsHash = bytesHex(decoded?.quote_inputs_hash);
   return /^[0-9a-f]{64}$/i.test(quoteInputsHash) && !/^0{64}$/i.test(quoteInputsHash);
 }
