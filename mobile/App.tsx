@@ -32,18 +32,17 @@ import { authorizeDevnetWallet, signAndConfirmDevnetTransaction, type Authorized
 import { clearWalletSession, loadWalletSession, saveWalletSession } from "./src/wallet-session-store";
 import { consumerCityBySlug, consumerCityName } from "../shared/consumer-cities.ts";
 import { C, F, glass, MIN_TOUCH, space as S, type as T } from "./src/theme";
-import { ActionButton, AppIcon, Text, type AppIconName } from "./src/ui";
+import { ActionButton, AppIcon, Text } from "./src/ui";
 import { friendlyError, isNetworkError, stationLabel } from "./src/friendly-errors";
 import { ScreenTransition, TactilePressable } from "./src/liquid-glass";
 import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
-import { ConfirmCover, MarketsScreen, ProtectTicket, StickyCta, WalletV2 } from "./src/v2";
+import { ConfirmCover, MarketsScreen, StickyCta, WalletV2 } from "./src/v2";
 import { liveMarketLabel, protectCityFor, sellingWindows, windowsForCity, type Tenor } from "./src/windows";
 import { committedWindowLabel, expiryChipLabel, matchingWindowPackage, sortByExpiry, type WindowEvidencePackage } from "../shared/window-chain.ts";
 import { payGet } from "../shared/pay-get.ts";
 import { coverBaseUnits, coverExceedsBalance, formatQuoteSkyt, notEnoughSkyt, protectButtonLabel, stakeSheetForCover, stationDisplayName, type CoverChip } from "../shared/protect-copy.ts";
 import { showCityStep } from "./src/consumer-flow";
 import { loadFirstRunDone, markFirstRunDone } from "./src/first-run";
-import { buyCtaVisible, nextWeeklyOpenCopy, openCityPrompt, protectSurface } from "../shared/protect-surface.ts";
 import { coverageOptions, type CoverageOption } from "./src/ticket";
 import { Landing, MarketDetail } from "./src/revamp";
 import { CollectPayoutView, ReceiptView } from "./src/journey";
@@ -53,7 +52,9 @@ import { GlassTargetContext } from "./src/liquid-glass";
 import { formatSkytFixed, shortAddress } from "./src/ticket";
 import { consumerCityByCode } from "../shared/consumer-cities.ts";
 import { marketByCode, type CatalogMarket } from "./src/markets-catalog";
-import { LinearGradient } from "expo-linear-gradient";
+import { lineTokens } from "../shared/ui-tokens.ts";
+import { LinePay, ProtectBody, TabGlyph } from "./src/line/ProtectLine";
+import { useLineProtect } from "./src/line/use-line";
 import { ScrollEdgeFade } from "./src/scroll-edge-fade";
 import { SCROLL_FADE_HEIGHT } from "./src/scroll-fade";
 import { APP_BUILD, APP_VERSION } from "./src/version";
@@ -324,18 +325,11 @@ export default function App() {
   const activeWindow = openWindows.find((window) => window.address === selectedWindow) ?? openWindows[0] ?? null;
   const coveredPosition = wallet ? positionForWindow(chainPositions, activeWindow?.address) : null;
   const alreadyCovered = !!coveredPosition || (!!claimReadiness && claimReadiness.state !== "no_position");
-  const protectView = protectSurface({
-    loading: (homeLoading && !status) || (openWindows.length > 0 && evidenceLoading),
-    failed: (!!statusError && !status) || (openWindows.length > 0 && evidenceError),
-    openWindowCount: openWindows.length,
-  });
-  const nextOpenCopy = nextWeeklyOpenCopy(protectCity, nowSeconds);
-  const openCity = openCityPrompt(selling, protectCity);
   const activePackage = matchingWindowPackage(windowEvidence, protectCity, activeWindow?.observationStart, activeWindow?.observationEnd);
   const hasPosition = (chainPositions?.length ?? 0) > 0;
   const cityStep = showCityStep({ firstRun, walletConnected: !!wallet, hasPosition });
   const safeBottom = initialWindowMetrics?.insets.bottom ?? 0;
-  const stickyOpen = !showLanding && tab === "protect" && (demo === "collect" || (!demo && buyCtaVisible(protectView, !!activePackage)));
+  const stickyOpen = !showLanding && tab === "protect";
   const scrollBottom = (stickyOpen ? stickyHeight + SCROLL_FADE_HEIGHT : 0) + (showLanding ? 0 : tabHeight) + safeBottom + 16;
   useEffect(() => {
     if (!wallet && !hasPosition) return;
@@ -551,6 +545,20 @@ export default function App() {
     return () => { cancelled = true; };
   }, [wallet, activeWindow?.address]);
 
+  const line = useLineProtect({
+    cityId: protectCity,
+    windows: openWindows,
+    evidence: windowEvidence,
+    evidenceLoading,
+    evidenceFailed: evidenceError,
+    statusLoading: homeLoading && !status,
+    statusFailed: Boolean(statusError && !status),
+    connected: Boolean(wallet),
+    signing: buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending" || buyPhase === "checking",
+    coveredMarket: coveredPosition?.market ?? (alreadyCovered && activeWindow?.address ? activeWindow.address : null),
+    nowSeconds,
+  });
+
   if (!fontsLoaded && !fontError) return <SafeAreaProvider><SafeAreaView style={styles.fontLoading}><StatusBar barStyle="light-content" backgroundColor={C.canvas} /><ActivityIndicator color={C.green} /></SafeAreaView></SafeAreaProvider>;
 
   return (
@@ -559,7 +567,7 @@ export default function App() {
       <StatusBar barStyle="light-content" backgroundColor={C.canvas} translucent={false} />
       <GlassTargetContext.Provider value={glassTarget}>
       <View pointerEvents="none" style={StyleSheet.absoluteFill}><BlurTargetView ref={glassTarget} style={StyleSheet.absoluteFill}>
-        <LinearGradient colors={["#122033", C.canvas, C.canvas, "#121820"]} locations={[0, 0.35, 0.75, 1]} style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: C.canvas }]} />
       </BlurTargetView></View>
 
       <View style={styles.scrollWrap} onLayout={(event) => { const next = Math.round(event.nativeEvent.layout.height); setScrollViewportHeight((prev) => prev === next ? prev : next); }}>
@@ -627,49 +635,11 @@ export default function App() {
               <View style={{ marginTop: 16 }}><ActionButton label="Retry" icon="refresh-cw" onPress={() => { void retryData(); }} /></View>
             </View>
           ) : (
-            <ProtectTicket
-              status={status}
-              nowSeconds={nowSeconds}
-              coverageId={coverageId}
-              onCoverage={chooseCoverage}
-              walletConnected={!!wallet}
-              walletSkytBase={walletBalances ? String(walletBalances.skytBaseUnits) : null}
-              amountBase={amountBase}
-              quote={quote}
-              quoteBusy={quoteBusy}
-              quoteError={quoteError}
-              onRetryQuote={() => { void requestProtectionQuote(); }}
-              unavailableReason={protectionUnavailableReason}
-              claimReadiness={claimReadiness}
-              claimError={claimError}
-              coveredPosition={coveredPosition}
-              transactionMessage={transactionMessage}
-              transactionError={transactionError}
-              transactionDetail={transactionDetail}
-              transactionSignature={transactionSignature}
-              buyPhase={buyPhase}
-              onViewWallet={() => { setTab("wallet"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
-              onRetryBuy={() => { void submitApprovedAction("open_position"); }}
-              walletName={WALLET_NAME}
-              onRefresh={() => { void refresh(); }}
-              observedMm={city?.slug === "des-moines" ? city.cumulativeMm : null}
-              onProtectAgain={() => { setTransactionSignature(null); setTransactionMessage(null); setTransactionError(null); setBuyPhase(null); scrollRef.current?.scrollTo({ y: 0, animated: true }); }}
-              onBackToMarkets={() => { setTransactionSignature(null); setTab("catalog"); setDetailCode(null); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
-              tenor={tenor}
-              onTenor={(next) => { setTenor(next); setSelectedWindow(null); setQuote(null); }}
-              windows={openWindows}
-              city={protectCity}
-              selectedAddress={activeWindow?.address ?? null}
-              onSelectWindow={(address) => { setSelectedWindow(address); setQuote(null); }}
-              windowEvidence={windowEvidence}
-              evidenceLoading={evidenceLoading}
-              cities={CITY_ORDER.map((slug) => ({ slug, label: consumerCityBySlug(slug)?.city ?? slug }))}
+            <ProtectBody
+              line={line}
               onCity={changeCity}
-              surface={protectView}
-              nextOpenCopy={nextOpenCopy}
-              openCity={openCity}
-              scrollViewportHeight={scrollViewportHeight}
-              scrollContentOffset={SCROLL_CONTENT_PADDING_TOP}
+              onWallet={() => { setTab("wallet"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
+              onRetry={() => setEvidenceNonce((count) => count + 1)}
             />
           )
         ) : null}
@@ -712,75 +682,7 @@ export default function App() {
       </View>
 
       {!showLanding && tab === "protect" && demo === "collect" ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><ScrollEdgeFade style={styles.scrollEdgeFade} /><StickyCta label="Collect payout to wallet" disabled hint="DEMO preview — disabled, nothing to sign" onPress={() => {}} /></View> : null}
-      {!showLanding && tab === "protect" && !demo && buyCtaVisible(protectView, !!activePackage) ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><ScrollEdgeFade style={styles.scrollEdgeFade} />{(() => {
-        if (!status) return null;
-        const claimable = claimReadiness?.state === "claimable" && claimReadiness.action;
-        if (claimable) return <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness?.action) void submitApprovedAction(claimReadiness.action); }} />;
-        const quoteReady = !!quote && quote.protectedAmount === amountBase;
-        const threshold = activeWindow?.thresholdMmX100 && /^\d+$/.test(activeWindow.thresholdMmX100) ? Number(activeWindow.thresholdMmX100) / 100 : null;
-        const deal = quoteReady && quote?.premiumRateBps && quote.probabilityBps && amountBase
-          ? payGet({ coverageSkyt: Number(BigInt(amountBase) / 1_000_000n), premiumRateBps: quote.premiumRateBps, probabilityBps: quote.probabilityBps })
-          : null;
-        const coveredNow = alreadyCovered && buyPhase !== "checking";
-        const button = protectButtonLabel({ connected: !!wallet, premiumLabel: deal?.payLabel ?? null, triggerChosen: threshold != null && !!activeWindow, covered: coveredNow });
-        const windowLabel = activeWindow ? committedWindowLabel(activeWindow) : null;
-        const expiry = windowLabel?.split(" – ")[1] ?? (activeWindow ? expiryChipLabel(activeWindow)?.split(" · ")[0] ?? "" : "");
-        const station = stationDisplayName(consumerCityBySlug(protectCity)?.source ?? null);
-        const buying = buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending" || buyPhase === "checking";
-        const sheetFor = (skyt: CoverChip) => {
-          if (threshold == null || !activeWindow || !windowLabel || !station || !expiry) return null;
-          const amount = coverBaseUnits(skyt);
-          return stakeSheetForCover({
-            coverSkyt: skyt,
-            probabilityBps: activeWindow.quoteProbabilityBps,
-            premiumRateBps: activeWindow.premiumRateBps,
-            inputsHash: activeWindow.quoteInputsHash,
-            protocolFeeBase: quote && amount && quote.protectedAmount === amount ? quote.protocolFee : null,
-            city: consumerCityBySlug(protectCity)?.city,
-            station,
-            triggerMm: threshold,
-            windowLabel,
-          });
-        };
-        const ledger = sheetFor((["50", "100", "250"] as const).includes(coverageId as "50" | "100" | "250") ? Number(coverageId) as CoverChip : 100);
-        const balanceLabel = walletBalances ? formatQuoteSkyt(String(walletBalances.skytBaseUnits), 2) : null;
-        return <StickyCta
-          label={buyPhase === "failed" ? "Retry" : button.label}
-          disabled={buying ? true : button.action === "connect" ? false : button.disabled}
-          busy={buying || (button.action === "connect" && loading)}
-          busyLabel={buying && buyPhase ? buyPhaseLabel(buyPhase) : undefined}
-          payLine={ledger?.payLine ?? null}
-          ledgerGet={ledger?.ledgerGetLine ?? null}
-          ledgerMeta={ledger?.ledgerMeta ?? null}
-          onPress={() => {
-            if (button.action === "connect") { void connect(); return; }
-            if (buyPhase === "failed") { void submitApprovedAction("open_position"); return; }
-            if (button.action !== "protect" || !activeWindow || !amountBase) return;
-            const skyt = (["50", "100", "250"] as const).includes(coverageId as "50" | "100" | "250") ? Number(coverageId) as CoverChip : 100;
-            const model = sheetFor(skyt);
-            if (!model) return;
-            setCoverConfirm({
-              sentence: model.getLine,
-              station: station ?? "",
-              expiry,
-              windowLabel: windowLabel ?? "",
-              pay: model.premiumLabel,
-              getLabel: model.coverLabel,
-              market: activeWindow.address,
-              amount: coverBaseUnits(skyt) ?? amountBase,
-              multiple: model.multiple,
-              feeLine: model.feeLine,
-              getLine: model.getLine,
-              preSign: model.preSign,
-              conditionLine: model.conditionLine,
-              placeLine: model.placeLine,
-              triggerLine: model.triggerLine,
-              shortLabel: balanceLabel && coverExceedsBalance(model.payBase, walletBalances ? String(walletBalances.skytBaseUnits) : null) ? notEnoughSkyt(balanceLabel) : null,
-              coverSkyt: skyt,
-            });
-          }}
-        />;
-      })()}</View> : null}
+      {!showLanding && tab === "protect" && !demo ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><ScrollEdgeFade style={styles.scrollEdgeFade} />{claimReadiness?.state === "claimable" && claimReadiness.action ? <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness.action) void submitApprovedAction(claimReadiness.action); }} /> : <LinePay line={line} onConnect={() => { void connect(); }} onApprove={() => { if (line.approveTarget) void submitApprovedAction("open_position", line.approveTarget.market, line.approveTarget.amount); }} onWallet={() => setTab("wallet")} onRetry={() => setEvidenceNonce((count) => count + 1)} onCity={changeCity} />}</View> : null}
       {coverConfirm ? <ConfirmCover {...coverConfirm} onClose={() => setCoverConfirm(null)} onCover={(skyt) => {
         const option = coverageOptions(walletBalances ? String(walletBalances.skytBaseUnits) : null).find((item) => item.id === String(skyt));
         if (option) chooseCoverage(option);
@@ -808,9 +710,9 @@ export default function App() {
         handleConfirmApprove({ close: () => setCoverConfirm(null), signOpenPosition: () => { void submitApprovedAction("open_position", pending.market, pending.amount); } });
       }} /> : null}
       {showLanding ? null : <View style={styles.bottomBar} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setTabHeight((prev) => prev === next ? prev : next); }} accessibilityRole="tablist" accessibilityLabel="Main navigation">
-        <TabButton label="Markets" icon="map-pin" selected={tab === "catalog" || tab === "weather"} onPress={() => { setDemo(null); setTab("catalog"); setDetailCode(null); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} />
-        <TabButton label="Protect" icon="shield" selected={tab === "protect"} onPress={() => setTab("protect")} />
-        <TabButton label="Wallet" icon="credit-card" selected={tab === "wallet"} onPress={() => { setDemo(null); setTab("wallet"); }} />
+        <TabButton label="Markets" glyph="markets" selected={tab === "catalog" || tab === "weather"} onPress={() => { setDemo(null); setTab("catalog"); setDetailCode(null); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} />
+        <TabButton label="Protect" glyph="protect" selected={tab === "protect"} onPress={() => setTab("protect")} />
+        <TabButton label="Wallet" glyph="wallet" selected={tab === "wallet"} onPress={() => { setDemo(null); setTab("wallet"); }} />
       </View>}
       </GlassTargetContext.Provider>
     </SafeAreaView>
@@ -819,12 +721,13 @@ export default function App() {
 }
 
 
-function TabButton({ label, icon, selected, onPress }: { label: string; icon: AppIconName; selected: boolean; onPress: () => void }) {
+function TabButton({ label, glyph, selected, onPress }: { label: string; glyph: "markets" | "protect" | "wallet"; selected: boolean; onPress: () => void }) {
   return (
-    <TactilePressable containerStyle={styles.tabButtonWrap} accessibilityRole="tab" accessibilityLabel={`${label} tab`} accessibilityState={{ selected }} onPress={onPress} android_ripple={{ color: C.rainSoft }} style={[styles.tabButton, selected && styles.tabButtonSelected]}>
-      <AppIcon name={icon} color={selected ? C.rain : C.quiet} size={21} />
+    <Pressable accessibilityRole="tab" accessibilityLabel={`${label} tab`} accessibilityState={{ selected }} onPress={onPress} style={styles.tabButton}>
+      <View style={selected ? styles.tabTick : styles.tabTickSpace} />
+      <TabGlyph name={glyph} color={selected ? lineTokens.fg : lineTokens.fg2} />
       <Text style={[styles.tabLabel, selected && styles.tabLabelSelected]}>{label}</Text>
-    </TactilePressable>
+    </Pressable>
   );
 }
 
@@ -878,10 +781,11 @@ const styles = StyleSheet.create({
   retryButtonText: { ...T.label, color: C.ink },
   emptyState: { backgroundColor: glass.fill, borderColor: glass.border, borderWidth: 1, borderRadius: glass.radius, padding: S.lg, marginTop: S.sm, boxShadow: glass.shadow },
   emptyTitle: { ...T.heading, color: C.ink, marginBottom: S.xs },
-  bottomBar: { zIndex: 6, minHeight: 76, backgroundColor: C.canvas + "F0", borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: "0px -8px 24px rgba(0,0,0,0.45)", borderTopWidth: 1, borderTopColor: glass.border, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10, paddingHorizontal: S.sm },
+  bottomBar: { zIndex: 6, minHeight: 64, backgroundColor: lineTokens.bg, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 6, paddingHorizontal: S.sm },
   tabButtonWrap: { flex: 1, minWidth: 0 },
-  tabButton: { flex: 1, minWidth: 0, minHeight: 58, alignItems: "center", justifyContent: "center", borderRadius: 14, paddingHorizontal: 2 },
-  tabButtonSelected: { backgroundColor: C.surfaceRaised, borderWidth: 1, borderColor: C.border, borderRadius: 16 },
-  tabLabel: { ...T.caption, color: C.quiet, fontFamily: F.bodyMedium, marginTop: 5 },
-  tabLabelSelected: { color: C.rain, fontFamily: F.bodySemi },
+  tabButton: { flex: 1, minWidth: 0, minHeight: 64, alignItems: "center", justifyContent: "center", paddingHorizontal: 2 },
+  tabTick: { width: 24, height: 3, backgroundColor: lineTokens.glacier, marginBottom: 4 },
+  tabTickSpace: { width: 24, height: 3, marginBottom: 4 },
+  tabLabel: { color: lineTokens.fg2, fontFamily: F.bodyMedium, fontSize: 13, marginTop: 2 },
+  tabLabelSelected: { color: lineTokens.fg },
 });

@@ -6,6 +6,7 @@
     "client/src/pages/*.tsx",
     "client/src/components/ui/**/*",
     "client/src/components/*.tsx",
+    "client/src/components/line/**/*.tsx",
     "client/src/lib/*.ts",
     "shared/schema.ts",
     "shared/public-origins.ts",
