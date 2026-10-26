@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CITIES } from "../../../shared/peril-registry.ts";
-import { matchingQuote, quoteNotOpen, windowQuoteRequest, type QuoteWindow } from "../../../shared/ui-window-quote.ts";
+import { TRIGGER, WINDOW_WORD } from "../../../shared/ui-copy.ts";
+import { matchingQuote, pickDefaultWindow, quoteNotOpen, windowQuoteRequest, type QuoteWindow, type TenorAvailability } from "../../../shared/ui-window-quote.ts";
 import type { CoverSize, PerilId, WindowQuote } from "../../../shared/ui-types.ts";
 import type { MarketSelection } from "../../../shared/ui-discovery.ts";
 import { getJson } from "../api.ts";
@@ -21,7 +22,11 @@ export function useLineProtect(input: {
   nowSeconds: number;
 }) {
   const [peril, setPeril] = useState<PerilId>("rain");
-  const [tenor, setTenor] = useState<"weekly" | "monthly">("weekly");
+  const [chosenTenor, setChosenTenor] = useState<"weekly" | "monthly" | null>(null);
+  const defaultWindow = pickDefaultWindow({ ...input, peril });
+  const tenor = chosenTenor ?? defaultWindow.tenor ?? "weekly";
+  const tenorOpen = defaultWindow.tenorAvailability;
+  const setTenor = (value: "weekly" | "monthly") => setChosenTenor(value);
   const [cover, setCover] = useState<CoverSize>(100);
   const [selectedTrigger, setSelectedTrigger] = useState<number | null>(null);
   const [sheet, setSheet] = useState<SheetName>(null);
@@ -44,6 +49,9 @@ export function useLineProtect(input: {
   const coveredMarket = quote?.rungs.some((rung) => rung.marketAddress === input.coveredMarket) ? input.coveredMarket : null;
   const model = useMemo(() => buildProtectModel({
     cityId: input.cityId,
+    windows: input.windows,
+    nowSeconds: input.nowSeconds,
+    tenorOpen,
     peril,
     tenor,
     windowStart: request.start,
@@ -62,11 +70,16 @@ export function useLineProtect(input: {
     usedSkyt: 0,
     reading: null,
     running: false,
-  }), [input.cityId, input.connected, input.signing, coveredMarket, peril, tenor, quote, request.start, request.end, loading, failed, cover, selectedTrigger]);
+  }), [input.cityId, input.windows, input.nowSeconds, tenorOpen.weekly, tenorOpen.monthly, input.connected, input.signing, coveredMarket, peril, tenor, quote, request.start, request.end, loading, failed, cover, selectedTrigger]);
   useEffect(() => { setSelectedTrigger(null); setSheet(null); }, [input.cityId, tenor, peril]);
-  const market = quote?.rungs.find((rung) => rung.triggerValue === model.selected)?.marketAddress ?? null;
+  const rung = quote?.rungs.find((rung) => rung.triggerValue === model.selected);
+  const market = rung?.marketAddress ?? null;
+  const premiumBase = rung?.premiumBase[cover];
+  const triggerLabel = model.signRows.find((row) => row.label === TRIGGER)?.value;
+  const windowLabel = model.signRows.find((row) => row.label === WINDOW_WORD)?.value;
   return {
     model,
+    tenorOpen,
     cityId: input.cityId,
     windowStart: request.start,
     cities: CITIES,
@@ -77,12 +90,13 @@ export function useLineProtect(input: {
     setCover,
     setSelectedTrigger,
     chooseMarket: (market: MarketSelection) => { setSelection(market); setPeril(market.peril); setTenor(market.tenor); setCover(100); setSelectedTrigger(market.trigger); },
-    approveTarget: market && model.panel.kind === "ready" && !model.blocked && !model.chips.some((chip) => chip.selected && chip.disabled) ? { market, amount: `${cover}000000` } : null,
+    approveTarget: market && premiumBase && /^\d+$/.test(premiumBase) && triggerLabel && windowLabel && model.panel.kind === "ready" && !model.blocked && !model.chips.some((chip) => chip.selected && chip.disabled) ? { market, amount: `${cover}000000`, cover, premiumBase, triggerLabel, windowLabel } : null,
   };
 }
 
 export type LineController = {
   model: ProtectModel;
+  tenorOpen: TenorAvailability;
   cityId: string;
   windowStart: string;
   cities: typeof CITIES;
@@ -92,5 +106,5 @@ export type LineController = {
   setTenor: (tenor: "weekly" | "monthly") => void;
   setCover: (cover: CoverSize) => void;
   setSelectedTrigger: (trigger: number) => void;
-  approveTarget: { market: string; amount: string } | null;
+  approveTarget: { market: string; amount: string; cover: CoverSize; premiumBase: string; triggerLabel: string; windowLabel: string } | null;
 };

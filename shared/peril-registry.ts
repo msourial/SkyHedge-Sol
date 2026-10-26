@@ -17,7 +17,6 @@ export type PerilDefinition = {
   tint: string;
   /** Phrase after the station name. The trigger label already includes its unit. */
   verb: (triggerLabel: string) => string;
-  odds: { under15: string; mid: string; over35: string } | null;
   honesty: (station: string) => string | null;
 };
 
@@ -28,8 +27,7 @@ export const PERILS: readonly PerilDefinition[] = [
     unit: "mm",
     direction: "up",
     tint: lineTokens.rain,
-    verb: (trigger) => `records ${trigger} of rain or more`,
-    odds: { under15: "Probably dry.", mid: "Bring a jacket, maybe.", over35: "Umbrella week." },
+    verb: (trigger) => `records ${trigger} or more`,
     honesty: () => null,
   },
   {
@@ -38,8 +36,7 @@ export const PERILS: readonly PerilDefinition[] = [
     unit: "mm",
     direction: "up",
     tint: lineTokens.snow,
-    verb: (trigger) => `records ${trigger} of snow or more`,
-    odds: { under15: "The shovel can stay put.", mid: "Boots by the door, maybe.", over35: "Plan on shoveling." },
+    verb: (trigger) => `records ${trigger} or more`,
     honesty: () => null,
   },
   {
@@ -49,7 +46,6 @@ export const PERILS: readonly PerilDefinition[] = [
     direction: "up",
     tint: lineTokens.wind,
     verb: (trigger) => `records a peak wind of ${trigger} or more`,
-    odds: { under15: "Hats stay on.", mid: "Hold the umbrella tight.", over35: "Secure the patio." },
     honesty: (station) => `Measured as the strongest wind NOAA records at ${station} that day.`,
   },
   {
@@ -59,7 +55,6 @@ export const PERILS: readonly PerilDefinition[] = [
     direction: "up",
     tint: lineTokens.heat,
     verb: (trigger) => `reaches a high of ${trigger} or more`,
-    odds: { under15: "Cool enough.", mid: "Short sleeves, maybe.", over35: "A warm spell." },
     honesty: (station) => `Measured as the day's highest temperature at ${station}.`,
   },
   {
@@ -69,7 +64,6 @@ export const PERILS: readonly PerilDefinition[] = [
     direction: "down",
     tint: lineTokens.cold,
     verb: (trigger) => `falls to a low of ${trigger} or less`,
-    odds: null,
     honesty: () => null,
   },
 ];

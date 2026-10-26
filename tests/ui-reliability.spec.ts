@@ -92,12 +92,12 @@ test("research-only hazard selection on Protect hides rainfall inputs and blocks
   await page.goto("/app?tab=protect&city=des-moines");
   await page.getByRole("tab", { name: "Wind" }).click();
 
-  await expect(page.getByText("Wind isn't open for Des Moines yet.")).toBeVisible();
+  await expect(page.getByText("Wind isn't open for Des Moines this week.")).toBeVisible();
   await expect(page.getByText("Rainfall threshold (mm / in)")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Request NOAA quote" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Approve Devnet protection" })).toHaveCount(0);
   await page.getByRole("tab", { name: "Snow" }).click();
-  await expect(page.getByText("Snow isn't open for Des Moines yet.")).toBeVisible();
+  await expect(page.getByText("Snow isn't open for Des Moines this week.")).toBeVisible();
   expect(apiRequests).toEqual([]);
 
   await page.getByRole("tab", { name: "Rain" }).click();
@@ -202,7 +202,7 @@ test("switching hazards clears an earlier rainfall quote until a new quote is re
   });
   await page.goto("/app?tab=protect&city=des-moines");
   await page.getByRole("tab", { name: "Wind" }).click();
-  await expect(page.getByText("Wind isn't open for Des Moines yet.")).toBeVisible();
+  await expect(page.getByText("Wind isn't open for Des Moines this week.")).toBeVisible();
   await page.getByRole("tab", { name: "Rain" }).click();
   await expect(page.getByText("Quote ready", { exact: true })).toHaveCount(0);
   expect(quoteCalls).toBe(0);

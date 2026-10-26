@@ -259,7 +259,7 @@ export function windowStamp(input: {
   };
 }
 
-/** <15% Probably dry. 15–35% Bring a jacket, maybe. >35% Umbrella week. */
+/** @deprecated Compatibility for legacy copy tests only; never return this band to a screen. */
 export function forecasterBand(chancePercent: number): "Probably dry." | "Bring a jacket, maybe." | "Umbrella week." | null {
   if (!Number.isFinite(chancePercent) || chancePercent < 0 || chancePercent > 100) return null;
   if (chancePercent < 15) return "Probably dry.";
@@ -308,7 +308,7 @@ export function marketRowModel(input: {
       figures: `≥${formatMm(input.triggerMm)} mm  ${input.multiple}`,
       status: "Open",
       ink: "glacier",
-      forecaster: forecasterCopy({ probabilityBps: input.probabilityBps, station, triggerMm: input.triggerMm }),
+      forecaster: null,
     };
   }
   return { stationLine: station, figures: null, status: input.closed ? "Closed" : NOT_OPEN_YET, ink: "dry", forecaster: null };

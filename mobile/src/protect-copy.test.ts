@@ -190,7 +190,7 @@ describe("market rows", () => {
     assert.equal(open.stationLine, "Central Park · weekly to Nov 2");
     assert.equal(open.figures, "≥69 mm  4.1×");
     assert.equal(open.status, "Open");
-    assert.equal(open.forecaster?.band, "Bring a jacket, maybe.");
+    assert.equal(open.forecaster, null);
     const chicago = marketRowModel({ slug: "chicago", stationSource: "NOAA O'Hare", open: false, tenor: null, expiry: null, triggerMm: null, multiple: null, probabilityBps: null });
     assert.equal(chicago.stationLine, "O'Hare");
     assert.equal(chicago.status, "Not open yet");

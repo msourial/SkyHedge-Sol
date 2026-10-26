@@ -12,6 +12,38 @@ export type QuoteWindow = {
   salesCloseAt: number | null;
 };
 
+export type Tenor = QuoteWindow["tenor"];
+export type TenorAvailability = Record<Tenor, boolean>;
+
+/** Registry eligibility alone is not an open sale: require a live window too. */
+export function pickDefaultWindow(input: {
+  cityId: string;
+  peril: PerilId;
+  windows: readonly QuoteWindow[];
+  nowSeconds: number;
+}): { tenor: Tenor | null; window: QuoteWindow | null; tenorAvailability: TenorAvailability } {
+  const windows = openQuoteWindows(input);
+  const weekly = windows.find((window) => window.tenor === "weekly");
+  const monthly = windows.find((window) => window.tenor === "monthly");
+  const window = weekly ?? monthly ?? null;
+  return { tenor: window?.tenor ?? null, window, tenorAvailability: { weekly: !!weekly, monthly: !!monthly } };
+}
+
+export function openQuoteWindows(input: {
+  cityId: string;
+  peril: PerilId;
+  windows: readonly QuoteWindow[];
+  nowSeconds: number;
+}): QuoteWindow[] {
+  return input.windows.filter((window) => {
+    const start = isoFromSeconds(window.observationStart);
+    return input.peril !== "cold" && window.city === input.cityId && (window.peril ?? "rain") === input.peril
+      && !!window.address && start != null && window.observationEnd > window.observationStart
+      && (window.salesCloseAt ?? window.observationStart) > input.nowSeconds
+      && perilOpen({ cityId: input.cityId, peril: input.peril, windowStart: start, tenor: window.tenor });
+  }).sort((a, b) => a.observationStart - b.observationStart);
+}
+
 /** Choose dates from the live window when present; all prices come from the API. */
 export function windowQuoteRequest(input: {
   cityId: string;
@@ -21,10 +53,7 @@ export function windowQuoteRequest(input: {
   nowSeconds: number;
   selectedWindow?: { start: string; end: string } | null;
 }) {
-  const window = input.windows
-    .filter((item) => item.city === input.cityId && (item.peril ?? "rain") === input.peril && item.tenor === input.tenor)
-    .filter((item) => (item.salesCloseAt ?? item.observationStart) > input.nowSeconds)
-    .sort((a, b) => a.observationStart - b.observationStart)[0];
+  const window = openQuoteWindows(input).find((item) => item.tenor === input.tenor);
   const next = upcomingWindow(input.nowSeconds * 1000, input.tenor);
   const start = input.selectedWindow?.start ?? (window ? isoFromSeconds(window.observationStart) ?? next.start : next.start);
   const end = input.selectedWindow?.end ?? (window ? isoFromSeconds(window.observationEnd) ?? next.end : next.end);

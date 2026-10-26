@@ -84,3 +84,13 @@ test("native identities match the backend city/peril hash rule", async () => {
   }
   assert.equal(marketIdentity("unknown"), null);
 });
+
+test("Markets exposes factual quote data with no wry odds band", () => {
+  const markets = marketModels(DISCOVERY_QUOTES, PREVIEW_NOW);
+  for (const market of markets) {
+    assert.equal("odds" in market, false);
+    assert.equal("band" in market, false);
+    assert.equal(market.note, `Chance is from ${market.quote.analogueYears} years of NOAA history, not a forecast.`);
+    assert.deepEqual(forbiddenHits(JSON.stringify(market)), []);
+  }
+});
