@@ -1,15 +1,17 @@
 import { canonicalSourceHash, cumulativeMillimeters, DataUnavailableError, NOAA_STATIONS, type DailyRainfall, type RainfallProvider, type SkyHedgeCity } from "./noaa.js";
 import { ceilRate, isValidImmutableMarketPricingTerms, PROTOCOL_FEE_BPS } from "../../shared/market-pricing.js";
+import { ANALOGUE_YEARS } from "../../shared/window-ladder.js";
 
 export const SKYT_DECIMALS = 6;
 export const MARKET_LIMITS = { maxLiquidity: BigInt(10_000_000_000), maxExposure: BigInt(8_000_000_000), perWallet: BigInt(500_000_000) } as const;
 
 export type TriggerOperator = "gt" | "gte" | "lt" | "lte";
 export interface QuoteRequest { city: SkyHedgeCity; stationId: string; observationStart: string; observationEnd: string; thresholdMm: number; operator: TriggerOperator; protectedAmount: bigint; }
-export interface Quote { probabilityBps: number; premiumRateBps: number; premium: bigint; protocolFee: bigint; inputsHash: string; modelVersion: "noaa-rain-v1"; historicalWindows: number; forecastWeight: number; }
+export type QuoteModelVersion = "noaa-rain-v1" | "noaa-snow-v1" | "noaa-wind-v1" | "noaa-heat-v1";
+export interface Quote { probabilityBps: number; premiumRateBps: number; premium: bigint; protocolFee: bigint; inputsHash: string; modelVersion: QuoteModelVersion; historicalWindows: number; forecastWeight: number; }
 
 /** Price exactly what an immutable on-chain market will charge; never reprice a seeded market from a fresh forecast. */
-export function quoteFromCommittedMarketTerms(input: { protectedAmount: bigint; probabilityBps: number; premiumRateBps: number; inputsHash: string }): Quote {
+export function quoteFromCommittedMarketTerms(input: { protectedAmount: bigint; probabilityBps: number; premiumRateBps: number; inputsHash: string; modelVersion?: QuoteModelVersion }): Quote {
   const { protectedAmount: _protectedAmount, ...terms } = input;
   if (!isValidImmutableMarketPricingTerms(terms)) {
     throw new DataUnavailableError("The finalized market pricing terms or committed quote evidence are invalid.");
@@ -20,8 +22,8 @@ export function quoteFromCommittedMarketTerms(input: { protectedAmount: bigint; 
     premium: ceilRate(input.protectedAmount, input.premiumRateBps),
     protocolFee: ceilRate(input.protectedAmount, PROTOCOL_FEE_BPS),
     inputsHash: input.inputsHash,
-    modelVersion: "noaa-rain-v1",
-    historicalWindows: 10,
+    modelVersion: input.modelVersion ?? "noaa-rain-v1",
+    historicalWindows: ANALOGUE_YEARS,
     forecastWeight: 0.3,
   };
 }
@@ -68,7 +70,7 @@ export class RainfallQuoteEngine {
         modelVersion: "noaa-rain-v1",
       },
     });
-    return { probabilityBps, premiumRateBps, premium, protocolFee, inputsHash, modelVersion: "noaa-rain-v1", historicalWindows: 10, forecastWeight: 0.3 };
+    return { probabilityBps, premiumRateBps, premium, protocolFee, inputsHash, modelVersion: "noaa-rain-v1", historicalWindows: ANALOGUE_YEARS, forecastWeight: 0.3 };
   }
 
   /** Ten NOAA analogue cumulative totals for this exact window. Throws if any year is incomplete. */

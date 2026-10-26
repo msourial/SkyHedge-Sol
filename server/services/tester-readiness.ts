@@ -1,9 +1,10 @@
 /** SKYT uses six decimals; open testers may protect at most 500 SKYT. */
 import { isValidImmutableMarketPricingTerms } from "../../shared/market-pricing.js";
+import type { PerilId } from "../../shared/perils.js";
 
 export const TESTER_PROTECTION_CAP = 500_000_000n;
 
-type PricedMarket = { city?: string; status: string; address: string | null; vaultBalance: string | null; onchainStatus: string | null; salesCloseAt?: number | null; observationStart?: number | null; observationEnd?: number | null; thresholdMmX100?: string | null; operator?: "gt" | "gte" | "lt" | "lte" | null; quoteProbabilityBps?: number | null; premiumRateBps?: number | null; quoteInputsHash?: string | null; evidenceStatus?: "researching_evidence" | "validated" };
+type PricedMarket = { city?: string; peril?: PerilId; status: string; address: string | null; vaultBalance: string | null; onchainStatus: string | null; salesCloseAt?: number | null; observationStart?: number | null; observationEnd?: number | null; thresholdMmX100?: string | null; operator?: "gt" | "gte" | "lt" | "lte" | null; quoteProbabilityBps?: number | null; premiumRateBps?: number | null; quoteInputsHash?: string | null; evidenceStatus?: "researching_evidence" | "validated" };
 
 type Readiness = {
   program: { executable: boolean };
@@ -43,9 +44,10 @@ export function isOpenMarket(status: string | null): boolean {
  * The caller can display a friendly refusal rather than price a different window.
  */
 /** The open window whose committed dates, trigger, and direction match the quote request. */
-export function matchingOpenWindow(status: Readiness, observationStart: string, observationEnd: string, thresholdMm: number, operator: "gt" | "gte" | "lt" | "lte", nowSeconds = Math.floor(Date.now() / 1_000), city?: string): PricedMarket | null {
+export function matchingOpenWindow(status: Readiness, observationStart: string, observationEnd: string, thresholdMm: number, operator: "gt" | "gte" | "lt" | "lte", nowSeconds = Math.floor(Date.now() / 1_000), city?: string, peril: PerilId = "rain"): PricedMarket | null {
   return pricedMarkets(status).find((market) => {
     if (city && market.city && market.city !== city) return false;
+    if ((market.peril ?? "rain") !== peril) return false;
     return market.evidenceStatus === "validated"
     && market.status === "ready"
     && !!market.address

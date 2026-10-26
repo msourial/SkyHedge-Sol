@@ -50,14 +50,13 @@ import {
   formatBase,
   moneyParts,
   multipleLabel,
-  premiumFromRate,
   protocolFeeBase,
   rungEconomics,
   ticketFromBases,
   COVER_SIZES,
 } from "./ui-money.ts";
 import { cityById, openCityFor, perilById, perilOpen } from "./peril-registry.ts";
-import { rungTrigger, type CoverSize, type PerilId, type WindowQuote } from "./ui-quote-types.ts";
+import { rungTrigger, type CoverSize, type PerilId, type RungQuote, type WindowQuote } from "./ui-types.ts";
 import type { InstrumentState } from "./ui-instrument.ts";
 
 export type MoneyFigure = { sign: "-" | "+"; whole: string; fraction: string };
@@ -145,13 +144,7 @@ export type ProtectBuildInput = {
   windowStart: string;
   windowEnd: string;
   quote: WindowQuote | null;
-  single: null | {
-    trigger: number;
-    chanceBps: number;
-    premiumRateBps: number;
-    marketAddress: string;
-    unit: string;
-  };
+  single: (RungQuote & { unit: string }) | null;
   loading: boolean;
   failed: boolean;
   connected: boolean;
@@ -174,7 +167,7 @@ export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
   const cityName = city?.name ?? "This city";
   const station = city?.station ?? stationFor(input.cityId);
   const unit = input.quote?.unit || input.single?.unit || peril?.unit || "";
-  const open = perilOpen({ cityId: input.cityId, peril: input.peril, windowStart: input.windowStart, tenor: input.tenor });
+  const open = input.peril !== "cold" && (input.quote != null || perilOpen({ cityId: input.cityId, peril: input.peril, windowStart: input.windowStart, tenor: input.tenor }));
   const start = dayFromIso(input.windowStart);
   const end = dayFromIso(input.windowEnd);
   const years = input.quote?.analogueYears ?? null;
@@ -191,7 +184,7 @@ export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
     peril: input.peril,
     unit,
     tenor: input.tenor,
-    subline: start && end ? subline({ station, start, end, salesClose: start }) : null,
+    subline: start && end ? subline({ station, start, end, salesClose: dayFromIso(input.quote?.salesCloseAt ?? input.windowStart) ?? start }) : null,
     chips,
     capMessage,
     soFarLabel: SO_FAR,
@@ -254,7 +247,7 @@ export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
 
   let panel: PanelModel;
   if (!ticket) {
-    panel = input.loading ? { kind: "loading", cta: GETTING_QUOTE } : { kind: "closed", line: SALES_CLOSED };
+    panel = input.loading ? { kind: "loading", cta: GETTING_QUOTE } : { kind: "not-open", line: notOpenLine(input.peril, cityName), go: null };
   } else if (input.settlement?.kind === "paid") {
     panel = { kind: "paid", result: resultLine("+", formatBase(ticketGain(ticket), 2)), payout: ticket.payout };
   } else if (input.settlement?.kind === "dry") {
@@ -282,7 +275,7 @@ export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
     selected: chosen,
     rows,
     showChain,
-    footnote: ticket ? footnote : null,
+    footnote: showChain || ticket ? footnote : null,
     blocked: input.coveredMarket ? ALREADY_COVERED : null,
     ticket,
     panel,
@@ -317,8 +310,8 @@ function pickTrigger(rows: Array<{ trigger: number; open: boolean }>, input: Pro
   const live = rows.filter((row) => row.open);
   if (input.selectedTrigger != null && live.some((row) => row.trigger === input.selectedTrigger)) return input.selectedTrigger;
   if (input.defaultTrigger != null && live.some((row) => row.trigger === input.defaultTrigger)) return input.defaultTrigger;
-  if (!rows.length && input.single) return input.single.trigger;
-  return live[0]?.trigger ?? input.single?.trigger ?? null;
+  if (!rows.length && input.single) return input.single.triggerValue;
+  return live[0]?.trigger ?? input.single?.triggerValue ?? null;
 }
 
 function chainRows(quote: WindowQuote, input: ProtectBuildInput): ChainRowModel[] {
@@ -390,7 +383,7 @@ function buildTicket(
     fee: feeLabel,
     note: years ? chanceNote(years) : null,
     sentence,
-    salesClose: start ? salesCloseLine(start) : "",
+    salesClose: salesCloseLine(dayFromIso(input.quote?.salesCloseAt ?? input.windowStart) ?? ""),
     honesty: peril.honesty(station),
     sheet: years ? ticketSheet({ feeLabel, years }) : `${pricingSentence(feeLabel)} ${feeLine(feeLabel)}`,
     diagram: {
@@ -429,10 +422,9 @@ function dealFor(input: ProtectBuildInput, chosen: number) {
     const economics = rungEconomics(rung, input.cover);
     return economics ? ticketFromBases(economics.premium, economics.payout) : null;
   }
-  if (!input.single || input.single.trigger !== chosen) return null;
-  const premium = premiumFromRate(input.cover, input.single.premiumRateBps);
-  if (premium == null) return null;
-  return ticketFromBases(premium, BigInt(input.cover) * 1_000_000n);
+  if (!input.single || input.single.triggerValue !== chosen) return null;
+  const economics = rungEconomics(input.single, input.cover);
+  return economics ? ticketFromBases(economics.premium, economics.payout) : null;
 }
 
 function chanceBps(quote: WindowQuote | null, input: ProtectBuildInput, chosen: number | null): number {

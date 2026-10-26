@@ -40,7 +40,7 @@ const TESTER_PROTECTION_CAP_BASE = 500_000_000n;
 const today = new Date().toISOString().slice(0, 10);
 const weekFromToday = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
 const PAGE_COPY: Record<Tab, { title: string; description: string }> = {
-  markets: { title: "Rain", description: "Pick a city. Official rainfall at the station is what settles." },
+  markets: { title: "Weather", description: "Pick a city and a weather trigger. NOAA settles." },
   protect: { title: "Rain", description: "Pick an expiry, then a rain trigger." },
   wallet: { title: "Wallet", description: "Devnet balances and your protections." },
   liquidity: { title: "Provide test liquidity", description: "Review collateral safeguards and market constraints before contributing to a Devnet pool." },
@@ -525,7 +525,7 @@ function Markets({ hazard, setHazard, onSelect, onOpenCity, selectedSlug, focusS
     <PlanCities onOpen={onOpenCity} windows={status?.cityWindows} />
     <details className="reference-explorer">
       <summary className="text-sm font-semibold text-[var(--fg-2)]">{TECHNICAL_DETAILS}</summary>
-      <h2 id="markets-heading" className="sky-display mb-3 text-xl">Find a rainfall reference area</h2>
+      <h2 id="markets-heading" className="sky-display mb-3 text-xl">Find a weather reference area</h2>
       <p className="mb-3 max-w-3xl text-sm text-[var(--muted-foreground)]">Search by place, crop, or region. A pin is a reference point—not coverage or a weather station.</p>
     {agriculturalFocus ? <section className="market-selection-brief" aria-label="Selected reference location">
       <div>

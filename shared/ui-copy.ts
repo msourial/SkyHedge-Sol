@@ -4,7 +4,7 @@
  */
 import { MARKET_CAP_SKYT } from "./ui-tokens.ts";
 import { perilById, type PerilDefinition } from "./peril-registry.ts";
-import type { PerilId } from "./ui-quote-types.ts";
+import type { PerilId } from "./ui-types.ts";
 
 export const DEVNET_TAG = "Devnet";
 export const SALES_CLOSED = "Sales are closed for this window.";
@@ -104,7 +104,7 @@ export function notOpenLine(peril: PerilId, cityName: string, perils?: readonly 
 
 export function goThereLine(peril: PerilId, cityName: string, perils?: readonly PerilDefinition[]): string {
   const label = perilById(peril, perils)?.label ?? "It";
-  return `${label} is open in ${cityName}. Go there`;
+  return `View ${label.toLowerCase()} in ${cityName}. Go there`;
 }
 
 export function oddsLine(peril: PerilId, chanceBps: number, perils?: readonly PerilDefinition[]): string | null {

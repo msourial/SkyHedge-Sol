@@ -2,7 +2,7 @@ import { useState } from "react";
 import { CITIES, PERILS, perilOpen } from "../../../../shared/peril-registry.ts";
 import { CHANCE, DEVNET_TAG, MONTH, TRIGGER, WEEK } from "../../../../shared/ui-copy.ts";
 import { instrumentArt } from "../../../../shared/ui-instrument.ts";
-import type { CoverSize, PerilId } from "../../../../shared/ui-quote-types.ts";
+import type { CoverSize, PerilId } from "../../../../shared/ui-types.ts";
 import type { ProtectModel } from "../../../../shared/ui-view.ts";
 import { Chain } from "./chain";
 import { LineArt } from "./draw";

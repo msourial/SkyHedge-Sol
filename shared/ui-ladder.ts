@@ -1,19 +1,16 @@
 /**
- * Turns a WindowQuote, or the existing rain trigger rows, into chain figures.
+ * Turns a backend WindowQuote into chain figures.
  * Modelled rungs keep chance and multiple and never receive a max loss.
  */
 import { cityById } from "./peril-registry.ts";
 import {
   chanceLabel,
-  coverBase,
   measureLabel,
   multipleLabel,
-  premiumFromRate,
-  premiumMapFromRate,
   rungEconomics,
   ticketFromBases,
 } from "./ui-money.ts";
-import { rungTrigger, type CoverSize, type PerilId, type RungQuote, type WindowQuote } from "./ui-quote-types.ts";
+import { rungTrigger, type CoverSize, type PerilId, type RungQuote, type WindowQuote } from "./ui-types.ts";
 
 export { payoffPixels } from "./ui-money.ts";
 
@@ -100,64 +97,6 @@ function formatLoss(base: bigint): string {
   const whole = base / 1_000_000n;
   const fraction = (base % 1_000_000n).toString().padStart(6, "0").slice(0, 2);
   return `-${whole}.${fraction}`;
-}
-
-export type RainTriggerRow = {
-  thresholdMm: number;
-  probabilityBps: number;
-  premiumRateBps: number;
-  onChain: boolean;
-};
-
-/**
- * Adapter from the current rain ladder. Open rows get a premium map from the
- * pinned rate. Modelled rows get a multiple and a null market address.
- * `analogueYears` must already have come from the response.
- */
-export function quoteFromTriggerRows(input: {
-  cityId: string;
-  stationId: string;
-  windowStart: string;
-  windowEnd: string;
-  salesCloseAt: string;
-  analogueYears: number;
-  marketAddress: string | null;
-  rows: readonly RainTriggerRow[];
-}): WindowQuote | null {
-  if (!Number.isInteger(input.analogueYears) || input.analogueYears <= 0 || !input.rows.length) return null;
-  const triggers = input.rows.map((row) => row.thresholdMm).filter((value) => Number.isFinite(value));
-  const top = triggers.length ? Math.max(...triggers) : null;
-  const rungs: RungQuote[] = [];
-  for (const row of input.rows) {
-    const payout = coverBase(100);
-    const premium = premiumFromRate(100, row.premiumRateBps);
-    if (payout == null || premium == null) continue;
-    const deal = ticketFromBases(premium, payout);
-    if (!deal) continue;
-    const open = row.onChain && !!input.marketAddress;
-    const map = open ? premiumMapFromRate(row.premiumRateBps) : null;
-    rungs.push({
-      triggerValue: row.thresholdMm,
-      chanceBps: row.probabilityBps,
-      premiumBase: map ?? "0",
-      payoutBase: payout.toString(),
-      multipleTenths: deal.multipleTenths,
-      marketAddress: open ? input.marketAddress : null,
-      isTopRung: row.thresholdMm === top,
-    });
-  }
-  if (!rungs.length) return null;
-  return {
-    peril: "rain",
-    cityId: input.cityId,
-    stationId: input.stationId,
-    windowStart: input.windowStart,
-    windowEnd: input.windowEnd,
-    salesCloseAt: input.salesCloseAt,
-    analogueYears: input.analogueYears,
-    rungs,
-    unit: "mm",
-  };
 }
 
 export function stationFor(cityId: string): string {

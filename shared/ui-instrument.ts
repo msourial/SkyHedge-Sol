@@ -5,7 +5,7 @@
 import { fractionOnScale, scaleFor } from "./ui-ladder.ts";
 import { measureLabel } from "./ui-money.ts";
 import { lineTokens } from "./ui-tokens.ts";
-import type { PerilId } from "./ui-quote-types.ts";
+import type { PerilId } from "./ui-types.ts";
 
 export type InstrumentState = "loading" | "idle" | "covered" | "paid" | "dry" | "ghost";
 export type InstrumentSize = "stage" | "tile" | "mini";

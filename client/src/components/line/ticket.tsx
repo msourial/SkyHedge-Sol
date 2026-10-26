@@ -1,7 +1,7 @@
 import { COVER, gainCaption, infoSheetTitle, lossCaption, MAX_GAIN, MAX_LOSS } from "../../../../shared/ui-copy.ts";
 import { lineTokens } from "../../../../shared/ui-tokens.ts";
 import type { MoneyFigure, TicketModel } from "../../../../shared/ui-view.ts";
-import type { CoverSize } from "../../../../shared/ui-quote-types.ts";
+import type { CoverSize } from "../../../../shared/ui-types.ts";
 
 export function MoneyCell({ figure, caption, label }: { figure: MoneyFigure; caption: string; label: string }) {
   return (

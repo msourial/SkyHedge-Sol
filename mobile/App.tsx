@@ -548,9 +548,7 @@ export default function App() {
   const line = useLineProtect({
     cityId: protectCity,
     windows: openWindows,
-    evidence: windowEvidence,
-    evidenceLoading,
-    evidenceFailed: evidenceError,
+    retryKey: evidenceNonce,
     statusLoading: homeLoading && !status,
     statusFailed: Boolean(statusError && !status),
     connected: Boolean(wallet),

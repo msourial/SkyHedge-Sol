@@ -1,55 +1,39 @@
-/**
- * UI ↔ quote contract for the multi-peril chain.
- *
- * The backend agent adapts its output to these types. Keep them small.
- * Readers must not invent a premium, a chance, or a year count.
- *
- * - `marketAddress: null` means the rung is modelled: chance and multiple
- *   may be shown, it cannot be bought, and it has no max loss.
- * - `premiumBase` is an exact integer in SKYT base units (6 decimals).
- *   A string is the premium for one cover. A map is the premium at 50, 100
- *   and 250. Never derive it from `multipleTenths` (that figure is truncated).
- * - `payoutBase` is the gross payout in base units for the string premium.
- *   When `premiumBase` is a map, the payout is the cover size itself.
- * - `triggerMm` and `triggerValue` are the same native NOAA unit. Rain and
- *   snow may send either name. No unit conversion happens in the UI.
- * - `analogueYears` is the history length for the required chance note.
- *   The UI does not substitute a constant when it is missing.
- */
-export type PerilId = "rain" | "snow" | "wind" | "heat" | "cold";
+/** Perils the quote surface can name. Cold is registered and not open. */
+export type WindowQuotePeril = "rain" | "snow" | "wind" | "heat" | "cold";
 
-export type CoverSize = 50 | 100 | 250;
+/** Whole-SKYT cover sizes priced on every rung. SKYT base units use 6 decimals. */
+export const WINDOW_QUOTE_COVER_SKYT = [50, 100, 250] as const;
 
-export type PremiumByCover = Record<CoverSize, string>;
-
-export type RungQuote = {
-  triggerMm?: number;
-  triggerValue?: number;
+export interface RungQuote {
+  /** Trigger in the peril's native unit (mm, m/s, or degrees C). */
+  triggerValue: number;
   chanceBps: number;
-  premiumBase: string | PremiumByCover;
+  /**
+   * Exact integer premium in SKYT base units, keyed by cover size in whole SKYT.
+   * "50" is the premium for 50 SKYT of cover, and likewise for 100 and 250.
+   */
+  premiumBase: Record<"50" | "100" | "250", string>;
+  /** Payout in SKYT base units for the 100 SKYT cover. multipleTenths uses this notional. */
   payoutBase: string;
-  /** Payout ÷ premium, truncated to tenths. 41 means 4.1x. */
+  /** floor(100 SKYT base units * 10 / that cover's premium). 41 means 4.1×. */
   multipleTenths: number;
+  /** Null when this rung is only modelled. A null rung cannot be purchased. */
   marketAddress: string | null;
   isTopRung: boolean;
-};
+}
 
-export type WindowQuote = {
-  peril: PerilId;
+export interface WindowQuote {
+  peril: WindowQuotePeril;
   cityId: string;
   stationId: string;
-  /** ISO date or instant. Sales close at `salesCloseAt`, which is the window start. */
+  /** Inclusive UTC date, YYYY-MM-DD. */
   windowStart: string;
+  /** Exclusive UTC date, YYYY-MM-DD. Same bound as the purchase quote. */
   windowEnd: string;
+  /** ISO-8601 UTC instant when sales close. Equal to the observation start. */
   salesCloseAt: string;
+  /** Analogue years actually scored for this window. */
   analogueYears: number;
-  rungs: RungQuote[];
-  /** NOAA native unit label, e.g. "mm", "m/s", "C". */
   unit: string;
-};
-
-export function rungTrigger(rung: { triggerMm?: number; triggerValue?: number }): number | null {
-  const value = rung.triggerValue ?? rung.triggerMm;
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  return value;
+  rungs: RungQuote[];
 }

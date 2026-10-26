@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CHAIN_ERROR } from "../../../shared/ui-copy.ts";
-import { FIXTURE_NOTE, FIXTURE_PINNED_TRIGGER, NYC_RAIN_MODELLED, NYC_RAIN_OPTION_B } from "../../../shared/ui-fixtures.ts";
+import { FIXTURE_NOTE, FIXTURE_PINNED_TRIGGER, NYC_RAIN_MODELLED } from "../../../shared/ui-fixtures.ts";
 import { upcomingWindow } from "../../../shared/ui-ladder.ts";
-import type { CoverSize, PerilId } from "../../../shared/ui-quote-types.ts";
+import type { CoverSize, PerilId } from "../../../shared/ui-types.ts";
 import { buildProtectModel, type ProtectBuildInput } from "../../../shared/ui-view.ts";
 import { ProtectScreen, type SheetName } from "@/components/line/protect-screen";
 import { LineTabs } from "@/components/line/tabs";
@@ -24,6 +24,7 @@ export default function LinePreview() {
   const dates = state.startsWith("oct") ? WEEK : { start: input.windowStart, end: input.windowEnd };
   return (
     <main className="ln-frame" data-fixture={FIXTURE_NOTE}>
+      <p className="ln-note" role="note">{FIXTURE_NOTE} — preview data</p>
       <ProtectScreen
         model={model}
         cityId={city}
@@ -69,7 +70,7 @@ function previewInput(state: string, live: { city: string; peril: PerilId; cover
     tenor: "weekly",
     windowStart: WEEK.start,
     windowEnd: WEEK.end,
-    quote: NYC_RAIN_OPTION_B,
+    quote: live.peril === "rain" && live.city === "new-york" ? NYC_RAIN_MODELLED : null,
     single: null,
     loading: false,
     failed: false,
@@ -84,7 +85,7 @@ function previewInput(state: string, live: { city: string; peril: PerilId; cover
     reading: null,
     running: false,
   };
-  if (state === "modelled") return { ...base, quote: NYC_RAIN_MODELLED };
+  if (state === "modelled") return base;
   if (state === "connect") return { ...base, connected: false };
   if (state === "signing") return { ...base, signing: true };
   if (state === "covered") return { ...base, coveredMarket: "fixture-69" };

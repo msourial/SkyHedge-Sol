@@ -21,6 +21,7 @@ export function committedPremiumQuote(input: {
   probabilityBps: number | null;
   premiumRateBps: number | null;
   inputsHash: string | null;
+  modelVersion?: "noaa-rain-v1" | "noaa-snow-v1" | "noaa-wind-v1" | "noaa-heat-v1";
 }): {
   probabilityBps: number;
   premiumRateBps: number;
@@ -28,7 +29,7 @@ export function committedPremiumQuote(input: {
   protocolFee: string;
   protectedAmount: string;
   inputsHash: string;
-  modelVersion: "noaa-rain-v1";
+  modelVersion: "noaa-rain-v1" | "noaa-snow-v1" | "noaa-wind-v1" | "noaa-heat-v1";
 } | null {
   if (input.probabilityBps == null || input.premiumRateBps == null || !input.inputsHash) return null;
   if (!isValidImmutableMarketPricingTerms({ probabilityBps: input.probabilityBps, premiumRateBps: input.premiumRateBps, inputsHash: input.inputsHash })) return null;
@@ -41,7 +42,7 @@ export function committedPremiumQuote(input: {
     protocolFee: ceilRate(amount, PROTOCOL_FEE_BPS).toString(),
     protectedAmount: input.protectedAmount,
     inputsHash: input.inputsHash,
-    modelVersion: "noaa-rain-v1",
+    modelVersion: input.modelVersion ?? "noaa-rain-v1",
   };
 }
 

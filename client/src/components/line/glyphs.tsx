@@ -1,5 +1,5 @@
 import { lineGlyphs } from "../../../../shared/ui-glyphs.ts";
-import type { PerilId } from "../../../../shared/ui-quote-types.ts";
+import type { PerilId } from "../../../../shared/ui-types.ts";
 
 export function Glyph({ name, size = 22 }: { name: keyof typeof lineGlyphs | PerilId; size?: number }) {
   const paths = lineGlyphs[name];

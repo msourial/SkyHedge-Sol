@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { NYC_RAIN_MODELLED, NYC_RAIN_OPTION_B } from "./ui-fixtures.ts";
 import { instrumentArt } from "./ui-instrument.ts";
-import { chainFigures, quoteFromTriggerRows, upcomingWindow } from "./ui-ladder.ts";
+import { chainFigures, upcomingWindow } from "./ui-ladder.ts";
 import {
   breakEvenLabel,
   chipExceedsCap,
@@ -12,11 +12,14 @@ import {
   premiumFromRate,
   protocolFeeBase,
   ticketFromBases,
+  rungEconomics,
 } from "./ui-money.ts";
 import { copySamples, forbiddenHits } from "./ui-copy.ts";
 import { firstOpenPair, perilById, perilOpen } from "./peril-registry.ts";
 import { buildProtectModel, type ProtectBuildInput } from "./ui-view.ts";
-import type { CoverSize } from "./ui-quote-types.ts";
+import { readCatalogueWindowQuote } from "../server/services/window-quote-read.ts";
+import { matchingQuote, windowQuoteRequest } from "./ui-window-quote.ts";
+import type { CoverSize } from "./ui-types.ts";
 
 const BASE = 1_000_000n;
 
@@ -178,29 +181,6 @@ test("stage instruments label only zero and the trigger", () => {
   }
 });
 
-test("quote adapter keeps modelled rows closed and reads the year count it is given", () => {
-  const quote = quoteFromTriggerRows({
-    cityId: "new-york",
-    stationId: "GHCND:USW00094728",
-    windowStart: "2026-10-26",
-    windowEnd: "2026-11-02",
-    salesCloseAt: "2026-10-26",
-    analogueYears: 10,
-    marketAddress: "Market111",
-    rows: [
-      { thresholdMm: 29, probabilityBps: 6000, premiumRateBps: 7000, onChain: false },
-      { thresholdMm: 69, probabilityBps: 2000, premiumRateBps: 2400, onChain: true },
-    ],
-  });
-  assert.ok(quote);
-  assert.equal(quote.analogueYears, 10);
-  assert.equal(quote.rungs.find((rung) => rung.triggerValue === 29)?.marketAddress, null);
-  assert.equal(quote.rungs.find((rung) => rung.triggerValue === 69)?.marketAddress, "Market111");
-  assert.equal(quoteFromTriggerRows({ ...{
-    cityId: "new-york", stationId: "x", windowStart: "2026-10-26", windowEnd: "2026-11-02", salesCloseAt: "2026-10-26", marketAddress: "M", rows: [],
-  }, analogueYears: 0 }), null);
-});
-
 test("the next weekly window after 24 Oct 2026 starts 26 Oct", () => {
   const week = upcomingWindow(Date.UTC(2026, 9, 24, 12), "weekly");
   assert.equal(week.start, "2026-10-26");
@@ -226,4 +206,75 @@ test("pricing sentence and refund sentence are the task facts", () => {
   assert.match(model.ticket?.sheet ?? "", /full premium is refundable/);
   assert.match(model.subline ?? "", /Sales close Oct 26/);
   assert.equal(/Opens /.test(model.subline ?? ""), false);
+});
+
+test("backend rain quote supplies the only open rung and its exact cover premiums", async () => {
+  const quote = await readCatalogueWindowQuote({
+    cityId: "new-york", peril: "rain", windowStart: "2026-10-26", windowEnd: "2026-11-02",
+    markets: [{ scaledX100: 6900, address: "fixture-pinned-rain", operator: "gte", probabilityBps: 2000, premiumRateBps: 2400, quoteInputsHash: "ab".repeat(32) }],
+  });
+  assert.equal(quote.analogueYears, 10);
+  assert.deepEqual(quote.rungs.map((rung) => rung.triggerValue), [50, 69, 114]);
+  assert.deepEqual(quote.rungs.filter((rung) => rung.marketAddress).map((rung) => rung.triggerValue), [69]);
+  for (const [cover, premium] of [[50, 12_000_000n], [100, 24_000_000n], [250, 60_000_000n]] as const) {
+    const model = buildProtectModel(coverInput({ quote, cover }));
+    assert.equal(model.panel.kind, "ready");
+    assert.equal(model.rows.filter((row) => row.open).length, 1);
+    assert.deepEqual(model.rows.filter((row) => row.inert && row.maxLoss === null).map((row) => row.trigger), [50, 114]);
+    assert.equal(`${model.ticket?.loss.whole}.${model.ticket?.loss.fraction}`, formatBase(premium));
+    assert.equal(`${model.ticket?.gain.whole}.${model.ticket?.gain.fraction}`, formatBase(BigInt(cover) * BASE - premium));
+  }
+});
+
+test("quoted premium map is authoritative even when the displayed multiple is stale", () => {
+  const rung = { ...NYC_RAIN_MODELLED.rungs.find((rung) => rung.marketAddress)!,
+    premiumBase: { "50": "12345679", "100": "24691357", "250": "61728391" }, multipleTenths: 999 };
+  for (const cover of [50, 100, 250] as const) {
+    assert.deepEqual(rungEconomics(rung, cover), { premium: BigInt(rung.premiumBase[cover]), payout: BigInt(cover) * BASE });
+  }
+  assert.equal(rungEconomics({ ...rung, marketAddress: null }, 100), null);
+  const model = buildProtectModel(coverInput({ quote: { ...NYC_RAIN_MODELLED, analogueYears: 8, rungs: [rung] } }));
+  assert.equal(model.showChain, false);
+  assert.equal(model.ticket?.loss.whole, "24");
+  assert.equal(model.ticket?.loss.fraction, "69");
+  assert.equal(model.ticket?.breakEven, "24.7%");
+  assert.equal(model.ticket?.note, "Chance is from 8 years of NOAA history, not a forecast.");
+});
+
+test("backend snow, wind and heat quotes remain modelled with no ticket or selection", async () => {
+  for (const input of [
+    { cityId: "chicago", peril: "snow" as const, windowStart: "2026-11-09", windowEnd: "2026-11-16" },
+    { cityId: "chicago", peril: "wind" as const, windowStart: "2026-10-26", windowEnd: "2026-11-02" },
+    { cityId: "miami", peril: "heat" as const, windowStart: "2026-10-26", windowEnd: "2026-11-02" },
+  ]) {
+    const quote = await readCatalogueWindowQuote(input);
+    assert.ok(quote.rungs.length > 1);
+    assert.ok(quote.rungs.every((rung) => rung.marketAddress === null));
+    const model = buildProtectModel(coverInput({ ...input, quote, selectedTrigger: quote.rungs[0]!.triggerValue }));
+    assert.equal(model.showChain, true);
+    assert.ok(model.rows.every((row) => row.inert && !row.open && row.maxLoss === null));
+    assert.equal(model.selected, null);
+    assert.equal(model.ticket, null);
+    assert.equal(model.panel.kind, "not-open");
+    assert.equal(model.footnote, `Chance is from ${quote.analogueYears} years of NOAA history, not a forecast.`);
+  }
+});
+
+test("cold stays closed even if a response incorrectly supplies an open market", () => {
+  const model = buildProtectModel(coverInput({ peril: "cold", quote: { ...NYC_RAIN_OPTION_B, peril: "cold" } }));
+  assert.equal(model.instrument, "ghost");
+  assert.deepEqual(model.rows, []);
+  assert.equal(model.ticket, null);
+  assert.equal(model.panel.kind, "not-open");
+});
+
+test("quote requests match city, peril and dates and never reuse a different selection", () => {
+  const input = { cityId: "chicago", peril: "wind" as const, tenor: "weekly" as const, windows: [], nowSeconds: Date.UTC(2026, 9, 24) / 1000 };
+  const request = windowQuoteRequest(input);
+  assert.equal(request.path, "/api/mobile?resource=window-quote&city=chicago&peril=wind&windowStart=2026-10-26&windowEnd=2026-11-02");
+  assert.equal(windowQuoteRequest({ ...input, peril: "cold" }).path, null);
+  assert.equal(windowQuoteRequest({ ...input, cityId: "new-york" }).path, null);
+  assert.equal(matchingQuote(NYC_RAIN_MODELLED, { ...input, ...request }), null);
+  assert.equal(matchingQuote(NYC_RAIN_MODELLED, { cityId: "new-york", peril: "rain", ...request }), NYC_RAIN_MODELLED);
+  assert.equal(matchingQuote(NYC_RAIN_MODELLED, { cityId: "new-york", peril: "rain", ...request, start: "2026-11-02" }), null);
 });

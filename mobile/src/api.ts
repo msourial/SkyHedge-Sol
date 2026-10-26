@@ -222,6 +222,10 @@ export async function fetchWithRetry(url: string, init: RequestInit, opts: { att
   throw last instanceof Error ? last : new Error("Network request failed");
 }
 
+export class ApiReadError extends Error {
+  constructor(message: string, public readonly status: number) { super(message); this.name = "ApiReadError"; }
+}
+
 export async function getJson<T>(path: string): Promise<T> {
   const response = await fetchWithRetry(`${apiBase}${path}`, {
     headers: { Accept: "application/json" },
@@ -237,7 +241,7 @@ export async function getJson<T>(path: string): Promise<T> {
       throw new Error("This API server is missing the mobile read routes. Point the app to the current SkyHedge API service.");
     }
     const reason = typeof body?.message === "string" ? body.message : `Service returned ${response.status}`;
-    throw new Error(reason);
+    throw new ApiReadError(reason, response.status);
   }
   if (body === null || typeof body !== "object" || Array.isArray(body)) {
     throw new Error("SkyHedge returned an unreadable API response. Try again later.");

@@ -3,7 +3,7 @@
  * Premiums are never derived from a truncated multiple.
  */
 import { COVER_SIZES, MARKET_CAP_SKYT, SKYT_BASE } from "./ui-tokens.ts";
-import type { CoverSize, PremiumByCover, RungQuote } from "./ui-quote-types.ts";
+import type { CoverSize, PremiumByCover, RungQuote } from "./ui-types.ts";
 
 export { COVER_SIZES, MARKET_CAP_SKYT, SKYT_BASE };
 
@@ -105,17 +105,10 @@ export function measureLabel(value: number): string | null {
 
 /**
  * Economics for one open rung at a cover size.
- * A modelled rung (no market address) returns null — it has no premium.
+ * A modelled rung (no market address) returns null — its modelled premium is not a purchase ticket.
  */
 export function rungEconomics(rung: RungQuote, cover: CoverSize): { premium: bigint; payout: bigint } | null {
   if (!rung.marketAddress) return null;
-  if (typeof rung.premiumBase === "string") {
-    if (!/^\d+$/.test(rung.premiumBase) || !/^\d+$/.test(rung.payoutBase)) return null;
-    const premium = BigInt(rung.premiumBase);
-    const payout = BigInt(rung.payoutBase);
-    if (premium <= 0n || payout <= 0n) return null;
-    return { premium, payout };
-  }
   const raw = rung.premiumBase[cover];
   const payout = coverBase(cover);
   if (!raw || !/^\d+$/.test(raw) || payout == null) return null;

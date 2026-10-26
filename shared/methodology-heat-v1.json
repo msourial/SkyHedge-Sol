@@ -1,0 +1,17 @@
+{
+  "version": "methodology-heat-v1",
+  "updatedAt": "2026-10-24T00:00:00Z",
+  "settlement": {
+    "finalSource": "NOAA",
+    "rule": "A single normalized NOAA maximum daily temperature is committed by the settlement authority. Missing or malformed NOAA data resolves DATA_UNAVAILABLE after the on-chain deadline; never synthesize a value.",
+    "unavailableAction": "DATA_UNAVAILABLE"
+  },
+  "observation": {
+    "metric": "window_maximum_temperature_c",
+    "units": "C",
+    "element": "TMAX",
+    "aggregator": "max",
+    "label": "warm spell",
+    "window": "UTC midnight-to-midnight over the market observation window"
+  }
+}

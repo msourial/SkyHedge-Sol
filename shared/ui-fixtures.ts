@@ -6,7 +6,7 @@
  */
 import { priceFromSignals } from "./window-ladder.ts";
 import { premiumMapFromRate, ticketFromBases, coverBase, premiumFromRate } from "./ui-money.ts";
-import type { RungQuote, WindowQuote } from "./ui-quote-types.ts";
+import type { RungQuote, WindowQuote } from "./ui-types.ts";
 
 const NYC_LADDER = [
   { trigger: 47, chanceBps: 6_000 },
@@ -28,7 +28,7 @@ function rung(trigger: number, chanceBps: number, open: boolean): RungQuote {
   return {
     triggerValue: trigger,
     chanceBps,
-    premiumBase: open ? map : "0",
+    premiumBase: map,
     payoutBase: payout.toString(),
     multipleTenths: deal.multipleTenths,
     marketAddress: open ? `fixture-${trigger}` : null,

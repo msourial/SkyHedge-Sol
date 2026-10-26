@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { NYC_RAIN_MODELLED } from "../shared/ui-fixtures";
 
 async function openReferenceExplorer(page: Page) {
   const explorer = page.locator("details.reference-explorer");
@@ -47,13 +48,17 @@ test("search shows exact locations and matches locality, state, country, crop, a
   }
 });
 
-test("wind gust and snowfall are research-only in Markets and never request quotes or transactions", async ({ page }) => {
+test("Markets names all five perils and leaves purchases to the trigger chain", async ({ page }) => {
   const apiRequests: string[] = [];
   page.on("request", (request) => {
     if (/\/api\/(quotes|transactions\/unsigned)/.test(request.url())) apiRequests.push(request.url());
   });
   await page.goto("/app?tab=markets&city=des-moines");
 
+  const markets = page.getByRole("region", { name: "Weather markets", exact: true });
+  await expect(markets.getByRole("heading", { name: "Where are your plans?" })).toBeVisible();
+  await expect(markets.getByText("Rain, snow, wind, heat and cold. Each trigger shows whether cover is open.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Rain only for now. Wind, snow and heat later.", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Wind, snow and heat coming")).toHaveCount(0);
   await expect(page.getByText("Rain only for now")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Wind gust" })).toHaveCount(0);
@@ -85,7 +90,16 @@ test("research-only hazard selection on Protect hides rainfall inputs and blocks
   expect(apiRequests).toEqual([]);
 });
 
-test("rainfall protect shows an expiry chain and only prices the on-chain trigger", async ({ page }) => {
+test("rain quote shows one pinned open rung, five modelled rungs and exact premiums", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-10-24T12:00:00Z"));
+  await page.route("**/api/mobile?resource=window-quote&**", (route) => {
+    const query = new URL(route.request().url()).searchParams;
+    expect(query.get("city")).toBe("new-york");
+    expect(query.get("peril")).toBe("rain");
+    expect(query.get("windowStart")).toBe("2026-10-26");
+    expect(query.get("windowEnd")).toBe("2026-11-02");
+    return route.fulfill({ json: NYC_RAIN_MODELLED });
+  });
   const week = 1792368000;
   const windows = [
     { city: "new-york", tenor: "weekly", address: "NyWeekA1111111111111111111111111111111111", observationStart: week, observationEnd: week + 7 * 86_400, thresholdMmX100: "2900", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, salesCloseAt: week },
@@ -94,23 +108,6 @@ test("rainfall protect shows an expiry chain and only prices the on-chain trigge
     { city: "new-york", tenor: "monthly", address: "NyMonthB111111111111111111111111111111111", observationStart: 1796083200, observationEnd: 1798761600, thresholdMmX100: "16600", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, salesCloseAt: 1796083200 },
   ];
   await page.route("**/api/devnet/status**", (route) => {
-    if (route.request().url().includes("resource=window-evidence")) {
-      return route.fulfill({ json: {
-        city: "new-york",
-        unavailable: [],
-        packages: windows.map((window) => ({
-          validated: true,
-          city: "new-york",
-          stationId: "GHCND:USW00094728",
-          tenor: window.tenor,
-          observationStart: window.observationStart,
-          observationEnd: window.observationEnd,
-          analogueTotalsMm: [4, 8, 12, 18, 29, 40, 55, 69, 102, 166],
-          strikeMm: 69,
-          forecastCumulativeMm: null,
-        })),
-      } });
-    }
     return route.fulfill({ json: {
     network: "devnet",
     program: { address: "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx", status: "ready", executable: true, explorerUrl: "https://explorer.solana.com" },
@@ -130,12 +127,24 @@ test("rainfall protect shows an expiry chain and only prices the on-chain trigge
   });
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto("/app?tab=protect");
-  await expect(page.locator(".ln-sub")).toContainText("Central Park");
+  await expect(page.locator(".ln-sub")).toHaveText("Central Park · Oct 26 – Nov 2 · Sales close Oct 26");
   await expect(page.getByRole("button", { name: "Week" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Month" })).toBeVisible();
-  await expect(page.getByText("Not open").first()).toBeVisible();
-  await expect(page.getByText("4.1x").first()).toBeVisible();
-  await expect(page.getByText(/Sales close/)).toBeVisible();
+  const chain = page.getByRole("region", { name: "Trigger chain" });
+  await expect(chain.getByRole("radio")).toHaveCount(1);
+  await expect(chain.getByRole("radio", { name: "Trigger 69 mm, chance 20.0 percent, multiple 4.1 times, max loss 24.00 SKYT" })).toBeChecked();
+  await expect(chain.locator('[data-open="false"]')).toHaveCount(5);
+  for (const row of await chain.locator('[data-open="false"]').all()) {
+    await expect(row).toBeDisabled();
+    await expect(row).not.toHaveAttribute("role", "radio");
+    await expect(row).toContainText("Not open");
+  }
+  await expect(page.getByRole("region", { name: "Ticket", exact: true })).toContainText("Central Park");
+  await expect(page.locator(".ln-sub")).toContainText("Sales close Oct 26");
+  await page.getByRole("button", { name: "50", exact: true }).click();
+  await expect(chain.getByRole("radio")).toHaveAccessibleName("Trigger 69 mm, chance 20.0 percent, multiple 4.1 times, max loss 12.00 SKYT");
+  await expect(page.locator(".ln-money-cell").nth(0)).toContainText("-12.00");
+  await expect(page.locator(".ln-money-cell").nth(1)).toContainText("+38.00");
   await expect(page.getByText(/more triggers open soon/)).toHaveCount(0);
   await expect(page.getByText(/^Opens /)).toHaveCount(0);
   await expect(page.locator("#main-content").getByRole("button", { name: "Connect wallet" })).toBeVisible();
@@ -429,14 +438,14 @@ test("waitlist landing owns the root hero and the product lives at /app", async 
 
   await page.goto("/app?tab=markets&city=des-moines");
   await openReferenceExplorer(page);
-  await expect(page.getByRole("heading", { name: "Find a rainfall reference area" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Find a weather reference area" })).toBeVisible();
   await expect(page).toHaveURL(/\/app\?/);
 });
 
 test("customer screens hide protocol administration and Builder mode contains it", async ({ page }) => {
   await page.goto("/app?tab=markets&city=des-moines");
   await openReferenceExplorer(page);
-  await expect(page.getByRole("heading", { name: "Find a rainfall reference area" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Find a weather reference area" })).toBeVisible();
   await expect(page.getByText("Live Devnet status", { exact: true })).toHaveCount(0);
 
   await page.goto("/app?tab=builders&city=des-moines");

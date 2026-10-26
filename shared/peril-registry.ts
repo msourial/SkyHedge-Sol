@@ -7,7 +7,7 @@
 import { consumerCityBySlug } from "./consumer-cities.ts";
 import { lineTokens } from "./ui-tokens.ts";
 import { LIVE_CITY_SLUGS } from "./window-ladder.ts";
-import type { PerilId } from "./ui-quote-types.ts";
+import type { PerilId } from "./ui-types.ts";
 
 export type PerilDefinition = {
   id: PerilId;
