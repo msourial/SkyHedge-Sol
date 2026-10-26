@@ -63,6 +63,29 @@ test("Wallet totals use equal figure styles and receipts distinguish paid, dry a
   }
 });
 
+test("Wallet open rows and total labels stay on clean lines at 393px", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto("/preview?screen=wallet&state=open");
+  const row = page.locator(".ln-wallet-row");
+  await expect(row).toBeVisible();
+  const layout = await row.evaluate((el) => {
+    const boxes = [...el.querySelectorAll<HTMLElement>("*")].filter((node) => [...node.childNodes].some((child) => child.nodeType === Node.TEXT_NODE && child.textContent?.trim()) && node.getBoundingClientRect().width && getComputedStyle(node).display !== "none").map((node) => ({ text: node.innerText.trim(), rect: node.getBoundingClientRect().toJSON() }));
+    const textBoxes = boxes.filter((box) => box.text.length && box.rect.height > 0);
+    const overlap = textBoxes.some((a, i) => textBoxes.slice(i + 1).some((b) => a.rect.left < b.rect.right - 1 && a.rect.right > b.rect.left + 1 && a.rect.top < b.rect.bottom - 1 && a.rect.bottom > b.rect.top + 1 && a.text !== b.text && !(a.rect.left <= b.rect.left && a.rect.right >= b.rect.right && a.rect.top <= b.rect.top && a.rect.bottom >= b.rect.bottom) && !(b.rect.left <= a.rect.left && b.rect.right >= a.rect.right && b.rect.top <= a.rect.top && b.rect.bottom >= a.rect.bottom)));
+    return { overlap, rowHeight: el.getBoundingClientRect().height, cells: [...document.querySelectorAll<HTMLElement>(".ln-wallet-totals .ln-money-cell")].map((cell) => ({ width: cell.getBoundingClientRect().width, height: cell.getBoundingClientRect().height, label: cell.querySelector(".ln-label")?.getBoundingClientRect().height, labelScroll: cell.querySelector(".ln-label")?.scrollHeight })) };
+  });
+  expect(layout.overlap).toBe(false);
+  expect(layout.rowHeight).toBeGreaterThanOrEqual(104);
+  expect(layout.cells).toHaveLength(2);
+  for (const cell of layout.cells) {
+    expect(cell.width).toBe(172);
+    expect(cell.height).toBe(88);
+    expect(cell.label).toBeLessThanOrEqual(18);
+    expect(cell.labelScroll).toBeLessThanOrEqual(18);
+  }
+  await expect(page.locator(".ln-wallet-totals .ln-label")).toHaveText(["Max loss, open covers", "Max gain, open covers"]);
+});
+
 test("Markets keeps the hero and CTA above the single covers summary", async ({ page }) => {
   await page.goto("/preview?screen=markets&state=with-covers");
   await expect(page.locator(".ln-market-hero")).toBeVisible();
