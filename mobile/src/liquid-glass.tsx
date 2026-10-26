@@ -4,9 +4,9 @@ import { AccessibilityInfo, Animated, Easing, Pressable, type PressableProps, ty
 export const GlassTargetContext = createContext<React.RefObject<View | null> | null>(null);
 
 export function useReducedMotion() {
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(true);
   useEffect(() => {
-    void AccessibilityInfo.isReduceMotionEnabled().then(setReducedMotion).catch(() => setReducedMotion(false));
+    void AccessibilityInfo.isReduceMotionEnabled().then(setReducedMotion).catch(() => setReducedMotion(true));
     const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReducedMotion);
     return () => subscription.remove();
   }, []);

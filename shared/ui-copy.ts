@@ -33,6 +33,7 @@ export const FIRST_RUN = "Pick weather and a trigger. Your max loss is the price
 export const LANDING_TITLE = "Weather on your plans? Get paid.";
 export const LANDING_SUB = "Pick a kind of weather and a city. Set the line. If NOAA's record crosses it, you're paid in SKYT.";
 export const HOW_IT_WORKS = ["Pick a city and a kind of weather.", "Choose your cover.", "Approve in your wallet."] as const;
+export const PROTECT_TITLE = "Protect";
 export const MARKETS_TITLE = "Markets";
 export const WALLET_TITLE = "Wallet";
 export const YOUR_COVERS = "Your covers";
@@ -52,6 +53,41 @@ export const SO_FAR = "So far";
 export const WEEK = "Week";
 export const MONTH = "Month";
 export const WINDOW_WORD = "Window";
+
+export const ALL = "All";
+export const WEATHER_WORD = "Weather";
+export const BY = "by";
+export const OPEN_WORD = "Open";
+export const NOT_OPEN_YET = "Not open yet";
+export const EMPTY_MARKETS = "No markets are open for this selection.";
+export const EMPTY_COVERS = "No covers in this wallet yet.";
+export const WALLET_INTRO = "Connect your Devnet wallet to read your balance and covers.";
+export const READING_WALLET = "Reading finalized balances and covers…";
+export const STATE_UNAVAILABLE = "State unavailable";
+export const UNKNOWN_CITY = "Unknown city";
+export const PAYOUT_READY = "Payout ready to collect";
+export const REFUND_READY = "Refund ready";
+export const REFUNDED = "Refunded";
+export const LOSS_OPEN = "Max loss across open covers";
+export const GAIN_OPEN = "Max gain across open covers";
+export const COPY_ADDRESS = "Copy wallet address";
+export const COPIED = "Copied";
+export const COPY_FAILED = "Couldn't copy. Select the address to copy it.";
+export const DISCONNECT = "Disconnect wallet";
+export const RECEIPT = "Cover receipt";
+export const FINAL_READING_UNAVAILABLE = "Final NOAA reading unavailable.";
+export const RECEIPT_DATA_UNAVAILABLE = "Trigger details unavailable for this stored cover.";
+export const NOAA_WINDOW_ENDED = "NOAA window ended";
+export const REFERENCE_ONLY = "Reference point only";
+export const CLAIM_EXPIRED = "Claim window ended";
+export const RESULT = "Result";
+export const HOW_SETTLES_TITLE = "How it settles";
+export const FIXTURE_BANNER = "Fixture — preview data";
+export const TECH_CONTEXT = "WeatherXM and x402 observations are context only. NOAA alone settles covers.";
+export const CONTRACT_LABEL = "Contract · Solana Devnet";
+export const PARTIAL_MARKETS = "Some quotes could not be read. Only verified open markets are shown.";
+export const FIRST_RUN_KEY = "skyhedge.line-intro-dismissed";
+export const DISCOVERY_COPY = [ALL, WEATHER_WORD, BY, OPEN_WORD, NOT_OPEN_YET, EMPTY_MARKETS, EMPTY_COVERS, WALLET_INTRO, READING_WALLET, STATE_UNAVAILABLE, UNKNOWN_CITY, PAYOUT_READY, REFUND_READY, REFUNDED, LOSS_OPEN, GAIN_OPEN, COPY_ADDRESS, COPIED, COPY_FAILED, DISCONNECT, REFERENCE_ONLY, CLAIM_EXPIRED, RECEIPT, FINAL_READING_UNAVAILABLE, RECEIPT_DATA_UNAVAILABLE, NOAA_WINDOW_ENDED, RESULT, HOW_SETTLES_TITLE, FIXTURE_BANNER, TECH_CONTEXT, CONTRACT_LABEL, PARTIAL_MARKETS];
 
 export function pricingSentence(feeLabel: string): string {
   return `Includes a 15% margin on the odds and a 1% protocol fee (${feeLabel} SKYT).`;
@@ -151,7 +187,7 @@ export function modelledRowName(input: { trigger: string; chance: string; multip
   return `Trigger ${input.trigger}, chance ${input.chance.replace("%", " percent")}, multiple ${input.multiple.replace("x", " times")}, not open`;
 }
 
-export function resultLine(sign: "+" | "-", amount: string): string {
+export function resultLine(sign: "+" | "-" | "", amount: string): string {
   return `Result ${sign}${amount} SKYT`;
 }
 
@@ -190,10 +226,10 @@ export function infoSheetTitle(): string {
 export function copySamples(): string[] {
   const years = chanceNote(10) ?? "";
   return [
-    DEVNET_TAG, SALES_CLOSED, CHAIN_ERROR, ALREADY_COVERED, HOW_IT_SETTLES, SETTLED_UNITS,
+    ...DISCOVERY_COPY, DEVNET_TAG, SALES_CLOSED, CHAIN_ERROR, ALREADY_COVERED, HOW_IT_SETTLES, SETTLED_UNITS,
     WIND_ELEMENT, HEAT_ELEMENT, CONNECT_WALLET, TRY_AGAIN, GETTING_QUOTE, WAITING_WALLET, APPROVE_WALLET,
     COVERED_WORD, VIEW_WALLET, YOUR_COVER, NOT_OPEN_WORD, PAID_OUT, DRY_WINDOW, GOT_IT, DONE,
-    COVER_THIS, OPEN_APP, FIRST_RUN, LANDING_TITLE, LANDING_SUB, ...HOW_IT_WORKS, MARKETS_TITLE,
+    COVER_THIS, OPEN_APP, FIRST_RUN, LANDING_TITLE, LANDING_SUB, ...HOW_IT_WORKS, PROTECT_TITLE, MARKETS_TITLE,
     WALLET_TITLE, YOUR_COVERS, OPEN_NOW, TECHNICAL_DETAILS, SKYT_BALANCE, MAX_LOSS, MAX_GAIN,
     PAYOUT, CHANCE, BREAK_EVEN, MULTIPLE, TRIGGER, COVER, FEE_INCLUDED, SO_FAR, WEEK, MONTH, WINDOW_WORD,
     pricingSentence("1.00"), refundSentence(), years, highestInYears(10) ?? "", feeLine("1.00"),

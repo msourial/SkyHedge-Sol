@@ -1,3 +1,6 @@
+import { DISCOVERY_QUOTES } from "../../../shared/ui-discovery-fixtures.ts";
+import { PERILS, CITIES } from "../../../shared/peril-registry.ts";
+import DiscoveryPreview from "./discovery-preview";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CHAIN_ERROR } from "../../../shared/ui-copy.ts";
@@ -13,11 +16,16 @@ const WEEK = { start: "2026-10-26", end: "2026-11-02" };
 
 export default function LinePreview() {
   const [params] = useSearchParams();
+  if (params.has("screen")) return <DiscoveryPreview/>;
+  return <ProtectPreview/>;
+}
+function ProtectPreview() {
+  const [params] = useSearchParams();
   const state = params.get("state") ?? "ready";
   const [trigger, setTrigger] = useState<number | null>(state === "rung" ? 114 : null);
   const [cover, setCover] = useState<CoverSize>(100);
-  const [peril, setPeril] = useState<PerilId>(initialPeril(state));
-  const [city, setCity] = useState(initialCity(state));
+  const [peril, setPeril] = useState<PerilId>(PERILS.find((p) => p.id === params.get("peril"))?.id ?? initialPeril(state));
+  const [city, setCity] = useState(CITIES.find((c) => c.id === params.get("city"))?.id ?? initialCity(state));
   const [sheet, setSheet] = useState<SheetName>(state === "sign" ? "sign" : state === "info" ? "info" : null);
   const input = useMemo(() => previewInput(state, { city, peril, cover, trigger }), [state, city, peril, cover, trigger]);
   const model = buildProtectModel(input);
@@ -70,7 +78,7 @@ function previewInput(state: string, live: { city: string; peril: PerilId; cover
     tenor: "weekly",
     windowStart: WEEK.start,
     windowEnd: WEEK.end,
-    quote: live.peril === "rain" && live.city === "new-york" ? NYC_RAIN_MODELLED : null,
+    quote: live.peril === "rain" && live.city === "new-york" ? NYC_RAIN_MODELLED : state === "ready" ? DISCOVERY_QUOTES.find((q) => q.cityId === live.city && q.peril === live.peril) ?? null : null,
     single: null,
     loading: false,
     failed: false,

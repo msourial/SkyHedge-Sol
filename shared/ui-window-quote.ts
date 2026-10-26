@@ -19,14 +19,15 @@ export function windowQuoteRequest(input: {
   tenor: "weekly" | "monthly";
   windows: readonly QuoteWindow[];
   nowSeconds: number;
+  selectedWindow?: { start: string; end: string } | null;
 }) {
   const window = input.windows
     .filter((item) => item.city === input.cityId && (item.peril ?? "rain") === input.peril && item.tenor === input.tenor)
     .filter((item) => (item.salesCloseAt ?? item.observationStart) > input.nowSeconds)
     .sort((a, b) => a.observationStart - b.observationStart)[0];
   const next = upcomingWindow(input.nowSeconds * 1000, input.tenor);
-  const start = window ? isoFromSeconds(window.observationStart) ?? next.start : next.start;
-  const end = window ? isoFromSeconds(window.observationEnd) ?? next.end : next.end;
+  const start = input.selectedWindow?.start ?? (window ? isoFromSeconds(window.observationStart) ?? next.start : next.start);
+  const end = input.selectedWindow?.end ?? (window ? isoFromSeconds(window.observationEnd) ?? next.end : next.end);
   const available = input.peril !== "cold" && perilOpen({ ...input, windowStart: start });
   const params = new URLSearchParams({ resource: "window-quote", city: input.cityId, peril: input.peril, windowStart: start, windowEnd: end });
   return { start, end, path: available ? `/api/mobile?${params}` : null };

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { perilCityHashHex } from "../../shared/perils.ts";
 import { createHash } from "node:crypto";
 import { describe, it } from "node:test";
 import { Buffer } from "buffer";
@@ -74,8 +75,24 @@ describe("position accounts", () => {
     assert.equal(waiting?.windowLabel, "Oct 14 – Oct 19 (UTC)");
     assert.equal(waiting?.triggerLabel, "≥ 50 mm");
     assert.equal(waiting?.statusLabel, "Awaiting NOAA final data");
-    assert.equal(protectionView(POSITION, positionBytes(), desMoinesMarket(4, 1), afterWindow)?.statusLabel, "Paid");
+    assert.equal(protectionView(POSITION, positionBytes(), desMoinesMarket(4, 1), afterWindow)?.statusLabel, "Payout ready to collect");
     assert.equal(protectionView(POSITION, positionBytes(), desMoinesMarket(4, 2), afterWindow)?.statusLabel, "Not triggered");
+    const claimed = positionBytes();
+    claimed[104] = 1;
+    assert.equal(protectionView(POSITION, claimed, desMoinesMarket(4, 1), afterWindow)?.statusLabel, "Paid");
+    assert.equal(protectionView(POSITION, claimed, desMoinesMarket(4, 1), afterWindow)?.payoutClaimed, true);
+  });
+
+  it("decodes the native unit and city for snow, wind and heat without calling them rain", () => {
+    for (const [city, peril, unit] of [["chicago", "snow", "mm"], ["chicago", "wind", "m/s"], ["miami", "heat", "C"]] as const) {
+      const data = marketBytes();
+      Buffer.from(perilCityHashHex(city, peril), "hex").copy(data, 80);
+      const view = protectionView(POSITION, positionBytes(), data, DURING_NEW_YORK);
+      assert.equal(view?.peril, peril);
+      assert.equal(view?.cityId, city);
+      assert.equal(view?.triggerValue, 29);
+      assert.equal(view?.triggerLabel, `≥ 29 ${unit}`);
+    }
   });
 
   it("retries a failing RPC and then reads the next endpoint", async () => {

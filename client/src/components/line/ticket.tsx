@@ -44,9 +44,9 @@ export function Ticket({ ticket, chips, cap, onCover, onInfo }: {
       </div>
       <svg className="ln-payoff" viewBox="0 0 361 112" role="img" aria-label={diagram.description}>
         <line x1="16" y1="56" x2="345" y2="56" stroke={lineTokens.tick} strokeWidth="1" />
-        <line x1="20" y1={lossY} x2={stepX} y2={lossY} stroke={lineTokens.fg2} strokeWidth="3" strokeLinecap="round" />
+        <line className="ln-diagram-segment" x1="20" y1={lossY} x2={stepX} y2={lossY} stroke={lineTokens.fg2} strokeWidth="3" strokeLinecap="round" />
         <line x1={stepX} y1={lossY} x2={stepX} y2={gainY} stroke={lineTokens.slicker} strokeWidth="2" />
-        <line x1={stepX} y1={gainY} x2="345" y2={gainY} stroke={lineTokens.fg} strokeWidth="3" strokeLinecap="round" />
+        <line className="ln-diagram-segment" x1={stepX} y1={gainY} x2="345" y2={gainY} stroke={lineTokens.fg} strokeWidth="3" strokeLinecap="round" />
         <text x="20" y={Math.min(104, lossY + 16)} fill={lineTokens.fg2} fontSize="13" fontFamily="IBM Plex Mono, monospace">{diagram.lossLabel}</text>
         <text x="345" y={Math.max(16, gainY - 8)} fill={lineTokens.fg} fontSize="13" textAnchor="end" fontFamily="IBM Plex Mono, monospace">{diagram.gainLabel}</text>
       </svg>

@@ -160,7 +160,7 @@ function PayFigs({ loss, gain }: { loss: { sign: string; whole: string; fraction
 
 function Glyph({ name, color }: { name: keyof typeof lineGlyphs; color: string }) {
   return (
-    <Svg width={22} height={22} viewBox="0 0 24 24">
+    <Svg width={24} height={24} viewBox="0 0 24 24">
       {lineGlyphs[name].map((d) => <Path key={d} d={d} stroke={color} fill="none" strokeWidth={1.75} strokeLinecap="round" />)}
     </Svg>
   );
@@ -168,11 +168,11 @@ function Glyph({ name, color }: { name: keyof typeof lineGlyphs; color: string }
 
 const styles = StyleSheet.create({
   status: { height: 24, textAlign: "right", color: C.fg2, fontFamily: F.bodyMedium, fontSize: 13 },
-  head: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  city: { minHeight: 44, justifyContent: "center" },
+  head: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  city: { minHeight: 48, justifyContent: "center" },
   title: { color: C.fg, fontFamily: F.heading, fontSize: 32, lineHeight: 34 },
   tenor: { flexDirection: "row", backgroundColor: C.surface2, borderRadius: 999, padding: 3 },
-  tenorBtn: { minHeight: 36, paddingHorizontal: 12, borderRadius: 999, justifyContent: "center" },
+  tenorBtn: { minHeight: 48, paddingHorizontal: 12, borderRadius: 999, justifyContent: "center" },
   tenorOn: { backgroundColor: C.bgRaised },
   tenorText: { color: C.fg, fontFamily: F.bodyMedium, fontSize: 13 },
   sub: { color: C.fg2, fontFamily: F.bodyMedium, fontSize: 13, lineHeight: 18, marginBottom: 12 },
@@ -197,13 +197,13 @@ const styles = StyleSheet.create({
   note: { color: C.fg2, fontFamily: F.body, fontSize: 13, lineHeight: 18, marginVertical: 8 },
   body: { color: C.fg, fontFamily: F.body, fontSize: 15, lineHeight: 22 },
   chips: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 },
-  chip: { minWidth: 64, height: 44, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  chip: { minWidth: 64, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center" },
   chipOn: { backgroundColor: C.bgRaised },
   chipText: { color: C.fg, fontFamily: F.bodySemi, fontSize: 15 },
-  info: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  info: { width: 48, height: 48, alignItems: "center", justifyContent: "center" },
   cells: { flexDirection: "row", gap: 16, marginTop: 12 },
   cell: { flex: 1, minHeight: 88, borderRadius: 14, backgroundColor: C.bgRaised, padding: 12 },
-  link: { color: C.glacier, fontFamily: F.bodySemi, fontSize: 15, minHeight: 44 },
+  link: { color: C.glacier, fontFamily: F.bodySemi, fontSize: 15, minHeight: 48 },
   sheet: { marginTop: 12, backgroundColor: C.surface1, borderRadius: 20, padding: 16 },
   cityRow: { minHeight: 56, justifyContent: "center" },
   pay: { backgroundColor: C.bgRaised, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, gap: 8, minHeight: 120 },

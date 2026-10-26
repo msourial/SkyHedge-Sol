@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { NYC_RAIN_MODELLED } from "../shared/ui-fixtures";
 
 test("max loss and max gain share size, weight, and colour", async ({ page }) => {

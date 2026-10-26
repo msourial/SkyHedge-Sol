@@ -89,7 +89,7 @@ export function ProtectScreen(props: {
           setTouch(null);
         }}
       >
-        {lineY != null ? <div className="ln-rule" data-paid={model.instrument === "paid" ? "true" : "false"} style={{ top: lineY }} /> : null}
+        {lineY != null ? <div className="ln-rule" data-paid={model.instrument === "paid" ? "true" : "false"} style={{ top: 0, transform: `translateY(${lineY}px)` }} /> : null}
         <div className="ln-instrument"><LineArt ops={art.ops} viewBox={art.viewBox} label={art.label} width={art.width} height={art.height} /></div>
         <div className="ln-readout" style={lineY != null ? { top: lineY } : { top: 96 }}>
           <div className="ln-readout-above">

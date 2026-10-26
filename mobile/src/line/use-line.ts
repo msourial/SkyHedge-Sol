@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CITIES } from "../../../shared/peril-registry.ts";
 import { matchingQuote, quoteNotOpen, windowQuoteRequest, type QuoteWindow } from "../../../shared/ui-window-quote.ts";
 import type { CoverSize, PerilId, WindowQuote } from "../../../shared/ui-types.ts";
+import type { MarketSelection } from "../../../shared/ui-discovery.ts";
 import { getJson } from "../api.ts";
 import { buildProtectModel, type ProtectModel } from "../../../shared/ui-view.ts";
 import type { SheetName } from "./types.ts";
@@ -24,7 +25,9 @@ export function useLineProtect(input: {
   const [cover, setCover] = useState<CoverSize>(100);
   const [selectedTrigger, setSelectedTrigger] = useState<number | null>(null);
   const [sheet, setSheet] = useState<SheetName>(null);
-  const request = windowQuoteRequest({ ...input, peril, tenor });
+  const [selection, setSelection] = useState<MarketSelection | null>(null);
+  const selectedWindow = selection?.cityId === input.cityId && selection.peril === peril && selection.tenor === tenor && selection.windowStart && selection.windowEnd ? { start: selection.windowStart, end: selection.windowEnd } : null;
+  const request = windowQuoteRequest({ ...input, peril, tenor, selectedWindow });
   const [result, setResult] = useState<{ path: string | null; quote: WindowQuote | null; loading: boolean; failed: boolean }>({ path: null, quote: null, loading: false, failed: false });
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +76,7 @@ export function useLineProtect(input: {
     setTenor,
     setCover,
     setSelectedTrigger,
+    chooseMarket: (market: MarketSelection) => { setSelection(market); setPeril(market.peril); setTenor(market.tenor); setCover(100); setSelectedTrigger(market.trigger); },
     approveTarget: market && model.panel.kind === "ready" && !model.blocked && !model.chips.some((chip) => chip.selected && chip.disabled) ? { market, amount: `${cover}000000` } : null,
   };
 }

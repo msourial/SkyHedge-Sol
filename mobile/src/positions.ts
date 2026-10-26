@@ -1,3 +1,6 @@
+import { marketIdentity } from "../../shared/ui-market-identity.ts";
+import { perilById } from "../../shared/peril-registry.ts";
+import type { PerilId } from "../../shared/ui-types.ts";
 import { Buffer } from "buffer";
 import { PublicKey } from "@solana/web3.js";
 import { consumerCityName } from "../../shared/consumer-cities.ts";
@@ -36,10 +39,15 @@ export type ChainProtection = {
   premiumPaid: string;
   potentialPayout: string;
   city: string;
+  cityId?: string;
+  peril?: PerilId;
+  triggerValue?: number;
   windowLabel: string;
   triggerLabel: string;
   statusLabel: string;
   openedAt: number;
+  payoutClaimed?: boolean;
+  refundClaimed?: boolean;
   explorerUrl: string;
 };
 
@@ -80,7 +88,9 @@ export function protectionView(address: string, positionData: Buffer, marketData
   const position = decodePosition(positionData);
   if (!position) return null;
   const market = decodeMarket(marketData);
-  const citySlug = market ? CITY_HASHES[market.cityHash] : undefined;
+  const identity = market ? marketIdentity(market.cityHash) : null;
+  const citySlug = identity?.cityId ?? (market ? CITY_HASHES[market.cityHash] : undefined);
+  const peril = identity?.peril ?? (citySlug ? "rain" : undefined);
   return {
     market: position.market,
     address,
@@ -88,10 +98,14 @@ export function protectionView(address: string, positionData: Buffer, marketData
     premiumPaid: position.premiumPaid,
     potentialPayout: position.potentialPayout,
     city: citySlug ? consumerCityName(citySlug) : "Unknown city",
+    cityId: citySlug, peril,
+    triggerValue: market && peril ? Number(market.thresholdMmX100) / 100 : undefined,
     windowLabel: market ? windowLabel(market.observationStart, market.observationEnd) : "—",
-    triggerLabel: market ? triggerLabel(market.operator, market.thresholdMmX100) : "—",
+    triggerLabel: market ? triggerLabel(market.operator, market.thresholdMmX100, peril ? perilById(peril)?.unit : undefined) : "—",
     statusLabel: statusLabel(position, market, nowSeconds),
     openedAt: position.openedAt,
+    payoutClaimed: position.payoutClaimed,
+    refundClaimed: position.refundClaimed,
     explorerUrl: `https://explorer.solana.com/address/${address}?cluster=devnet`,
   };
 }
@@ -154,16 +168,16 @@ function windowLabel(start: number, end: number): string {
   return committedWindowLabel({ observationStart: start, observationEnd: end }) ?? "—";
 }
 
-function triggerLabel(operator: (typeof OPERATORS)[number], threshold: string): string {
+function triggerLabel(operator: (typeof OPERATORS)[number], threshold: string, unit?: string): string {
   if (!/^-?\d+$/.test(threshold)) return "—";
   const symbol = operator === "gt" ? ">" : operator === "lt" ? "<" : operator === "lte" ? "≤" : "≥";
-  return `${symbol} ${trimMm(Number(threshold) / 100)} mm`;
+  return unit ? `${symbol} ${trimMm(Number(threshold) / 100)} ${unit}` : "—";
 }
 
 function statusLabel(position: { payoutClaimed: boolean; refundClaimed: boolean }, market: ReturnType<typeof decodeMarket>, nowSeconds: number): string {
   if (position.refundClaimed) return "Refunded";
-  if (market?.status === "Settled" && market.result === "Triggered") return "Paid";
   if (position.payoutClaimed) return "Paid";
+  if (market?.status === "Settled" && market.result === "Triggered") return "Payout ready to collect";
   if (market?.status === "Settled" && market.result === "NotTriggered") return "Not triggered";
   if (market?.status === "DataUnavailable") return "Refund ready";
   const windowEnded = market != null && nowSeconds >= market.observationEnd;
