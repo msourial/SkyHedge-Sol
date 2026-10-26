@@ -1,219 +1,183 @@
-import { Pressable, StyleSheet, Text, View, Vibration } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import { useEffect, useRef } from "react";
+import { Animated, Easing, Pressable, StyleSheet, Text, View, Vibration, useWindowDimensions } from "react-native";
+import Svg, { Line, Path, Text as SvgText } from "react-native-svg";
 import { PERILS, perilOpen } from "../../../shared/peril-registry.ts";
-import {
-  APPROVE_WALLET, CHANCE, DEVNET_TAG, DONE, DRY_WINDOW, GETTING_QUOTE, MAX_GAIN, MAX_LOSS, MONTH, NOT_OPEN_WORD, PAID_OUT,
-  SO_FAR, TRIGGER, TRY_AGAIN, VIEW_WALLET, WAITING_WALLET, WEEK, gainCaption, infoSheetTitle, lossCaption,
-} from "../../../shared/ui-copy.ts";
+import { GETTING_QUOTE, MAX_GAIN, MAX_LOSS, TRY_AGAIN, VIEW_WALLET, WAITING_WALLET, infoSheetTitle } from "../../../shared/ui-copy.ts";
 import { lineGlyphs } from "../../../shared/ui-glyphs.ts";
 import { instrumentArt } from "../../../shared/ui-instrument.ts";
 import { lineTokens } from "../../../shared/ui-tokens.ts";
+import type { MoneyFigure, PayoffModel, TicketModel } from "../../../shared/ui-view.ts";
 import type { LineController } from "./use-line.ts";
 import { LineArt } from "./art.tsx";
+import { protectLayout as L } from "./layout.ts";
 import { F } from "../theme.ts";
+import { useReducedMotion } from "../liquid-glass.tsx";
+
+import { LinePressable } from "./pressable.tsx";
 
 const C = lineTokens;
 
-export function ProtectBody(props: {
-  line: LineController;
-  onCity: (cityId: string) => void;
-  onWallet: () => void;
-  onRetry: () => void;
-}) {
+export function ProtectBody(props: { line: LineController; onCity: (cityId: string) => void; onWallet: () => void; onRetry: () => void }) {
   const { line } = props;
   const model = line.model;
-  const art = instrumentArt({ peril: model.peril, rungs: model.rungs, selected: model.selected, reading: model.reading, state: model.instrument, size: "stage", unit: model.unit });
-  const box = Number(art.viewBox.split(" ")[3]) || 1;
-  const lineY = art.anchorY == null ? null : (art.anchorY / box) * 248;
-  return (
-    <View>
-      <Text style={styles.status}>{DEVNET_TAG}</Text>
-      <View style={styles.head}>
-        <Pressable accessibilityRole="button" onPress={() => line.setSheet("city")} style={styles.city}>
-          <Text style={styles.title}>{model.cityName}</Text>
-        </Pressable>
-        <View style={styles.tenor}>
-          <Pressable accessibilityRole="button" accessibilityState={{ selected: model.tenor === "weekly" }} onPress={() => line.setTenor("weekly")} style={[styles.tenorBtn, model.tenor === "weekly" && styles.tenorOn]}><Text style={styles.tenorText}>{WEEK}</Text></Pressable>
-          <Pressable accessibilityRole="button" accessibilityState={{ selected: model.tenor === "monthly" }} onPress={() => line.setTenor("monthly")} style={[styles.tenorBtn, model.tenor === "monthly" && styles.tenorOn]}><Text style={styles.tenorText}>{MONTH}</Text></Pressable>
-        </View>
+  const reduced = useReducedMotion();
+  const tabX = useRef(new Animated.Value(PERILS.findIndex((p) => p.id === model.peril))).current;
+  useEffect(() => {
+    const animation = Animated.timing(tabX, { toValue: PERILS.findIndex((p) => p.id === model.peril), duration: reduced ? 0 : 240, easing: Easing.bezier(.23, 1, .32, 1), useNativeDriver: true });
+    animation.start(); return () => animation.stop();
+  }, [model.peril, reduced, tabX]);
+  const { width } = useWindowDimensions();
+  const contentWidth = Math.min(width, 640) - 32;
+  const art = model.hero ? instrumentArt({ peril: model.peril, rungs: model.rungs, selected: model.selected, reading: model.reading, state: model.instrument, size: "hero", unit: model.unit }) : null;
+  return <View>
+    <View style={styles.head}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Choose city, ${model.cityName}`} onPress={() => line.setSheet("city")} style={styles.city}>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={styles.title}>{model.cityName}</Text><Text style={styles.chevron}>⌄</Text><Text style={styles.label}>Devnet</Text>
+      </Pressable>
+      <View style={styles.tenor}>
+        {([ ["weekly", "Week"], ["monthly", "Month"] ] as const).map(([tenor, label]) => <Pressable key={tenor} accessibilityRole="button" accessibilityState={{ selected: model.tenor === tenor }} onPress={() => line.setTenor(tenor)} style={[styles.tenorBtn, model.tenor === tenor && styles.tenorOn]}><Text style={[styles.label, { color: line.tenorOpen[tenor] ? C.fg : C.dryText }]}>{label}</Text></Pressable>)}
       </View>
-      {model.subline ? <Text style={styles.sub}>{model.subline}</Text> : null}
-      <View style={styles.switcher} accessibilityRole="tablist">
-        {PERILS.map((peril) => {
-          const open = perilOpen({ cityId: line.cityId, peril: peril.id, windowStart: line.windowStart, tenor: model.tenor });
-          const on = model.peril === peril.id;
-          return (
-            <Pressable key={peril.id} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => line.setPeril(peril.id)} style={[styles.seg, on && styles.segOn]}>
-              <Glyph name={peril.id} color={open ? C.fg : C.dryText} />
-              <Text style={[styles.segText, !open && { color: C.dryText }]}>{peril.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      <View style={styles.stage}>
-        {lineY != null ? <View style={[styles.rule, { top: lineY }, model.instrument === "paid" && { height: 6 }]} /> : null}
-        <LineArt ops={art.ops} viewBox={art.viewBox} width={art.width} height={art.height} label={art.label} />
-        <View style={styles.readout}>
-          {model.ticket ? <Text style={styles.label}>{CHANCE}</Text> : null}
-          {model.ticket ? <Text style={styles.figM}>{model.ticket.chance}</Text> : null}
-          {model.selected != null ? <Text style={styles.label}>{TRIGGER}</Text> : null}
-          {model.selected != null ? <Text style={styles.figXl}>{model.selected}<Text style={styles.unit}> {model.unit}</Text></Text> : null}
-          <Text style={styles.label}>{SO_FAR}</Text>
-          <Text style={styles.figM}>{model.soFarValue}</Text>
-        </View>
-      </View>
-      {model.odds ? <Text style={styles.odds}>{model.odds}</Text> : null}
-      {model.showChain ? (
-        <View accessibilityLabel="Trigger chain">
-          {model.rows.map((row) => (
-            <Pressable key={row.trigger} disabled={row.inert} accessibilityRole={row.inert ? "text" : "radio"} accessibilityState={{ selected: row.selected, disabled: row.inert }} accessibilityLabel={row.name} onPress={() => { Vibration.vibrate(10); line.setSelectedTrigger(row.trigger); }} style={[styles.row, row.selected && styles.rowOn]}>
-              <Text style={[styles.rowText, !row.open && styles.dry]}>{row.triggerLabel}</Text>
-              <Text style={[styles.rowText, !row.open && styles.dry]}>{row.chance}</Text>
-              <Text style={[styles.rowText, !row.open && styles.dry]}>{row.multiple}</Text>
-              <Text style={[styles.rowText, !row.open && styles.dry]}>{row.maxLoss ?? NOT_OPEN_WORD}</Text>
-            </Pressable>
-          ))}
-          {model.footnote ? <Text style={styles.note}>{model.footnote}</Text> : null}
-        </View>
-      ) : null}
-      {model.blocked ? <Text style={styles.note}>{model.blocked}</Text> : null}
-      {model.ticket ? (
-        <View>
-          <View style={styles.chips}>
-            {model.chips.map((chip) => (
-              <Pressable key={chip.cover} disabled={chip.disabled} accessibilityState={{ selected: chip.selected }} onPress={() => line.setCover(chip.cover)} style={[styles.chip, chip.selected && styles.chipOn]}>
-                <Text style={styles.chipText}>{chip.cover}</Text>
-              </Pressable>
-            ))}
-            <Pressable accessibilityLabel={infoSheetTitle()} onPress={() => line.setSheet("info")} style={styles.info}><Text style={styles.note}>i</Text></Pressable>
-          </View>
-          {model.capMessage ? <Text style={styles.note}>{model.capMessage}</Text> : null}
-          <View style={styles.cells}>
-            <View style={styles.cell}><Text style={styles.label}>{lossCaption()}</Text><Text style={styles.figL}>{model.ticket.loss.sign}{model.ticket.loss.whole}<Text style={styles.minor}>.{model.ticket.loss.fraction} SKYT</Text></Text></View>
-            <View style={styles.cell}><Text style={styles.label}>{gainCaption()}</Text><Text style={styles.figL}>{model.ticket.gain.sign}{model.ticket.gain.whole}<Text style={styles.minor}>.{model.ticket.gain.fraction} SKYT</Text></Text></View>
-          </View>
-          <Text style={styles.body}>{model.ticket.sentence}</Text>
-          {model.ticket.note ? <Text style={styles.note}>{model.ticket.note}</Text> : null}
-        </View>
-      ) : null}
-      {line.sheet === "city" ? (
-        <View style={styles.sheet}>
-          {line.cities.map((city) => (
-            <Pressable key={city.id} onPress={() => { props.onCity(city.id); line.setSheet(null); }} style={styles.cityRow}><Text style={styles.body}>{city.name}</Text></Pressable>
-          ))}
-        </View>
-      ) : null}
-      {line.sheet === "info" && model.ticket?.sheet ? (
-        <View style={styles.sheet}>
-          <Text style={styles.title}>{infoSheetTitle()}</Text>
-          <Text style={styles.body}>{model.ticket.sheet}</Text>
-          <Pressable onPress={() => line.setSheet(null)}><Text style={styles.link}>{DONE}</Text></Pressable>
-        </View>
-      ) : null}
-      {line.sheet === "sign" && model.ticket ? (
-        <View style={styles.sheet}>
-          <Text style={styles.title}>{APPROVE_WALLET}</Text>
-          {model.ticket.signRows.map((row) => <Text key={row.label} style={styles.body}>{row.label} {row.value}</Text>)}
-        </View>
-      ) : null}
     </View>
-  );
+    <Text numberOfLines={1} ellipsizeMode="tail" style={styles.sub}>{model.subline}</Text>
+    <View style={styles.switcher} accessibilityRole="tablist">
+      {PERILS.map((peril) => {
+        const open = perilOpen({ cityId: line.cityId, peril: peril.id, windowStart: line.windowStart, tenor: model.tenor });
+        const selected = model.peril === peril.id;
+        const color = open ? selected ? C.fg : C.fg2 : C.dryText;
+        return <LinePressable key={peril.id} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => line.setPeril(peril.id)} style={styles.seg}>
+          <Glyph name={peril.id} color={color} /><Text style={[styles.label, { color }]}>{peril.label}</Text>
+        </LinePressable>;
+      })}
+      <Animated.View pointerEvents="none" style={[styles.underline, { width: contentWidth / PERILS.length, transform: [{ translateX: Animated.multiply(tabX, contentWidth / PERILS.length) }] }]} />
+    </View>
+    {model.panel.kind === "not-open" ? <NotOpen line={line} onCity={props.onCity} /> : null}
+    {model.hero && art ? <View style={styles.hero}>
+      <View style={styles.instrument}><LineArt {...art} /></View>
+      <View style={styles.readout}>
+        <Text style={styles.label}>{model.hero.label}</Text>
+        <View style={styles.numeralRow}><FigureSwap value={model.hero.numeral} /><Text style={styles.unit}>{model.hero.unit}</Text></View>
+        <View style={styles.stats}>
+          <View style={styles.stat}><Text style={styles.label}>Chance</Text><Text style={styles.figM}>{model.hero.chance}</Text></View>
+          <View style={styles.stat}><Text style={styles.label}>Multiple</Text><Text style={styles.figM}>{model.hero.multiple}</Text></View>
+        </View>
+        {model.hero.soFar ? <Text style={styles.reading}>{model.hero.soFar.label}  {model.hero.soFar.value}</Text> : null}
+      </View>
+    </View> : null}
+    {model.showChain ? <View accessibilityLabel="Trigger chain" style={styles.chain}>
+      <View style={styles.chainHead}>{model.header.map((label, index) => <Text key={label} numberOfLines={1} style={[styles.label, column(index), index > 0 && styles.right]}>{label}</Text>)}</View>
+      {model.rows.map((row) => <LinePressable key={row.trigger} disabled={row.inert} accessibilityRole={row.inert ? "text" : "radio"} accessibilityState={{ selected: row.selected, disabled: row.inert }} accessibilityLabel={`${row.name}${row.tag ? `. ${row.tag}` : ""}`} onPress={() => { Vibration.vibrate(10); line.setSelectedTrigger(row.trigger); }} style={[styles.row, row.selected && styles.rowOn]}>
+        {row.selected ? <View style={styles.rowTick} /> : null}
+        <View style={column(0)}><View style={styles.triggerRow}>{row.selected ? <View style={styles.triggerMark} /> : null}<Text style={[styles.figM, !row.open && styles.dry]}>{row.triggerLabel}</Text></View>{row.tag || row.topTag ? <Text numberOfLines={1} style={styles.label}>{row.tag ?? row.topTag}</Text> : null}</View>
+        {[row.chance, row.multiple, row.maxLoss].map((value, index) => <Text key={index} style={[styles.rowText, column(index + 1), styles.right, !row.open && styles.dry]}>{value}</Text>)}
+      </LinePressable>)}
+    </View> : null}
+    {model.footnotes.map((note) => <Text key={note} style={styles.note}>{note}</Text>)}
+    {model.ticket ? <View>
+      {!model.readOnly ? <View style={styles.chips}>
+        {model.chips.map((chip) => <LinePressable key={chip.cover} disabled={chip.disabled} accessibilityRole="button" accessibilityLabel={`${chip.cover} SKYT cover`} accessibilityState={{ selected: chip.selected, disabled: chip.disabled }} onPress={() => line.setCover(chip.cover)} style={[styles.chip, chip.selected && styles.chipOn]}><Text style={[styles.chipText, chip.disabled && styles.dry]}>{chip.cover}</Text></LinePressable>)}
+        <Pressable accessibilityRole="button" accessibilityLabel={infoSheetTitle()} onPress={() => line.setSheet("info")} style={styles.info}><Text style={styles.label}>ⓘ</Text></Pressable>
+      </View> : <Text style={styles.note}>{model.yourCover}</Text>}
+      {model.capMessage ? <Text style={styles.note}>{model.capMessage}</Text> : null}
+      <MoneyCells ticket={model.ticket} />
+      <Payoff diagram={model.ticket.payoff} width={contentWidth} />
+      {model.ticket.signRows.slice(3).map((row) => <TicketRow key={row.label} {...row} />)}
+      <Text style={[styles.body, styles.sentence]}>{model.ticket.sentence}</Text>
+      <Text style={styles.note}>{model.ticket.salesClose}</Text>
+      <Text style={styles.note}>{model.ticket.refund}</Text>
+      {model.ticket.honesty ? <Text style={styles.note}>{model.ticket.honesty}</Text> : null}
+      <Pressable accessibilityRole="button" accessibilityLabel={infoSheetTitle()} onPress={() => line.setSheet("info")} style={styles.textButton}><Text style={styles.label}>ⓘ {infoSheetTitle()}</Text></Pressable>
+    </View> : null}
+    {line.sheet === "city" ? <View style={styles.sheet}>{line.cities.map((city) => <Pressable key={city.id} onPress={() => { props.onCity(city.id); line.setSheet(null); }} style={styles.cityRow}><Text style={styles.body}>{city.name}</Text></Pressable>)}</View> : null}
+    {line.sheet === "info" && model.ticket?.sheet ? <View style={styles.sheet}><Text style={styles.title}>{infoSheetTitle()}</Text><Text style={styles.body}>{model.ticket.sheet}</Text><Pressable onPress={() => line.setSheet(null)} style={styles.textButton}><Text style={styles.link}>Done</Text></Pressable></View> : null}
+  </View>;
 }
 
-export function LinePay(props: { line: LineController; onConnect: () => void; onApprove: () => void; onWallet: () => void; onRetry: () => void; onCity: (cityId: string) => void }) {
+function FigureSwap({ value }: { value: string }) {
+  const reduced = useReducedMotion();
+  const opacity = useRef(new Animated.Value(1)).current;
+  useEffect(() => { opacity.setValue(reduced ? 1 : 0); const a = Animated.timing(opacity, { toValue: 1, duration: 120, useNativeDriver: true }); a.start(); return () => a.stop(); }, [value, reduced, opacity]);
+  return <Animated.Text style={[styles.numeral, { opacity }]}>{value}</Animated.Text>;
+}
+
+function NotOpen({ line, onCity }: { line: LineController; onCity: (cityId: string) => void }) {
+  const panel = line.model.panel;
+  if (panel.kind !== "not-open") return null;
+  return <View style={styles.notOpen}><Text style={styles.body}>{panel.line}</Text>{panel.go ? <Pressable style={styles.textButton} onPress={() => { onCity(panel.go!.cityId); if (panel.go!.tenor) line.setTenor(panel.go!.tenor); }}><Text style={[styles.link, { color: C.glacier }]}>{panel.go.label}</Text></Pressable> : null}</View>;
+}
+
+export function LinePay(props: { line: LineController; onConnect: () => void; onReview: () => void; onWallet: () => void; onRetry: () => void; onCity: (cityId: string) => void; sheetOpen?: boolean }) {
   const panel = props.line.model.panel;
-  if (panel.kind === "loading") return <View style={styles.pay}><Pressable disabled style={styles.ctaDim}><Text style={styles.ctaTextDim}>{GETTING_QUOTE}</Text></Pressable></View>;
-  if (panel.kind === "error") return <View style={styles.pay}><Text style={styles.body}>{panel.message}</Text><Pressable onPress={props.onRetry}><Text style={styles.link}>{TRY_AGAIN}</Text></Pressable></View>;
-  if (panel.kind === "not-open") return <View style={styles.pay}><Text style={styles.body}>{panel.line}</Text>{panel.go ? <Pressable onPress={() => props.onCity(panel.go!.cityId)}><Text style={styles.link}>{panel.go.label}</Text></Pressable> : null}</View>;
-  if (panel.kind === "closed") return <View style={styles.pay}><Text style={styles.body}>{panel.line}</Text></View>;
-  if (panel.kind === "paid") return <View style={styles.pay}><Text style={styles.paid}>{panel.result}</Text><Text style={styles.stamp}>{PAID_OUT}</Text></View>;
-  if (panel.kind === "dry") return <View style={styles.pay}><Text style={styles.figM}>{panel.result}</Text><Text style={styles.dryStamp}>{DRY_WINDOW}</Text></View>;
-  if (panel.kind === "covered") return <View style={styles.pay}><Text style={styles.label}>{panel.title}</Text><PayFigs loss={panel.loss} gain={panel.gain} /><Text style={styles.link} onPress={props.onWallet}>{VIEW_WALLET}</Text></View>;
-  if (panel.kind === "connect" || panel.kind === "ready" || panel.kind === "signing") {
-    const press = panel.kind === "connect" ? props.onConnect : panel.kind === "signing" ? undefined : () => { Vibration.vibrate(10); props.line.setSheet("sign"); };
-    return (
-      <View style={styles.pay}>
-        <PayFigs loss={panel.loss} gain={panel.gain} />
-        <Pressable disabled={panel.kind === "signing"} onPress={press} style={panel.kind === "signing" ? styles.ctaDim : styles.cta}>
-          <Text style={panel.kind === "signing" ? styles.ctaTextDim : styles.ctaText}>{panel.kind === "signing" ? WAITING_WALLET : panel.cta}</Text>
-        </Pressable>
-        {props.line.sheet === "sign" ? <Pressable onPress={() => { Vibration.vibrate(10); props.onApprove(); }} style={styles.cta}><Text style={styles.ctaText}>{APPROVE_WALLET}</Text></Pressable> : null}
-      </View>
-    );
-  }
-  return null;
+  const { fontScale } = useWindowDimensions();
+  if (panel.kind === "not-open") return null;
+  if (panel.kind === "error") return <View style={styles.payMessage}><Text style={styles.body}>{panel.message}</Text><Pressable style={styles.textButton} onPress={props.onRetry}><Text style={styles.link}>{TRY_AGAIN}</Text></Pressable></View>;
+  if (panel.kind === "closed") return <View style={styles.payMessage}><Text style={styles.body}>{panel.line}</Text></View>;
+  if (panel.kind === "paid" || panel.kind === "dry") return <View style={styles.payMessage}><Text style={styles.figM}>{panel.result}</Text><Text style={styles.label}>{panel.kind === "paid" ? "Paid out" : "Dry window"}</Text></View>;
+  if (panel.kind === "covered") return <View style={styles.receipt}><Text style={styles.label}>{panel.title}</Text><View style={styles.payRow}><PayFigs loss={panel.loss} gain={panel.gain} /><Pressable onPress={props.onWallet} style={styles.textButton}><Text style={styles.link}>{VIEW_WALLET}</Text></Pressable></View></View>;
+  const loading = panel.kind === "loading";
+  const signing = panel.kind === "signing";
+  let label = loading ? GETTING_QUOTE : signing ? WAITING_WALLET : panel.cta;
+  if (fontScale > 1.15 && panel.kind === "ready") label = label.replace("Protect for ", "Protect\n");
+  return <View style={styles.pay} pointerEvents={props.sheetOpen ? "none" : "auto"} accessibilityElementsHidden={props.sheetOpen} importantForAccessibility={props.sheetOpen ? "no-hide-descendants" : "auto"}>
+    <PayFigs loss={loading ? null : panel.loss} gain={loading ? null : panel.gain} />
+    <LinePressable accessibilityRole="button" disabled={loading || signing || props.sheetOpen || (panel.kind === "ready" && !props.line.approveTarget)} onPress={panel.kind === "connect" ? props.onConnect : props.onReview} style={[styles.cta, (loading || signing) && styles.ctaDim]}><Text style={[(loading || signing) ? styles.ctaTextDim : styles.ctaText, styles.center]}>{label}</Text></LinePressable>
+  </View>;
 }
 
-export function TabGlyph({ name, color }: { name: "markets" | "protect" | "wallet"; color: string }) {
-  return <Glyph name={name} color={color} />;
+export function MoneyCells({ ticket }: { ticket: Pick<TicketModel, "loss" | "gain"> }) {
+  return <View style={styles.cells}>{([[MAX_LOSS, ticket.loss], [MAX_GAIN, ticket.gain]] as const).map(([label, fig]) => <View key={label} style={styles.cell}><Text style={styles.label}>{label}</Text><Text adjustsFontSizeToFit minimumFontScale={.75} numberOfLines={1} style={styles.figL}>{figure(fig)}<Text style={styles.moneyUnit}> SKYT</Text></Text></View>)}</View>;
 }
-
-function PayFigs({ loss, gain }: { loss: { sign: string; whole: string; fraction: string }; gain: { sign: string; whole: string; fraction: string } }) {
-  return (
-    <View style={styles.payFigs}>
-      <View style={styles.paySide}><Text style={styles.label}>{MAX_LOSS}</Text><Text style={styles.figM}>{loss.sign}{loss.whole}.{loss.fraction}</Text></View>
-      <View style={styles.paySide}><Text style={styles.label}>{MAX_GAIN}</Text><Text style={styles.figM}>{gain.sign}{gain.whole}.{gain.fraction}</Text></View>
-      <Text style={styles.minor}>SKYT</Text>
-    </View>
-  );
+export function TicketRow({ label, value, payout }: { label: string; value: string; payout?: boolean }) {
+  return <View style={styles.ticketRow}><Text style={styles.rowLabel}>{label}</Text><Text style={[styles.figM, styles.ticketValue, payout && { color: C.slicker }]}>{value}</Text></View>;
 }
-
-function Glyph({ name, color }: { name: keyof typeof lineGlyphs; color: string }) {
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      {lineGlyphs[name].map((d) => <Path key={d} d={d} stroke={color} fill="none" strokeWidth={1.75} strokeLinecap="round" />)}
-    </Svg>
-  );
+function Payoff({ diagram: d, width }: { diagram: PayoffModel; width: number }) {
+  const x = 16 + d.step * (width - 32), zero = 60, gainY = zero - d.gainPx, lossY = zero + d.lossPx;
+  return <Svg width={width} height={112} accessibilityRole="image" accessibilityLabel={d.description}>
+    <Line x1={16} y1={zero} x2={width - 16} y2={zero} stroke={C.tick} strokeWidth={1} />
+    <Path d={`M16 ${lossY} H${x}`} stroke={C.fg2} strokeWidth={3} fill="none" />
+    <Line x1={x} y1={lossY} x2={x} y2={gainY} stroke={C.slicker} strokeWidth={2} />
+    <Path d={`M${x} ${gainY} H${width - 16}`} stroke={C.fg} strokeWidth={3} fill="none" />
+    <SvgText x={16} y={Math.min(96, lossY + 18)} fill={C.fg2} fontFamily={F.mono} fontSize={13}>{d.lossLabel}</SvgText>
+    <SvgText x={width - 16} y={Math.max(15, gainY - 8)} textAnchor="end" fill={C.fg} fontFamily={F.mono} fontSize={13}>{d.gainLabel}</SvgText>
+    <SvgText x={Math.max(48, Math.min(width - 48, x))} y={110} textAnchor="middle" fill={C.fg2} fontFamily={F.mono} fontSize={13}>{d.triggerLabel}</SvgText>
+  </Svg>;
 }
+export function TabGlyph({ name, color }: { name: "markets" | "protect" | "wallet"; color: string }) { return <Glyph name={name} color={color} />; }
+function Glyph({ name, color }: { name: keyof typeof lineGlyphs; color: string }) { return <Svg width={24} height={24} viewBox="0 0 24 24">{lineGlyphs[name].map((d) => <Path key={d} d={d} stroke={color} fill="none" strokeWidth={1.75} strokeLinecap="round" />)}</Svg>; }
+function figure(fig: MoneyFigure) { return `${fig.sign}${fig.whole}.${fig.fraction}`; }
+function PayFigs({ loss, gain }: { loss: MoneyFigure | null; gain: MoneyFigure | null }) { return <View style={styles.payFigs}>{([[MAX_LOSS, loss], [MAX_GAIN, gain]] as const).map(([label, fig], index) => <View key={label} style={styles.paySide}><Text style={styles.label}>{label} </Text><Text style={[styles.figM, !fig && styles.dry]}>{fig ? figure(fig) : "…"}</Text>{index === 1 ? <Text style={styles.label}> SKYT</Text> : null}</View>)}</View>; }
+function column(index: number) { return { width: `${L.columns[index] / 361 * 100}%` as `${number}%` }; }
 
 const styles = StyleSheet.create({
-  status: { height: 24, textAlign: "right", color: C.fg2, fontFamily: F.bodyMedium, fontSize: 13 },
-  head: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  city: { minHeight: 48, justifyContent: "center" },
-  title: { color: C.fg, fontFamily: F.heading, fontSize: 32, lineHeight: 34 },
-  tenor: { flexDirection: "row", backgroundColor: C.surface2, borderRadius: 999, padding: 3 },
-  tenorBtn: { minHeight: 48, paddingHorizontal: 12, borderRadius: 999, justifyContent: "center" },
-  tenorOn: { backgroundColor: C.bgRaised },
-  tenorText: { color: C.fg, fontFamily: F.bodyMedium, fontSize: 13 },
-  sub: { color: C.fg2, fontFamily: F.bodyMedium, fontSize: 13, lineHeight: 18, marginBottom: 12 },
-  switcher: { height: 64, borderRadius: 999, backgroundColor: C.surface2, flexDirection: "row", padding: 4, marginBottom: 12 },
-  seg: { flex: 1, alignItems: "center", justifyContent: "center", borderRadius: 999 },
-  segOn: { backgroundColor: C.bgRaised },
-  segText: { color: C.fg, fontFamily: F.bodyMedium, fontSize: 13 },
-  stage: { height: 256, flexDirection: "row", alignItems: "center" },
-  rule: { position: "absolute", left: -18, right: -18, height: 2, backgroundColor: C.slicker },
-  readout: { flex: 1, alignItems: "flex-end" },
+  head: { height: L.header, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 4 },
+  city: { flex: 1, minWidth: 0, minHeight: 48, flexDirection: "row", alignItems: "center", gap: 4 },
+  title: { color: C.fg, fontFamily: F.heading, fontSize: 32, lineHeight: 34, flexShrink: 1 },
+  chevron: { color: C.fg2, fontSize: 24, width: 24 },
+  tenor: { flexDirection: "row", borderRadius: 999, backgroundColor: C.surface2 },
+  tenorBtn: { height: 48, paddingHorizontal: 10, borderRadius: 999, justifyContent: "center" }, tenorOn: { backgroundColor: C.bgRaised },
+  sub: { height: L.subline, color: C.fg2, fontFamily: F.bodyMedium, fontSize: 13, lineHeight: 18 },
+  switcher: { height: L.tabs, flexDirection: "row" }, seg: { flex: 1, alignItems: "center", justifyContent: "center", gap: 2 },
+  underline: { position: "absolute", left: 0, bottom: 0, height: 3, backgroundColor: C.glacier },
+  hero: { height: L.hero, marginTop: L.heroGap }, instrument: { position: "absolute", left: -16, top: 0 },
+  readout: { marginLeft: L.readoutX - L.margin, flex: 1 }, numeralRow: { flexDirection: "row", alignItems: "baseline", gap: 8, height: 60 },
+  numeral: { color: C.slicker, fontFamily: F.heading, fontSize: 64, lineHeight: 60, includeFontPadding: false },
+  unit: { color: C.fg2, fontFamily: F.mono, fontSize: 17, lineHeight: 24 },
+  stats: { flexDirection: "row", marginTop: 16 }, stat: { flex: 1 }, reading: { color: C.fg2, fontFamily: F.mono, fontSize: 13, lineHeight: 18 },
   label: { color: C.fg2, fontFamily: F.bodyMedium, fontSize: 13, lineHeight: 18 },
-  figXl: { color: C.slicker, fontFamily: F.mono, fontSize: 44, lineHeight: 44 },
-  figL: { color: C.fg, fontFamily: F.mono, fontSize: 28, lineHeight: 32 },
-  figM: { color: C.fg, fontFamily: F.mono, fontSize: 17, lineHeight: 24 },
-  minor: { color: C.fg2, fontFamily: F.mono, fontSize: 13 },
-  unit: { color: C.fg2, fontFamily: F.mono, fontSize: 13 },
-  odds: { minHeight: 40, color: C.fg, fontFamily: F.body, fontSize: 15, lineHeight: 22 },
-  row: { minHeight: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  rowOn: { backgroundColor: C.bgRaised },
-  rowText: { color: C.fg, fontFamily: F.mono, fontSize: 15, flex: 1 },
-  dry: { color: C.dryText },
-  note: { color: C.fg2, fontFamily: F.body, fontSize: 13, lineHeight: 18, marginVertical: 8 },
-  body: { color: C.fg, fontFamily: F.body, fontSize: 15, lineHeight: 22 },
-  chips: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 },
-  chip: { minWidth: 64, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center" },
-  chipOn: { backgroundColor: C.bgRaised },
-  chipText: { color: C.fg, fontFamily: F.bodySemi, fontSize: 15 },
-  info: { width: 48, height: 48, alignItems: "center", justifyContent: "center" },
-  cells: { flexDirection: "row", gap: 16, marginTop: 12 },
-  cell: { flex: 1, minHeight: 88, borderRadius: 14, backgroundColor: C.bgRaised, padding: 12 },
-  link: { color: C.glacier, fontFamily: F.bodySemi, fontSize: 15, minHeight: 48 },
-  sheet: { marginTop: 12, backgroundColor: C.surface1, borderRadius: 20, padding: 16 },
-  cityRow: { minHeight: 56, justifyContent: "center" },
-  pay: { backgroundColor: C.bgRaised, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, gap: 8, minHeight: 120 },
-  payFigs: { flexDirection: "row", alignItems: "baseline", gap: 12 },
-  paySide: { flexDirection: "row", alignItems: "baseline", gap: 6 },
-  cta: { height: 56, borderRadius: 999, backgroundColor: C.glacier, alignItems: "center", justifyContent: "center" },
-  ctaDim: { height: 56, borderRadius: 999, backgroundColor: C.surface2, alignItems: "center", justifyContent: "center" },
-  ctaText: { color: C.onGlacier, fontFamily: F.bodySemi, fontSize: 15 },
-  ctaTextDim: { color: C.dryText, fontFamily: F.bodySemi, fontSize: 15 },
-  paid: { color: C.slicker, fontFamily: F.mono, fontSize: 17 },
-  stamp: { color: C.slicker, fontFamily: F.heading, fontSize: 20 },
-  dryStamp: { color: C.dryText, fontFamily: F.heading, fontSize: 20 },
+  figL: { color: C.fg, fontFamily: F.mono, fontSize: 28, lineHeight: 32 }, figM: { color: C.fg, fontFamily: F.mono, fontSize: 17, lineHeight: 24 },
+  moneyUnit: { color: C.fg2, fontFamily: F.bodyMedium, fontSize: 13 },
+  chain: { marginTop: L.chainGap }, chainHead: { height: L.chainHeader, flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderBottomColor: C.tick },
+  row: { height: L.chainRow, flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderBottomColor: C.tick }, rowOn: { backgroundColor: C.bgRaised },
+  rowTick: { position: "absolute", left: 0, height: 40, width: 4, backgroundColor: C.glacier }, triggerRow: { flexDirection: "row", alignItems: "center", paddingLeft: 8 }, triggerMark: { width: 12, height: 2, backgroundColor: C.slicker, marginRight: 4 },
+  rowText: { color: C.fg, fontFamily: F.mono, fontSize: 15, lineHeight: 20 }, right: { textAlign: "right" }, dry: { color: C.dryText },
+  note: { color: C.fg2, fontFamily: F.body, fontSize: 13, lineHeight: 18, marginTop: 8 }, body: { color: C.fg, fontFamily: F.body, fontSize: 15, lineHeight: 22 }, sentence: { marginTop: 16 },
+  chips: { flexDirection: "row", gap: 8, marginTop: 16 }, chip: { flex: 1, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center" }, chipOn: { backgroundColor: C.bgRaised }, chipText: { color: C.fg, fontFamily: F.bodySemi, fontSize: 15 }, info: { width: 48, height: 48, alignItems: "center", justifyContent: "center" },
+  cells: { flexDirection: "row", gap: 16, marginVertical: 16 }, cell: { flex: 1, height: 88, borderRadius: 14, backgroundColor: C.bgRaised, padding: 12, justifyContent: "center" },
+  ticketRow: { minHeight: 48, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8, borderBottomWidth: 1, borderBottomColor: C.tick }, rowLabel: { color: C.fg2, fontFamily: F.body, fontSize: 15, lineHeight: 22 }, ticketValue: { flexShrink: 1, textAlign: "right" },
+  sheet: { marginTop: 16, backgroundColor: C.surface1, borderRadius: 20, padding: 16 }, cityRow: { minHeight: 56, justifyContent: "center" }, notOpen: { minHeight: 120, marginTop: 8, backgroundColor: C.surface1, borderRadius: 14, padding: 16 },
+  textButton: { minHeight: 48, justifyContent: "center" }, link: { color: C.fg2, fontFamily: F.bodySemi, fontSize: 15 },
+  pay: { height: L.bar, backgroundColor: C.bgRaised, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderTopWidth: 1, borderTopColor: C.tick, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  payMessage: { minHeight: 88, padding: 16, backgroundColor: C.bgRaised }, receipt: { height: 104, paddingHorizontal: 16, paddingTop: 8, backgroundColor: C.bgRaised, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderTopWidth: 1, borderTopColor: C.tick }, payRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  payFigs: { flex: 1 }, paySide: { height: 24, flexDirection: "row", alignItems: "baseline" },
+  cta: { width: 168, height: 56, borderRadius: 999, backgroundColor: C.glacier, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 }, ctaDim: { backgroundColor: C.surface2 },
+  ctaText: { color: C.onGlacier, fontFamily: F.bodySemi, fontSize: 15, lineHeight: 20 }, ctaTextDim: { color: C.dryText, fontFamily: F.bodySemi, fontSize: 15, lineHeight: 20 }, center: { textAlign: "center" },
 });

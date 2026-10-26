@@ -42,10 +42,10 @@ import { committedWindowLabel, expiryChipLabel, matchingWindowPackage, sortByExp
 import { payGet } from "../shared/pay-get.ts";
 import { coverBaseUnits, coverExceedsBalance, formatQuoteSkyt, notEnoughSkyt, protectButtonLabel, stakeSheetForCover, stationDisplayName, type CoverChip } from "../shared/protect-copy.ts";
 import { showCityStep } from "./src/consumer-flow";
-import { loadFirstRunDone, markFirstRunDone } from "./src/first-run";
+import { loadFirstRunDone } from "./src/first-run";
 import { coverageOptions, type CoverageOption } from "./src/ticket";
 import { TechnicalContext } from "./src/line/TechnicalContext";
-import { MarketsLine, WalletLine, LandingLine, FirstRunStrip } from "./src/line/Discovery";
+import { MarketsLine, WalletLine, LandingLine } from "./src/line/Discovery";
 import { useDiscovery, useReceipts } from "./src/line/use-discovery";
 import { formatBase } from "../shared/ui-money.ts";
 import { firstOpenPair } from "../shared/peril-registry.ts";
@@ -62,6 +62,9 @@ import { marketByCode, type CatalogMarket } from "./src/markets-catalog";
 import { lineTokens } from "../shared/ui-tokens.ts";
 import { LinePay, ProtectBody, TabGlyph } from "./src/line/ProtectLine";
 import { useLineProtect } from "./src/line/use-line";
+import { SignSheet, type SignReview } from "./src/line/SignSheet";
+import { signFailure, signStepForPhase, submitLineOpenPosition } from "./src/line-submit";
+import type { SignOutcome, SignStep } from "../shared/ui-sign.ts";
 import { ScrollEdgeFade } from "./src/scroll-edge-fade";
 import { SCROLL_FADE_HEIGHT } from "./src/scroll-fade";
 import { APP_BUILD, APP_VERSION } from "./src/version";
@@ -83,6 +86,9 @@ export default function App() {
     BarlowCondensed_600SemiBold, BarlowCondensed_700Bold, IBMPlexMono_500Medium,
   });
   const [tab, setTab] = useState<Tab>("catalog");
+  const [signReview, setSignReview] = useState<SignReview | null>(null);
+  const [confirmedLine, setConfirmedLine] = useState<{ wallet: string; market: string } | null>(null);
+  const lineSubmitting = useRef(false);
   const [coverConfirm, setCoverConfirm] = useState<{ sentence: string; station: string; expiry: string; windowLabel: string; pay: string; getLabel: string; market: string; amount: string; multiple: string | null; feeLine: string | null; getLine: string | null; preSign: string | null; conditionLine: string | null; placeLine: string | null; triggerLine: string | null; shortLabel: string | null; coverSkyt: CoverChip } | null>(null);
   const [firstRun, setFirstRun] = useState(false);
   const [stickyHeight, setStickyHeight] = useState(188);
@@ -339,7 +345,7 @@ export default function App() {
   const activePackage = matchingWindowPackage(windowEvidence, protectCity, activeWindow?.observationStart, activeWindow?.observationEnd);
   const safeBottom = initialWindowMetrics?.insets.bottom ?? 0;
   const stickyOpen = !showLanding && tab === "protect";
-  const scrollBottom = (stickyOpen ? stickyHeight + SCROLL_FADE_HEIGHT : 0) + (showLanding ? 0 : tabHeight) + safeBottom + 16;
+  const scrollBottom = SCROLL_FADE_HEIGHT + 16; // Both bars occupy layout space outside the scroll viewport.
   useEffect(() => {
     let cancelled = false;
     setEvidenceLoading(true);
@@ -449,7 +455,36 @@ export default function App() {
     if (max.amountBase) setProtectionAmount((Number(BigInt(max.amountBase) / 1_000_000n)).toString());
   }, [coverageId, walletBalances]);
 
-  const submitApprovedAction = async (action: "open_position" | "claim_payout" | "claim_premium_refund", marketAddress?: string, amountOverride?: string) => {
+  const submitApprovedAction = async (action: "open_position" | "claim_payout" | "claim_premium_refund", marketAddress?: string, amountOverride?: string, lineRequest?: { review: SignReview; onStep: (step: SignStep) => void }): Promise<SignOutcome> => {
+    if (action === "open_position" && lineRequest) {
+      if (lineSubmitting.current) return { kind: "error", error: "unconfirmed" };
+      lineSubmitting.current = true;
+      const { review, onStep } = lineRequest;
+      try {
+        const outcome = await submitLineOpenPosition({
+          target: review.target, wallet, sessionAddress: walletSession?.address ?? null, reviewWallet: review.wallet,
+          positions: chainPositions, balanceBase: walletBalances ? String(walletBalances.skytBaseUnits) : null,
+          nowSeconds: Math.floor(Date.now() / 1000),
+          prepare: (target, owner) => prepareUnsignedTransaction({
+            action, market: target.market, wallet: owner, amount: target.amount,
+            onDevice: (input) => buildOpenPositionOnDevice(input),
+            server: () => postJson<UnsignedTransaction>("/api/transactions/unsigned", { action, market: target.market, wallet: owner, amount: target.amount, approved: true }, { attempts: 2, timeoutMs: 20_000 }),
+          }),
+          sign: (base64, onPhase) => signAndConfirmDevnetTransaction({ transactionBase64: base64, wallet: walletSession!, rpcUrl: DEVNET_RPC_URL, onPhase }),
+          check: async (duplicate) => {
+            const found = await findPositionAfterBuy({ read: () => readFinalizedProtections(wallet!), windowAddress: review.target.market, attempts: duplicate ? 2 : 4 });
+            if (found.protections) setChainPositions([...found.protections]);
+            return !!found.position;
+          },
+          onPhase: (phase) => onStep(signStepForPhase(phase)),
+          onSignature: setTransactionSignature,
+          refresh: async () => { await loadHome(); await loadWalletData(wallet!, true); },
+          logError: (reason) => console.warn("Line cover submission failed", reason),
+        });
+        if ((outcome.kind === "confirmed" || outcome.kind === "already-covered") && wallet) setConfirmedLine({ wallet, market: review.target.market });
+        return outcome;
+      } finally { lineSubmitting.current = false; }
+    }
     const targetMarket = marketAddress ?? activeWindow?.address ?? null;
     if (action === "open_position" && positionForWindow(chainPositions, targetMarket)) {
       // Already covered on this window: show the position, never a second buy or a Failed card.
@@ -457,7 +492,7 @@ export default function App() {
       setTransactionMessage(null);
       setTransactionError(null);
       setTransactionDetail(null);
-      return;
+      return { kind: "already-covered" };
     }
     let reachedWallet = false;
     setTransactionError(null);
@@ -489,8 +524,9 @@ export default function App() {
         rpcUrl: DEVNET_RPC_URL,
         onPhase: (phase) => {
           reachedWallet = true;
-          setBuyPhase(phase);
-          setTransactionMessage(buyPhaseLabel(phase));
+          const legacyPhase = phase === "confirming" ? "checking" : phase;
+          setBuyPhase(legacyPhase);
+          setTransactionMessage(buyPhaseLabel(legacyPhase));
         },
       });
       setTransactionSignature(signature);
@@ -500,13 +536,14 @@ export default function App() {
       try {
         await loadHome();
         await loadWalletData(wallet, true);
-        if (activeWindow.address) {
+        if (activeWindow?.address) {
           const readiness = await getJson<ClaimReadiness>(claimReadinessPath(activeWindow.address, wallet));
           setClaimReadiness(readiness);
         }
       } catch {
         // The transaction is already confirmed. A later Wallet refresh can retry the read.
       }
+      return { kind: "confirmed" };
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "The transaction did not complete.";
       const shown = transactionFailure(message, reason instanceof ApiError ? reason.detail : null);
@@ -526,13 +563,14 @@ export default function App() {
           setTransactionDetail(null);
           setQuote(null);
           void loadWalletData(wallet, true);
-          return;
+          return duplicate ? { kind: "already-covered" } : { kind: "confirmed" };
         }
       }
       setBuyPhase("failed");
       setTransactionMessage(buyPhaseLabel("failed"));
       setTransactionError(shown.message);
       setTransactionDetail(shown.detail);
+      return signFailure(reason, reachedWallet);
     }
   };
 
@@ -557,7 +595,8 @@ export default function App() {
     statusFailed: Boolean(statusError && !status),
     connected: Boolean(wallet),
     signing: buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending" || buyPhase === "checking",
-    coveredMarket: coveredPosition?.market ?? (alreadyCovered && activeWindow?.address ? activeWindow.address : null),
+    coveredMarket: confirmedLine?.wallet === wallet ? confirmedLine.market : coveredPosition?.market ?? (alreadyCovered && activeWindow?.address ? activeWindow.address : null),
+    chainPositions: wallet ? chainPositions : null,
     nowSeconds,
   });
 
@@ -582,7 +621,7 @@ export default function App() {
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottom }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottom }, !showLanding && tab === "protect" && { paddingHorizontal: 16, paddingTop: 0 }]}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.rain} />}
       >
@@ -612,7 +651,6 @@ export default function App() {
             </View>
           ) : (
             <>
-            {firstRun && wallet ? <FirstRunStrip onDismiss={() => { setFirstRun(false); void markFirstRunDone(); }}/> : null}
             <ProtectBody
               line={line}
               onCity={changeCity}
@@ -633,7 +671,11 @@ export default function App() {
       </View>
 
 
-      {!showLanding && tab === "protect" ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><ScrollEdgeFade style={styles.scrollEdgeFade} />{claimReadiness?.state === "claimable" && claimReadiness.action ? <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness.action) void submitApprovedAction(claimReadiness.action); }} /> : <LinePay line={line} onConnect={() => { void connect(); }} onApprove={() => { if (line.approveTarget) void submitApprovedAction("open_position", line.approveTarget.market, line.approveTarget.amount); }} onWallet={() => setTab("wallet")} onRetry={() => setEvidenceNonce((count) => count + 1)} onCity={changeCity} />}</View> : null}
+      {!showLanding && tab === "protect" ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><ScrollEdgeFade style={styles.scrollEdgeFade} />{claimReadiness?.state === "claimable" && claimReadiness.action ? <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness.action) void submitApprovedAction(claimReadiness.action); }} /> : <LinePay line={line} sheetOpen={signReview != null} onConnect={() => { void connect(); }} onReview={() => {
+        if (!line.approveTarget || !line.model.ticket) return;
+        const target = { ...line.approveTarget };
+        setSignReview({ target, wallet, ticket: line.model.ticket, context: { premiumBase: target.premiumBase, balanceBase: walletBalances ? String(walletBalances.skytBaseUnits) : null, cityName: line.model.cityName, peril: line.model.peril, triggerLabel: target.triggerLabel, windowLabel: target.windowLabel } });
+      }} onWallet={() => setTab("wallet")} onRetry={() => setEvidenceNonce((count) => count + 1)} onCity={changeCity} />}</View> : null}
       {coverConfirm ? <ConfirmCover {...coverConfirm} onClose={() => setCoverConfirm(null)} onCover={(skyt) => {
         const option = coverageOptions(walletBalances ? String(walletBalances.skytBaseUnits) : null).find((item) => item.id === String(skyt));
         if (option) chooseCoverage(option);
@@ -665,6 +707,10 @@ export default function App() {
         <TabButton label="Protect" glyph="protect" selected={tab === "protect"} onPress={() => setTab("protect")} />
         <TabButton label="Wallet" glyph="wallet" selected={tab === "wallet"} onPress={() => { setTab("wallet"); }} />
       </View>}
+      {signReview ? <SignSheet review={signReview} onClose={() => setSignReview(null)}
+        onApprove={(review, onStep) => submitApprovedAction("open_position", review.target.market, review.target.amount, { review, onStep })}
+        onWallet={() => { setTab("wallet"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
+        onMarkets={() => { setTab("catalog"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} /> : null}
       </GlassTargetContext.Provider>
     </SafeAreaView>
     </SafeAreaProvider>
@@ -711,7 +757,7 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
 const styles = StyleSheet.create({
   fontLoading: { flex: 1, backgroundColor: C.canvas, justifyContent: "center", alignItems: "center" },
   safe: { flex: 1, backgroundColor: C.canvas, overflow: "visible" },
-  versionText: { color: C.quiet, fontFamily: F.mono, fontSize: 12, padding: 10 },
+  versionText: { color: C.quiet, fontFamily: F.mono, fontSize: 13, padding: 10 },
   scrollWrap: { flex: 1, zIndex: 0 },
   scroll: { flex: 1 },
   scrollEdgeFade: { position: "absolute", left: 0, right: 0, top: -SCROLL_FADE_HEIGHT },

@@ -31,7 +31,7 @@ export async function signAndConfirmDevnetTransaction(input: {
   transactionBase64: string;
   wallet: AuthorizedWallet;
   rpcUrl: string;
-  onPhase?: (phase: "waiting" | "sending") => void;
+  onPhase?: (phase: "waiting" | "sending" | "confirming") => void;
 }): Promise<string> {
   const transaction = VersionedTransaction.deserialize(Buffer.from(input.transactionBase64, "base64"));
   const { slot, url } = await getLatestBlockhashContextAnyRpc(Array.from(new Set([input.rpcUrl, ...DEVNET_RPC_URLS])));
@@ -51,6 +51,7 @@ export async function signAndConfirmDevnetTransaction(input: {
   if (!signature) throw new Error("The wallet did not return a transaction signature.");
   input.onPhase?.("sending");
   let confirmation: Awaited<ReturnType<typeof connection.confirmTransaction>>;
+  input.onPhase?.("confirming");
   try {
     confirmation = await connection.confirmTransaction(signature, "finalized");
   } catch (reason) {
