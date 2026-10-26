@@ -8,14 +8,14 @@ export function Chain({ unit, rows, footnote, onSelect }: { unit: string; rows: 
         <span>{triggerHeader(unit)}</span>
         <span>{CHANCE}</span>
         <span>{MULTIPLE}</span>
-        <span>{MAX_LOSS} (SKYT)</span>
+        <span>{MAX_LOSS}</span>
       </div>
       <div className="ln-rows" role="radiogroup" aria-label="Triggers">
         {rows.map((row) => (
           <button
             key={row.trigger}
             type="button"
-            className="ln-row ln-press"
+            className={row.inert ? "ln-row" : "ln-row ln-press"}
             role={row.inert ? undefined : "radio"}
             aria-checked={row.inert ? undefined : row.selected}
             aria-disabled={row.inert || undefined}
@@ -26,15 +26,15 @@ export function Chain({ unit, rows, footnote, onSelect }: { unit: string; rows: 
             onClick={() => { if (!row.inert) onSelect(row.trigger); }}
           >
             {row.selected ? <i className="ln-row-tick" /> : null}
-            <span>
+            <span className="ln-chain-trigger">
               {row.selected ? <i className="ln-row-mark" /> : null}
               {row.triggerLabel.replace(` ${unit}`, "")}
               {row.topTag ? <small>{row.topTag}</small> : null}
               {row.yourCover ? <small>{YOUR_COVER}</small> : null}
             </span>
-            <span className="ln-fig-m">{row.chance.replace("%", "")}<span className="ln-fig-minor">%</span></span>
-            <span className="ln-fig-m">{row.multiple}</span>
-            <span className="ln-fig-m">{row.maxLoss ?? NOT_OPEN_WORD}</span>
+            <span className="ln-fig-s">{row.chance}</span>
+            <span className="ln-fig-s">{row.multiple}</span>
+            <span className="ln-fig-s">{row.maxLoss ?? NOT_OPEN_WORD}</span>
           </button>
         ))}
       </div>

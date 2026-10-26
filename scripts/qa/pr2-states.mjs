@@ -8,5 +8,6 @@ export const pr2States = [
   ...["loading", "error", "empty", "modelled"].map(state => ({ name: `landing-${state}`, url: `/preview?screen=landing&state=${state}` })),
   { name: "first-run", url: "/preview?screen=first-run" },
   { name: "first-run-dismissed", url: "/preview?screen=first-run&state=dismissed" },
-  ...["loading", "ready", "covered", "paid", "dry", "cold", "wind", "sign", "info", "error", "connect", "signing", "cap", "closed", "modelled"].map(state => ({ name: `protect-${state}`, url: `/preview?state=${state}` })),
+  ...["loading", "ready", "month", "week-closed", "snow", "wind", "heat", "cold-not-open", "covered", "paid", "dry", "cold", "sign", "sign-progress", "sign-success", "sign-declined", "sign-insufficient", "sign-closed", "sign-already", "sign-cap", "sign-unconfirmed", "sign-other", "info", "error", "connect", "signing", "cap", "closed", "modelled"].map(state => ({ name: `protect-${state}`, url: `/preview?state=${state}` })),
+  ...["send", "confirm"].map(step => ({ name: `protect-sign-progress-${step}`, url: `/preview?state=sign-progress&step=${step}` })),
 ];
