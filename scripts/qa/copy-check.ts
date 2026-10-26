@@ -3,10 +3,20 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
+import { execFileSync } from "node:child_process";
 import { copySamples, forbiddenHits } from "../../shared/ui-copy.ts";
 const copy = copySamples().join("\n");
 const copyHits = forbiddenHits(copy);
 assert.deepEqual(copyHits, []);
+const sourceFiles = ["shared/ui-copy.ts", ...execFileSync("rg", ["--files", "client/src/components/line", "mobile/src/line"], { encoding: "utf8" }).trim().split("\n").filter((f) => /\.(tsx?|jsx?)$/.test(f))];
+const sourceHits: { file: string; text: string; patterns: string[] }[] = [];
+for (const file of sourceFiles) {
+  const text = readFileSync(file, "utf8");
+  const scanned = file === "shared/ui-copy.ts" ? text.slice(0, text.indexOf("const FORBIDDEN =")) : text;
+  const patterns = forbiddenHits(scanned);
+  if (patterns.length) sourceHits.push({ file, text: text.slice(0, 500), patterns });
+}
+assert.deepEqual(sourceHits, [], `Forbidden UI source copy: ${JSON.stringify(sourceHits)}`);
 const literals: string[] = [];
 const hits: { file: string; text: string; patterns: string[] }[] = [];
 for (const file of readdirSync("dist/assets").filter((name) => name.endsWith(".js"))) {

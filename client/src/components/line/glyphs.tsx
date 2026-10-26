@@ -1,3 +1,4 @@
+import React from "react";
 import { lineGlyphs } from "../../../../shared/ui-glyphs.ts";
 import type { PerilId } from "../../../../shared/ui-types.ts";
 

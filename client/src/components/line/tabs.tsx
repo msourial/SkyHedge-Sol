@@ -13,7 +13,7 @@ export function LineTabs({ tab, onTab }: { tab: string; onTab: (id: "markets" | 
       {TABS.map((item) => (
         <button key={item.id} type="button" className="ln-tab ln-press" aria-current={tab === item.id ? "page" : undefined} data-active={tab === item.id} onClick={() => onTab(item.id)}>
           <Glyph name={item.glyph} size={24} filled={tab === item.id} />
-          {item.label}
+          <span>{item.label}</span>
         </button>
       ))}
     </nav>

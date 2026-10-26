@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { marketStatus } from "../../shared/pay-get.ts";
-import { COVER_CHIPS, HOW_IT_SETTLES, WALLET_CHAIN_ERROR, coveredReceiptRows, forecasterBand, forecasterCopy, gaugeTickOffset, gaugeWaterLevel, ladderLabelFontSize, ladderTicks, marketRowModel, marketStatusInk, moreTriggersSoon, protectButtonLabel, protectGaugeHeight, stakeSheetForCover, stationDisplayName, windowStamp } from "../../shared/protect-copy.ts";
+import { COVER_CHIPS, HOW_IT_SETTLES, WALLET_CHAIN_ERROR, coveredReceiptRows, gaugeTickOffset, gaugeWaterLevel, ladderLabelFontSize, ladderTicks, marketRowModel, marketStatusInk, moreTriggersSoon, protectButtonLabel, protectGaugeHeight, stakeSheetForCover, stationDisplayName, windowStamp } from "../../shared/protect-copy.ts";
 import { triggerRows } from "../../shared/window-chain.ts";
 
 const HASH = "ab".repeat(32);
@@ -119,23 +119,6 @@ describe("covered receipt rows", () => {
   });
 });
 
-describe("forecaster bands", () => {
-  it("picks the line from the quoted chance", () => {
-    assert.equal(forecasterBand(0), "Probably dry.");
-    assert.equal(forecasterBand(14.9), "Probably dry.");
-    assert.equal(forecasterBand(15), "Bring a jacket, maybe.");
-    assert.equal(forecasterBand(35), "Bring a jacket, maybe.");
-    assert.equal(forecasterBand(35.1), "Umbrella week.");
-    assert.equal(forecasterBand(100), "Umbrella week.");
-    assert.equal(forecasterBand(Number.NaN), null);
-    assert.equal(forecasterBand(-1), null);
-    const line = forecasterCopy({ probabilityBps: 2_000, station: "Central Park", triggerMm: 69 });
-    assert.deepEqual(line, { band: "Bring a jacket, maybe.", detail: "20.0% chance Central Park clears 69 mm." });
-    assert.equal(forecasterCopy({ probabilityBps: null, station: "Central Park", triggerMm: 69 }), null);
-    assert.doesNotMatch(JSON.stringify(line), /insurance/i);
-  });
-});
-
 describe("window stamps", () => {
   it("stamps paid out in slicker copy and dry week or dry month without inventing a total", () => {
     assert.equal(windowStamp({ closed: false, paidOut: true, payoutLabel: "100", observedMm: 80, triggerMm: 69, monthly: false }), null);
@@ -190,7 +173,6 @@ describe("market rows", () => {
     assert.equal(open.stationLine, "Central Park · weekly to Nov 2");
     assert.equal(open.figures, "≥69 mm  4.1×");
     assert.equal(open.status, "Open");
-    assert.equal(open.forecaster, null);
     const chicago = marketRowModel({ slug: "chicago", stationSource: "NOAA O'Hare", open: false, tenor: null, expiry: null, triggerMm: null, multiple: null, probabilityBps: null });
     assert.equal(chicago.stationLine, "O'Hare");
     assert.equal(chicago.status, "Not open yet");

@@ -51,11 +51,9 @@ export const YOUR_COVER = "Your cover";
 export const NOT_OPEN_WORD = "Not open";
 export const PAID_OUT = "Paid out";
 export const DRY_WINDOW = "Dry window";
-export const GOT_IT = "Got it";
 export const DONE = "Done";
 export const COVER_THIS = "Cover this";
 export const OPEN_APP = "Open app";
-export const FIRST_RUN = "Pick weather and a trigger. Your max loss is the price. NOAA settles it.";
 export const LANDING_TITLE = "Weather on your plans? Get paid.";
 export const LANDING_SUB = "Pick a kind of weather and a city. Set the line. If NOAA's record crosses it, you're paid in SKYT.";
 export const HOW_IT_WORKS = ["Pick a city and a kind of weather.", "Choose your cover.", "Approve in your wallet."] as const;
@@ -123,7 +121,6 @@ export const FIXTURE_BANNER = "Fixture — preview data";
 export const TECH_CONTEXT = "WeatherXM and x402 observations are context only. NOAA alone settles covers.";
 export const CONTRACT_LABEL = "Contract · Solana Devnet";
 export const PARTIAL_MARKETS = "Some quotes could not be read. Only verified open markets are shown.";
-export const FIRST_RUN_KEY = "skyhedge.line-intro-dismissed";
 export const DISCOVERY_COPY = [ALL, WEATHER_WORD, BY, OPEN_WORD, NOT_OPEN_YET, EMPTY_MARKETS, EMPTY_COVERS, WALLET_INTRO, READING_WALLET, STATE_UNAVAILABLE, UNKNOWN_CITY, PAYOUT_READY, REFUND_READY, REFUNDED, LOSS_OPEN, GAIN_OPEN, COPY_ADDRESS, COPIED, COPY_FAILED, DISCONNECT, REFERENCE_ONLY, CLAIM_EXPIRED, RECEIPT, FINAL_READING_UNAVAILABLE, RECEIPT_DATA_UNAVAILABLE, NOAA_WINDOW_ENDED, RESULT, HOW_SETTLES_TITLE, FIXTURE_BANNER, TECH_CONTEXT, CONTRACT_LABEL, PARTIAL_MARKETS];
 
 export function pricingSentence(feeLabel: string): string {
@@ -272,8 +269,8 @@ export function copySamples(): string[] {
     STATION, CHAIN_OPTION_A, openWindowInstead("Nov 1", "Dec 1"),
     ...DISCOVERY_COPY, DEVNET_TAG, SALES_CLOSED, CHAIN_ERROR, ALREADY_COVERED, HOW_IT_SETTLES, SETTLED_UNITS,
     WIND_ELEMENT, HEAT_ELEMENT, CONNECT_WALLET, TRY_AGAIN, GETTING_QUOTE, WAITING_WALLET, APPROVE_WALLET,
-    COVERED_WORD, VIEW_WALLET, YOUR_COVER, NOT_OPEN_WORD, PAID_OUT, DRY_WINDOW, GOT_IT, DONE,
-    COVER_THIS, OPEN_APP, FIRST_RUN, LANDING_TITLE, LANDING_SUB, ...HOW_IT_WORKS, PROTECT_TITLE, MARKETS_TITLE,
+    COVERED_WORD, VIEW_WALLET, YOUR_COVER, NOT_OPEN_WORD, PAID_OUT, DRY_WINDOW, DONE,
+    COVER_THIS, OPEN_APP, LANDING_TITLE, LANDING_SUB, ...HOW_IT_WORKS, PROTECT_TITLE, MARKETS_TITLE,
     WALLET_TITLE, YOUR_COVERS, OPEN_NOW, TECHNICAL_DETAILS, SKYT_BALANCE, MAX_LOSS, MAX_GAIN,
     PAYOUT, CHANCE, BREAK_EVEN, MULTIPLE, TRIGGER, COVER, FEE_INCLUDED, SO_FAR, WEEK, MONTH, WINDOW_WORD,
     pricingSentence("1.00"), refundSentence(), years, highestInYears(10) ?? "", feeLine("1.00"),
@@ -297,7 +294,6 @@ const FORBIDDEN = [
   /\bjacket\b/i,
   /Counting starts/i,
   /Opens /i,
-  /\bsoon\b/i,
   /\binsurance\b/i,
   /RainHedge/i,
   /heatwave/i,

@@ -259,29 +259,11 @@ export function windowStamp(input: {
   };
 }
 
-/** @deprecated Compatibility for legacy copy tests only; never return this band to a screen. */
-export function forecasterBand(chancePercent: number): "Probably dry." | "Bring a jacket, maybe." | "Umbrella week." | null {
-  if (!Number.isFinite(chancePercent) || chancePercent < 0 || chancePercent > 100) return null;
-  if (chancePercent < 15) return "Probably dry.";
-  if (chancePercent <= 35) return "Bring a jacket, maybe.";
-  return "Umbrella week.";
-}
-
-export function forecasterCopy(input: { probabilityBps: number | null | undefined; station: string | null | undefined; triggerMm: number | null | undefined }): { band: string; detail: string } | null {
-  if (input.probabilityBps == null || !Number.isSafeInteger(input.probabilityBps)) return null;
-  const chance = chanceLabel(input.probabilityBps);
-  const band = forecasterBand(input.probabilityBps / 100);
-  const station = input.station?.trim();
-  if (!chance || !band || !station || input.triggerMm == null || !Number.isFinite(input.triggerMm)) return null;
-  return { band, detail: `${chance} chance ${station} clears ${formatMm(input.triggerMm)} mm.` };
-}
-
 export type MarketRowModel = {
   stationLine: string;
   figures: string | null;
   status: string;
   ink: "glacier" | "dry";
-  forecaster: { band: string; detail: string } | null;
 };
 
 /** Open rows carry the quote. Unopened rows name the station and a dry status. Toronto waits on Environment Canada. */
@@ -298,7 +280,7 @@ export function marketRowModel(input: {
 }): MarketRowModel {
   const station = stationDisplayName(input.stationSource) ?? "Station";
   if (input.slug === "toronto") {
-    return { stationLine: station, figures: null, status: TORONTO_WAITING, ink: "dry", forecaster: null };
+    return { stationLine: station, figures: null, status: TORONTO_WAITING, ink: "dry" };
   }
   const expiry = stripUtc(input.expiry);
   if (input.open && input.triggerMm != null && input.multiple && expiry) {
@@ -308,10 +290,9 @@ export function marketRowModel(input: {
       figures: `≥${formatMm(input.triggerMm)} mm  ${input.multiple}`,
       status: "Open",
       ink: "glacier",
-      forecaster: null,
     };
   }
-  return { stationLine: station, figures: null, status: input.closed ? "Closed" : NOT_OPEN_YET, ink: "dry", forecaster: null };
+  return { stationLine: station, figures: null, status: input.closed ? "Closed" : NOT_OPEN_YET, ink: "dry" };
 }
 
 export function productStatusLabel(tone: "open" | "opens" | "closed" | "live" | "soon"): { text: string; ink: "glacier" | "dry" } {

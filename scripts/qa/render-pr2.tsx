@@ -19,6 +19,12 @@ for (const filter of ["all", "rain", "snow", "wind", "heat", "cold"] as const) {
   if (filter === "cold") assert(html.includes("Cold isn&#x27;t open yet."));
   count++;
 }
+const coverReceipt = receiptModel(fixturePosition(), [], DISCOVERY_QUOTES, fixtureClaim("open"));
+const marketsWithCovers = render(<MarketsScreen markets={markets} receipts={[coverReceipt]} onSelect={noop} onReceipt={noop} onWallet={noop}/>);
+assert(marketsWithCovers.includes("Cover this"));
+assert(marketsWithCovers.includes("open covers"));
+assert(!marketsWithCovers.includes("ln-cover-tile"));
+count++;
 for (const state of ["open", "paid", "dry", "pending", "refund-ready", "refunded", "unknown"]) {
   const position = fixturePosition();
   const receipt = receiptModel(position, [], DISCOVERY_QUOTES, fixtureClaim(state));
@@ -26,6 +32,7 @@ for (const state of ["open", "paid", "dry", "pending", "refund-ready", "refunded
     const html = render(<WalletScreen address="fixture-wallet" balance="1000.00" receipts={[receipt]} totals={openCoverTotals([position], [receipt])} loading={false} failed={false} onConnect={noop} onRetry={noop} initialReceipt={opened ? receipt.id : null}/>);
     assert.equal(forbiddenHits(html.replace(/<[^>]*>/g, " ")).length, 0);
     if (state === "pending") { assert(html.includes("Payout ready to collect")); assert(!html.includes("Paid out")); }
+    if (!opened && state === "open") { assert(html.includes("69 mm or more · Nov 1 to Dec 1")); assert(html.includes("Max gain")); }
     if (opened && state === "paid") assert(html.includes("Result +76.00 SKYT"));
     if (opened && state === "dry") assert(html.includes("Result -24.00 SKYT"));
     count++;

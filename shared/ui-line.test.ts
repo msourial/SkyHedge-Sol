@@ -196,7 +196,6 @@ test("cover chips and money cells share one figure shape", () => {
   const paid = buildProtectModel(coverInput({ settlement: { kind: "paid" } }));
   assert.equal(paid.panel.kind, "paid");
   const dry = buildProtectModel(coverInput({ settlement: { kind: "dry" } }));
-  assert.equal(dry.odds, null);
   assert.equal(dry.panel.kind, "dry");
 });
 
@@ -321,7 +320,6 @@ test("default selection prefers an open week, respects the sales cutoff, city, p
 test("hero and ticket expose exact v4 data with no start-date reading or odds band", () => {
   const model = buildProtectModel(coverInput({ tenor: "monthly", windowStart: MONTHLY.windowStart, windowEnd: MONTHLY.windowEnd, quote: MONTHLY }));
   assert.deepEqual(model.hero, { label: "Trigger", numeral: "102", unit: "mm", chance: "20.0%", multiple: "4.1x", soFar: null });
-  assert.equal(model.odds, null);
   assert.equal(model.soFarValue, "");
   assert.deepEqual(model.header, ["Trigger (mm)", "Chance", "Multiple", "Max loss"]);
   assert.deepEqual(model.rows.map((row) => [row.trigger, row.kind, row.maxLoss, row.selected, row.inert]), [

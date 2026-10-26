@@ -42,7 +42,6 @@ import { committedWindowLabel, expiryChipLabel, matchingWindowPackage, sortByExp
 import { payGet } from "../shared/pay-get.ts";
 import { coverBaseUnits, coverExceedsBalance, formatQuoteSkyt, notEnoughSkyt, protectButtonLabel, stakeSheetForCover, stationDisplayName, type CoverChip } from "../shared/protect-copy.ts";
 import { showCityStep } from "./src/consumer-flow";
-import { loadFirstRunDone } from "./src/first-run";
 import { coverageOptions, type CoverageOption } from "./src/ticket";
 import { TechnicalContext } from "./src/line/TechnicalContext";
 import { MarketsLine, WalletLine, LandingLine } from "./src/line/Discovery";
@@ -90,7 +89,6 @@ export default function App() {
   const [confirmedLine, setConfirmedLine] = useState<{ wallet: string; market: string } | null>(null);
   const lineSubmitting = useRef(false);
   const [coverConfirm, setCoverConfirm] = useState<{ sentence: string; station: string; expiry: string; windowLabel: string; pay: string; getLabel: string; market: string; amount: string; multiple: string | null; feeLine: string | null; getLine: string | null; preSign: string | null; conditionLine: string | null; placeLine: string | null; triggerLine: string | null; shortLabel: string | null; coverSkyt: CoverChip } | null>(null);
-  const [firstRun, setFirstRun] = useState(false);
   const [stickyHeight, setStickyHeight] = useState(188);
   const [tabHeight, setTabHeight] = useState(76);
   const [scrollViewportHeight, setScrollViewportHeight] = useState(0);
@@ -259,22 +257,17 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      loadFirstRunDone().catch(() => false),
-      loadWalletSession().catch(() => null),
-    ]).then(([done, session]) => {
+    loadWalletSession().catch(() => null).then((session) => {
       if (cancelled) return;
       if (session) {
         setWalletSession(session);
         setWallet(session.address);
         setShowLanding(false);
-        setFirstRun(!done);
         setTab("protect");
         void loadWalletData(session.address);
         return;
       }
-      if (!done) setFirstRun(true);
-    }).catch(() => { if (!cancelled) setFirstRun(true); });
+    }).catch(() => {});
     return () => { cancelled = true; };
   }, [loadWalletData]);
 

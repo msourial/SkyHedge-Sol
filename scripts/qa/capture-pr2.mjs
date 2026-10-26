@@ -17,7 +17,7 @@ try {
     await page.evaluate(() => document.fonts.ready);
     await page.screenshot({ path: resolve(output, `${state.name}.png`) });
     manifest.push({ ...state, width: 393, height: 852, file: `${state.name}.png` });
-    if (state.name.startsWith("receipt-") || state.name === "first-run" || state.name === "wallet-technical") {
+    if (state.name.startsWith("receipt-") || state.name === "wallet-technical") {
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
       await page.screenshot({ path: resolve(output, `${state.name}-details.png`) });
       manifest.push({ ...state, width: 393, height: 852, file: `${state.name}-details.png`, scroll: "bottom" });
@@ -26,6 +26,10 @@ try {
       await page.locator(".ln-scroll").evaluate((node) => { node.scrollTop = node.scrollHeight; });
       await page.screenshot({ path: resolve(output, `${state.name}-ticket.png`) });
       manifest.push({ ...state, width: 393, height: 852, file: `${state.name}-ticket.png`, scroll: "ticket" });
+    }
+    if (state.name === "wallet-open" || state.name === "wallet-totals-rows") {
+      await page.screenshot({ path: resolve(output, `${state.name}-totals-rows.png`) });
+      manifest.push({ ...state, width: 393, height: 852, file: `${state.name}-totals-rows.png`, scroll: "top" });
     }
   }
   await writeFile(resolve(output, "manifest.json"), JSON.stringify(manifest, null, 2));

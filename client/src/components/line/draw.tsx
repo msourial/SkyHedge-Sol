@@ -1,3 +1,4 @@
+import React from "react";
 import type { DrawOp } from "../../../../shared/ui-instrument.ts";
 import { lineTokens } from "../../../../shared/ui-tokens.ts";
 

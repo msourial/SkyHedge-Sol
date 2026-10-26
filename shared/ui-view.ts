@@ -85,8 +85,6 @@ export type ProtectModel = {
   tenorOpen: TenorAvailability;
   subline: string | null;
   hero: ProtectHero | null;
-  /** @deprecated The odds band has been removed. */
-  odds: null;
   /** @deprecated Use hero.soFar. These aliases never contain a start date. */
   soFarLabel: string;
   soFarValue: string;
@@ -151,7 +149,7 @@ export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
   const base: ProtectModel = {
     cityName, station, peril: input.peril, unit, tenor: input.tenor, tenorOpen,
     subline: start && end ? copy.subline({ station, start, end, salesClose: dayFromIso(input.quote?.salesCloseAt ?? input.windowStart) ?? start }) : null,
-    hero: null, odds: null, soFarLabel: copy.SO_FAR, soFarValue: "", soFarSince: null, reading: null,
+    hero: null, soFarLabel: copy.SO_FAR, soFarValue: "", soFarSince: null, reading: null,
     instrument: "ghost", rungs: [], selected: null, header: [copy.triggerHeader(unit), copy.CHANCE, copy.MULTIPLE, copy.MAX_LOSS],
     rows: [], showChain: false, readOnly: !!input.coveredMarket, yourCover: input.coveredMarket ? copy.YOUR_COVER : null,
     footnote: null, optionAFootnote: null, footnotes: [], chips: [], capMessage: null,

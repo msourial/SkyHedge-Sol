@@ -44,6 +44,9 @@ test("Wallet totals use equal figure styles and receipts distinguish paid, dry a
     if (state === "open") {
       await expect(page.locator(".ln-cells")).toContainText("-24.00");
       await expect(page.locator(".ln-cells")).toContainText("+76.00");
+      await expect(page.locator(".ln-wallet-row")).toContainText("69 mm or more · Nov 1 to Dec 1");
+      await expect(page.locator(".ln-wallet-figures")).toContainText("Max loss");
+      await expect(page.locator(".ln-wallet-figures")).toContainText("Max gain");
     }
     await page.locator(".ln-wallet-row").click();
     await expect(page.getByRole("region", { name: "Cover receipt" })).toContainText(status);
@@ -58,6 +61,14 @@ test("Wallet totals use equal figure styles and receipts distinguish paid, dry a
     await expect(page.getByTestId("final-reading")).toHaveCount(state === "open" ? 0 : 1);
     if (state === "pending") await expect(page.getByRole("region", { name: "Cover receipt" })).not.toContainText("Paid out");
   }
+});
+
+test("Markets keeps the hero and CTA above the single covers summary", async ({ page }) => {
+  await page.goto("/preview?screen=markets&state=with-covers");
+  await expect(page.locator(".ln-market-hero")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Cover this", exact: true })).toBeVisible();
+  await expect(page.locator(".ln-cover-tile")).toHaveCount(0);
+  await expect(page.locator(".ln-covers-summary")).toContainText("1 open covers");
 });
 test("landing selects all five instruments and cover sizes with exact loss and gain", async ({ page }) => {
   await page.goto("/preview?screen=landing&state=ready");
@@ -74,8 +85,8 @@ test("landing selects all five instruments and cover sizes with exact loss and g
   await expect(page.locator(".ln-money-cell")).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Trigger chain" })).toHaveCount(0);
 });
-test("new screens have no overflow, type below 13px, or undersized touch targets", async ({ page }) => {
-  for (const url of ["screen=markets&state=ready", "screen=markets&state=cold", "screen=wallet&state=open", "screen=wallet&state=paid&receipt=1", "screen=landing&state=ready", "screen=first-run"]) {
+test("Markets, Wallet, Landing have no overflow, type below 13px, or undersized touch targets", async ({ page }) => {
+  for (const url of ["screen=markets&state=ready", "screen=markets&state=cold", "screen=wallet&state=open", "screen=wallet&state=paid&receipt=1", "screen=landing&state=ready", "state=ready"]) {
     await page.goto(`/preview?${url}`);
     await expect(page.getByRole("note")).toHaveText("Fixture — preview data");
     const violations = await page.locator(".ln").evaluateAll((roots) => {
@@ -99,10 +110,8 @@ test("peril keyboard navigation moves focus and reduced motion stops animations"
   const animations = await page.locator(".ln").evaluate((root) => root.getAnimations({ subtree: true }).length);
   expect(animations).toBe(0);
 });
-test("first-run strip dismisses without hiding the instrument or ticket", async ({ page }) => {
-  await page.goto("/preview?screen=first-run");
-  await expect(page.getByText("Pick weather and a trigger. Your max loss is the price. NOAA settles it.")).toBeVisible();
-  await page.getByRole("button", { name: "Got it" }).click();
+test("Protect has no first-run strip", async ({ page }) => {
+  await page.goto("/preview?screen=protect");
   await expect(page.locator(".ln-intro")).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Trigger chain" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Ticket", exact: true })).toHaveCount(1);
