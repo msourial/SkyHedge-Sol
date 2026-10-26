@@ -22,7 +22,8 @@ function Filter({ value, onChange, markets, all = true }: { value: PerilId | "al
   const items = [...(all ? [{ id: "all" as const, label: copy.ALL }] : []), ...PERILS];
   const index = Math.max(0, items.findIndex((p) => p.id === value));
   const x = useRef(new Animated.Value(index)).current;
-  useEffect(() => { const a = Animated.timing(x, { toValue: index, duration: useReducedMotion() ? 0 : 240, easing: Easing.bezier(.23,1,.32,1), useNativeDriver: true }); a.start(); return () => a.stop(); }, [index, x]);
+  const reducedMotion = useReducedMotion();
+  useEffect(() => { const a = Animated.timing(x, { toValue: index, duration: reducedMotion ? 0 : 240, easing: Easing.bezier(.23,1,.32,1), useNativeDriver: true }); a.start(); return () => a.stop(); }, [index, x, reducedMotion]);
   return <View style={s.switcher} accessibilityRole="tablist">{items.map((peril) => { const selected = value === peril.id; const open = peril.id === "all" || markets.some((m) => m.peril === peril.id); const color = open ? selected ? C.fg : C.fg2 : C.dryText; return <Pressable key={peril.id} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => onChange(peril.id)} style={s.segment}>
     <Glyph name={peril.id === "all" ? "markets" : peril.id} color={color}/><Text style={[s.label, { color }]}>{peril.label}</Text>
   </Pressable>; })}<Animated.View pointerEvents="none" style={[s.tick, { width: `${100/items.length}%`, transform: [{ translateX: Animated.multiply(x, 361/items.length) }] }]}/></View>;
