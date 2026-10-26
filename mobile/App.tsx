@@ -624,7 +624,7 @@ export default function App() {
         {showLanding ? (
           <LandingLine quotes={discovery.quotes} loading={discovery.loading} failed={discovery.failed} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect(); }} />
         ) : null}
-        {!showLanding && tab === "catalog" ? <MarketsLine {...discovery} receipts={walletCovers.receipts} onSelect={openMarketSelection} onWallet={() => setTab("wallet")} /> : null}
+        {!showLanding && tab === "catalog" ? <MarketsLine {...discovery} receipts={walletCovers.receipts} totals={walletCovers.totals} onSelect={openMarketSelection} onWallet={() => setTab("wallet")} /> : null}
         {!showLanding && tab === "protect" && claimReadiness?.state === "claimable" && claimReadiness.action === "claim_payout" ? (
           <CollectPayoutView
             observedMm={claimReadiness.observation ? Number(claimReadiness.observation.rainfallMmX100) / 100 : null}
