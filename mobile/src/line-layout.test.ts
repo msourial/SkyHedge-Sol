@@ -5,7 +5,8 @@ import { lineTokens as C } from "../../shared/ui-tokens.ts";
 import { NYC_RAIN_MODELLED } from "../../shared/ui-fixtures.ts";
 import { instrumentArt } from "../../shared/ui-instrument.ts";
 import { buildProtectModel, scrollBottomPadding, type ProtectBuildInput } from "../../shared/ui-view.ts";
-import { marketModels, orderMarkets, pickHero } from "../../shared/ui-discovery.ts";
+import { marketModels } from "../../shared/ui-discovery.ts";
+import { leadMarket, featuredCity, marketsLayout } from "../../shared/ui-markets.ts";
 import { lineCoverage, withCoveredReceipt } from "./line-covered.ts";
 import { protectChainRowBottom, protectLayout } from "./line/layout.ts";
 import type { ChainProtection } from "./positions.ts";
@@ -98,31 +99,29 @@ test("every non-covered Protect state reserves the 88dp bar and 16dp clearance",
   assert.equal(scrollBottomPadding("covered"), 16);
 });
 
-test("Markets hero uses round-robin ordering and skips every held market", () => {
-  const screen = readFileSync(new URL("./line/Discovery.tsx", import.meta.url), "utf8");
-  assert.match(screen, /orderMarkets\(markets, filter\)/);
-  assert.match(screen, /pickHero\(visible, filter\)/);
-  assert.doesNotMatch(screen, /const hero = .*visible.*sort/);
+test("Markets keeps the featured city and uses a receipt hero only when its open markets are all held", () => {
   const now = Math.floor(Date.parse("2026-10-26T00:00:00Z") / 1000) - 1;
-  const snow = { ...NYC_RAIN_MODELLED, peril: "snow" as const, unit: "cm", rungs: NYC_RAIN_MODELLED.rungs.map((rung) => ({ ...rung, marketAddress: `snow-${rung.triggerValue}` })) };
-  const markets = marketModels([NYC_RAIN_MODELLED, snow], now, 100, ["fixture-69"]);
-  const ordered = orderMarkets(markets, "all");
-  assert.equal(ordered[0].peril, "snow");
-  assert.equal(pickHero(ordered, "all")?.held, false);
-  assert.equal(pickHero(orderMarkets(markets.filter((m) => m.held), "all"), "all"), null);
-  assert.ok(ordered.findIndex((market) => market.held) > ordered.map((market) => !market.held).lastIndexOf(true));
+  const markets = marketModels([NYC_RAIN_MODELLED], now, 100, ["fixture-69"]);
+  assert.equal(featuredCity(markets, [], undefined, now), "new-york");
+  assert.equal(leadMarket("new-york", markets)?.held, true);
+  const unheld = { ...markets[0], id: "second-window", held: false };
+  assert.equal(leadMarket("new-york", [...markets, unheld])?.id, unheld.id);
+  const screen = readFileSync(new URL("./line/MarketsLine.tsx", import.meta.url), "utf8");
+  assert.match(screen, /featuredCity\(markets, quoteWindows/);
+  assert.match(screen, /marketsPanel\(/);
+  assert.doesNotMatch(screen, /orderMarkets|pickHero|<Filter/);
 });
 
-test("Markets loading reserves the hero and dry chain copy uses a regular 13px face", () => {
-  const discovery = readFileSync(new URL("./line/Discovery.tsx", import.meta.url), "utf8");
+test("Markets loading and loaded use the same shared hero/card geometry; Protect dry copy stays regular 13px", () => {
+  const markets = readFileSync(new URL("./line/MarketsLine.tsx", import.meta.url), "utf8");
   const protect = readFileSync(new URL("./line/ProtectLine.tsx", import.meta.url), "utf8");
-  assert.match(discovery, /size="hero" state="ghost"/);
-  assert.match(discovery, /monoGhost}>--/);
-  assert.match(discovery, /ctaReserved/);
-  assert.doesNotMatch(discovery, /<Text style=\{s\.note\}>\{copy\.GETTING_QUOTE\}<\/Text>/);
-  assert.match(discovery, /unavailableToggle/);
-  assert.match(discovery, /marketGlyph\}><Glyph name=\{m\.peril\}\/\><View style=\{\[s\.perilDot/);
-  assert.match(discovery, /perilDot: \{[^}]*position: "absolute"/);
+  assert.equal(marketsLayout.hero.height, 336);
+  assert.equal(marketsLayout.hero.cta, 56);
+  assert.match(markets, /hero: \{ height: L.hero.height/);
+  assert.match(markets, /cardShell: \{ height: L.card.height/);
+  assert.match(markets, /card: \{ height: L.card.height/);
+  assert.match(markets, /disabled=\{!m\}/);
+  assert.doesNotMatch(markets, /unavailableToggle|perilDot|ctaReserved/);
   assert.match(protect, /value === "Not open" \? styles\.notOpenDry/);
   assert.match(protect, /notOpenDry: \{ color: C\.fg2, fontFamily: F\.body, fontSize: 13/);
   assert.match(protect, /index === 2 \? \{ marginRight: 16 \}/);

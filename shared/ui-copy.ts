@@ -334,3 +334,28 @@ const FORBIDDEN = [
 export function forbiddenHits(text: string): string[] {
   return FORBIDDEN.filter((pattern) => pattern.test(text)).map((pattern) => pattern.source);
 }
+
+/** City-led Markets copy. Keep removed discovery copy out of this path. */
+export const CHOOSE_CITY = "Choose a city";
+export const NOTHING_OPEN = "Nothing open yet";
+export const NO_MARKETS_SCHEDULED = "No markets are scheduled.";
+export const MARKETS_ERROR = "Couldn't load markets.";
+export const MARKETS_PARTIAL = "Some markets didn't load.";
+export const OPEN_ELSEWHERE = "Open now elsewhere";
+export const COMING_UP = "Coming up";
+export const SEE_TRIGGER_CHAIN = "See the trigger chain";
+export const NOT_AVAILABLE_YET = "Not available yet";
+export const EVERYWHERE = "Everywhere";
+export const WHY = "Why";
+export const VIEW_COVER = "View cover";
+export const FROM = "From";
+export const COLD_EXPLANATION = "Cold cover isn't available yet. The contract can't take triggers below zero.";
+export function marketsHeroSentence(station: string, verb: string, end: string): string { return `Pays out if ${station} ${verb} by ${end}.`; }
+export function closesIn(n: number, unit: "day" | "hour"): string { return `Closes in ${n} ${unit}${n === 1 ? "" : "s"}`; }
+export const CLOSES_TODAY = "Closes today";
+export function closesOn(date: string): string { return `Closes ${date}`; }
+export function moreInCityLabel(city: string): string { return `More in ${city}`; }
+export function seasonStarts(month: string): string { return `Season starts ${month}`; }
+export function nothingElseOpen(city: string): string { return `Nothing else is open in ${city} right now.`; }
+export function windowsCount(count: number): string { return count > 1 ? ` · ${count} windows` : ""; }
+export function openCoversCount(count: number): string { return `${count} open ${count === 1 ? "cover" : "covers"}`; }

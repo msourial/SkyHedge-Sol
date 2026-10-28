@@ -105,10 +105,10 @@ export function discoveryRequests(windows: readonly QuoteWindow[], nowSeconds: n
 export async function loadDiscovery(windows: readonly QuoteWindow[], nowSeconds: number, read: (path: string) => Promise<WindowQuote>) {
   const requests = discoveryRequests(windows, nowSeconds);
   const results = await Promise.all(requests.map(async (request) => {
-    try { return { quote: matchingQuote(await read(request.path!), request), failed: false }; }
-    catch (error) { return { quote: null, failed: !quoteNotOpen(error) }; }
+    try { return { quote: matchingQuote(await read(request.path!), request), failed: false, reason: null }; }
+    catch (error) { return { quote: null, failed: !quoteNotOpen(error), reason: !quoteNotOpen(error) && error instanceof Error ? error.message : null }; }
   }));
-  return { quotes: results.flatMap((r) => r.quote ? [r.quote] : []), failed: results.some((r) => r.failed) };
+  return { quotes: results.flatMap((r) => r.quote ? [r.quote] : []), failed: results.some((r) => r.failed), reason: results.find((r) => r.failed && r.reason)?.reason ?? null };
 }
 
 export type StoredCover = { market: string; address: string; premiumPaid: string; protectedAmount: string; potentialPayout?: string; city?: string; statusLabel?: string; peril?: PerilId; cityId?: string; triggerValue?: number; payoutClaimed?: boolean; refundClaimed?: boolean };
@@ -203,3 +203,6 @@ export function openCoverTotals(positions: readonly StoredCover[], receipts: rea
   }
   return { loss: formatStored(loss), gain: formatStored(gain) };
 }
+
+// The city-led API is shared by Seeker and the web Markets screen.
+export * from "./ui-markets.ts";

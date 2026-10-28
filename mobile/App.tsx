@@ -99,6 +99,8 @@ export default function App() {
   const [status, setStatus] = useState<DevnetStatus | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState("new-york");
+  // Session-only Markets choice. Cold starts recompute the New York fallback.
+  const [selectedMarketsCity, setSelectedMarketsCity] = useState<string | null>(null);
   const [selectedHazard, setSelectedHazard] = useState<HazardId | null>("rainfall");
   const [city, setCity] = useState<CityIndex | null>(null);
   const [wallet, setWallet] = useState<string | null>(null);
@@ -616,7 +618,7 @@ export default function App() {
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottom }, !showLanding && tab === "protect" && { paddingHorizontal: 16, paddingTop: 0 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottom }, !showLanding && (tab === "protect" || tab === "catalog") && { paddingHorizontal: 16, paddingTop: 0 }]}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.rain} />}
       >
@@ -626,7 +628,7 @@ export default function App() {
         {showLanding ? (
           <LandingLine quotes={discovery.quotes} loading={discovery.loading} failed={discovery.failed} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect(); }} />
         ) : null}
-        {!showLanding && tab === "catalog" ? <MarketsLine {...discovery} markets={marketModels(discovery.quotes, nowSeconds, 100, storedCovers.map((position) => position.market))} receipts={walletCovers.receipts} totals={walletCovers.totals} onSelect={openMarketSelection} onWallet={() => setTab("wallet")} /> : null}
+        {!showLanding && tab === "catalog" ? <MarketsLine {...discovery} markets={marketModels(discovery.quotes, nowSeconds, 100, storedCovers.map((position) => position.market))} receipts={walletCovers.receipts} totals={walletCovers.totals} onSelect={openMarketSelection} selectedCity={selectedMarketsCity} onCity={setSelectedMarketsCity} onRetry={() => setEvidenceNonce((count) => count + 1)} onPreview={(preview) => { line.clearMarketSelection(); setSelectedCity(preview.cityId); line.setPeril(preview.peril); line.setTenor(preview.tenor); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} onWallet={() => setTab("wallet")} /> : null}
         {!showLanding && tab === "protect" && claimReadiness?.state === "claimable" && claimReadiness.action === "claim_payout" ? (
           <CollectPayoutView
             observedMm={claimReadiness.observation ? Number(claimReadiness.observation.rainfallMmX100) / 100 : null}

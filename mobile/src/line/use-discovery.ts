@@ -2,16 +2,17 @@ import { useEffect, useState } from "react";
 import { loadDiscovery, marketModels, openCoverTotals, receiptModel, type CoverClaim, type StoredCover } from "../../../shared/ui-discovery.ts";
 import type { WindowQuote } from "../../../shared/ui-types.ts";
 import type { QuoteWindow } from "../../../shared/ui-window-quote.ts";
+import { friendlyError } from "../friendly-errors.ts";
 import { getJson } from "../api.ts";
 
 export function useDiscovery(windows: readonly QuoteWindow[], retry: number, now: number) {
   const key = JSON.stringify(windows);
-  const [state, setState] = useState<{ quotes: WindowQuote[]; loading: boolean; failed: boolean }>({ quotes: [], loading: true, failed: false });
+  const [state, setState] = useState<{ quotes: WindowQuote[]; loading: boolean; failed: boolean; reason?: string }>({ quotes: [], loading: true, failed: false });
   useEffect(() => {
     let cancelled = false;
-    setState({ quotes: [], loading: true, failed: false });
+    // Retain verified content during refresh and retry; only first load owns the shells.
     void loadDiscovery(windows, now, (path) => getJson<WindowQuote>(path)).then((data) => {
-      if (!cancelled) setState({ ...data, loading: false });
+      if (!cancelled) setState({ ...data, reason: data.reason ? friendlyError(data.reason) : undefined, loading: false });
     });
     return () => { cancelled = true; };
   }, [key, retry, Math.floor(now / 60)]);

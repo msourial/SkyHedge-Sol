@@ -95,6 +95,7 @@ export function useLineProtect(input: {
     setTenor,
     setCover,
     setSelectedTrigger,
+    clearMarketSelection: () => { setSelection(null); setSelectedTrigger(null); },
     chooseMarket: (market: MarketSelection) => { setSelection(market); setPeril(market.peril); setTenor(market.tenor); setCover(100); setSelectedTrigger(market.trigger); },
     approveTarget: market && premiumBase && /^\d+$/.test(premiumBase) && triggerLabel && windowLabel && model.panel.kind === "ready" && !model.blocked && !model.chips.some((chip) => chip.selected && chip.disabled) ? { market, amount: `${cover}000000`, cover, premiumBase, triggerLabel, windowLabel, salesCloseAt: quote?.salesCloseAt ?? request.start } : null,
   };
