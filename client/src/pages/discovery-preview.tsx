@@ -15,11 +15,11 @@ export default function DiscoveryPreview() {
   const [params] = useSearchParams();
   const screen = params.get("screen") ?? "markets", state = params.get("state") ?? "ready";
   const filter = params.get("peril") as PerilId | null;
-  const positions = state === "empty" || state === "connect" ? [] : state === "wallet-multi" ? [fixturePosition("rain"), fixturePosition("snow"), fixturePosition("wind"), fixturePosition("heat")] : (state === "rail" ? [fixturePosition("rain"), fixturePosition("wind"), fixturePosition("heat")] : state === "markets-mixed" ? [fixturePosition("rain")] : [fixturePosition("rain")]);
+  const positions = state === "empty" || state === "connect" ? [] : state === "wallet-multi" ? [fixturePosition("rain"), fixturePosition("snow"), fixturePosition("wind"), fixturePosition("heat")] : state === "wallet-two" ? [fixturePosition("rain"), fixturePosition("snow")] : (state === "rail" ? [fixturePosition("rain"), fixturePosition("wind"), fixturePosition("heat")] : state === "markets-mixed" ? [fixturePosition("rain")] : [fixturePosition("rain")]);
   const quotes = state === "modelled" ? DISCOVERY_QUOTES.map((q) => ({ ...q, rungs: q.rungs.map((r) => ({ ...r, marketAddress: null })) }))
     : state === "wallet-multi" ? DISCOVERY_QUOTES.map((q) => ({ ...q, windowStart: "2026-11-01", windowEnd: "2026-12-01", salesCloseAt: "2026-11-01" }))
     : DISCOVERY_QUOTES;
-  const receipts = positions.map((p) => receiptModel(state === "unknown" ? { ...p, market: "fixture-unknown", statusLabel: undefined, peril: undefined } : p, [], quotes, fixtureClaim(state)));
+  const receipts = positions.map((p) => receiptModel(state === "unknown" ? { ...p, market: "fixture-unknown", statusLabel: undefined, peril: undefined } : p, [], quotes, state === "open" || state === "wallet" || state === "wallet-two" || state === "wallet-multi" ? null : fixtureClaim(state)));
   const markets = marketModels(quotes, PREVIEW_NOW, 100, state === "markets-mixed" ? ["fixture-rain"] : []);
   const go = (tab: string) => { window.location.href = `/preview?screen=${tab}&state=ready`; };
   return <main className="ln-preview-page" data-fixture="Fixture"><p className="ln-preview-banner" role="note">{copy.FIXTURE_BANNER}</p>

@@ -43,6 +43,7 @@ function sumReceiptAmounts(receipts: ReceiptModel[], key: "loss" | "gain"): stri
 }
 export function MarketsScreen({ markets, receipts = [], loading = false, failed = false, onSelect, onReceipt, onWallet, onRetry = () => {}, filter: initialFilter = "all", expanded = false, technical }: { markets: MarketModel[]; receipts?: ReceiptModel[]; loading?: boolean; failed?: boolean; onSelect: (market: MarketSelection) => void; onReceipt: (id: string) => void; onWallet?: () => void; onRetry?: () => void; filter?: PerilId | "all"; expanded?: boolean; technical?: ReactNode }) {
   const [filter, setFilter] = useState<PerilId | "all">(initialFilter);
+  const [showUnavailable, setShowUnavailable] = useState(expanded);
   const heldIds = new Set(receipts.filter((r) => r.kind === "open" || r.kind === "pending").map((r) => r.market));
   const withHeld = markets.map((market) => ({ ...market, held: market.held || heldIds.has(market.id) }));
   const visible = orderMarkets(withHeld, filter);
@@ -53,16 +54,20 @@ export function MarketsScreen({ markets, receipts = [], loading = false, failed 
     <header className="ln-screen-head"><h1 className="ln-title">{copy.MARKETS_TITLE}</h1><span className="ln-label">{copy.DEVNET_TAG}</span></header>
     <PerilFilter value={filter} onChange={setFilter} markets={markets} />
     {failed && filter !== "cold" ? <p role="alert" className="ln-note">{markets.length ? copy.PARTIAL_MARKETS : copy.CHAIN_ERROR}</p> : null}
-    {loading && filter !== "cold" ? <p role="status" className="ln-note">{copy.GETTING_QUOTE}</p> : hero ? <section className="ln-market-hero" aria-label={`${hero.city} · ${perilById(hero.peril)?.label}`}>
+    {loading && filter !== "cold" ? <section className="ln-market-hero ln-market-hero--loading" aria-label="Markets quote loading">
+      <div className="ln-market-stage"><Instrument peril="rain" rungs={[]} /><div className="ln-market-placeholder" aria-hidden="true" /></div>
+      <div className="ln-stat-strip">{[{ label: copy.CHANCE }, { label: copy.MULTIPLE }, { label: copy.MAX_LOSS }].map((s) => <div key={s.label}><p className="ln-label">{s.label}</p><p className="ln-fig-m ln-placeholder-value">--</p></div>)}</div>
+      <button className="ln-cta ln-press" disabled aria-hidden="true" tabIndex={-1} />
+    </section> : hero ? <section className="ln-market-hero" aria-label={`${hero.city} · ${perilById(hero.peril)?.label}`}>
       <div className="ln-market-stage"><Instrument peril={hero.peril} rungs={hero.rungs} trigger={hero.trigger} unit={hero.unit} /><div><h2 className="ln-title">{hero.city} · {perilById(hero.peril)?.label}</h2><p className="ln-label">{hero.heroLine}</p><p className="ln-market-trigger">{hero.trigger} <small>{hero.unit}</small></p></div></div>
       <div className="ln-stat-strip">{[{ label: copy.CHANCE, value: hero.chance }, { label: copy.MULTIPLE, value: hero.multiple }, { label: copy.MAX_LOSS, value: `-${hero.loss}` }].map((s) => <div key={s.label}><p className="ln-label">{s.label}</p><p className="ln-fig-m">{s.value}{s.label === copy.MAX_LOSS ? <small> SKYT</small> : null}</p></div>)}</div>
       <button className="ln-cta ln-press" onClick={() => onSelect(hero)}>{copy.COVER_THIS}</button>
     </section> : <div className="ln-empty"><p>{filter === "cold" ? copy.notOpenLine("cold", "") : failed ? copy.STATE_UNAVAILABLE : copy.EMPTY_MARKETS}</p></div>}
     {active.length ? <CoversSummary receipts={active} onClick={onWallet ?? (() => onReceipt(active[0].id))}/> : null}
-    {visible.length ? <section><div className="ln-market-zone-head"><h2 className="ln-zone">{copy.OPEN_NOW}</h2><span>{copy.CHANCE_MULTIPLE}</span></div>{visible.map((market) => <button className="ln-market-row ln-press" key={market.id} onClick={() => onSelect(market)}>
+    {visible.length || (loading && filter !== "cold") ? <section><div className="ln-market-zone-head"><h2 className="ln-zone">{copy.OPEN_NOW}</h2><span>{copy.CHANCE_MULTIPLE}</span></div>{visible.map((market) => <button className="ln-market-row ln-press" key={market.id} onClick={() => onSelect(market)}>
       <span className="ln-market-glyph"><i data-peril={market.peril}/><Glyph name={market.peril}/></span><span className="ln-row-copy"><strong>{market.city} · {perilById(market.peril)?.label}</strong><span className="ln-row-trigger">{market.triggerLabel}</span><span className="ln-label">{copy.MAX_LOSS} {market.loss} · {market.close}</span></span>{market.held ? <span className="ln-covered-tag"><GlacierMark/> {copy.COVERED_TAG}</span> : <span className="ln-market-odds"><span className="ln-fig-m">{market.chance}</span><span className="ln-fig-minor">{market.multiple}</span></span>}
     </button>)}</section> : null}
-    {(!loading && !failed || filter === "cold") ? <details className="ln-unavailable" open={expanded || undefined}><summary>{copy.notOpenMarkets(unavailable.length)}</summary>{unavailable.map((u) => <div className="ln-unavailable-row" key={u.id}><Glyph name={u.peril}/><span>{u.label} · {copy.NOT_OPEN_YET}</span></div>)}</details> : null}
+    {(!loading && !failed || filter === "cold") ? <><button className="ln-unavailable-toggle" aria-expanded={showUnavailable} onClick={() => setShowUnavailable((value) => !value)}><span>{copy.notOpenMarkets(unavailable.length)}</span><Glyph name="chevron" size={24}/></button>{showUnavailable ? unavailable.map((u) => <div className="ln-unavailable-row" key={u.id}><Glyph name={u.peril}/><span>{u.label} · {copy.NOT_OPEN_YET}</span></div>) : null}</> : null}
     {technical}
   </section>;
 }
@@ -100,16 +105,17 @@ export function WalletScreen({ address, balance, receipts, totals, loading, fail
         {loading ? <p role="status" className="ln-note">{copy.READING_WALLET}</p> : null}
         {failed ? <div role="alert"><p className="ln-note">{copy.CHAIN_ERROR}</p><button className="ln-text-btn" onClick={onRetry}>{copy.TRY_AGAIN}</button></div> : null}
         {totals ? <><FigurePair {...totals} across/><p className="ln-wallet-total-caption">{copy.totalsCaption(receipts.filter((r) => r.kind === "open").length)}</p></> : null}
-        <h2 className="ln-zone">{copy.YOUR_COVERS}</h2>
         {walletPerils(receipts).length >= 2 ? <PerilFilter value={perilFilter} onChange={setPerilFilter} markets={walletPerils(receipts).map((peril) => ({ peril } as MarketModel))} /> : null}
+        <h2 className="ln-zone">{copy.YOUR_COVERS}</h2>
         {!loading && !failed && receipts.length === 0 ? <p className="ln-note">{copy.EMPTY_COVERS}</p> : null}
-        {filterReceipts(receipts, perilFilter).length >= 4 ? groupReceiptsByWindow(filterReceipts(receipts, perilFilter)).map((group) => <section key={group.label ?? "unknown-window"}>{group.label ? <h3 className="ln-wallet-window">{group.label}</h3> : null}{group.receipts.map((r) => <WalletRow key={r.id} receipt={r} onClick={() => setSelected(r.id)}/>)}</section>) : filterReceipts(receipts, perilFilter).map((r) => <WalletRow key={r.id} receipt={r} onClick={() => setSelected(r.id)}/>) }
+        {filterReceipts(receipts, perilFilter).length >= 2 ? groupReceiptsByWindow(filterReceipts(receipts, perilFilter)).map((group) => <section key={group.label ?? "unknown-window"}>{group.label ? <h3 className="ln-wallet-window">{group.label}</h3> : null}{group.receipts.map((r) => <WalletRow key={r.id} receipt={r} detail={r.detailLine} onClick={() => setSelected(r.id)}/>)}</section>) : filterReceipts(receipts, perilFilter).map((r) => <WalletRow key={r.id} receipt={r} detail={[r.detailLine, r.windowLabel].filter(Boolean).join(" · ")} onClick={() => setSelected(r.id)}/>) }
       </>}
       <details className="ln-technical" open={technicalOpen || undefined}><summary>{copy.TECHNICAL_DETAILS}</summary><p>{copy.CONTRACT_LABEL}</p><p>{copy.SETTLED_UNITS}</p><p>{copy.TECH_CONTEXT}</p>{CITIES.map((city) => <p key={city.id} className="ln-label">{city.name} · {city.stationId}</p>)}{technical}{onDisconnect ? <button className="ln-disconnect" onClick={onDisconnect}>{copy.DISCONNECT}</button> : null}</details>
     </>}
   </section>;
 }
-function WalletRow({ receipt: r, onClick }: { receipt: ReceiptModel; onClick: () => void }) {
+function WalletRow({ receipt: r, detail, onClick }: { receipt: ReceiptModel; detail: string; onClick: () => void }) {
   const open = r.kind === "open" || r.kind === "pending";
-  return <button className="ln-wallet-row ln-press" onClick={onClick}>{r.peril ? <span className="ln-wallet-glyph"><Glyph name={r.peril}/></span> : <Glyph name="protect"/>}<span className="ln-wallet-main"><strong className="ln-wallet-trigger">{r.triggerLine ?? r.title}</strong><span className="ln-label">{r.detailLine}</span><span className="ln-wallet-figures">{open ? <><span><small>Max loss</small><b>-{r.loss ?? "—"}</b></span><span><small>Max gain</small><b>+{r.gain ?? "—"}</b></span></> : <span className="ln-wallet-result">{r.result ?? r.status}<small>{r.status}</small></span>}</span></span><span className="ln-wallet-state">{r.kind === "open" ? "Open" : r.kind === "paid" ? "Paid out" : r.kind === "dry" ? "Dry window" : r.status}</span><Glyph name="chevron" size={24}/></button>;
+  const status = r.kind === "paid" ? copy.PAID_OUT : r.kind === "open" ? null : r.status;
+  return <button className="ln-wallet-row ln-press" onClick={onClick}>{r.peril ? <span className="ln-wallet-glyph"><Glyph name={r.peril}/></span> : <Glyph name="protect"/>}<span className="ln-wallet-main"><strong className="ln-wallet-trigger">{r.triggerLine ?? r.title}</strong><span className="ln-label">{detail}</span><span className="ln-wallet-figures">{open ? <><span><small>Max loss</small><b>-{r.loss ?? "—"}</b></span><span><small>Max gain</small><b>+{r.gain ?? "—"}</b></span></> : <span className="ln-wallet-result">{r.result ?? r.status}<small>{r.status}</small></span>}</span></span>{status ? <span className={`ln-wallet-state${r.kind === "paid" ? " ln-wallet-state--paid" : ""}`}>{status}</span> : null}<Glyph name="chevron" size={24}/></button>;
 }

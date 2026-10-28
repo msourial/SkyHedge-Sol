@@ -28,7 +28,7 @@ function monthlyReceipt(peril: PerilId, start = "2026-11-01", end = "2026-12-01"
   return receiptModel(position, [], [quote], fixtureClaim("open"));
 }
 
-test("All uses registry round robin and sorts each peril by exact chance then sales close", () => {
+test("All uses registry round robin, sorts exact chance within open and held groups, then puts held last", () => {
   const quotes = [
     marketQuote("rain", "rain-third", 3000), marketQuote("rain", "rain-tie-late", 1000, "2026-11-09"),
     marketQuote("rain", "rain-tie-first", 1000), marketQuote("rain", "rain-tie-second", 1000),
@@ -50,6 +50,10 @@ test("All uses registry round robin and sorts each peril by exact chance then sa
   ]);
   assert.deepEqual(orderMarkets(markets, "cold"), []);
   assert.deepEqual(orderMarkets([], "all"), []);
+  const held = marketModels(quotes, PREVIEW_NOW, 100, ["rain-low", "snow-first"]);
+  const orderedHeld = orderMarkets(held, "all");
+  assert.deepEqual(orderedHeld.filter((market) => !market.held).slice(0, 4).map((market) => market.peril), ["rain", "snow", "wind", "heat"]);
+  assert.deepEqual(orderedHeld.slice(-2).map((market) => market.id), ["rain-low", "snow-first"]);
 });
 
 test("hero follows the list, skips all held states and respects the selected peril", () => {
@@ -58,7 +62,7 @@ test("hero follows the list, skips all held states and respects the selected per
   for (const held of [["rain-best"], new Set(["rain-best", "snow-best"])]) {
     const markets = marketModels(quotes, PREVIEW_NOW, 100, held);
     const ordered = orderMarkets(markets, "all");
-    assert.equal(ordered[0].held, true);
+    assert.equal(ordered[0].held, false);
     assert.equal(ordered.length, quotes.length);
     const hero = pickHero(ordered, "all");
     assert.equal(hero, ordered.find((market) => !market.held));
@@ -110,9 +114,9 @@ test("empty peril names no opening without an actual eligible future window and 
 
 test("receipt lead and detail lines retain the matched window, direction and native unit", () => {
   const cases = [
-    ["rain", 102, "102 mm or more", "Rain · New York · Nov 1 to Dec 1"],
-    ["wind", 14.8, "14.8 m/s or more", "Wind · Chicago · Nov 1 to Dec 1"],
-    ["heat", 30.6, "30.6 C or more", "Heat · Miami · Nov 1 to Dec 1"],
+    ["rain", 102, "102 mm or more", "Rain · New York"],
+    ["wind", 14.8, "14.8 m/s or more", "Wind · Chicago"],
+    ["heat", 30.6, "30.6 C or more", "Heat · Miami"],
   ] as const;
   for (const [peril, trigger, triggerLine, detailLine] of cases) {
     const receipt = monthlyReceipt(peril, "2026-11-01", "2026-12-01", trigger);
@@ -132,12 +136,12 @@ test("receipt dates use address matches only, with missing date parts omitted", 
   const position = { ...fixturePosition(), cityId: "new-york", triggerValue: 29 };
   const window: QuoteWindow = { address: position.market, city: "new-york", peril: "rain", tenor: "weekly",
     observationStart: Date.UTC(2026, 10, 2) / 1000, observationEnd: Date.UTC(2026, 10, 9) / 1000, salesCloseAt: null };
-  assert.equal(receiptModel(position, [window], []).detailLine, "Rain · New York · Nov 2 to Nov 9");
+  assert.equal(receiptModel(position, [window], []).detailLine, "Rain · New York");
   const unknown = receiptModel(position, [{ ...window, address: "other-market" }], [marketQuote("rain", "other-market")]);
   assert.equal(unknown.detailLine, "Rain · New York");
   assert.equal(unknown.windowKey, null); assert.equal(unknown.windowLabel, null);
   const partial = receiptModel(position, [window], [{ ...marketQuote("rain", position.market), windowEnd: "" }]);
-  assert.equal(partial.detailLine, "Rain · New York · Nov 1");
+  assert.equal(partial.detailLine, "Rain · New York");
   assert.equal(partial.windowEnd, null);
   const missing = receiptModel({ ...position, peril: undefined, triggerValue: undefined }, [], []);
   assert.equal(missing.triggerLine, null);
@@ -209,6 +213,7 @@ test("wallet captions handle singular and plural and keep the two totals labels"
   assert.equal(copy.LOSS_OPEN, "Max loss, open covers"); assert.equal(copy.GAIN_OPEN, "Max gain, open covers");
   assert.equal(copy.highInYears(10), "10-year high"); assert.equal(copy.highInYears(7), "7-year high");
   assert.equal(copy.highestInYears(7), "7-year high");
+  assert.equal(copy.notOpenMarkets(35), "Opening later · 35");
   for (const years of [0, -1, 1.5, NaN]) assert.equal(copy.highInYears(years), null);
 });
 

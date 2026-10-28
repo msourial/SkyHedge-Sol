@@ -15,8 +15,9 @@ const input: ProtectBuildInput = { cityId: "new-york", peril: "rain", tenor: "we
 test("393x851 layout reserves header and five complete chain rows above the bar", () => {
   assert.equal(protectChainRowBottom(0), 338);
   assert.equal(protectChainRowBottom(5), 618);
-  assert.deepEqual(protectLayout.columns, [156, 66, 62, 77]);
-  assert.equal(protectLayout.columns.reduce((a, b) => a + b, 0), 393 - 32);
+  assert.deepEqual(protectLayout.columns, [140, 63, 62, 80]);
+  assert.equal(protectLayout.columns.reduce((a, b) => a + b, 0) + 16, 393 - 32);
+  assert.ok(protectLayout.columns[2] >= 62 && protectLayout.columns[3] >= 60);
   // A 24dp status inset and 24dp gesture inset with 64dp tabs leave 651dp.
   const viewport = 851 - 24 - 24 - 64 - protectLayout.bar;
   assert.ok(protectChainRowBottom(5) <= viewport);
@@ -106,9 +107,25 @@ test("Markets hero uses round-robin ordering and skips every held market", () =>
   const snow = { ...NYC_RAIN_MODELLED, peril: "snow" as const, unit: "cm", rungs: NYC_RAIN_MODELLED.rungs.map((rung) => ({ ...rung, marketAddress: `snow-${rung.triggerValue}` })) };
   const markets = marketModels([NYC_RAIN_MODELLED, snow], now, 100, ["fixture-69"]);
   const ordered = orderMarkets(markets, "all");
-  assert.equal(ordered[0].peril, "rain");
+  assert.equal(ordered[0].peril, "snow");
   assert.equal(pickHero(ordered, "all")?.held, false);
   assert.equal(pickHero(orderMarkets(markets.filter((m) => m.held), "all"), "all"), null);
+  assert.ok(ordered.findIndex((market) => market.held) > ordered.map((market) => !market.held).lastIndexOf(true));
+});
+
+test("Markets loading reserves the hero and dry chain copy uses a regular 13px face", () => {
+  const discovery = readFileSync(new URL("./line/Discovery.tsx", import.meta.url), "utf8");
+  const protect = readFileSync(new URL("./line/ProtectLine.tsx", import.meta.url), "utf8");
+  assert.match(discovery, /size="hero" state="ghost"/);
+  assert.match(discovery, /monoGhost}>--/);
+  assert.match(discovery, /ctaReserved/);
+  assert.doesNotMatch(discovery, /<Text style=\{s\.note\}>\{copy\.GETTING_QUOTE\}<\/Text>/);
+  assert.match(discovery, /unavailableToggle/);
+  assert.match(discovery, /marketGlyph\}><Glyph name=\{m\.peril\}\/\><View style=\{\[s\.perilDot/);
+  assert.match(discovery, /perilDot: \{[^}]*position: "absolute"/);
+  assert.match(protect, /value === "Not open" \? styles\.notOpenDry/);
+  assert.match(protect, /notOpenDry: \{ color: C\.fg2, fontFamily: F\.body, fontSize: 13/);
+  assert.match(protect, /index === 2 \? \{ marginRight: 16 \}/);
 });
 
 test("mobile line screens keep required copy and type sizes", async () => {

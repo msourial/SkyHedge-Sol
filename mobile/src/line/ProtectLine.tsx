@@ -68,7 +68,7 @@ export function ProtectBody(props: { line: LineController; onCity: (cityId: stri
       {model.rows.map((row) => <LinePressable key={row.trigger} disabled={row.inert} accessibilityRole={row.inert ? "text" : "radio"} accessibilityState={{ selected: row.selected, disabled: row.inert }} accessibilityLabel={`${row.name}${row.tag ? `. ${row.tag}` : ""}`} onPress={() => { Vibration.vibrate(10); line.setSelectedTrigger(row.trigger); }} style={[styles.row, row.selected && styles.rowOn]}>
         {row.selected ? <View style={styles.rowTick} /> : null}
         <View style={column(0)}><View style={styles.triggerRow}>{row.selected ? <View style={styles.triggerMark} /> : null}<Text numberOfLines={1} style={[styles.figM, !row.open && styles.dry, !row.open && styles.dryTrigger]}>{row.triggerLabel}</Text>{row.tag ? <Text numberOfLines={1} style={styles.rowTag}>{row.tag}</Text> : null}</View>{row.topTag ? <Text numberOfLines={1} ellipsizeMode="clip" style={styles.label}>{row.topTag}</Text> : null}</View>
-        {[row.chance, row.multiple, row.maxLoss].map((value, index) => <Text key={index} style={[styles.rowText, column(index + 1), styles.right, !row.open && styles.dry]}>{value}</Text>)}
+        {[row.chance, row.multiple, row.maxLoss].map((value, index) => <Text key={index} style={[value === "Not open" ? styles.notOpenDry : styles.rowText, column(index + 1), styles.right, !row.open && value !== "Not open" && styles.dry]}>{value}</Text>)}
       </LinePressable>)}
     </View> : null}
     {model.footnotes.filter((note) => !model.readOnly || note !== model.optionAFootnote).map((note) => <Text key={note} style={[styles.note, note === model.footnote && styles.footnote]}>{note}</Text>)}
@@ -146,7 +146,7 @@ export function TabGlyph({ name, color }: { name: "markets" | "protect" | "walle
 function Glyph({ name, color }: { name: keyof typeof lineGlyphs; color: string }) { return <Svg width={24} height={24} viewBox="0 0 24 24">{lineGlyphs[name].map((d) => <Path key={d} d={d} stroke={color} fill="none" strokeWidth={1.75} strokeLinecap="round" />)}</Svg>; }
 function figure(fig: MoneyFigure) { return `${fig.sign}${fig.whole}.${fig.fraction}`; }
 function PayFigs({ loss, gain }: { loss: MoneyFigure | null; gain: MoneyFigure | null }) { return <View style={styles.payFigs}>{([[MAX_LOSS, loss], [MAX_GAIN, gain]] as const).map(([label, fig], index) => <View key={label} style={styles.paySide}><Text style={styles.label}>{label} </Text><Text style={[styles.figM, !fig && styles.dry]}>{fig ? figure(fig) : "…"}</Text>{index === 1 ? <Text style={styles.label}> SKYT</Text> : null}</View>)}</View>; }
-function column(index: number) { return { width: `${L.columns[index] / 361 * 100}%` as `${number}%` }; }
+function column(index: number) { return { width: `${L.columns[index] / 361 * 100}%` as `${number}%`, ...(index === 2 ? { marginRight: 16 } : {}) }; }
 
 const styles = StyleSheet.create({
   head: { height: L.header, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 4 },
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   chain: { marginTop: L.chainGap }, chainHead: { height: L.chainHeader, flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderBottomColor: C.tick },
   row: { height: L.chainRow, flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderBottomColor: C.tick }, rowOn: { backgroundColor: C.bgRaised }, rowTag: { color: C.fg2, fontFamily: F.bodyMedium, fontSize: 13, lineHeight: 18, marginLeft: "auto" }, dryTrigger: { fontSize: 15, lineHeight: 20 },
   rowTick: { position: "absolute", left: 0, height: 40, width: 4, backgroundColor: C.glacier }, triggerRow: { flexDirection: "row", alignItems: "center", paddingLeft: 8 }, triggerMark: { width: 12, height: 2, backgroundColor: C.slicker, marginRight: 4 },
-  rowText: { color: C.fg, fontFamily: F.mono, fontSize: 15, lineHeight: 20 }, right: { textAlign: "right" }, dry: { color: C.dryText },
+  rowText: { color: C.fg, fontFamily: F.mono, fontSize: 15, lineHeight: 20 }, notOpenDry: { color: C.fg2, fontFamily: F.body, fontSize: 13, lineHeight: 18, fontWeight: "400" }, right: { textAlign: "right" }, dry: { color: C.dryText },
   note: { color: C.fg2, fontFamily: F.body, fontSize: 13, lineHeight: 18, marginTop: 8 }, footnote: { marginTop: 12, marginBottom: 16 }, body: { color: C.fg, fontFamily: F.body, fontSize: 15, lineHeight: 22 }, sentence: { marginTop: 16 },
   chips: { flexDirection: "row", gap: 8, marginTop: 16 }, chip: { flex: 1, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center" }, chipOn: { backgroundColor: C.bgRaised }, chipText: { color: C.fg, fontFamily: F.bodySemi, fontSize: 15 }, info: { width: 48, height: 48, alignItems: "center", justifyContent: "center" },
   cells: { flexDirection: "row", gap: 16, marginVertical: 16 }, cell: { flex: 1, height: 88, borderRadius: 14, backgroundColor: C.bgRaised, padding: 12, justifyContent: "center" }, coveredRow: { height: 56, flexDirection: "row", alignItems: "center", gap: 12 }, coveredLabel: { color: C.fg, fontFamily: F.bodySemi, fontSize: 17, flex: 1 }, coveredAction: { minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 }, coveredActionText: { color: C.glacier, fontFamily: F.bodySemi, fontSize: 13 },

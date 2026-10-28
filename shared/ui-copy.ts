@@ -251,7 +251,7 @@ export function gainCaption(): string {
 }
 
 export function notOpenMarkets(count: number): string {
-  return `Not open yet · ${count} markets`;
+  return `Opening later · ${count}`;
 }
 
 export function ticketSheet(input: { feeLabel: string; years: number }): string | null {

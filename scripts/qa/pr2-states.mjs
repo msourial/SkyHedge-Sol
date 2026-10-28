@@ -2,7 +2,7 @@
 export const pr2States = [
   ...["ready", "loading", "error", "empty", "modelled", "expanded", "rail", "with-covers", "markets-mixed"].map(state => ({ name: `markets-${state}`, url: `/preview?screen=markets&state=${state}` })),
   ...["rain", "snow", "wind", "heat", "cold"].map(peril => ({ name: `markets-${peril}`, url: `/preview?screen=markets&peril=${peril}` })),
-  ...["connect", "loading", "error", "empty", "open", "totals-rows", "paid", "dry", "pending", "refund-ready", "refunded", "unknown", "technical", "wallet-multi"].map(state => ({ name: `wallet-${state}`, url: `/preview?screen=wallet&state=${state}` })),
+  ...["wallet", "connect", "loading", "error", "empty", "open", "totals-rows", "paid", "dry", "pending", "refund-ready", "refunded", "unknown", "technical", "wallet-two", "wallet-multi"].map(state => ({ name: `wallet-${state}`, url: `/preview?screen=wallet&state=${state}` })),
   ...["open", "paid", "dry", "pending", "refund-ready", "refunded", "unknown"].map(state => ({ name: `receipt-${state}`, url: `/preview?screen=wallet&state=${state}&receipt=1` })),
   ...["rain", "snow", "wind", "heat", "cold"].map(peril => ({ name: `landing-${peril}`, url: `/preview?screen=landing&peril=${peril}` })),
   ...["loading", "error", "empty", "modelled"].map(state => ({ name: `landing-${state}`, url: `/preview?screen=landing&state=${state}` })),

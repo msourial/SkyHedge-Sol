@@ -110,7 +110,8 @@ test("MODELLED rows are dry Not open entries without any press styling or select
     await expect(row).not.toHaveClass(/ln-press/);
     await expect(row.locator(":scope > span").last()).toHaveText("Not open");
     const style = await row.evaluate((node) => [...node.children].map((cell) => getComputedStyle(cell).color));
-    expect(style.every((color) => color === "rgb(122, 134, 150)")).toBe(true);
+    expect(style.slice(0, -1).every((color) => color === "rgb(122, 134, 150)")).toBe(true);
+    expect(style[style.length - 1]).toBe("rgb(169, 180, 194)");
   }
   const columns = await page.locator(".ln-chain-head").evaluate((node) => getComputedStyle(node).gridTemplateColumns);
   expect(Number.parseFloat(columns)).toBeGreaterThan(130);

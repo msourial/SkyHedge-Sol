@@ -44,13 +44,16 @@ function compareMarkets(a: MarketModel, b: MarketModel): number {
 
 /** Every open peril gets one row per round, in registry order. Never mutates the input. */
 export function orderMarkets(markets: readonly MarketModel[], filter: PerilFilter): MarketModel[] {
-  if (filter !== "all") return markets.filter((market) => market.peril === filter).sort(compareMarkets);
-  const queues = PERILS.map((peril) => markets.filter((market) => market.peril === peril.id).sort(compareMarkets));
-  const ordered: MarketModel[] = [];
-  for (let round = 0; queues.some((queue) => round < queue.length); round++) {
-    for (const queue of queues) if (queue[round]) ordered.push(queue[round]);
-  }
-  return ordered;
+  if (filter !== "all") return markets.filter((market) => market.peril === filter).sort((a, b) => Number(a.held) - Number(b.held) || compareMarkets(a, b));
+  const roundRobin = (held: boolean) => {
+    const queues = PERILS.map((peril) => markets.filter((market) => market.peril === peril.id && market.held === held).sort(compareMarkets));
+    const ordered: MarketModel[] = [];
+    for (let round = 0; queues.some((queue) => round < queue.length); round++) {
+      for (const queue of queues) if (queue[round]) ordered.push(queue[round]);
+    }
+    return ordered;
+  };
+  return [...roundRobin(false), ...roundRobin(true)];
 }
 
 /** Consume exactly the list order; held positions in any state remain visible in the list. */
@@ -150,7 +153,7 @@ export function receiptModel(position: StoredCover, windows: readonly QuoteWindo
   const windowLabel = startLabel && endLabel ? copy.windowLabel(startLabel, endLabel) : startLabel || endLabel;
   const title = `${definition?.label ?? copy.WEATHER_WORD} · ${city?.name ?? position.city ?? copy.UNKNOWN_CITY}`;
   return { id: position.address, market: position.market, title, triggerLine,
-    detailLine: [title, windowLabel].filter(Boolean).join(" · "), windowStart, windowEnd,
+    detailLine: title, windowStart, windowEnd,
     windowKey: windowStart || windowEnd ? `${windowStart ?? ""}/${windowEnd ?? ""}` : null, windowLabel,
     peril, city: city?.name ?? position.city ?? copy.UNKNOWN_CITY,
     station: quote?.stationId ?? city?.stationId ?? null, unit, rungs, trigger, reading,

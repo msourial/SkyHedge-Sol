@@ -246,9 +246,11 @@
 .ln-market-stage p { margin: 0; }
 .ln-market-trigger { font: 600 40px/42px "Barlow Condensed",sans-serif; color: var(--ln-slicker); }
 .ln-market-trigger small { color: var(--ln-fg-2); font: 500 17px/24px "IBM Plex Mono",monospace; }
-.ln-stat-strip { min-height: 44px; margin: 8px 0 0; gap: 4px; }
+.ln-stat-strip { min-height: 44px; margin: 8px 0 8px; gap: 4px; }
 .ln-sales-note { margin: 0; min-height: 24px; }
 .ln-market-hero .ln-cta { width: 100%; }
+.ln-market-hero--loading .ln-market-placeholder { min-height: 64px; }
+.ln-market-hero--loading .ln-placeholder-value { color: var(--ln-fg-2); font-weight: 400; }
 .ln-not-open-panel { min-height: 120px; margin: 8px 0; padding: 16px; border-radius: 14px; background: var(--ln-surface-1); color: var(--ln-fg); }
 .ln-not-open-panel p { margin: 0; font-size: 15px; line-height: 22px; }
 .ln-not-open-panel .ln-text-btn { min-height: 48px; color: var(--ln-glacier); }
@@ -281,7 +283,7 @@
 .ln-wallet-totals .ln-money-figure { margin: 0; font-size: 28px; line-height: 32px; }
 .ln-wallet-totals .ln-caption { margin: 0; }
 .ln-wallet-totals .ln-money-inline { align-items: baseline; }
-.ln-wallet-row { grid-template-columns: 24px minmax(0,1fr) auto 24px; gap: 8px; min-height: 104px; }
+.ln-wallet-row { grid-template-columns: 24px minmax(0,1fr) auto 24px; gap: 8px; min-height: 96px; padding: 6px 10px; }
 .ln-wallet-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .ln-wallet-main strong, .ln-wallet-main>.ln-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ln-wallet-main .ln-wallet-figures { display: grid; grid-template-columns: repeat(2, minmax(80px,1fr)); gap: 8px; }
@@ -426,7 +428,9 @@ body:has([data-line-protect="true"]) .sky-app-header, body:has([data-line-protec
 .ln-covered-row + .ln-info { display:none; }
 .ln-chain-note { margin:12px 0 16px; }
 .ln-chain-trigger { position:relative; }
-.ln-protect .ln-chain-head, .ln-protect .ln-row { grid-template-columns:150fr 70fr 65fr 82fr; }
+.ln-protect .ln-chain-head, .ln-protect .ln-row { grid-template-columns:1.3fr .56fr .6fr .78fr; }
+.ln-protect .ln-chain-head > :nth-child(4), .ln-protect .ln-row > :nth-child(4) { margin-left:16px; }
+.ln-not-open-dry { color:var(--ln-fg-2); font:400 13px/18px Inter,sans-serif; text-align:right; }
 .ln-chain-trigger { display:block; }
 .ln-trigger-line { display:flex; align-items:center; justify-content:space-between; width:100%; gap:4px; white-space:nowrap; }
 .ln-trigger-line > span { min-width:0; overflow:visible; }
@@ -453,11 +457,14 @@ body:has([data-line-protect="true"]) .sky-app-header, body:has([data-line-protec
 .ln-wallet-trigger { font:500 17px/24px "IBM Plex Mono",monospace !important; color:var(--ln-fg); }
 .ln-wallet-main > .ln-label { order:2; }
 .ln-wallet-main > .ln-wallet-figures { order:3; }
-.ln-wallet-row { grid-template-columns:24px minmax(0,1fr) 24px; }
-.ln-wallet-state { display:none; }
-.ln-wallet-window { margin:16px 0 4px; color:var(--ln-fg-2); font-size:13px; line-height:18px; font-weight:500; }
+.ln-wallet-row { grid-template-columns:24px minmax(0,1fr) auto 24px; min-height:96px; padding:6px 10px; }
+.ln-wallet-state { display:inline-flex; min-height:48px; align-items:center; color:var(--ln-fg-2); font-size:13px; }
+.ln-wallet-state--paid { color:var(--ln-slicker); }
+.ln-wallet-window { margin:4px 0 4px; color:var(--ln-fg-2); font-size:13px; line-height:18px; font-weight:400; }
 .ln-wallet-main .ln-wallet-figures { grid-template-columns:1fr 1fr; }
 .ln-wallet-main .ln-wallet-figures b { font-size:15px; }
+.ln-unavailable-toggle { width:100%; min-height:48px; margin-top:8px; padding:0; display:flex; align-items:center; justify-content:space-between; border:0; border-top:1px solid var(--ln-tick); background:transparent; color:var(--ln-fg-2); text-align:left; font:400 13px/18px Inter,sans-serif; }
+.ln-unavailable-row { min-height:48px; }
 .ln-row[data-open="false"] .ln-chain-trigger { font-size:15px; }
 /* Barlow's default ascenders exceed its 60px numeral line box. Normalize its
    metrics so the label, numeral and stat text keep disjoint layout boxes. */

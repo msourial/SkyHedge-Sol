@@ -32,7 +32,7 @@ export function Chain({ unit, rows, footnote, onSelect }: { unit: string; rows: 
             </span>
             <span className="ln-fig-s">{row.chance}</span>
             <span className="ln-fig-s">{row.multiple}</span>
-            <span className="ln-fig-s">{row.maxLoss ?? NOT_OPEN_WORD}</span>
+            <span className={row.maxLoss === NOT_OPEN_WORD ? "ln-not-open-dry" : "ln-fig-s"}>{row.maxLoss ?? NOT_OPEN_WORD}</span>
           </button>
         ))}
       </div>
