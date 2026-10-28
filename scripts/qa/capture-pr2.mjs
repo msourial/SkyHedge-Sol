@@ -15,6 +15,9 @@ try {
     await page.goto(`${origin}${state.url}`);
     await page.getByRole("note").waitFor();
     await page.evaluate(() => document.fonts.ready);
+    if (state.action === "city") await page.getByRole("button", { name: "Choose a city, New York" }).click();
+    if (state.action === "cold") await page.locator('.mk-card[data-kind="cold"]').click();
+    if (state.action === "bottom") await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await page.screenshot({ path: resolve(output, `${state.name}.png`) });
     manifest.push({ ...state, width: 393, height: 852, file: `${state.name}.png` });
     if (state.name.startsWith("receipt-") || state.name === "wallet-technical") {

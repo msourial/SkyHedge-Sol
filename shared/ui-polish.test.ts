@@ -88,7 +88,6 @@ test("every buyable rung remains discoverable when another rung in its window is
 test("hero combines station and close copy; the right column and held tag have shared copy", () => {
   const market = marketModels([marketQuote("rain", "fixture-rain")], PREVIEW_NOW)[0];
   assert.equal(market.heroLine, "Central Park · Sales close Nov 1");
-  assert.equal(copy.CHANCE_MULTIPLE, "Chance · Multiple");
   assert.equal(copy.COVERED_TAG, "Covered");
   assert.equal(copy.CHANCE, "Chance"); assert.equal(copy.MULTIPLE, "Multiple");
 });
@@ -213,7 +212,6 @@ test("wallet captions handle singular and plural and keep the two totals labels"
   assert.equal(copy.LOSS_OPEN, "Max loss, open covers"); assert.equal(copy.GAIN_OPEN, "Max gain, open covers");
   assert.equal(copy.highInYears(10), "10-year high"); assert.equal(copy.highInYears(7), "7-year high");
   assert.equal(copy.highestInYears(7), "7-year high");
-  assert.equal(copy.notOpenMarkets(35), "Opening later · 35");
   for (const years of [0, -1, 1.5, NaN]) assert.equal(copy.highInYears(years), null);
 });
 

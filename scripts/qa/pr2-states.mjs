@@ -1,7 +1,9 @@
 /** Public /preview URL matrix. Every numeric sample is explicitly labelled Fixture. */
 export const pr2States = [
-  ...["ready", "loading", "error", "empty", "modelled", "expanded", "rail", "with-covers", "markets-mixed"].map(state => ({ name: `markets-${state}`, url: `/preview?screen=markets&state=${state}` })),
-  ...["rain", "snow", "wind", "heat", "cold"].map(peril => ({ name: `markets-${peril}`, url: `/preview?screen=markets&peril=${peril}` })),
+  ...["loading", "mixed", "ny-held-one", "ny-all-held", "ny-none-open", "nothing-open", "error", "empty", "full-week", "all-covered"].map(state => ({ name: `markets-v7-${state}`, url: `/preview?screen=markets&state=${state}` })),
+  { name: "markets-v7-city-sheet", url: "/preview?screen=markets&state=mixed", action: "city" },
+  { name: "markets-v7-cold-sheet", url: "/preview?screen=markets&state=mixed", action: "cold" },
+  ...["mixed", "full-week"].map(state => ({ name: `markets-v7-${state}-bottom`, url: `/preview?screen=markets&state=${state}`, action: "bottom" })),
   ...["wallet", "connect", "loading", "error", "empty", "open", "totals-rows", "paid", "dry", "pending", "refund-ready", "refunded", "unknown", "technical", "wallet-two", "wallet-multi"].map(state => ({ name: `wallet-${state}`, url: `/preview?screen=wallet&state=${state}` })),
   ...["open", "paid", "dry", "pending", "refund-ready", "refunded", "unknown"].map(state => ({ name: `receipt-${state}`, url: `/preview?screen=wallet&state=${state}&receipt=1` })),
   ...["rain", "snow", "wind", "heat", "cold"].map(peril => ({ name: `landing-${peril}`, url: `/preview?screen=landing&peril=${peril}` })),

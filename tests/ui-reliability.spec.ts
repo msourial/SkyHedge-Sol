@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "./fixtures";
+import { DISCOVERY_QUOTES } from "../shared/ui-discovery-fixtures";
 import { NYC_RAIN_MODELLED } from "../shared/ui-fixtures";
 
 const TEST_NOW = new Date("2026-10-25T12:00:00Z");
@@ -59,6 +60,12 @@ test("search shows exact locations and matches locality, state, country, crop, a
 });
 
 test("Markets names all five perils and leaves purchases to the trigger chain", async ({ page }) => {
+  await page.route("**/api/devnet/status**", (route) => route.fulfill({ json: { cityWindows: [], desMoinesMarket: { status: "pending", evidenceStatus: "researching_evidence" } } }));
+  await page.route("**/api/mobile?resource=window-quote&**", (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    const quote = DISCOVERY_QUOTES.find((q) => q.cityId === params.get("city") && q.peril === params.get("peril"));
+    return quote ? route.fulfill({ json: { ...quote, windowStart: params.get("windowStart"), windowEnd: params.get("windowEnd"), salesCloseAt: params.get("windowStart") } }) : route.fulfill({ status: 409, json: { error: "not open" } });
+  });
   const apiRequests: string[] = [];
   page.on("request", (request) => {
     if (/\/api\/(quotes|transactions\/unsigned)/.test(request.url())) apiRequests.push(request.url());
@@ -66,10 +73,12 @@ test("Markets names all five perils and leaves purchases to the trigger chain", 
   await page.goto("/app?tab=markets&city=des-moines");
 
   const markets = page.getByRole("region", { name: "Weather markets", exact: true });
-  await expect(markets.getByRole("heading", { name: "Markets", exact: true })).toBeVisible();
-  for (const name of ["All", "Rain", "Snow", "Wind", "Heat", "Cold"]) {
-    await expect(markets.getByRole("tab", { name, exact: true })).toBeVisible();
+  await expect(markets.getByRole("heading", { name: "New York", exact: true })).toBeVisible();
+  await expect(markets.locator(".mk-title-line")).toContainText("Rain");
+  for (const name of ["Snow", "Wind", "Heat", "Cold"]) {
+    await expect(markets.locator(".mk-card-title").filter({ hasText: new RegExp(`^${name}$`) })).toHaveCount(1);
   }
+  await expect(markets.getByRole("tab")).toHaveCount(0);
   await expect(markets.getByRole("searchbox")).toHaveCount(0);
   await expect(page.getByText("Rain only for now. Wind, snow and heat later.", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Wind, snow and heat coming")).toHaveCount(0);

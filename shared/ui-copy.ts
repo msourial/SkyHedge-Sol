@@ -70,7 +70,6 @@ export const MAX_LOSS = "Max loss";
 export const MAX_GAIN = "Max gain";
 export const PAYOUT = "Payout";
 export const CHANCE = "Chance";
-export const CHANCE_MULTIPLE = "Chance · Multiple";
 export const BREAK_EVEN = "Break-even chance";
 export const MULTIPLE = "Multiple";
 export const TRIGGER = "Trigger";
@@ -250,9 +249,6 @@ export function gainCaption(): string {
   return "if it is reached";
 }
 
-export function notOpenMarkets(count: number): string {
-  return `Opening later · ${count}`;
-}
 
 export function ticketSheet(input: { feeLabel: string; years: number }): string | null {
   const note = chanceNote(input.years);
@@ -289,7 +285,7 @@ export function copySamples(): string[] {
     COVER_THIS, OPEN_APP, LANDING_TITLE, LANDING_SUB, ...HOW_IT_WORKS, PROTECT_TITLE, MARKETS_TITLE,
     WALLET_TITLE, YOUR_COVERS, OPEN_NOW, TECHNICAL_DETAILS, SKYT_BALANCE, MAX_LOSS, MAX_GAIN,
     PAYOUT, CHANCE, BREAK_EVEN, MULTIPLE, TRIGGER, COVER, FEE_INCLUDED, SO_FAR, WEEK, MONTH, WINDOW_WORD,
-    CHANCE_MULTIPLE, COVERED_TAG, BALANCE, marketHeroLine("Central Park", salesCloseLine("Nov 1")),
+    COVERED_TAG, BALANCE, marketHeroLine("Central Park", salesCloseLine("Nov 1")),
     notOpenYet("snow"), totalsCaption(1), totalsCaption(4),
     pricingSentence("1.00"), refundSentence(), years, highInYears(10) ?? "", feeLine("1.00"),
     capLine(), protectCta("24.00"), salesCloseLine("Oct 26"), sinceLine("Oct 26"),
@@ -303,7 +299,7 @@ export function copySamples(): string[] {
     triggerHeader("mm"), openRowName({ trigger: "69 mm", chance: "20.0%", multiple: "4.1x", maxLoss: "24.00" }),
     modelledRowName({ trigger: "47 mm", chance: "60.0%", multiple: "1.4x" }),
     resultLine("+", "76.00"), resultLine("-", "24.00"), lossCaption(), gainCaption(),
-    notOpenMarkets(3), ticketSheet({ feeLabel: "1.00", years: 10 }) ?? "", infoSheetTitle(),
+    ticketSheet({ feeLabel: "1.00", years: 10 }) ?? "", infoSheetTitle(),
     perilById("wind")?.honesty("O'Hare") ?? "", perilById("heat")?.honesty("Miami Intl") ?? "",
   ];
 }

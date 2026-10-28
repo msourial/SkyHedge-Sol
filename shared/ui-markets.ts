@@ -73,7 +73,9 @@ export function moreInCity(city: string, markets: readonly MarketModel[], window
   const rows: CityRow[] = markets.filter((m) => m.cityId === city && m.id !== lead?.id)
     .sort((a, b) => Number(isHeld(a, held)) - Number(isHeld(b, held)) || perilRank(a.peril) - perilRank(b.peril) || closing(a, b))
     .map((m) => ({ kind: "open", id: m.id, peril: m.peril, trigger: `${perilById(m.peril)?.direction === "down" ? "≤" : "≥"} ${measureLabel(m.trigger)} ${m.unit}`, end: `${copy.BY} ${dayFromIso(m.quote.windowEnd) ?? m.quote.windowEnd}`, status: isHeld(m, held) ? copy.COVERED_WORD : copy.closesOn(dayFromIso(m.quote.salesCloseAt) ?? m.quote.salesCloseAt), held: isHeld(m, held), selection: selection(m) }));
-  return [...rows, ...pendingCards(markets, windows, nowSeconds).filter((p) => p.cityId === city)];
+  const pending = pendingCards(markets, windows, nowSeconds).filter((p) => p.cityId === city);
+  // With nothing open in the city the not-open panel already represents the first pending peril.
+  return [...rows, ...(lead ? pending : pending.slice(1))];
 }
 export const coldCard = { kind: "cold", id: "cold", peril: "cold", label: "Cold", city: copy.EVERYWHERE, status: copy.NOT_AVAILABLE_YET, footer: copy.WHY, explanation: copy.COLD_EXPLANATION } as const;
 export function heroSentence(market: MarketModel): string { return copy.marketsHeroSentence(market.station, perilById(market.peril)!.verb(`${measureLabel(market.trigger)} ${market.unit}`), dayFromIso(market.quote.windowEnd) ?? market.quote.windowEnd); }

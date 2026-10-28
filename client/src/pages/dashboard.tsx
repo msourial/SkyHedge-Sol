@@ -22,6 +22,7 @@ import { LineTabs } from "@/components/line/tabs";
 import "@/line.css";
 import { MarketsScreen, WalletScreen } from "@/components/line/discovery";
 import { useDiscovery, useLineWallet } from "@/components/line/use-discovery";
+import type { PreviewSelection } from "../../../shared/ui-markets.ts";
 import type { MarketSelection } from "../../../shared/ui-discovery.ts";
 import { DevStampPreview, ProtectionGauges } from "@/components/protection-gauges";
 import { AGRICULTURAL_MARKETS, agriculturalMarketBySlug, agriculturalMarketLocation, millimetersToInches, searchAgriculturalMarkets, type AgriculturalMarketSlug } from "../../../shared/agricultural-markets";
@@ -102,10 +103,12 @@ export default function DashboardPage() {
   const devnetStatus = useQuery({ queryKey: ["devnet-status"], queryFn: () => api<DevnetStatus>("/api/devnet/status"), retry: false, refetchInterval: 30_000 });
   const discovery = useDiscovery(devnetStatus.data?.cityWindows ?? []);
   const lineWallet = useLineWallet(devnetStatus.data?.cityWindows ?? [], discovery.quotes);
+  const [marketsCity, setMarketsCity] = useState<string | null>(null);
   const [selection, setSelection] = useState<MarketSelection | null>(null);
-  const openSelection = (market: MarketSelection) => {
-    setSelection(market); setProtectCity(market.cityId); setTab("protect");
-    window.history.replaceState(null, "", `/app?tab=protect&city=${market.cityId}&peril=${market.peril}&tenor=${market.tenor}&trigger=${market.trigger}${market.windowStart && market.windowEnd ? `&start=${market.windowStart}&end=${market.windowEnd}` : ""}`);
+  const openSelection = (market: MarketSelection | PreviewSelection) => {
+    const triggerParams = "trigger" in market ? `&trigger=${market.trigger}${market.windowStart && market.windowEnd ? `&start=${market.windowStart}&end=${market.windowEnd}` : ""}` : "";
+    setSelection("trigger" in market ? market : null); setProtectCity(market.cityId); setTab("protect");
+    window.history.replaceState(null, "", `/app?tab=protect&city=${market.cityId}&peril=${market.peril}&tenor=${market.tenor}${triggerParams}`);
     window.scrollTo(0, 0);
   };
   const testerMarketReady = marketId === "des-moines" && isOpenDesMoinesMarket(devnetStatus.data);
@@ -174,7 +177,7 @@ export default function DashboardPage() {
     <aside className="hidden"><nav aria-label="Product sections" className="sticky top-24 flex w-[68px] flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-[var(--shadow-card)]">{TABS.map(({ id, label, icon: Icon }, index) => <button key={id} type="button" title={label} aria-label={label} aria-current={tab === id ? "page" : undefined} onClick={() => switchTab(id)} className={cn("flex min-h-11 items-center justify-center rounded-lg text-sm font-medium transition-colors", index === TABS.length - 1 && "mt-3 border-t border-[var(--border)] pt-3", tab === id ? "bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]")}><Icon className="h-5 w-5" /><span className="sr-only">{label}</span></button>)}</nav></aside>
     <div className="min-w-0 space-y-6 pb-[calc(112px+env(safe-area-inset-bottom))] lg:pb-0">
       {tab === "markets" || tab === "protect" || tab === "wallet" ? null : <header className="sky-page-header"><div className="flex items-start justify-between gap-3"><div><h1 className="text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></div><button type="button" className="hidden min-h-12 shrink-0 rounded-[10px] border border-[var(--line)] px-3 text-sm lg:block" onClick={() => switchTab("builders")}>Builder</button></div></header>}
-      {tab === "markets" && <MarketsScreen {...discovery} receipts={lineWallet.receipts} onSelect={openSelection} onReceipt={() => switchTab("wallet")} onWallet={() => switchTab("wallet")} onRetry={() => window.location.reload()} />}
+      {tab === "markets" && <MarketsScreen {...discovery} selectedCity={marketsCity} onCity={setMarketsCity} quoteWindows={devnetStatus.data?.cityWindows ?? []} onPreview={openSelection} receipts={lineWallet.receipts} onSelect={openSelection} onReceipt={() => switchTab("wallet")} onWallet={() => switchTab("wallet")} onRetry={() => window.location.reload()} />}
       {lineOn ? <LineProtect key={selection ? `${selection.cityId}-${selection.peril}-${selection.trigger}` : "protect"} initialSelection={selection} windows={devnetStatus.data?.cityWindows ?? []} city={protectCity} statusLoading={devnetStatus.isPending && !devnetStatus.data} statusFailed={devnetStatus.isError && !devnetStatus.data} onCityChange={openProtectCity} onWallet={() => switchTab("wallet")} onMarkets={() => switchTab("markets")} /> : tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") { setQuoteActive(true); setQuoteRequest((count) => count + 1); } }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" && quoteActive ? quoteQuery.error : undefined} />}
       {tab === "liquidity" && <Liquidity />}
       {tab === "wallet" && <WalletScreen {...lineWallet} technical={<><Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} onOpenCity={openProtectCity} selectedSlug={marketId} focusSlug={query.get("city")} status={devnetStatus.data}/><Evidence /></>}/>}

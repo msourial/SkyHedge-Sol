@@ -68,7 +68,9 @@ test("native host: mixed and held fixtures show a New York answer and Covered ro
   assert.match(content, /166 mm Pays out if Central Park records 166 mm or more by Jan 1\./);
   assert.match(content, /More in New York .*Covered/);
   assert.match(content, /Open now elsewhere Snow Chicago .*Wind Chicago .*Heat Miami/);
-  assert.match(content, /Coming up Snow New York From Dec See the trigger chain Cold Everywhere Not available yet Why/);
+  assert.match(content, /Covered Snow Season starts Dec/);
+  assert.match(content, /Coming up Cold Everywhere Not available yet Why/);
+  assert.doesNotMatch(content, /Coming up[^]*Snow New York/);
 });
 
 test("native host: receipt hero uses actual held money and keeps the sentence with View cover", () => {
@@ -108,10 +110,8 @@ test("native host: real card and row press handlers route open selections and pe
     assert.equal((calls[0] as any).cityId, "chicago");
     assert.equal((calls[0] as any).peril, "snow");
     assert.ok("trigger" in (calls[0] as any));
-    events.find((event) => event.label.startsWith("Snow, New York"))!.press();
-    assert.deepEqual(calls[1], { cityId: "new-york", peril: "snow", tenor: "monthly" });
     events.find((event) => event.label.includes("Season starts Dec"))!.press();
-    assert.deepEqual(calls[2], calls[1]);
+    assert.deepEqual(calls[1], { cityId: "new-york", peril: "snow", tenor: "monthly" });
   } finally { delete (globalThis as any).__marketPresses; }
 });
 
