@@ -109,11 +109,12 @@ test("MODELLED rows are dry Not open entries without any press styling or select
     await expect(row).not.toHaveAttribute("aria-checked");
     await expect(row).not.toHaveClass(/ln-press/);
     await expect(row.locator(":scope > span").last()).toHaveText("Not open");
-    const style = await row.evaluate((node) => [...node.querySelectorAll("span")].map((cell) => getComputedStyle(cell).color));
+    const style = await row.evaluate((node) => [...node.children].map((cell) => getComputedStyle(cell).color));
     expect(style.every((color) => color === "rgb(122, 134, 150)")).toBe(true);
   }
   const columns = await page.locator(".ln-chain-head").evaluate((node) => getComputedStyle(node).gridTemplateColumns);
-  expect(columns).toBe("112px 80px 72px 97px");
+  expect(Number.parseFloat(columns)).toBeGreaterThan(130);
+  await expect(rows.first().locator(".ln-chain-trigger")).toHaveCSS("font-size", "15px");
 });
 
 for (const state of sheetStates) test(`${state} is one modal sheet with one primary and accessible text`, async ({ page }) => {
@@ -165,9 +166,11 @@ test("covered receipt freezes the chain, removes chips and keeps equal figures",
   await expect(page.locator(".ln-chips")).toHaveCount(0);
   await expect(page.locator(".ln-row[data-selected='true']")).toContainText("Your cover");
   await expect(page.locator(".ln-row:enabled")).toHaveCount(0);
-  await expect(page.locator(".ln-pay--receipt")).toContainText("Covered");
-  await expect(page.locator(".ln-pay--receipt")).toContainText("-24.00");
-  await expect(page.locator(".ln-pay--receipt")).toContainText("+76.00");
+  await expect(page.locator(".ln-pay")).toHaveCount(0);
+  await expect(page.locator(".ln-covered-row")).toContainText("Covered");
+  await expect(page.locator(".ln-covered-row")).toHaveCSS("height", "56px");
+  await expect(page.locator(".ln-money-cell").first()).toContainText("-24.00");
+  await expect(page.locator(".ln-money-cell").last()).toContainText("+76.00");
   await expect(page.getByRole("button", { name: "View in Wallet", exact: true })).toBeVisible();
   await expect(page.locator(".ln-payoff text")).toHaveCount(3);
 });

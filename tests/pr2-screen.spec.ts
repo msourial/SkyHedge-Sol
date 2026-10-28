@@ -34,8 +34,7 @@ test("modelled quotes have no offer and Cold stays selectable with a ghost", asy
   await expect(page.locator(".ln-market-row")).toHaveCount(0);
   await page.getByRole("tab", { name: "Cold", exact: true }).click();
   await expect(page.getByText("Cold isn't open yet.")).toBeVisible();
-  await expect(page.locator(".ln-empty svg")).toHaveAccessibleName(/Cold/);
-  await expect(page.locator(".ln-empty svg [stroke='#F2C230']")).toHaveCount(0);
+  await expect(page.locator(".ln-empty svg")).toHaveCount(0);
 });
 test("Wallet totals use equal figure styles and receipts distinguish paid, dry and claimable", async ({ page }) => {
   for (const [state, status, result] of [["open", "Open", null], ["paid", "Paid out", "Result +76.00 SKYT"], ["dry", "Dry window", "Result -24.00 SKYT"], ["pending", "Payout ready to collect", null]] as const) {
@@ -44,7 +43,10 @@ test("Wallet totals use equal figure styles and receipts distinguish paid, dry a
     if (state === "open") {
       await expect(page.locator(".ln-cells")).toContainText("-24.00");
       await expect(page.locator(".ln-cells")).toContainText("+76.00");
-      await expect(page.locator(".ln-wallet-row")).toContainText("69 mm or more · Nov 1 to Dec 1");
+      await expect(page.locator(".ln-wallet-totals")).not.toContainText("SKYT");
+      await expect(page.locator(".ln-wallet-total-caption")).toHaveText("Totals in SKYT across 1 open cover.");
+      await expect(page.locator(".ln-wallet-trigger")).toHaveText("69 mm or more");
+      await expect(page.locator(".ln-wallet-row")).toContainText("Rain · New York · Oct 26 to Nov 2");
       await expect(page.locator(".ln-wallet-figures")).toContainText("Max loss");
       await expect(page.locator(".ln-wallet-figures")).toContainText("Max gain");
     }
@@ -138,4 +140,55 @@ test("Protect has no first-run strip", async ({ page }) => {
   await expect(page.locator(".ln-intro")).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Trigger chain" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Ticket", exact: true })).toHaveCount(1);
+});
+
+test("v5 mixed markets skips the held hero and Wallet multi leads with triggers", async ({ page }) => {
+  await page.goto("/preview?screen=markets&state=markets-mixed");
+  const hero = page.locator(".ln-market-hero");
+  await expect(hero).toBeVisible();
+  await expect(hero).not.toContainText("New York · Rain");
+  await expect(page.locator(".ln-market-row").first()).toContainText("Covered");
+  await expect(page.locator(".ln-market-row").first().locator(".ln-covered-tag svg")).toHaveAttribute("width", "16");
+  await page.goto("/preview?screen=wallet&state=wallet-multi");
+  await expect(page.locator(".ln-wallet-row")).toHaveCount(4);
+  for (const row of await page.locator(".ln-wallet-row").all()) {
+    await expect(row.locator(".ln-wallet-trigger")).toHaveText(/or more$/);
+  }
+  await expect(page.locator(".ln-peril-tabs")).toBeVisible();
+  await expect(page.locator(".ln-wallet-window")).toHaveCount(1);
+  const tiny = await page.locator(".ln").evaluate((root) => [...root.querySelectorAll<HTMLElement>("*")].filter((el) => el.textContent?.trim() && el.getBoundingClientRect().height && Number.parseFloat(getComputedStyle(el).fontSize) < 13).map((el) => el.className));
+  expect(tiny).toEqual([]);
+  const firstRow = page.locator(".ln-wallet-row").first();
+  const textOverlaps = await firstRow.evaluate((row) => {
+    const nodes = [...row.querySelectorAll<HTMLElement>(".ln-wallet-trigger, .ln-label, .ln-wallet-figures, .ln-wallet-state")];
+    return nodes.some((a, i) => nodes.slice(i + 1).some((b) => { const x = a.getBoundingClientRect(), y = b.getBoundingClientRect(); return x.left < y.right && x.right > y.left && x.top < y.bottom && x.bottom > y.top; }));
+  });
+  expect(textOverlaps).toBe(false);
+});
+
+test("covered Protect uses an inline receipt without a bar; other Protect states clear the bar", async ({ page }) => {
+  for (const state of ["covered", "ready", "loading", "error", "connect", "paid", "dry", "closed", "modelled", "cold"]) {
+    await page.goto(`/preview?state=${state}`);
+    const scroll = page.locator("[data-testid=protect-scroll]");
+    await scroll.evaluate((node) => { node.scrollTop = node.scrollHeight; });
+    if (state === "covered") {
+      await expect(page.locator(".ln-pay")).toHaveCount(0);
+      await expect(page.locator(".ln-covered-row")).toContainText("Covered");
+      await expect(page.getByRole("button", { name: "View in Wallet", exact: true })).toBeVisible();
+    } else {
+      const bar = page.locator(".ln-pay, .ln-not-open").first();
+      const clearance = await page.evaluate(() => {
+        const content = document.querySelector("[data-testid=protect-scroll]")!;
+        const bar = document.querySelector(".ln-pay, .ln-not-open")!;
+        const last = content.lastElementChild!;
+        return last.getBoundingClientRect().bottom <= bar.getBoundingClientRect().top + 1;
+      });
+      await expect(bar).toBeVisible();
+      expect(clearance).toBe(true);
+    }
+    await expect(page.getByText("Your cover", { exact: true })).toHaveCount(state === "covered" ? 1 : 0);
+    await expect(page.getByText("Highest in", { exact: false })).toHaveCount(0);
+    const tiny = await page.locator(".ln").evaluate((root) => [...root.querySelectorAll<HTMLElement>("*")].filter((el) => el.textContent?.trim() && el.getBoundingClientRect().height && Number.parseFloat(getComputedStyle(el).fontSize) < 13).map((el) => el.className));
+    expect(tiny).toEqual([]);
+  }
 });
