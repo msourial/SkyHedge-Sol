@@ -60,7 +60,6 @@ export function Ticket({ ticket, chips, cap, onCover, onInfo, onWallet }: {
       </dl>
       <p className="ln-sentence">{ticket.sentence}</p>
       <p className="ln-note">{ticket.salesClose}</p>
-      {ticket.note ? <p className="ln-note">{ticket.note}</p> : null}
       {ticket.honesty ? <p className="ln-note">{ticket.honesty}</p> : null}
     </section>
   );

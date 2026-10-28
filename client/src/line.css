@@ -474,3 +474,4 @@ body:has([data-line-protect="true"]) .sky-app-header, body:has([data-line-protec
 .ln-numeral { font-family: "Line Barlow Condensed", "Barlow Condensed",sans-serif; }
 .ln-protect .ln-switch button[aria-selected="true"]::before { content: none; }
 .ln-peril-underline { position: absolute; left: 0; bottom: 0; width: 20%; height: 3px; background: var(--ln-glacier); pointer-events: none; transition: transform 240ms var(--ln-ease); }
+.ln-stat-strip small { color:var(--ln-fg-2); font:500 13px/18px Inter,sans-serif; }
