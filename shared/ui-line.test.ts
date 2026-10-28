@@ -16,7 +16,8 @@ import {
 } from "./ui-money.ts";
 import { copySamples, forbiddenHits } from "./ui-copy.ts";
 import { firstOpenPair, perilById, perilOpen } from "./peril-registry.ts";
-import { buildProtectModel, type ProtectBuildInput } from "./ui-view.ts";
+import { buildProtectModel, scrollBottomPadding, type ProtectBuildInput } from "./ui-view.ts";
+import { footnoteSpacing, PROTECT_BAR_HEIGHT } from "./ui-tokens.ts";
 import { readCatalogueWindowQuote } from "../server/services/window-quote-read.ts";
 import { matchingQuote, pickDefaultWindow, windowQuoteRequest, type QuoteWindow } from "./ui-window-quote.ts";
 import type { CoverSize } from "./ui-types.ts";
@@ -326,7 +327,7 @@ test("hero and ticket expose exact v4 data with no start-date reading or odds ba
     [80, "modelled", "Not open", false, true], [102, "open", "-24.00", true, false], [194, "modelled", "Not open", false, true],
   ]);
   assert.deepEqual(model.footnotes, ["Only the highlighted trigger can be covered for this window.", "Chance is from 10 years of NOAA history, not a forecast."]);
-  assert.deepEqual(model.rows.map((row) => row.topTag), [null, null, "Highest in 10 years"]);
+  assert.deepEqual(model.rows.map((row) => row.topTag), [null, null, "10-year high"]);
   assert.equal(model.payoff?.lossBase, "24000000"); assert.equal(model.payoff?.gainBase, "76000000");
   assert.equal(model.payoff?.lossPx, 12.6); assert.equal(model.payoff?.gainPx, 40);
   assert.deepEqual([model.payoff?.lossLabel, model.payoff?.gainLabel, model.payoff?.triggerLabel], ["-24.00", "+76.00", "102 mm"]);
@@ -350,11 +351,49 @@ test("covered selection wins over stale user selection and freezes chain and tic
   assert.equal(model.selected, 69);
   assert.equal(model.hero?.numeral, "69");
   assert.equal(model.panel.kind, "covered");
-  assert.equal(model.yourCover, "Your cover");
+  assert.equal(model.yourCover, null);
   assert.equal(model.readOnly, true); assert.equal(model.ticket?.readOnly, true);
   assert.equal(model.rows.filter((row) => row.selected).length, 1);
   assert.equal(model.rows.find((row) => row.selected)?.tag, "Your cover");
   assert(model.rows.every((row) => row.inert)); assert.deepEqual(model.chips, []);
+});
+
+test("covered ticket owns an inline receipt, one chain tag and only the NOAA footnote", () => {
+  const model = buildProtectModel(coverInput({ quote: NYC_RAIN_MODELLED, coveredMarket: "fixture-69" }));
+  assert.equal(model.panel.kind, "covered");
+  assert.equal(model.showBar, false);
+  assert.deepEqual(model.coveredRow, { label: "Covered", action: "View in Wallet" });
+  assert.equal(scrollBottomPadding(model), 16);
+  assert.equal(model.optionAFootnote, null);
+  assert.deepEqual(model.footnotes, ["Chance is from 10 years of NOAA history, not a forecast."]);
+  assert.deepEqual(footnoteSpacing, { above: 12, below: 16 });
+  assert.equal((JSON.stringify(model).match(/Your cover/g) ?? []).length, 1);
+  assert.equal(model.rows.find((row) => row.selected)?.tag, "Your cover");
+});
+
+test("every existing non-covered bar retains its height and scroll clearance", () => {
+  const cases: Array<[string, Partial<ProtectBuildInput>]> = [
+    ["ready", {}], ["connect", { connected: false }], ["signing", { signing: true }],
+    ["loading", { loading: true, quote: null }], ["error", { failed: true, quote: null }],
+    ["paid", { settlement: { kind: "paid" } }], ["dry", { settlement: { kind: "dry" } }],
+  ];
+  for (const [kind, input] of cases) {
+    const model = buildProtectModel(coverInput(input));
+    assert.equal(model.panel.kind, kind);
+    assert.equal(model.showBar, true, kind);
+    assert.equal(model.coveredRow, null, kind);
+    assert.equal(model.yourCover, null);
+    assert.equal(scrollBottomPadding(model), PROTECT_BAR_HEIGHT + 16);
+    assert.equal(scrollBottomPadding(model.panel.kind), PROTECT_BAR_HEIGHT + 16);
+  }
+  assert.equal(scrollBottomPadding("closed"), PROTECT_BAR_HEIGHT + 16);
+  assert.equal(scrollBottomPadding("covered"), 16);
+  const notOpen = buildProtectModel(coverInput({ quote: null }));
+  assert.equal(notOpen.panel.kind, "not-open");
+  assert.equal(notOpen.showBar, false);
+  assert.equal(notOpen.coveredRow, null);
+  assert.equal(scrollBottomPadding(notOpen), 16);
+  assert.equal(scrollBottomPadding("not-open"), 16);
 });
 
 test("a single open rung follows the hero directly without a one-row table", () => {

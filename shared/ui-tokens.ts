@@ -38,5 +38,8 @@ export const lineMotion = {
 
 export const SKYT_BASE = 1_000_000n;
 export const COVER_SIZES = [50, 100, 250] as const;
+/** Protect bar height before safe-area insets, shared by both renderers. */
+export const PROTECT_BAR_HEIGHT = 88;
+export const footnoteSpacing = { above: 12, below: 16 } as const;
 /** Per market, from the program cap. Chips above the remaining room are disabled. */
 export const MARKET_CAP_SKYT = 500;

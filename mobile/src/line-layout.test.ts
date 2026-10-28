@@ -72,7 +72,9 @@ test("selected rung position produces read-only COVERED even if the legacy windo
   assert.equal(held.cover, 50);
   const model = buildProtectModel({ ...input, quote, coveredMarket: held.coveredMarket, cover: held.cover! });
   assert.equal(model.panel.kind, "covered");
-  assert.equal(model.yourCover, "Your cover");
+  assert.equal(model.yourCover, null);
+  assert.equal(model.showBar, false);
+  assert.deepEqual(model.coveredRow, { label: "Covered", action: "View in Wallet" });
   assert.equal(model.chips.length, 0);
   assert.equal(model.readOnly, true);
   assert.ok(model.rows.every((row) => row.inert));

@@ -1,7 +1,8 @@
 /** Shared Protect data. Renderers never reconstruct a premium or payout. */
 import * as copy from "./ui-copy.ts";
 import { chainFigures, dayFromIso, fractionOnScale, payoffPixels, scaleFor, stationFor, isoFromSeconds } from "./ui-ladder.ts";
-import { breakEvenLabel, chanceLabel, chipExceedsCap, formatBase, moneyParts, multipleLabel, protocolFeeBase, rungEconomics, ticketFromBases, COVER_SIZES } from "./ui-money.ts";
+import { breakEvenLabel, chanceLabel, chipExceedsCap, formatBaseGrouped, moneyParts, multipleLabel, protocolFeeBase, rungEconomics, ticketFromBases, COVER_SIZES } from "./ui-money.ts";
+import { PROTECT_BAR_HEIGHT } from "./ui-tokens.ts";
 import { CITIES, cityById, perilById, perilOpen } from "./peril-registry.ts";
 import { openQuoteWindows, pickDefaultWindow, type QuoteWindow, type TenorAvailability } from "./ui-window-quote.ts";
 import { rungTrigger, type CoverSize, type PerilId, type RungQuote, type WindowQuote } from "./ui-types.ts";
@@ -97,6 +98,9 @@ export type ProtectModel = {
   rows: ChainRowModel[];
   showChain: boolean;
   readOnly: boolean;
+  coveredRow: { label: string; action: string } | null;
+  showBar: boolean;
+  /** @deprecated The selected chain row owns the only cover tag. Always null. */
   yourCover: string | null;
   footnote: string | null;
   optionAFootnote: string | null;
@@ -151,13 +155,13 @@ export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
     subline: start && end ? copy.subline({ station, start, end, salesClose: dayFromIso(input.quote?.salesCloseAt ?? input.windowStart) ?? start }) : null,
     hero: null, soFarLabel: copy.SO_FAR, soFarValue: "", soFarSince: null, reading: null,
     instrument: "ghost", rungs: [], selected: null, header: [copy.triggerHeader(unit), copy.CHANCE, copy.MULTIPLE, copy.MAX_LOSS],
-    rows: [], showChain: false, readOnly: !!input.coveredMarket, yourCover: input.coveredMarket ? copy.YOUR_COVER : null,
+    rows: [], showChain: false, readOnly: !!input.coveredMarket, yourCover: null, coveredRow: null, showBar: false,
     footnote: null, optionAFootnote: null, footnotes: [], chips: [], capMessage: null,
     blocked: null, ticket: null, payoff: null, coverSentence: null, signRows: [], panel: notOpenPanel(input, cityName),
   };
   if (!eligible) return base;
-  if (input.failed && !input.quote && !input.single) return { ...base, panel: { kind: "error", message: copy.CHAIN_ERROR } };
-  if (input.loading && !input.quote && !input.single) return { ...base, instrument: "loading", panel: { kind: "loading", cta: copy.GETTING_QUOTE } };
+  if (input.failed && !input.quote && !input.single) return { ...base, showBar: true, panel: { kind: "error", message: copy.CHAIN_ERROR } };
+  if (input.loading && !input.quote && !input.single) return { ...base, showBar: true, instrument: "loading", panel: { kind: "loading", cta: copy.GETTING_QUOTE } };
   if (!currentOpen && !input.coveredMarket && !input.settlement) return base;
 
   const figures = input.quote ? chainFigures(input.quote, input.cover) : [];
@@ -169,7 +173,6 @@ export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
   const reading = input.running && input.reading != null && Number.isFinite(input.reading) ? input.reading : null;
   const soFarValue = reading == null ? "" : `${formatMeasure(reading)} ${unit}`;
   const footnote = input.quote ? copy.chanceNote(input.quote.analogueYears) : null;
-  const optionAFootnote = showChain && rows.filter((row) => row.open).length === 1 ? copy.CHAIN_OPTION_A : null;
   let panel: PanelModel;
   if (input.settlement?.kind === "paid") panel = { kind: "paid", result: copy.resultLine("+", `${ticket.gain.whole}.${ticket.gain.fraction}`), payout: ticket.payout };
   else if (input.settlement?.kind === "dry") panel = { kind: "dry", result: copy.resultLine("-", `${ticket.loss.whole}.${ticket.loss.fraction}`) };
@@ -177,6 +180,7 @@ export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
   else if (input.signing) panel = { kind: "signing", loss: ticket.loss, gain: ticket.gain, cta: copy.WAITING_WALLET };
   else if (!input.connected) panel = { kind: "connect", loss: ticket.loss, gain: ticket.gain, cta: copy.CONNECT_WALLET };
   else panel = { kind: "ready", loss: ticket.loss, gain: ticket.gain, cta: copy.protectCta(`${ticket.loss.whole}.${ticket.loss.fraction}`) };
+  const optionAFootnote = panel.kind !== "covered" && showChain && rows.filter((row) => row.open).length === 1 ? copy.CHAIN_OPTION_A : null;
   const deal = dealFor(input, chosen)!;
   return {
     ...base, hero: { label: copy.TRIGGER, numeral: formatMeasure(chosen), unit, chance: ticket.chance,
@@ -187,7 +191,19 @@ export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
     footnotes: [optionAFootnote, footnote].filter((line): line is string => line != null), chips,
     capMessage: chips.some((chip) => chip.disabled) ? copy.capLine() : null,
     blocked: input.coveredMarket ? copy.ALREADY_COVERED : null, ticket, payoff: ticket.payoff, coverSentence: ticket.sentence, signRows: ticket.signRows, panel,
+    showBar: panelShowsBar(panel.kind), coveredRow: panel.kind === "covered" ? { label: copy.COVERED_WORD, action: copy.VIEW_WALLET } : null,
   };
+}
+
+/** Not-open stays inline; every other non-covered panel already occupies the bar. */
+function panelShowsBar(state: PanelModel["kind"]): boolean {
+  return state !== "covered" && state !== "not-open";
+}
+
+/** Safe-area insets are added by the renderer, once. */
+export function scrollBottomPadding(model: Pick<ProtectModel, "showBar"> | PanelModel["kind"]): number {
+  const showBar = typeof model === "string" ? panelShowsBar(model) : model.showBar;
+  return (showBar ? PROTECT_BAR_HEIGHT : 0) + 16;
 }
 
 function notOpenPanel(input: ProtectBuildInput, cityName: string): Extract<PanelModel, { kind: "not-open" }> {
@@ -231,7 +247,7 @@ function chainRows(quote: WindowQuote, input: ProtectBuildInput, selected: numbe
     const yourCover = !!rung?.marketAddress && rung.marketAddress === input.coveredMarket;
     return { ...row, kind: row.open ? "open" : "modelled", maxLoss: row.maxLoss ?? copy.NOT_OPEN_WORD,
       selected: row.trigger === selected, inert: !!input.coveredMarket || !row.open, yourCover, tag: yourCover ? copy.YOUR_COVER : null,
-      topTag: index === figures.length - 1 && row.top ? copy.highestInYears(quote.analogueYears) : null,
+      topTag: index === figures.length - 1 && row.top ? copy.highInYears(quote.analogueYears) : null,
       name: row.open && row.maxLoss ? copy.openRowName({ trigger: row.triggerLabel, chance: row.chance, multiple: row.multiple, maxLoss: row.maxLoss.replace("-", "") })
         : copy.modelledRowName({ trigger: row.triggerLabel, chance: row.chance, multiple: row.multiple }) };
   });
@@ -244,8 +260,8 @@ function buildTicket(input: ProtectBuildInput, station: string, unit: string, en
   const fee = protocolFeeBase(input.cover), chance = chanceLabel(chanceBps(input, chosen));
   const breakEven = breakEvenLabel(deal.breakEvenTenths);
   if (fee == null || !chance || !breakEven) return null;
-  const feeLabel = formatBase(fee), triggerLabel = `${formatMeasure(chosen)} ${unit}`, payoutLabel = formatBase(deal.payout);
-  const sentence = copy.coverSentence({ payoutLabel, station, peril: input.peril, triggerLabel, dateLabel: end, premiumLabel: formatBase(deal.premium) });
+  const feeLabel = formatBaseGrouped(fee), triggerLabel = `${formatMeasure(chosen)} ${unit}`, payoutLabel = formatBaseGrouped(deal.payout);
+  const sentence = copy.coverSentence({ payoutLabel, station, peril: input.peril, triggerLabel, dateLabel: end, premiumLabel: formatBaseGrouped(deal.premium) });
   if (!sentence) return null;
   const triggers = input.quote?.rungs.map((rung) => rung.triggerValue) ?? [chosen];
   const scale = scaleFor(input.peril, triggers), pixels = payoffPixels(deal.maxLoss, deal.maxGain), start = dayFromIso(input.windowStart);
@@ -253,8 +269,8 @@ function buildTicket(input: ProtectBuildInput, station: string, unit: string, en
   const payoff: PayoffModel = {
     lossBase: deal.maxLoss.toString(), gainBase: deal.maxGain.toString(), lossPx: pixels.loss, gainPx: pixels.gain,
     step: fractionOnScale(chosen, scale), ticks: triggers.map((value) => fractionOnScale(value, scale)),
-    lossLabel: `-${formatBase(deal.maxLoss)}`, gainLabel: `+${formatBase(deal.maxGain)}`, triggerLabel,
-    description: copy.payoffDescription({ station, triggerLabel, lossLabel: formatBase(deal.maxLoss), gainLabel: formatBase(deal.maxGain), direction: peril.direction }),
+    lossLabel: `-${formatBaseGrouped(deal.maxLoss)}`, gainLabel: `+${formatBaseGrouped(deal.maxGain)}`, triggerLabel,
+    description: copy.payoffDescription({ station, triggerLabel, lossLabel: formatBaseGrouped(deal.maxLoss), gainLabel: formatBaseGrouped(deal.maxGain), direction: peril.direction }),
   };
   return {
     loss: moneyParts(-deal.maxLoss), gain: moneyParts(deal.maxGain), payout: payoutLabel, chance, breakEven, fee: feeLabel,
