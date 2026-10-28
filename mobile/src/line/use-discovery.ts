@@ -15,7 +15,7 @@ export function useDiscovery(windows: readonly QuoteWindow[], retry: number, now
     });
     return () => { cancelled = true; };
   }, [key, retry, Math.floor(now / 60)]);
-  return { ...state, markets: marketModels(state.quotes, now) };
+  return { ...state, markets: marketModels(state.quotes, now), quoteWindows: windows, nowSeconds: now };
 }
 export function useReceipts(positions: readonly StoredCover[], wallet: string | null, windows: readonly QuoteWindow[], quotes: readonly WindowQuote[], retry: number) {
   const [claims, setClaims] = useState<{ wallet: string | null; data: Record<string, CoverClaim | null> }>({ wallet: null, data: {} });

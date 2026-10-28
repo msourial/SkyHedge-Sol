@@ -4,7 +4,8 @@ import { test } from "node:test";
 import { lineTokens as C } from "../../shared/ui-tokens.ts";
 import { NYC_RAIN_MODELLED } from "../../shared/ui-fixtures.ts";
 import { instrumentArt } from "../../shared/ui-instrument.ts";
-import { buildProtectModel, type ProtectBuildInput } from "../../shared/ui-view.ts";
+import { buildProtectModel, scrollBottomPadding, type ProtectBuildInput } from "../../shared/ui-view.ts";
+import { marketModels, orderMarkets, pickHero } from "../../shared/ui-discovery.ts";
 import { lineCoverage, withCoveredReceipt } from "./line-covered.ts";
 import { protectChainRowBottom, protectLayout } from "./line/layout.ts";
 import type { ChainProtection } from "./positions.ts";
@@ -14,7 +15,7 @@ const input: ProtectBuildInput = { cityId: "new-york", peril: "rain", tenor: "we
 test("393x851 layout reserves header and five complete chain rows above the bar", () => {
   assert.equal(protectChainRowBottom(0), 338);
   assert.equal(protectChainRowBottom(5), 618);
-  assert.deepEqual(protectLayout.columns, [112, 80, 72, 97]);
+  assert.deepEqual(protectLayout.columns, [156, 66, 62, 77]);
   assert.equal(protectLayout.columns.reduce((a, b) => a + b, 0), 393 - 32);
   // A 24dp status inset and 24dp gesture inset with 64dp tabs leave 651dp.
   const viewport = 851 - 24 - 24 - 64 - protectLayout.bar;
@@ -77,9 +78,54 @@ test("selected rung position produces read-only COVERED even if the legacy windo
   assert.deepEqual(model.coveredRow, { label: "Covered", action: "View in Wallet" });
   assert.equal(model.chips.length, 0);
   assert.equal(model.readOnly, true);
+  assert.equal(scrollBottomPadding(model), 16);
   assert.ok(model.rows.every((row) => row.inert));
   assert.equal(model.rows.find((row) => row.selected)?.tag, "Your cover");
   assert.ok(selected.marketAddress);
+  const source = readFileSync(new URL("./line/ProtectLine.tsx", import.meta.url), "utf8");
+  assert.match(source, /model\.coveredRow \? <View style=\{styles\.coveredRow\}/);
+  assert.doesNotMatch(source, /panel\.kind === "covered"\) return <View style=\{styles\.receipt\}/);
+  const app = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
+  assert.match(app, /line\.model\.showBar/);
+  assert.match(app, /scrollBottomPadding\(line\.model\)/);
+});
+
+test("every non-covered Protect state reserves the 88dp bar and 16dp clearance", () => {
+  for (const kind of ["ready", "connect", "loading", "signing", "error", "closed", "paid", "dry"] as const) {
+    assert.equal(scrollBottomPadding(kind), 104, kind);
+  }
+  assert.equal(scrollBottomPadding("covered"), 16);
+});
+
+test("Markets hero uses round-robin ordering and skips every held market", () => {
+  const screen = readFileSync(new URL("./line/Discovery.tsx", import.meta.url), "utf8");
+  assert.match(screen, /orderMarkets\(markets, filter\)/);
+  assert.match(screen, /pickHero\(visible, filter\)/);
+  assert.doesNotMatch(screen, /const hero = .*visible.*sort/);
+  const now = Math.floor(Date.parse("2026-10-26T00:00:00Z") / 1000) - 1;
+  const snow = { ...NYC_RAIN_MODELLED, peril: "snow" as const, unit: "cm", rungs: NYC_RAIN_MODELLED.rungs.map((rung) => ({ ...rung, marketAddress: `snow-${rung.triggerValue}` })) };
+  const markets = marketModels([NYC_RAIN_MODELLED, snow], now, 100, ["fixture-69"]);
+  const ordered = orderMarkets(markets, "all");
+  assert.equal(ordered[0].peril, "rain");
+  assert.equal(pickHero(ordered, "all")?.held, false);
+  assert.equal(pickHero(orderMarkets(markets.filter((m) => m.held), "all"), "all"), null);
+});
+
+test("mobile line screens keep required copy and type sizes", async () => {
+  const discovery = readFileSync(new URL("./line/Discovery.tsx", import.meta.url), "utf8");
+  const protect = readFileSync(new URL("./line/ProtectLine.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(`${discovery}\n${protect}`, new RegExp("Highest" + " in"));
+  assert.match(protect, /row\.tag \? <Text numberOfLines=\{1\} style=\{styles\.rowTag\}/);
+  assert.equal((protect.match(/<Text numberOfLines=\{1\} style=\{styles\.rowTag\}>\{row\.tag\}<\/Text>/g) ?? []).length, 1);
+  const app = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
+  assert.match(app, /marketModels\(discovery\.quotes, nowSeconds, 100, storedCovers\.map/);
+  const fs = await import("node:fs");
+  const dir = new URL("./line/", import.meta.url);
+  for (const name of fs.readdirSync(dir).filter((file) => file.endsWith(".tsx"))) {
+    const source = fs.readFileSync(new URL(`./line/${name}`, import.meta.url), "utf8");
+    for (const match of source.matchAll(/fontSize:\s*(\d+)/g)) assert.ok(Number(match[1]) >= 13, `${name}: ${match[0]}`);
+    assert.doesNotMatch(source, new RegExp("Highest" + " in"));
+  }
 });
 
 test("not-open selections have a panel without a hero or chain", () => {

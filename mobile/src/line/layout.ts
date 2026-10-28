@@ -2,7 +2,7 @@
 export const protectLayout = {
   margin: 16, header: 56, subline: 26, tabs: 56, heroGap: 8, hero: 144,
   chainGap: 16, chainHeader: 32, chainRow: 56, bar: 88,
-  columns: [112, 80, 72, 97], readoutX: 104, lineEndX: 96,
+  columns: [156, 66, 62, 77], readoutX: 104, lineEndX: 96,
 } as const;
 export function protectChainRowBottom(rowCount: number): number {
   const p = protectLayout;
