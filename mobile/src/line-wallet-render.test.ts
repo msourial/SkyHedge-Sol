@@ -104,11 +104,11 @@ test("Android selected labels use one native text run with space for the number 
     } finally { delete (globalThis as any).__walletNodes; }
   }
 });
-test("all Wallet entries reset scroll, including tab reselect, with an effect after mounting", () => {
+test("all tab changes and Wallet reselect reset scroll after mounting", () => {
   const app = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
   assert.equal((app.match(/setTab\("wallet"\)/g) ?? []).length, 1);
   assert.match(app, /const openWallet = \(\) => \{\s*setTab\("wallet"\);\s*scrollRef.current\?\.scrollTo\(\{ y: 0, animated: false \}\);/);
-  assert.match(app, /if \(tab === "wallet"\) scrollRef.current\?\.scrollTo\(\{ y: 0, animated: false \}\);\s*\}, \[tab\]\)/);
+  assert.match(app, /useEffect\(\(\) => \{\s*scrollRef.current\?\.scrollTo\(\{ y: 0, animated: false \}\);\s*\}, \[tab\]\)/);
   assert.match(app, /label="Wallet"[^\n]*onPress=\{openWallet\}/);
   assert.doesNotMatch(app, /onWallet=\{(?!openWallet)/);
 });

@@ -90,7 +90,7 @@ export default function App() {
   });
   const [tab, setTab] = useState<Tab>("catalog");
   useEffect(() => {
-    if (tab === "wallet") scrollRef.current?.scrollTo({ y: 0, animated: false });
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [tab]);
   const openWallet = () => {
     setTab("wallet");

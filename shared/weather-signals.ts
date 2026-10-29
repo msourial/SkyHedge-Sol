@@ -17,7 +17,7 @@ export interface ForecastExceedance {
   /** Members satisfying the market operator; normally >=, also supports gt/lt/lte. */
   membersAtOrAbove: number;
   membersTotal: number;
-  model: "NOAA GEFS (gfs025) via Open-Meteo Ensemble API";
+  model: "NOAA GEFS (gfs_seamless) via Open-Meteo Ensemble API";
   source: "NOAA GEFS ensemble";
   /** Open-Meteo does not publish model initialization time in this response. */
   issuedAt: string | null;

@@ -36,7 +36,11 @@ ACIS does not document WSF2, so wind remains unavailable without CDO WSF2;
 AWND or gusts are never substituted.
 
 Forecasts count the GEFS control and members 01–30 from Open-Meteo's Ensemble
-API, model `gfs025`, at the pinned station coordinates in the city's timezone.
+API, model `gfs_seamless`, at the pinned station coordinates in the city's timezone.
+The model label is `NOAA GEFS (gfs_seamless) via Open-Meteo Ensemble API`.
+Requests use `forecast_days=35` (the ensemble API maximum), combining GEFS
+0.25-degree forecasts for roughly the first 10 days with GEFS 0.5-degree
+forecasts beyond that horizon.
 Rain sums `precipitation_sum` mm; snow sums `snowfall_sum` cm converted to mm;
 heat takes maximum `temperature_2m_max` °C. At least 20 complete member
 trajectories are required. Each member must cover every remaining window day;
@@ -54,7 +58,7 @@ returns null. Open-Meteo does not supply an issuance timestamp in this response;
 `issuedAt` is null and `fetchedAt` is the actual retrieval time.
 
 Observation reads share an in-memory one-hour cache by station, element and
-window/cutoff; forecast responses share a one-hour cache by station, variable
+window/cutoff; forecast responses share a one-hour cache by model, station, variable
 and current day. In-flight reads are deduplicated. Cutoff/day keys prevent a
 previous day's coverage from leaking over midnight. A refresh on load is enough.
 

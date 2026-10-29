@@ -14,12 +14,35 @@ describe("GEFS exact-window exceedance", () => {
   it("counts the control plus 30 members against the exact window trigger", () => {
     const result = forecastFromEnsemble(window, fixture, options)!;
     expect(result).to.include({ probability: 21 / 31, membersAtOrAbove: 21, membersTotal: 31, unit: "mm", trigger: 3, windowStart: window.start, windowEnd: window.end,
-      source: "NOAA GEFS ensemble", model: "NOAA GEFS (gfs025) via Open-Meteo Ensemble API", issuedAt: null });
+      source: "NOAA GEFS ensemble", model: "NOAA GEFS (gfs_seamless) via Open-Meteo Ensemble API", issuedAt: null });
   });
   it("respects strict and downward market operators", () => {
     expect(forecastFromEnsemble({ ...window, operator: "gt" }, fixture, options)!.membersAtOrAbove).to.equal(20);
     expect(forecastFromEnsemble({ ...window, operator: "lt" }, fixture, options)!.membersAtOrAbove).to.equal(10);
     expect(forecastFromEnsemble({ ...window, operator: "lte" }, fixture, options)!.membersAtOrAbove).to.equal(11);
+  });
+  it("returns a probability for a weekly window ending on forecast day 10", async () => {
+    // Today is Oct 29 (day 0); Nov 8 (day 10) was null with gfs025.
+    const time = Array.from({ length: 11 }, (_, day) => new Date(now.getTime() + day * 86_400_000).toISOString().slice(0, 10));
+    const daily: Record<string, unknown> = { time };
+    const daily_units: Record<string, string> = {};
+    for (let member = 0; member <= 30; member++) {
+      const field = member === 0 ? "precipitation_sum" : `precipitation_sum_member${String(member).padStart(2, "0")}`;
+      daily[field] = time.map(() => member < 21 ? 1 : 0);
+      daily_units[field] = "mm";
+    }
+    const body = { daily, daily_units };
+    const weekly = { ...window, start: "2026-11-02", end: "2026-11-09", trigger: 6 };
+    const reader = new ForecastExceedanceReader({ now: () => now, fetcher: async (url) => {
+      const query = new URL(String(url)).searchParams;
+      expect(query.get("models")).to.equal("gfs_seamless");
+      expect(query.get("forecast_days")).to.equal("35");
+      return new Response(JSON.stringify(body));
+    } });
+    expect(await reader.read(weekly)).to.include({ probability: 21 / 31, membersAtOrAbove: 21, membersTotal: 31 });
+    // An incomplete trajectory is excluded from both numerator and denominator.
+    (daily.precipitation_sum as (number | null)[])[10] = null;
+    expect(forecastFromEnsemble(weekly, body, options)).to.include({ probability: 20 / 30, membersAtOrAbove: 20, membersTotal: 30 });
   });
   it("requires every requested day inside the returned horizon, including monthly windows", () => {
     expect(forecastFromEnsemble({ ...window, end: "2026-11-03" }, fixture, options)).to.equal(null);
@@ -79,7 +102,7 @@ describe("GEFS exact-window exceedance", () => {
     const reader = new ForecastExceedanceReader({ now: () => clock, fetcher: async (url) => {
       calls++;
       const query = new URL(String(url)).searchParams;
-      expect(Object.fromEntries(query)).to.include({ latitude: "40.7789", longitude: "-73.9692", daily: "precipitation_sum", models: "gfs025", timezone: "America/New_York", forecast_days: "16" });
+      expect(Object.fromEntries(query)).to.include({ latitude: "40.7789", longitude: "-73.9692", daily: "precipitation_sum", models: "gfs_seamless", timezone: "America/New_York", forecast_days: "35" });
       return new Response(JSON.stringify(fixture));
     } });
     const [a, b] = await Promise.all([reader.read(window), reader.read({ ...window, trigger: 4 })]);

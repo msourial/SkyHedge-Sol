@@ -11,7 +11,7 @@ interface EnsembleResponse {
   daily_units?: Record<string, unknown>;
 }
 const VARIABLES = { rain: "precipitation_sum", snow: "snowfall_sum", heat: "temperature_2m_max" } as const;
-const MODEL = "NOAA GEFS (gfs025) via Open-Meteo Ensemble API" as const;
+const MODEL = "NOAA GEFS (gfs_seamless) via Open-Meteo Ensemble API" as const;
 
 /** Converts the API's declared unit into settlement native units, including SNOW cm -> mm. */
 export function ensembleNative(value: number, unit: unknown, peril: ForecastWindow["peril"]): number | null {
@@ -103,10 +103,10 @@ export class ForecastExceedanceReader {
     }
     const station = NOAA_STATIONS[window.city];
     const variable = VARIABLES[window.peril as keyof typeof VARIABLES];
-    const raw = await this.cache.read(`gefs:${station.stationId}:${variable}:${today}`, WEATHER_SIGNAL_TTL_S, async () => {
+    const raw = await this.cache.read(`gefs:gfs_seamless:${station.stationId}:${variable}:${today}`, WEATHER_SIGNAL_TTL_S, async () => {
       try {
-        const query = new URLSearchParams({ latitude: String(station.latitude), longitude: String(station.longitude), daily: variable, models: "gfs025",
-          timezone: CITY_TIMEZONES[window.city], forecast_days: "16", precipitation_unit: "mm", temperature_unit: "celsius" });
+        const query = new URLSearchParams({ latitude: String(station.latitude), longitude: String(station.longitude), daily: variable, models: "gfs_seamless",
+          timezone: CITY_TIMEZONES[window.city], forecast_days: "35", precipitation_unit: "mm", temperature_unit: "celsius" });
         const response = await (this.deps.fetcher ?? fetch)(`https://ensemble-api.open-meteo.com/v1/ensemble?${query}`, { signal: AbortSignal.timeout(8_000) });
         if (!response.ok) return null;
         return { body: await response.json() as EnsembleResponse, fetchedAt: this.now().toISOString() };

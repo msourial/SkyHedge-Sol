@@ -79,6 +79,13 @@ test("actual forecast components disappear on null and label both sources when p
   const html = render(ForecastBlock, { edge, condition: "6 mm or more" });
   assert.match(html, /Forecast/); assert.match(html, /History/); assert.match(html, /45/); assert.match(html, /20.0/);
 });
+test("forecast and history bars render below a 5-point edge while the chip stays hidden", () => {
+  const edge = { historyProbability: .2, forecast: { probability: .24 } };
+  const html = render(ForecastBlock, { edge, condition: "6 mm or more" });
+  assert.match(html, /Forecast/); assert.match(html, /History/);
+  assert.match(html, /24%/); assert.match(html, /20.0%/);
+  assert.equal(render(EdgeChip, { edge }), "");
+});
 test("actual payout sheet includes one-tap collection copy and no automatic claim", () => {
   const html = render(HowPayout, { explanation: { station: "Central Park", peril: "rain", end: "Nov 9", pay: "47.00", payout: "100.00" }, onClose: noop });
   assert.match(html, /Collect with one tap/); assert.doesNotMatch(html, /automatic/i); assert.match(html, /Phantom/);
