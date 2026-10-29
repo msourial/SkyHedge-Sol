@@ -17,7 +17,9 @@ import { desMoinesSeedActionMode, isValidDesMoinesSeedSchedule, marketStateFromS
 import { PlanCities } from "@/components/plan-cities";
 import { WalletButton } from "@/components/wallet-button";
 import { TECHNICAL_DETAILS, WALLET_CHAIN_ERROR, WALLET_DISCONNECTED, WALLET_EMPTY, formatQuoteSkyt } from "../../../shared/protect-copy";
-import { ProtectChain } from "@/components/protect-chain";
+import { LineProtect } from "@/components/line/line-protect";
+import { LineTabs } from "@/components/line/tabs";
+import "@/line.css";
 import { DevStampPreview, ProtectionGauges } from "@/components/protection-gauges";
 import { AGRICULTURAL_MARKETS, agriculturalMarketBySlug, agriculturalMarketLocation, millimetersToInches, searchAgriculturalMarkets, type AgriculturalMarketSlug } from "../../../shared/agricultural-markets";
 import { LIVE_CITY_SLUGS } from "../../../shared/window-ladder";
@@ -38,7 +40,7 @@ const TESTER_PROTECTION_CAP_BASE = 500_000_000n;
 const today = new Date().toISOString().slice(0, 10);
 const weekFromToday = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
 const PAGE_COPY: Record<Tab, { title: string; description: string }> = {
-  markets: { title: "Rain", description: "Pick a city. Official rainfall at the station is what settles." },
+  markets: { title: "Weather", description: "Pick a city and a weather trigger. NOAA settles." },
   protect: { title: "Rain", description: "Pick an expiry, then a rain trigger." },
   wallet: { title: "Wallet", description: "Devnet balances and your protections." },
   liquidity: { title: "Provide test liquidity", description: "Review collateral safeguards and market constraints before contributing to a Devnet pool." },
@@ -92,7 +94,6 @@ export default function DashboardPage() {
   const [end, setEnd] = useState(weekFromToday);
   const [quoteRequest, setQuoteRequest] = useState(0);
   const [quoteActive, setQuoteActive] = useState(false);
-  const wallet = useWallet();
   const amountBase = baseUnits(amount);
   const selectedMarket = agriculturalMarketBySlug(marketId)!;
   const devnetStatus = useQuery({ queryKey: ["devnet-status"], queryFn: () => api<DevnetStatus>("/api/devnet/status"), retry: false, refetchInterval: 30_000 });
@@ -153,23 +154,21 @@ export default function DashboardPage() {
     return () => { document.documentElement.dataset.uiMode = "customer"; };
   }, [tab]);
 
-  const chainOn = tab === "protect" && hazard === "rainfall";
-  const page = chainOn
-    ? { title: "Rain", description: "Pick an expiry, then a rain trigger." }
-    : (tab === "markets" || tab === "protect") && hazard !== "rainfall" ? RESEARCH_HAZARD_PAGE_COPY[hazard] : PAGE_COPY[tab];
+  const cityQuery = query.get("city");
+  const legacyReference = tab === "protect" && Boolean(cityQuery && agriculturalMarketBySlug(cityQuery) && !(LIVE_CITY_SLUGS as readonly string[]).includes(cityQuery));
+  const lineOn = tab === "protect" && !legacyReference;
+  const page = (tab === "markets" || tab === "protect") && hazard !== "rainfall" ? RESEARCH_HAZARD_PAGE_COPY[hazard] : PAGE_COPY[tab];
   return <div className="grid min-w-0 gap-7 lg:grid-cols-[68px_minmax(0,1fr)]">
     <aside className="hidden lg:block"><nav aria-label="Product sections" className="sticky top-24 flex w-[68px] flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-2 shadow-[var(--shadow-card)]">{TABS.map(({ id, label, icon: Icon }, index) => <button key={id} type="button" title={label} aria-label={label} aria-current={tab === id ? "page" : undefined} onClick={() => switchTab(id)} className={cn("flex min-h-11 items-center justify-center rounded-lg text-sm font-medium transition-colors", index === TABS.length - 1 && "mt-3 border-t border-[var(--border)] pt-3", tab === id ? "bg-[var(--identity-dim)] text-[var(--identity-deep)]" : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]")}><Icon className="h-5 w-5" /><span className="sr-only">{label}</span></button>)}</nav></aside>
     <div className="min-w-0 space-y-6 pb-[calc(112px+env(safe-area-inset-bottom))] lg:pb-0">
-      {tab === "markets" || chainOn || tab === "wallet" ? null : <header className="sky-page-header"><div className="flex items-start justify-between gap-3"><div><h1 className="text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></div><button type="button" className="hidden min-h-12 shrink-0 rounded-[10px] border border-[var(--line)] px-3 text-sm lg:block" onClick={() => switchTab("builders")}>Builder</button></div></header>}
+      {tab === "markets" || tab === "protect" || tab === "wallet" ? null : <header className="sky-page-header"><div className="flex items-start justify-between gap-3"><div><h1 className="text-2xl font-semibold leading-tight sm:text-3xl">{page.title}</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">{page.description}</p></div><button type="button" className="hidden min-h-12 shrink-0 rounded-[10px] border border-[var(--line)] px-3 text-sm lg:block" onClick={() => switchTab("builders")}>Builder</button></div></header>}
       {tab === "markets" && <Markets hazard={hazard} setHazard={changeHazard} onSelect={selectMarket} onOpenCity={openProtectCity} selectedSlug={marketId} focusSlug={query.get("city")} status={devnetStatus.data} />}
-      {chainOn ? <ProtectChain windows={devnetStatus.data?.cityWindows ?? []} city={protectCity} connected={wallet.connected} onCityChange={openProtectCity} onCovered={() => switchTab("wallet")} statusLoading={devnetStatus.isPending && !devnetStatus.data} statusFailed={devnetStatus.isError && !devnetStatus.data} onRetry={() => { void devnetStatus.refetch(); }} /> : tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") { setQuoteActive(true); setQuoteRequest((count) => count + 1); } }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" && quoteActive ? quoteQuery.error : undefined} />}
+      {lineOn ? <LineProtect windows={devnetStatus.data?.cityWindows ?? []} city={protectCity} statusLoading={devnetStatus.isPending && !devnetStatus.data} statusFailed={devnetStatus.isError && !devnetStatus.data} onCityChange={openProtectCity} onWallet={() => switchTab("wallet")} /> : tab === "protect" && <Protect hazard={hazard} setHazard={changeHazard} marketId={marketId} amount={amount} amountBase={amountBase} setAmount={setAmount} threshold={threshold} setThreshold={setThreshold} operator={operator} setOperator={setOperator} start={start} setStart={setStart} end={end} setEnd={setEnd} status={devnetStatus.data} windowLocked={usingImmutableWindow} salesCloseAt={onchainWindow?.salesCloseAt ?? null} valid={testerMarketReady && testerEvidenceReady && Boolean(amountBase) && start < end && (!onchainWindow || (start === onchainWindow.start && end === onchainWindow.end && Number(threshold) === onchainWindow.thresholdMm && operator === onchainWindow.operator)) && Number(threshold) > 0 && BigInt(amountBase ?? "0") <= TESTER_PROTECTION_CAP_BASE} requestQuote={() => { if (hazard === "rainfall") { setQuoteActive(true); setQuoteRequest((count) => count + 1); } }} quote={currentQuote} loading={hazard === "rainfall" && quoteQuery.isFetching} error={hazard === "rainfall" && quoteActive ? quoteQuery.error : undefined} />}
       {tab === "liquidity" && <Liquidity />}
       {tab === "wallet" && <div className="space-y-8"><DevStampPreview windows={devnetStatus.data?.cityWindows ?? []} /><PortfolioView windows={devnetStatus.data?.cityWindows ?? []} /><details className="reference-explorer"><summary className="text-sm font-semibold text-[var(--fg-2)]">{TECHNICAL_DETAILS}</summary><Evidence /></details></div>}
       {tab === "builders" && <div className="space-y-6"><OwnerConsole status={devnetStatus.data} /><BuilderProof /></div>}
     </div>
-    <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-[var(--border)] bg-[var(--surface-1)] px-1 pb-[env(safe-area-inset-bottom)] lg:hidden">
-      {TABS.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => switchTab(id)} className={cn("flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] font-medium", tab === id ? "text-[var(--foreground)]" : "text-[var(--muted-foreground)]")}><Icon className="h-5 w-5" />{label}</button>)}
-    </nav>
+    <div className="lg:hidden"><LineTabs tab={tab} onTab={(id) => switchTab(id)} /></div>
   </div>;
 }
 
@@ -526,7 +525,7 @@ function Markets({ hazard, setHazard, onSelect, onOpenCity, selectedSlug, focusS
     <PlanCities onOpen={onOpenCity} windows={status?.cityWindows} />
     <details className="reference-explorer">
       <summary className="text-sm font-semibold text-[var(--fg-2)]">{TECHNICAL_DETAILS}</summary>
-      <h2 id="markets-heading" className="sky-display mb-3 text-xl">Find a rainfall reference area</h2>
+      <h2 id="markets-heading" className="sky-display mb-3 text-xl">Find a weather reference area</h2>
       <p className="mb-3 max-w-3xl text-sm text-[var(--muted-foreground)]">Search by place, crop, or region. A pin is a reference point—not coverage or a weather station.</p>
     {agriculturalFocus ? <section className="market-selection-brief" aria-label="Selected reference location">
       <div>

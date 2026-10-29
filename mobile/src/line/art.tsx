@@ -1,0 +1,19 @@
+import Svg, { Circle, Line, Path, Rect, Text as SvgText } from "react-native-svg";
+import type { DrawOp } from "../../../shared/ui-instrument.ts";
+import { lineTokens } from "../../../shared/ui-tokens.ts";
+
+const FILLS = new Set<string>([lineTokens.rain, lineTokens.snow, lineTokens.wind, lineTokens.heat, lineTokens.cold]);
+
+export function LineArt({ ops, viewBox, width, height, label }: { ops: DrawOp[]; viewBox: string; width: number; height: number; label: string }) {
+  return (
+    <Svg viewBox={viewBox} width={width} height={height} accessibilityLabel={label}>
+      {ops.map((op, index) => {
+        if (op.op === "path") return <Path key={index} d={op.d} stroke={op.stroke} fill={op.fill ?? "none"} strokeWidth={op.sw} strokeLinecap={op.cap} />;
+        if (op.op === "rect") return <Rect key={index} x={op.x} y={op.y} width={op.w} height={op.h} rx={op.rx} fill={op.fill && FILLS.has(op.fill) ? op.fill : op.fill ?? "none"} stroke={op.stroke} strokeWidth={op.sw} />;
+        if (op.op === "circle") return <Circle key={index} cx={op.cx} cy={op.cy} r={op.r} fill={op.fill ?? "none"} stroke={op.stroke} strokeWidth={op.sw} />;
+        if (op.op === "line") return <Line key={index} x1={op.x1} y1={op.y1} x2={op.x2} y2={op.y2} stroke={op.stroke} strokeWidth={op.sw} strokeLinecap={op.cap} />;
+        return <SvgText key={index} x={op.x} y={op.y} fill={op.fill} fontSize={op.size} textAnchor={op.anchor}>{op.text}</SvgText>;
+      })}
+    </Svg>
+  );
+}

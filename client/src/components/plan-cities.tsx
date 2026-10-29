@@ -8,11 +8,11 @@ import { RainGauge, gaugeTicks } from "@/components/rain-gauge";
 
 type WindowRow = { city: string; observationEnd: number; observationStart: number; thresholdMmX100: string | null; quoteProbabilityBps: number | null; premiumRateBps: number | null; salesCloseAt: number | null };
 
-/** Rainfall cities. Figures and the forecaster line come from the quoted window only. */
+/** Weather cities. Figures and the forecaster line come from the quoted window only. */
 export function PlanCities({ onOpen, windows = [] }: { onOpen: (slug: ConsumerCity["slug"]) => void; windows?: readonly WindowRow[] }) {
   const now = Math.floor(Date.now() / 1000);
   return (
-    <section className="plan-cities" aria-label="Rainfall cities">
+    <section className="plan-cities" aria-label="Weather markets">
       <div className="plan-cities__head">
         <h2 className="sky-display text-[2rem] font-semibold leading-9">{MARKETS_TITLE}</h2>
         <p>{MARKETS_SUB}</p>

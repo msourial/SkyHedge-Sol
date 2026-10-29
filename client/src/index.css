@@ -5,8 +5,8 @@
 /* Product tokens. Slicker yellow is the trigger line, payout figures, and the Paid out stamp. */
 :root { color-scheme: dark;
   --bg: #0B1220; --surface-1: #141B28; --surface-2: #1C2433; --line: #2A3444;
-  --fg: #F2F5F8; --fg-2: #A3AEBC; --fg-3: #98A3B0;
-  --glacier: #7CC4FF; --glacier-hi: #A8D9FF; --glacier-dim: #10283A; --on-glacier: #04131F;
+  --fg: #F2F5F8; --fg-2: #A9B4C2; --fg-3: #98A3B0;
+  --glacier: #7CC4FF; --glacier-hi: #A8D9FF; --glacier-dim: #10283A; --on-glacier: #0B1220;
   --slicker: #F2C230; --slicker-dim: #2E2414; --dry-fill: #3A4556; --dry-text: #7A8696; --tick: #5B6878; --danger: #F2787D;
   --background: var(--bg); --foreground: var(--fg); --muted-foreground: var(--fg-2); --faint: var(--fg-3);
   --border: var(--line); --identity: var(--glacier); --identity-deep: var(--glacier-hi);
@@ -90,8 +90,7 @@
   .sky-section-label { font-size: .875rem; }
   .sky-scroll-x { overflow-x: auto; scrollbar-width: none; }
   .sky-scroll-x::-webkit-scrollbar { display: none; }
-  .sky-shimmer { border-radius: var(--radius-control); background: linear-gradient(90deg,var(--surface-2) 25%,var(--surface-1) 50%,var(--surface-2) 75%); background-size: 200% 100%; animation: sky-shimmer 1.4s ease-in-out infinite; }
-  @keyframes sky-shimmer { to { background-position: -200% 0; } }
+  .sky-shimmer { border-radius: var(--radius-control); background: var(--surface-2); }
 
   .sky-landing { display: grid; gap: 2.5rem; align-items: center; padding: .5rem 0 1.5rem; border-bottom: 1px solid var(--border); margin-bottom: .5rem; }
   .sky-landing__eyebrow { margin: 0; color: var(--identity); font-size: .8125rem; font-weight: 600; }
@@ -117,40 +116,20 @@
     isolation: isolate;
   }
   .sky-phone--parallax { transform: translate3d(0, var(--wl-parallax), 0) rotateX(var(--wl-tilt)); }
-  .sky-phone--float { animation: sky-phone-float 7s var(--ease-in-out) infinite; }
+  .sky-phone--float { animation: none; }
   @keyframes sky-phone-float {
     0%, 100% { transform: translate3d(0, var(--wl-parallax), 0) rotateX(var(--wl-tilt)) rotateZ(calc(var(--wl-tilt) * -0.35)); }
     50% { transform: translate3d(0, calc(var(--wl-parallax) - 6px), 0) rotateX(var(--wl-tilt)) rotateZ(calc(var(--wl-tilt) * -0.35)); }
   }
-  .sky-phone--glow::before {
-    content: "";
-    position: absolute;
-    inset: -12% -38% -6%;
-    z-index: 0;
-    border-radius: 50%;
-    background: radial-gradient(
-      circle at 50% 42%,
-      color-mix(in srgb, var(--identity) 48%, transparent),
-      color-mix(in srgb, var(--identity) 14%, transparent) 40%,
-      transparent 70%
-    );
-    filter: blur(36px);
-    pointer-events: none;
-  }
+  .sky-phone--glow::before { content: none; }
   .sky-phone__bezel {
     position: relative;
     z-index: 1;
     border-radius: var(--phone-r);
     padding: var(--phone-pad);
-    background:
-      linear-gradient(155deg, #2a3342 0%, #141b26 42%, #0a0e16 100%);
-    border: 1px solid color-mix(in srgb, #6b7789 55%, transparent);
-    box-shadow:
-      0 22px 48px rgba(0, 0, 0, 0.55),
-      0 0 0 1px rgba(0, 0, 0, 0.35),
-      0 0 36px color-mix(in srgb, var(--identity) 16%, transparent),
-      inset 0 1px 0 rgba(210, 225, 240, 0.22),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+    background: #141b26;
+    border: 1px solid #2a3444;
+    box-shadow: none;
   }
   .sky-phone__speaker {
     position: absolute;
@@ -173,7 +152,7 @@
     aspect-ratio: 9 / 19.5;
     isolation: isolate;
     /* Soft inner rim so corners don’t show hard rects */
-    box-shadow: inset 0 0 0 1px rgba(124, 196, 255, 0.1);
+    box-shadow: none;
   }
   .sky-phone__plans {
     display: flex;
@@ -181,9 +160,7 @@
     height: 100%;
     padding: 15% 7% 8%;
     color: var(--foreground);
-    background:
-      radial-gradient(120% 70% at 50% -10%, rgba(124, 196, 255, 0.16), transparent 55%),
-      var(--background);
+    background: var(--background);
   }
   .sky-phone__kicker {
     margin: 0;
@@ -307,7 +284,7 @@
 .market-location-row:hover, .market-location-row--selected { color: var(--identity-deep); }
 .market-location-row--selected { margin-left: -.5rem; width: calc(100% + 1rem); border-radius: var(--radius-sm); padding-right: .75rem; padding-left: .75rem; background: color-mix(in srgb, var(--identity-dim) 78%, transparent); }
 .market-location-dock__note { margin: .75rem 0 0; color: var(--faint); font-size: .75rem; line-height: 1.45; }
-.market-map-fallback { display: grid; place-items: center; padding: 2rem; background: radial-gradient(circle at 72% 22%, color-mix(in srgb, var(--identity) 16%, transparent), transparent 31rem), linear-gradient(145deg, var(--background), var(--surface-2)); }
+.market-map-fallback { display: grid; place-items: center; padding: 2rem; background: var(--surface-2); }
 .market-map-fallback__content { width: min(100%, 34rem); border-left: 1px solid color-mix(in srgb, var(--identity) 55%, var(--border)); padding-left: 1.5rem; text-align: left; }
 .market-map-fallback__icon { display: grid; width: 2.75rem; height: 2.75rem; place-items: center; border: 1px solid color-mix(in srgb, var(--identity) 42%, var(--border)); border-radius: 50%; color: var(--identity); }
 .market-map-fallback__eyebrow { margin: 1.25rem 0 0; color: var(--identity); font-size: .8125rem; font-weight: 600; }
@@ -331,11 +308,11 @@
 .sky-maplibre-map .maplibregl-ctrl-attrib { border-radius: var(--radius-sm) 0 0; background: color-mix(in srgb, var(--brand-tile) 78%, transparent); color: var(--foreground); font-size: 10px; }
 .sky-maplibre-map .maplibregl-ctrl-attrib a { color: var(--identity); }
 .sky-index-marker { position: relative; display: block; width: var(--min-touch); height: var(--min-touch); border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
-.sky-index-marker::before { position: absolute; inset: 15px; border: 2px solid var(--foreground); border-radius: 50%; background: var(--identity); box-shadow: 0 0 10px 3px color-mix(in srgb, var(--identity) 55%, transparent); content: ""; }
+.sky-index-marker::before { position: absolute; inset: 15px; border: 2px solid var(--foreground); border-radius: 50%; background: var(--identity); box-shadow: none; content: ""; }
 .sky-index-marker::after { position: absolute; inset: 5px; border: 1px solid var(--warning); border-radius: 50%; opacity: .9; content: ""; }
 .sky-index-marker[data-evidence-status="validated"]::after { border-color: var(--success); }
 .sky-index-marker[data-evidence-status="data-unavailable"]::after { border-color: var(--destructive); }
-.sky-index-marker[data-selected="true"]::before { inset: 12px; border-width: 3px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--identity) 18%, transparent), 0 0 16px 6px color-mix(in srgb, var(--identity) 55%, transparent); }
+.sky-index-marker[data-selected="true"]::before { inset: 12px; border-width: 3px; box-shadow: none; }
 .sky-index-marker:hover::before, .sky-index-marker:focus-visible::before { inset: 12px; }
 .sky-index-marker:focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
 .wallet-adapter-button.wallet-adapter-button-trigger { min-height: var(--min-touch); height: var(--min-touch); width: auto !important; max-width: none; flex: 0 0 auto; white-space: nowrap !important; overflow: visible; line-height: 48px; border-radius: var(--r-control) !important; background: var(--identity) !important; color: var(--action-text) !important; font-family: var(--font-body); font-size: .875rem !important; font-weight: 600; padding: 0 14px !important; }

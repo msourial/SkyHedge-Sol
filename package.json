@@ -12,6 +12,8 @@
     "build:site": "VITE_STATIC_PREVIEW=true vite build",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
+    "typecheck": "tsc",
+    "test:line": "node --import tsx --test shared/ui-line.test.ts",
     "db:push": "drizzle-kit push",
     "solana:test": "cargo-build-sbf --manifest-path anchor/Cargo.toml && cargo +nightly test --manifest-path anchor/Cargo.toml",
     "solana:check": "cargo +nightly check --manifest-path anchor/Cargo.toml",

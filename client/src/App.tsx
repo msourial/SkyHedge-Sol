@@ -7,6 +7,7 @@ import WaitlistPage from "@/pages/waitlist";
 const AppShell = lazy(() => import("@/pages/app-shell"));
 const DevelopersPage = lazy(() => import("@/pages/developers"));
 const AppDashboard = lazy(() => import("@/pages/app-shell").then((mod) => ({ default: mod.AppDashboard })));
+const LinePreview = lazy(() => import("@/pages/line-preview"));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -54,6 +55,7 @@ function App() {
               }
             />
           </Route>
+          <Route path="/preview" element={<Suspense fallback={null}><LinePreview /></Suspense>} />
           <Route path="/liquidity" element={<Navigate to="/app?tab=liquidity" replace />} />
           <Route path="/staking" element={<Navigate to="/app?tab=liquidity" replace />} />
           <Route path="/city/:slug" element={<CityRedirect />} />
