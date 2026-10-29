@@ -39,10 +39,12 @@ const PROGRAM_ERRORS: Record<number, string> = {
 
 export class TransactionFailedError extends Error {
   readonly signature?: string;
-  constructor(message: string, signature?: string) {
+  readonly confirmedFailure: boolean;
+  constructor(message: string, signature?: string, confirmedFailure = false) {
     super(message);
     this.name = "TransactionFailedError";
     this.signature = signature;
+    this.confirmedFailure = confirmedFailure;
   }
 }
 

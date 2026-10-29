@@ -5,6 +5,8 @@ import type { DevnetStatus } from "./api.ts";
 import { SKYT_MINT, devnetConnection, tryDevnetUrls } from "./chain.ts";
 import { SKYHEDGE_PROGRAM_ID } from "./positions.ts";
 import { hexBytes, readI64LE, readU16LE, readU64LE, sliceBytes, u64LeBytes } from "./bytes.ts";
+import { marketIdentity } from "../../shared/ui-market-identity.ts";
+import type { PerilId } from "../../shared/ui-types.ts";
 
 /**
  * Committed hashes, identical to the server's: sha256(slug) for city_hash, and
@@ -41,6 +43,17 @@ export const STATION_ID_HASHES: Record<LiveCitySlug, string> = {
 };
 export const PROVIDER_HASH = "6a8353f65dae69e90e4e142d1e5bbdeff295d5a1b3c8e18e059a590463050707";
 export const METHODOLOGY_HASH = "b368d68c08eaea56b0b2abf569f41b00dd9536b891a7ac4287c6f6401faefd10";
+/**
+ * Pinned provider/methodology hashes for every open peril (server/services/methodology-docs.ts).
+ * Rain keeps the original methodology-v1 pair above.
+ */
+export type ChainPerilId = Exclude<PerilId, "cold">;
+export const PERIL_EVIDENCE_HASHES: Record<ChainPerilId, { providerHash: string; methodologyHash: string }> = {
+  rain: { providerHash: PROVIDER_HASH, methodologyHash: METHODOLOGY_HASH },
+  snow: { providerHash: "dc297e3ebd3aba397702c957ec5d272a0e4fe22f0b4845184e6caa426e44e6b1", methodologyHash: "696f98680f40971992baf0eea2275dd6ce35e6151a21904c9330936b362e7e55" },
+  wind: { providerHash: "f09b7957b67591314a9c6d8493649792f1e27c5e303f9285b56e9c029ea0ea82", methodologyHash: "dc2b246ae1551ab5e1ff4dacdc3497cbebdcc8c062f7f77b2ce8458fc0ac1dfd" },
+  heat: { providerHash: "25633f4d5b0e5e0f9860a11bdd024ee704b3822410ccdb702e97e85fc9bbb217", methodologyHash: "ed56493eeb4793d91b8f3c8ae7179274a1cb9929d6082c7f971357691ace0e7c" },
+};
 /** Counts from shared/idl/skyhedge_protection.json (checked by the test). */
 export const IDL_INSTRUCTION_COUNT = 22;
 export const IDL_ACCOUNT_COUNT = 5;
@@ -92,19 +105,29 @@ export function tokenAccountAmount(data: Uint8Array | null | undefined): string 
 }
 
 export function slugForCityHash(hash: string): LiveCitySlug | null {
-  for (const slug of LIVE_CITY_SLUGS) if (CITY_HASHES[slug] === hash) return slug;
-  return hash === DES_MOINES_TITLE_HASH ? "des-moines" : null;
+  return cityPerilForHash(hash)?.city ?? null;
 }
 
-/** Same rule as the server's hasPinnedStationEvidence. */
+/**
+ * Same rule as the server's resolveCityPeril: rain is sha256(slug), other open perils are
+ * sha256(`${slug}:${peril}`). A rain-only lookup silently drops every snow, wind and heat market.
+ */
+export function cityPerilForHash(hash: string): { city: LiveCitySlug; peril: ChainPerilId } | null {
+  const lower = hash.toLowerCase();
+  if (lower === DES_MOINES_TITLE_HASH) return { city: "des-moines", peril: "rain" };
+  const identity = marketIdentity(lower);
+  if (!identity || identity.peril === "cold" || !(LIVE_CITY_SLUGS as readonly string[]).includes(identity.cityId)) return null;
+  return { city: identity.cityId as LiveCitySlug, peril: identity.peril };
+}
+
+/** Same rule as the server's hasPinnedStationEvidence: any open peril's pinned methodology pair. */
 export function hasPinnedEvidence(market: DecodedMarket, slug: LiveCitySlug): boolean {
   return market.stationIdHash === STATION_ID_HASHES[slug]
-    && market.providerHash === PROVIDER_HASH
-    && market.methodologyHash === METHODOLOGY_HASH
+    && Object.values(PERIL_EVIDENCE_HASHES).some((pair) => market.providerHash === pair.providerHash && market.methodologyHash === pair.methodologyHash)
     && /^[0-9a-f]{64}$/.test(market.quoteInputsHash) && !/^0{64}$/.test(market.quoteInputsHash);
 }
 
-export type ListedMarket = MarketWindow & { slug: LiveCitySlug; id: bigint; cityHash: string; rawStatus: string | null };
+export type ListedMarket = MarketWindow & { slug: LiveCitySlug; peril: ChainPerilId; id: bigint; cityHash: string; rawStatus: string | null };
 
 /** Same selling rule as the server's sellingWindow(). */
 export function isSelling(market: ListedMarket, nowSeconds: number): boolean {
@@ -137,21 +160,21 @@ export async function readDevnetStatusFrom(read: MultiReader, nowSeconds = Math.
       return PublicKey.findProgramAddressSync([Buffer.from("market"), protocolAddress.toBuffer(), Buffer.from(u64LeBytes(id))], programId)[0];
     });
     const infos = await read(addresses);
-    const found: Array<{ id: bigint; address: PublicKey; vault: PublicKey; decoded: DecodedMarket; slug: LiveCitySlug }> = [];
+    const found: Array<{ id: bigint; address: PublicKey; vault: PublicKey; decoded: DecodedMarket; slug: LiveCitySlug; peril: ChainPerilId }> = [];
     infos.forEach((info, index) => {
       const decoded = info ? decodeMarket(info.data) : null;
-      const slug = decoded ? slugForCityHash(decoded.cityHash) : null;
-      if (!decoded || !slug) return;
+      const identity = decoded ? cityPerilForHash(decoded.cityHash) : null;
+      if (!decoded || !identity) return;
       const address = addresses[index]!;
       const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), address.toBuffer()], programId);
-      found.push({ id: ids[index]!, address, vault, decoded, slug });
+      found.push({ id: ids[index]!, address, vault, decoded, slug: identity.city, peril: identity.peril });
     });
     const vaults = found.length ? await read(found.map((item) => item.vault)) : [];
     found.forEach((item, index) => {
       const d = item.decoded;
       markets.push({
         slug: item.slug, id: item.id, cityHash: d.cityHash, rawStatus: d.status,
-        city: item.slug, tenor: tenorOf(d.observationStart, d.observationEnd) ?? "weekly", status: "ready",
+        city: item.slug, peril: item.peril, tenor: tenorOf(d.observationStart, d.observationEnd) ?? "weekly", status: "ready",
         address: item.address.toBase58(), marketId: item.id.toString(), vault: item.vault.toBase58(),
         vaultBalance: tokenAccountAmount(vaults[index]?.data),
         onchainStatus: d.status ? JSON.stringify({ [d.status]: {} }) : null,
@@ -164,7 +187,7 @@ export async function readDevnetStatusFrom(read: MultiReader, nowSeconds = Math.
   }
 
   const strip = ({ slug: _s, id: _i, cityHash: _c, rawStatus: _r, ...window }: ListedMarket): MarketWindow => window;
-  const desMoines = markets.filter((m) => m.slug === "des-moines").sort((a, b) => (a.id > b.id ? -1 : 1))[0] ?? null;
+  const desMoines = markets.filter((m) => m.slug === "des-moines" && m.peril === "rain").sort((a, b) => (a.id > b.id ? -1 : 1))[0] ?? null;
   const state = (raw: string | null) => raw === "Draft" ? "draft" as const : raw === "Open" ? "open" as const : raw === "Cancelled" ? "cancelled" as const : "other" as const;
   return {
     network: "devnet",
@@ -173,11 +196,11 @@ export async function readDevnetStatusFrom(read: MultiReader, nowSeconds = Math.
     protocol: { address: protocolAddress.toBase58(), status: protocol ? "ready" : "pending", initialized: !!protocol, admin: protocol?.admin ?? null, settlementAuthority: protocol?.settlementAuthority ?? null, collateralMint: protocol?.collateralMint ?? null, nextMarketId: protocol ? protocol.nextMarketId.toString() : null },
     feeVault: { address: feeVaultAddress.toBase58(), status: feeVaultInfo ? "ready" : "pending", exists: !!feeVaultInfo, balance: tokenAccountAmount(feeVaultInfo?.data) },
     skytMint: { address: mint.toBase58(), status: mintInfo ? "ready" : "pending", exists: !!mintInfo, decimals, supply: mintData && mintData.length >= 82 ? readU64LE(mintData, 36).toString() : null, mintAuthority: mintData && mintData[0] === 1 && mintData[1] === 0 && mintData[2] === 0 && mintData[3] === 0 ? new PublicKey(sliceBytes(mintData, 4, 32)).toBase58() : null },
-    desMoinesMarket: desMoines ? (({ city: _city, tenor: _tenor, ...terms }) => ({ ...terms, targetCityHash: desMoines.cityHash }))(strip(desMoines)) : {
+    desMoinesMarket: desMoines ? (({ city: _city, tenor: _tenor, peril: _peril, ...terms }) => ({ ...terms, targetCityHash: desMoines.cityHash }))(strip(desMoines)) : {
       status: "pending", address: null, marketId: null, vault: null, vaultBalance: null, onchainStatus: null, salesCloseAt: null, observationStart: null, observationEnd: null,
       thresholdMmX100: null, operator: null, quoteProbabilityBps: null, premiumRateBps: null, quoteInputsHash: null, evidenceStatus: "researching_evidence", targetCityHash: CITY_HASHES["des-moines"],
     },
-    ladderMarkets: markets.map((m) => ({ city: m.slug, state: state(m.rawStatus), salesCloseAt: m.salesCloseAt })),
+    ladderMarkets: markets.map((m) => ({ city: m.slug, peril: m.peril, state: state(m.rawStatus), salesCloseAt: m.salesCloseAt })),
     cityWindows: markets.filter((m) => isSelling(m, nowSeconds)).map(strip).sort((a, b) => a.observationStart - b.observationStart),
     // NOAA evidence packages stay on the server; Protect reads them from the evidence route, which needs no RPC.
     noaaEvidence: { status: "unavailable", settlementSource: "NOAA", message: "Read directly from Devnet on this phone.", package: null },

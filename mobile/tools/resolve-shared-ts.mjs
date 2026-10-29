@@ -13,6 +13,13 @@ export async function resolve(specifier, context, nextResolve) {
     throw error;
   }
 }
+// Metro bundles bare JSON imports (shared/ui-market-identity.ts); Node ESM needs the json attribute.
+export async function load(url, context, nextLoad) {
+  if (url.endsWith(".json") && context.importAttributes?.type !== "json") {
+    return nextLoad(url, { ...context, importAttributes: { ...context.importAttributes, type: "json" } });
+  }
+  return nextLoad(url, context);
+}
 `;
 
 register("data:text/javascript," + encodeURIComponent(hooks));

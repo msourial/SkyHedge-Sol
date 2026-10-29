@@ -30,3 +30,29 @@ describe("mobile API replies", () => {
     assert.equal(body.premium, "24000000");
   });
 });
+
+// Signals are loaded on demand through the same deployed mobile API.
+describe("weather signal client", () => {
+  it("encodes batches, removes duplicates, and caps requests at twenty", async () => {
+    const { weatherSignalsPath } = await import("./api.ts");
+    assert.equal(weatherSignalsPath("cover-progress", ["M1", "M2", "M1"]), "/api/mobile?resource=cover-progress&markets=M1%2CM2");
+    assert.equal(weatherSignalsPath("forecast-edge", ["M1"]), "/api/mobile?resource=forecast-edge&markets=M1");
+    assert.throws(() => weatherSignalsPath("cover-progress", []));
+    assert.throws(() => weatherSignalsPath("cover-progress", Array.from({ length: 21 }, (_, i) => String(i))));
+  });
+  it("loads both weather signals without replacing missing observations or forecast nulls", async () => {
+    const { getCoverProgress, getForecastEdge } = await import("./api.ts");
+    const saved = globalThis.fetch;
+    const paths: string[] = [];
+    globalThis.fetch = async (url) => {
+      paths.push(String(url));
+      return new Response(JSON.stringify(String(url).includes("cover-progress") ? { progress: { M1: { valueNative: null, state: "unavailable" } } } : { edges: { M1: { forecast: null, historyProbability: 0.2 } } }), { headers: { "Content-Type": "application/json" } });
+    };
+    try {
+      assert.equal((await getCoverProgress(["M1"])).progress.M1?.valueNative, null);
+      assert.deepEqual((await getForecastEdge(["M1"])).edges.M1, { forecast: null, historyProbability: 0.2 });
+      assert.ok(paths[0].includes("resource=cover-progress"));
+      assert.ok(paths[1].includes("resource=forecast-edge"));
+    } finally { globalThis.fetch = saved; }
+  });
+});

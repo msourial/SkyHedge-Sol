@@ -139,7 +139,8 @@ test("Protect has one entry CTA and no inline sign block or wallet-approval CTA"
   const sheet = readFileSync(new URL("./line/SignSheet.tsx", import.meta.url), "utf8");
   const app = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(screen, /APPROVE_WALLET|Approve in your wallet|Approve in wallet|sheet === "sign"|onApprove/);
-  assert.equal((screen.match(/style=\{\[styles\.cta,/g) ?? []).length, 1);
+  const entry = screen.slice(screen.indexOf("export function LinePay"), screen.indexOf("export function MoneyCells"));
+  assert.equal((entry.match(/style=\{\[ui\.cta,/g) ?? []).length, 1);
   assert.match(screen, /pointerEvents=\{props.sheetOpen \? "none"/);
   assert.match(screen, /accessibilityElementsHidden=\{props.sheetOpen\}/);
   assert.equal((sheet.match(/style=\{\[styles\.primary,/g) ?? []).length, 1);

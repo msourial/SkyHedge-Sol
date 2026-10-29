@@ -1,7 +1,7 @@
 /** Shared Protect data. Renderers never reconstruct a premium or payout. */
 import * as copy from "./ui-copy.ts";
 import { chainFigures, dayFromIso, fractionOnScale, payoffPixels, scaleFor, stationFor, isoFromSeconds } from "./ui-ladder.ts";
-import { breakEvenLabel, chanceLabel, chipExceedsCap, formatBaseGrouped, moneyParts, multipleLabel, protocolFeeBase, rungEconomics, ticketFromBases, COVER_SIZES } from "./ui-money.ts";
+import { displayUnit, breakEvenLabel, chanceLabel, chipExceedsCap, formatBaseGrouped, moneyParts, multipleLabel, protocolFeeBase, rungEconomics, ticketFromBases, COVER_SIZES } from "./ui-money.ts";
 import { PROTECT_BAR_HEIGHT } from "./ui-tokens.ts";
 import { CITIES, cityById, perilById, perilOpen } from "./peril-registry.ts";
 import { openQuoteWindows, pickDefaultWindow, type QuoteWindow, type TenorAvailability } from "./ui-window-quote.ts";
@@ -26,6 +26,10 @@ export type ChainRowModel = {
   name: string;
 };
 export type PayoffModel = {
+  /** Fixed across the open strikes at this cover size, in SKYT. */
+  domain: { loss: number; gain: number };
+  maximum: number;
+  openTriggers: number[];
   /** Exact base units, safe to freeze for the sign flow. */
   lossBase: string;
   gainBase: string;
@@ -142,7 +146,7 @@ export type ProtectBuildInput = {
 export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
   const cityName = cityById(input.cityId)?.name ?? copy.THIS_CITY;
   const station = cityById(input.cityId)?.station ?? stationFor(input.cityId);
-  const unit = input.quote?.unit || input.single?.unit || perilById(input.peril)?.unit || "";
+  const unit = displayUnit(input.quote?.unit || input.single?.unit || perilById(input.peril)?.unit || "");
   const eligible = input.peril !== "cold" && perilOpen({ ...input, windowStart: input.windowStart });
   const salesOpen = input.nowSeconds == null || Date.parse(input.quote?.salesCloseAt ?? input.windowStart) > input.nowSeconds * 1000;
   const currentOpen = eligible && salesOpen && !!(input.quote?.rungs.some((rung) => rungEconomics(rung, input.cover)) || (input.single && rungEconomics(input.single, input.cover)));
@@ -162,7 +166,7 @@ export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
   if (!eligible) return base;
   if (input.failed && !input.quote && !input.single) return { ...base, showBar: true, panel: { kind: "error", message: copy.CHAIN_ERROR } };
   if (input.loading && !input.quote && !input.single) return { ...base, showBar: true, instrument: "loading", panel: { kind: "loading", cta: copy.GETTING_QUOTE } };
-  if (!currentOpen && !input.coveredMarket && !input.settlement) return base;
+  if (!currentOpen && salesOpen && !input.coveredMarket && !input.settlement) return base;
 
   const figures = input.quote ? chainFigures(input.quote, input.cover) : [];
   const chosen = pickTrigger(figures, input);
@@ -177,6 +181,7 @@ export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
   if (input.settlement?.kind === "paid") panel = { kind: "paid", result: copy.resultLine("+", `${ticket.gain.whole}.${ticket.gain.fraction}`), payout: ticket.payout };
   else if (input.settlement?.kind === "dry") panel = { kind: "dry", result: copy.resultLine("-", `${ticket.loss.whole}.${ticket.loss.fraction}`) };
   else if (input.coveredMarket) panel = { kind: "covered", loss: ticket.loss, gain: ticket.gain, title: copy.COVERED_WORD };
+  else if (!salesOpen) panel = { kind: "closed", line: `Sales closed ${dayFromIso(input.quote?.salesCloseAt ?? input.windowStart) ?? ""}` };
   else if (input.signing) panel = { kind: "signing", loss: ticket.loss, gain: ticket.gain, cta: copy.WAITING_WALLET };
   else if (!input.connected) panel = { kind: "connect", loss: ticket.loss, gain: ticket.gain, cta: copy.CONNECT_WALLET };
   else panel = { kind: "ready", loss: ticket.loss, gain: ticket.gain, cta: copy.protectCta(`${ticket.loss.whole}.${ticket.loss.fraction}`) };
@@ -266,7 +271,10 @@ function buildTicket(input: ProtectBuildInput, station: string, unit: string, en
   const triggers = input.quote?.rungs.map((rung) => rung.triggerValue) ?? [chosen];
   const scale = scaleFor(input.peril, triggers), pixels = payoffPixels(deal.maxLoss, deal.maxGain), start = dayFromIso(input.windowStart);
   const years = input.quote?.analogueYears;
+  const openDeals = (input.quote?.rungs ?? (input.single ? [input.single] : [])).flatMap(rung => { const e = rungEconomics(rung, input.cover); const t = e && ticketFromBases(e.premium, e.payout); return t ? [{ trigger: rung.triggerValue, loss: Number(t.maxLoss) / 1e6, gain: Number(t.maxGain) / 1e6 }] : []; });
   const payoff: PayoffModel = {
+    domain: { loss: Math.max(Number(deal.maxLoss) / 1e6, ...openDeals.map(d => d.loss)), gain: Math.max(Number(deal.maxGain) / 1e6, ...openDeals.map(d => d.gain)) },
+    maximum: Math.max(...triggers), openTriggers: openDeals.map(d => d.trigger),
     lossBase: deal.maxLoss.toString(), gainBase: deal.maxGain.toString(), lossPx: pixels.loss, gainPx: pixels.gain,
     step: fractionOnScale(chosen, scale), ticks: triggers.map((value) => fractionOnScale(value, scale)),
     lossLabel: `-${formatBaseGrouped(deal.maxLoss)}`, gainLabel: `+${formatBaseGrouped(deal.maxGain)}`, triggerLabel,

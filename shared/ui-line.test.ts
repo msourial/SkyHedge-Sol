@@ -419,9 +419,10 @@ test("not-open panel links to an open same-city window before an open other city
   assert.deepEqual(cold.panel, { kind: "not-open", line: "Cold isn't open yet.", go: null });
 });
 
-test("expired quotes cannot expose a hero or ticket even when a market address remains", () => {
+test("expired quotes retain the visual chart but cannot offer a purchase", () => {
   const model = buildProtectModel(coverInput({ nowSeconds: NOW }));
-  assert.equal(model.panel.kind, "not-open"); assert.equal(model.hero, null); assert.equal(model.ticket, null);
+  assert.equal(model.panel.kind, "closed"); assert.ok(model.hero); assert.ok(model.ticket);
+  assert.equal(model.showBar, true); assert.equal(model.panel.kind === "ready", false);
   assert.equal(model.tenorOpen.weekly, false);
 });
 

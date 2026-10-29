@@ -24,7 +24,7 @@ export function quoteFromCommittedMarketTerms(input: { protectedAmount: bigint; 
     inputsHash: input.inputsHash,
     modelVersion: input.modelVersion ?? "noaa-rain-v1",
     historicalWindows: ANALOGUE_YEARS,
-    forecastWeight: 0.3,
+    forecastWeight: 0,
   };
 }
 

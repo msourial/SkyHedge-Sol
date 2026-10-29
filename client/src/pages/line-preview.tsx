@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { marketsFixture } from "../../../shared/ui-markets-fixtures.ts";
 import { DISCOVERY_QUOTES } from "../../../shared/ui-discovery-fixtures.ts";
 import { PERILS, CITIES } from "../../../shared/peril-registry.ts";
 import { FIXTURE_NOTE, FIXTURE_PINNED_TRIGGER, NYC_RAIN_MODELLED } from "../../../shared/ui-fixtures.ts";
@@ -28,13 +29,13 @@ function initialSign(state: string, step: string | null): SignState {
 }
 export default function LinePreview() {
   const [params] = useSearchParams();
-  return params.has("screen") ? <DiscoveryPreview/> : <ProtectPreview key={params.toString()} />;
+  return params.has("screen") && params.get("screen") !== "protect" ? <DiscoveryPreview/> : <ProtectPreview key={params.toString()} />;
 }
 function ProtectPreview() {
   const [params] = useSearchParams();
   const state = params.get("state") ?? "ready";
   const sheetFixture = state.startsWith("sign") && state !== "signing";
-  const [trigger, setTrigger] = useState<number | null>(state === "rung" ? 114 : null);
+  const [trigger, setTrigger] = useState<number | null>(params.has("trigger") ? Number(params.get("trigger")) : state === "rung" ? 114 : null);
   const [cover, setCover] = useState<CoverSize>(100);
   const [peril, setPeril] = useState<PerilId>(PERILS.find((p) => p.id === params.get("peril"))?.id ?? initialPeril(state));
   const [city, setCity] = useState(CITIES.find((c) => c.id === params.get("city"))?.id ?? initialCity(state));
@@ -43,7 +44,9 @@ function ProtectPreview() {
   const [signState, setSignState] = useState<SignState>(() => initialSign(state, params.get("step")));
   const [covered, setCovered] = useState(state === "covered" || state === "sign-success");
   const frozenSign = useRef<SignSheetData | null>(null);
-  const input = useMemo(() => previewInput(state, { city, peril, cover, trigger, tenor, covered }), [state, city, peril, cover, trigger, tenor, covered]);
+  const marketFixture = params.get("marketFixture"), startParam = params.get("start"), endParam = params.get("end");
+  const sourceQuote = useMemo(() => marketFixture ? marketsFixture(marketFixture).quotes.find((q) => q.cityId === city && q.peril === peril && q.windowStart === startParam && q.windowEnd === endParam) : undefined, [marketFixture, city, peril, startParam, endParam]);
+  const input = useMemo(() => previewInput(state, { city, peril, cover, trigger, tenor, covered }, sourceQuote), [state, city, peril, cover, trigger, tenor, covered, sourceQuote]);
   const model = buildProtectModel(input);
   const signData: SignSheetData | null = model.ticket ? { ticket: model.ticket, state: signState, context: {
     premiumBase: model.ticket.payoff.lossBase, balanceBase: state === "sign-insufficient" ? "12000000" : "1000000000",
@@ -85,15 +88,15 @@ function initialCity(state: string): string {
   if (state.startsWith("heat")) return "miami";
   return "new-york";
 }
-function previewInput(state: string, live: { city: string; peril: PerilId; cover: CoverSize; trigger: number | null; tenor: Tenor; covered: boolean }): ProtectBuildInput {
+function previewInput(state: string, live: { city: string; peril: PerilId; cover: CoverSize; trigger: number | null; tenor: Tenor; covered: boolean }, sourceQuote?: WindowQuote): ProtectBuildInput {
   const weekClosed = state === "week-closed" || state === "closed";
-  let quote: WindowQuote | null = live.tenor === "monthly" && live.peril === "rain" && live.city === "new-york" ? MONTH_QUOTE
+  let quote: WindowQuote | null = sourceQuote ?? (live.tenor === "monthly" && live.peril === "rain" && live.city === "new-york" ? MONTH_QUOTE
     : live.peril === "rain" && live.city === "new-york" ? NYC_RAIN_MODELLED
-    : DISCOVERY_QUOTES.find((q) => q.cityId === live.city && q.peril === live.peril) ?? null;
+    : DISCOVERY_QUOTES.find((q) => q.cityId === live.city && q.peril === live.peril) ?? null);
   if (weekClosed && live.tenor === "weekly") quote = null;
   if (state === "modelled" && quote) quote = { ...quote, rungs: quote.rungs.map((row) => ({ ...row, marketAddress: null })) };
-  const start = live.peril === "snow" && live.tenor === "weekly" ? "2026-11-09" : live.tenor === "monthly" ? MONTH_QUOTE.windowStart : NYC_RAIN_MODELLED.windowStart;
-  const end = live.peril === "snow" && live.tenor === "weekly" ? "2026-11-16" : live.tenor === "monthly" ? MONTH_QUOTE.windowEnd : NYC_RAIN_MODELLED.windowEnd;
+  const start = sourceQuote?.windowStart ?? (live.peril === "snow" && live.tenor === "weekly" ? "2026-11-09" : live.tenor === "monthly" ? MONTH_QUOTE.windowStart : NYC_RAIN_MODELLED.windowStart);
+  const end = sourceQuote?.windowEnd ?? (live.peril === "snow" && live.tenor === "weekly" ? "2026-11-16" : live.tenor === "monthly" ? MONTH_QUOTE.windowEnd : NYC_RAIN_MODELLED.windowEnd);
   if (quote) quote = { ...quote, windowStart: start, windowEnd: end, salesCloseAt: start };
   const windows = weekClosed ? [MONTH_WINDOW] : [];
   return { cityId: live.city, peril: live.peril, tenor: live.tenor,

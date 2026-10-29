@@ -240,6 +240,7 @@ export class DevnetStatusReader {
   private async listDesMoinesMarkets(protocol: PublicKey, decodedProtocol: Record<string, unknown>): Promise<ListedMarket[]> {
     const nextMarketId = BigInt(protocolConfigFields(decodedProtocol).nextMarketId ?? "0");
     const found: ListedMarket[] = [];
+    const vaults: PublicKey[] = [];
     const chunkSize = 100;
     for (let start = 0n; start < nextMarketId; start += BigInt(chunkSize)) {
       const end = start + BigInt(chunkSize) < nextMarketId ? start + BigInt(chunkSize) : nextMarketId;
@@ -258,6 +259,7 @@ export class DevnetStatusReader {
         const peril = resolved.peril;
         const marketAddress = addresses[index];
         const [vault] = PublicKey.findProgramAddressSync([Buffer.from("vault"), marketAddress.toBuffer()], this.programId);
+        vaults.push(vault);
         found.push({
           id: ids[index],
           city: slug,
@@ -266,7 +268,7 @@ export class DevnetStatusReader {
           address: marketAddress.toBase58(),
           marketId: ids[index].toString(),
           vault: vault.toBase58(),
-          vaultBalance: await this.tokenBalance(vault),
+          vaultBalance: null,
           onchainStatus: JSON.stringify(decoded?.status ?? null),
           ...marketTermsFields(decoded),
           evidenceStatus: hasPinnedStationEvidence(decoded, NOAA_STATIONS[slug].stationId) ? "validated" : "researching_evidence",
@@ -276,7 +278,20 @@ export class DevnetStatusReader {
         });
       }
     }
+    // One batched read for every vault instead of two RPC calls per market.
+    const balances = await this.tokenBalances(vaults);
+    found.forEach((item, index) => { item.vaultBalance = balances[index] ?? null; });
     return found;
+  }
+
+  /** SPL token amounts (u64 LE at offset 64 for Token and Token-2022), batched; a missing account is null. */
+  private async tokenBalances(addresses: readonly PublicKey[]): Promise<(string | null)[]> {
+    const out: (string | null)[] = [];
+    for (let start = 0; start < addresses.length; start += 100) {
+      const accounts = await this.connection.getMultipleAccountsInfo(addresses.slice(start, start + 100), "confirmed");
+      for (const account of accounts) out.push(account && account.data.length >= 72 ? account.data.readBigUInt64LE(64).toString() : null);
+    }
+    return out;
   }
 
   /** NOAA can take many seconds on a cold read; report it as pending rather than holding up Devnet status. */

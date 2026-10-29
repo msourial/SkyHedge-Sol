@@ -152,3 +152,36 @@ describe("mobile read APIs", () => {
     expect(record.result().statusCode).to.equal(503);
   });
 });
+
+describe("per-market mobile weather resources", () => {
+  const a = "DKA9RkGvaW4isyj5xdiZ2oGVUkD1UL64Ha1BazXZFD6y";
+  const b = "3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g";
+  for (const resource of ["cover-progress", "forecast-edge"]) {
+    it(`serves ${resource} single and batch requests through the Vercel handler`, async () => {
+      const value = resource === "cover-progress" ? { valueNative: null, state: "unavailable" } : { forecast: null, historyProbability: 0.2 };
+      for (const query of [{ resource, market: a }, { resource, markets: `${a},${b},${a}` }]) {
+        const calls: string[] = [];
+        const read = async (address: string) => { calls.push(address); return value as never; };
+        const record = recorder();
+        await createMobileApiHandler({ readCoverProgress: read, readForecastEdge: read })({ method: "GET", query } as never, record.response as never);
+        expect(record.result().statusCode).to.equal(200);
+        expect(calls).to.deep.equal("market" in query ? [a] : [a, b]);
+        const key = resource === "cover-progress" ? "progress" : "edges";
+        expect((record.result().body as Record<string, unknown>)[key]).to.deep.equal(Object.fromEntries(calls.map((address) => [address, value])));
+      }
+    });
+  }
+  it("rejects empty, malformed, ambiguous and oversized weather batches", async () => {
+    for (const query of [{ market: "" }, { market: "invalid" }, { markets: `${a},` }, { market: a, markets: b }, { markets: new Array(21).fill(a).join(",") }]) {
+      const record = recorder();
+      await createMobileApiHandler()({ method: "GET", query: { resource: "cover-progress", ...query } } as never, record.response as never);
+      expect(record.result().statusCode).to.equal(400);
+    }
+  });
+  it("surfaces a failed market lookup as a read error", async () => {
+    const record = recorder();
+    await createMobileApiHandler({ readCoverProgress: async () => { throw new Error("RPC private details"); } })({ method: "GET", query: { resource: "cover-progress", market: a } } as never, record.response as never);
+    expect(record.result().statusCode).to.equal(503);
+    expect(JSON.stringify(record.result().body)).not.to.include("private");
+  });
+});

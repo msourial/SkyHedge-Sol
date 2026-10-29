@@ -233,3 +233,8 @@ function nextMonthStart(nowSeconds: number): number {
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
 }
+
+/** Chance committed to a market is always history-only. Forecasts are separate signals. */
+export function priceFromHistory(historicProbabilityBps: number): ReturnType<typeof priceFromSignals> {
+  return priceFromSignals(historicProbabilityBps, null);
+}

@@ -20,7 +20,7 @@ export function signFailure(reason: unknown, reachedWallet: boolean): SignOutcom
   const detail = [raw, shown.detail].filter(Boolean).join(" ");
   const duplicate = isExistingPositionError(detail) || isExistingPositionError(shown.message);
   let error = classifySignError({ message: shown.message, detail, duplicate, reachedWallet });
-  if (error === "other" && reachedWallet) error = "unconfirmed";
+  if (error === "other" && reachedWallet && !(reason instanceof TransactionFailedError && reason.confirmedFailure)) error = "unconfirmed";
   if (error === "already-covered") return { kind: "already-covered" };
   return { kind: "error", error, message: friendlyError(shown.message), detail: shown.detail };
 }

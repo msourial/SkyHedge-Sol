@@ -17,10 +17,7 @@ test("Markets uses real WindowQuote premiums, preserves a selection, and never o
   await page.goto("/app?tab=markets");
   await expect(page.getByRole("button", { name: "Cover this", exact: true })).toBeVisible();
   await expect(page.locator(".ln-stat-strip")).toContainText("24.00");
-  await page.getByRole("tab", { name: "Wind", exact: true }).click();
-  await expect(page.locator(".ln-market-hero")).toContainText("Chicago");
-  await expect(page.locator(".ln-market-hero")).toContainText("4.1x");
-  await page.getByRole("button", { name: "Cover this", exact: true }).click();
+  await page.locator('.mk-card[data-card-id="chicago-wind"]').click();
   await expect(page).toHaveURL("/app?tab=protect&city=chicago&peril=wind&tenor=weekly&trigger=12&start=2026-10-26&end=2026-11-02");
   await expect(page.locator(".ln-sub")).toHaveText("O'Hare · Oct 26 – Nov 2 · Sales close Oct 26");
   await expect(page.getByRole("tab", { name: "Wind", exact: true })).toHaveAttribute("aria-selected", "true");
@@ -28,13 +25,12 @@ test("Markets uses real WindowQuote premiums, preserves a selection, and never o
   expect(requested).not.toContain("cold");
   expect(errors).toEqual([]);
 });
-test("modelled quotes have no offer and Cold stays selectable with a ghost", async ({ page }) => {
+test("modelled quotes have no offer and Cold opens its explanation", async ({ page }) => {
   await page.goto("/preview?screen=markets&state=modelled");
-  await expect(page.getByRole("button", { name: "Cover this" })).toHaveCount(0);
-  await expect(page.locator(".ln-market-row")).toHaveCount(0);
-  await page.getByRole("tab", { name: "Cold", exact: true }).click();
-  await expect(page.getByText("Cold isn't open yet.")).toBeVisible();
-  await expect(page.locator(".ln-empty svg")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Cover this", exact: true })).toHaveCount(0);
+  await expect(page.locator(".ln-market-row .mk-row-trigger")).toHaveCount(0);
+  await page.locator('.mk-card[data-kind="cold"]').click();
+  await expect(page.getByRole("dialog", { name: "Cold", exact: true })).toContainText("The contract can't take triggers below zero.");
 });
 test("Wallet totals use equal figure styles and receipts distinguish paid, dry and claimable", async ({ page }) => {
   for (const [state, status, result] of [["open", "Open", null], ["paid", "Paid out", "Result +76.00 SKYT"], ["dry", "Dry window", "Result -24.00 SKYT"], ["pending", "Payout ready to collect", null]] as const) {
@@ -89,12 +85,12 @@ test("Wallet open rows and total labels stay on clean lines at 393px", async ({ 
   await expect(page.locator(".ln-wallet-totals .ln-label")).toHaveText(["Max loss, open covers", "Max gain, open covers"]);
 });
 
-test("Markets keeps the hero and CTA above the single covers summary", async ({ page }) => {
+test("Markets keeps one covers summary above the hero and CTA", async ({ page }) => {
   await page.goto("/preview?screen=markets&state=with-covers");
   await expect(page.locator(".ln-market-hero")).toBeVisible();
   await expect(page.getByRole("button", { name: "Cover this", exact: true })).toBeVisible();
   await expect(page.locator(".ln-cover-tile")).toHaveCount(0);
-  await expect(page.locator(".ln-covers-summary")).toContainText("1 open covers");
+  await expect(page.locator(".ln-covers-summary")).toContainText("1 open cover");
 });
 test("landing selects all five instruments and cover sizes with exact loss and gain", async ({ page }) => {
   await page.goto("/preview?screen=landing&state=ready");
@@ -128,7 +124,7 @@ test("Markets, Wallet, Landing have no overflow, type below 13px, or undersized 
 });
 test("peril keyboard navigation moves focus and reduced motion stops animations", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/preview?screen=markets&state=ready");
+  await page.goto("/preview?screen=wallet&state=wallet-multi");
   await page.getByRole("tab", { name: "All", exact: true }).focus();
   await page.keyboard.press("End");
   await expect(page.getByRole("tab", { name: "Cold", exact: true })).toBeFocused();
@@ -143,14 +139,15 @@ test("Protect has no first-run strip", async ({ page }) => {
   await expect(page.getByRole("region", { name: "Ticket", exact: true })).toHaveCount(1);
 });
 
-test("v5 mixed markets skips the held hero and Wallet multi leads with triggers", async ({ page }) => {
+test("city-led mixed markets keeps New York and skips the held hero and Wallet multi leads with triggers", async ({ page }) => {
   await page.goto("/preview?screen=markets&state=markets-mixed");
   const hero = page.locator(".ln-market-hero");
   await expect(hero).toBeVisible();
-  await expect(hero).not.toContainText("New York · Rain");
+  await expect(page.getByRole("heading", { name: "New York", exact: true })).toBeVisible();
+  await expect(hero).toContainText("69");
   const heldRow = page.locator(".ln-market-row").filter({ hasText: "Covered" });
   await expect(heldRow).toHaveCount(1);
-  await expect(heldRow.locator(".ln-covered-tag svg")).toHaveAttribute("width", "16");
+  await expect(heldRow.locator(".mk-row-status svg")).toHaveAttribute("width", "16");
   await expect(page.locator(".ln-market-row").last()).toContainText("Covered");
   await page.goto("/preview?screen=wallet&state=wallet-multi");
   await expect(page.locator(".ln-wallet-row")).toHaveCount(4);
@@ -169,10 +166,10 @@ test("v5 mixed markets skips the held hero and Wallet multi leads with triggers"
   expect(textOverlaps).toBe(false);
 });
 
-test("Markets loading keeps the quote list visible and reserves the complete hero", async ({ page }) => {
+test("Markets loading reserves the complete hero and four card shells", async ({ page }) => {
   await page.goto("/preview?screen=markets&state=loading");
-  await expect(page.getByRole("heading", { name: "OPEN NOW" })).toBeVisible();
-  await expect(page.locator(".ln-market-row").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "New York", exact: true })).toBeVisible();
+  await expect(page.locator(".mk-shell")).toHaveCount(4);
   const hero = page.locator(".ln-market-hero--loading");
   await expect(hero).toBeVisible();
   await expect(hero.locator(".ln-stat-strip .ln-label")).toHaveText(["Chance", "Multiple", "Max loss"]);
@@ -196,21 +193,13 @@ test("Markets loading keeps the quote list visible and reserves the complete her
   expect(dimensions).toEqual(loadedDimensions);
 });
 
-test("Markets text lines share a left edge and Opening later is a 48px rule row", async ({ page }) => {
+test("Markets rows keep the trigger and window together and remove the unavailable list", async ({ page }) => {
   await page.goto("/preview?screen=markets&state=ready");
-  const lineEdges = await page.locator(".ln-market-row").first().evaluate((row) =>
-    [...row.querySelectorAll<HTMLElement>(".ln-row-copy > strong, .ln-row-trigger, .ln-row-copy > .ln-label")].map((line) => line.getBoundingClientRect().left));
-  expect(lineEdges.length).toBe(3);
-  expect(new Set(lineEdges).size).toBe(1);
-
-  await page.goto("/preview?screen=markets&peril=cold");
-  const later = page.locator(".ln-unavailable-toggle");
-  await expect(later).toHaveText("Opening later · 1");
-  const layout = await later.evaluate((node) => ({ height: node.getBoundingClientRect().height, border: getComputedStyle(node).borderTopWidth, fontSize: getComputedStyle(node).fontSize }));
-  expect(layout.height).toBeGreaterThanOrEqual(48);
-  expect(layout.border).toBe("1px");
-  expect(layout.fontSize).toBe("13px");
-  await expect(later.locator("svg")).toHaveCount(1);
+  const row = page.locator(".mk-row").first();
+  await expect(row.locator(".mk-row-trigger")).toContainText("≥ 29 mm");
+  await expect(row.locator(".mk-row-end")).toContainText("by Nov 9");
+  await expect(row).toHaveCSS("height", "64px");
+  await expect(page.locator(".ln-unavailable-toggle, .ln-unavailable-row, .ln-peril-tabs")).toHaveCount(0);
 });
 
 test("Wallet removes redundant open status and keeps dates in groups", async ({ page }) => {

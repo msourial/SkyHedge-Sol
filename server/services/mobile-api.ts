@@ -9,6 +9,8 @@ import { applyCorsHeaders } from "./cors.js";
 import { isPerilId } from "../../shared/perils.js";
 import { marketsForWindowQuote, readCatalogueWindowQuote } from "./window-quote-read.js";
 import { DevnetStatusReader } from "./devnet-status.js";
+import { readCoverProgress } from "./cover-progress.js";
+import { readForecastEdge } from "./forecast-exceedance.js";
 import type { WindowQuote } from "../../shared/ui-quote-types.js";
 
 type ApiRequest = IncomingMessage & { query?: Record<string, unknown> };
@@ -17,6 +19,13 @@ type ApiResponse = ServerResponse & {
   json: (body: unknown) => void;
 };
 
+/** One reader per warm instance, so concurrent quote reads share its in-flight status read and cache. */
+let sharedStatusReader: DevnetStatusReader | null = null;
+export function sharedDevnetStatusReader(): DevnetStatusReader {
+  sharedStatusReader ??= new DevnetStatusReader();
+  return sharedStatusReader;
+}
+
 function queryValue(req: ApiRequest, key: string): string | undefined {
   const value = req.query?.[key];
   if (typeof value === "string") return value;
@@ -24,6 +33,8 @@ function queryValue(req: ApiRequest, key: string): string | undefined {
 }
 
 export function createMobileApiHandler(dependencies: {
+  readCoverProgress?: typeof readCoverProgress;
+  readForecastEdge?: typeof readForecastEdge;
   loadCities?: typeof allCityIndexStates;
   resolveCity?: typeof cityBySlug;
   readCity?: typeof cityIndexState;
@@ -47,6 +58,21 @@ export function createMobileApiHandler(dependencies: {
     }
     const resource = queryValue(req, "resource");
     try {
+      if (resource === "cover-progress" || resource === "forecast-edge") {
+        const single = queryValue(req, "market");
+        const batch = queryValue(req, "markets");
+        const addresses = (single ?? batch ?? "").split(",");
+        if ((single && batch) || addresses.length > 20 || addresses.some((address) => {
+          try { return new PublicKey(address).toBase58() !== address; } catch { return true; }
+        })) return res.status(400).json({ error: "INVALID_MARKETS", message: "Supply market or markets with 1–20 valid Solana addresses." });
+        const unique = [...new Set(addresses)];
+        // A bad account/RPC read is a 503, not a fabricated observation or zero chance.
+        const read = resource === "cover-progress" ? (dependencies.readCoverProgress ?? readCoverProgress) : (dependencies.readForecastEdge ?? readForecastEdge);
+        const entries = await Promise.all(unique.map(async (address) => [address, await read(address)] as const));
+        res.setHeader("Cache-Control", "no-store");
+        return res.status(200).json({ [resource === "cover-progress" ? "progress" : "edges"]: Object.fromEntries(entries) });
+      }
+
       if (resource === "cities") {
         const cities = await loadCities();
         res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=60");
@@ -130,7 +156,7 @@ export function createMobileApiHandler(dependencies: {
           return res.status(400).json({ error: "INVALID_WINDOW_QUOTE", message: "city, peril, observationStart, and observationEnd are required." });
         }
         const read = dependencies.readWindowQuote ?? (async (query: { peril: string; cityId: string; windowStart: string; windowEnd: string }) => {
-          const reader = new DevnetStatusReader();
+          const reader = sharedDevnetStatusReader();
           if (!isPerilId(query.peril)) throw Object.assign(new Error("Unknown peril."), { code: "DATA_UNAVAILABLE" });
           const markets = await marketsForWindowQuote(() => reader.read(), query.cityId, query.peril, query.windowStart, query.windowEnd);
           return readCatalogueWindowQuote({ ...query, markets });

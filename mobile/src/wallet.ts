@@ -31,6 +31,7 @@ export async function signAndConfirmDevnetTransaction(input: {
   transactionBase64: string;
   wallet: AuthorizedWallet;
   rpcUrl: string;
+  onSignature?: (signature: string) => void;
   onPhase?: (phase: "waiting" | "sending" | "confirming") => void;
 }): Promise<string> {
   const transaction = VersionedTransaction.deserialize(Buffer.from(input.transactionBase64, "base64"));
@@ -49,6 +50,7 @@ export async function signAndConfirmDevnetTransaction(input: {
   });
   const signature = signatures[0];
   if (!signature) throw new Error("The wallet did not return a transaction signature.");
+  input.onSignature?.(signature);
   input.onPhase?.("sending");
   let confirmation: Awaited<ReturnType<typeof connection.confirmTransaction>>;
   input.onPhase?.("confirming");
@@ -58,6 +60,6 @@ export async function signAndConfirmDevnetTransaction(input: {
     // Sent but not yet confirmed (timeout or a busy RPC). Keep the signature so the app can check the chain.
     throw new TransactionFailedError(reason instanceof Error ? reason.message : "Solana did not confirm the transaction in time.", signature);
   }
-  if (confirmation.value.err) throw new TransactionFailedError(describeChainError(confirmation.value.err), signature);
+  if (confirmation.value.err) throw new TransactionFailedError(describeChainError(confirmation.value.err), signature, true);
   return signature;
 }

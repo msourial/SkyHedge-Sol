@@ -10,7 +10,7 @@ import { perilCityHashInput, type PerilId } from "../../shared/perils.js";
 import {
   historicHitBps,
   planCityLadders,
-  priceFromSignals,
+  priceFromHistory,
   strikeFromAnalogueTotals,
   type LadderMarketRef,
   type LadderStep,
@@ -28,7 +28,7 @@ export type PricedLadderStep = LadderStep & {
   unit?: string;
   probabilityBps: number | null;
   premiumRateBps: number | null;
-  forecastIncluded: boolean | null;
+  forecastIncluded: boolean;
   inputsHash: string | null;
   stationId: string;
   skipReason: string | null;
@@ -83,9 +83,7 @@ export async function priceKeeperSteps(steps: readonly LadderStep[], engine = ne
           priced.push(unpriced(step, station.stationId, "NOAA analogue history could not be scored."));
           continue;
         }
-        const forecast = await engine.forecastCumulativeOrNull({ ...request, thresholdMm });
-        const forecastProbabilityBps = forecast == null ? null : (forecast >= thresholdMm ? 10_000 : 0);
-        const price = priceFromSignals(historic, forecastProbabilityBps);
+        const price = priceFromHistory(historic);
         const inputsHash = canonicalSourceHash({
           schema: "skyhedge-noaa-quote-inputs-v1",
           city,
@@ -95,16 +93,16 @@ export async function priceKeeperSteps(steps: readonly LadderStep[], engine = ne
           thresholdMm,
           operator: "gte",
           analogueTotalsMm: totals,
-          forecastCumulativeMm: forecast,
+          forecastCumulativeMm: null,
           strike: "8th-of-10-analogue-years",
-          pricing: { ...price, historicProbabilityBps: historic, forecastProbabilityBps },
+          pricing: { ...price, historicProbabilityBps: historic, forecastProbabilityBps: null },
         });
         priced.push({
           ...step,
           thresholdMm,
           probabilityBps: price.probabilityBps,
           premiumRateBps: price.premiumRateBps,
-          forecastIncluded: forecast != null,
+          forecastIncluded: false,
           inputsHash,
           stationId: station.stationId,
           skipReason: null,
@@ -136,5 +134,5 @@ export function encodeStrike(step: { thresholdMm: number | null; scaledX100?: nu
 }
 
 function unpriced(step: LadderStep, stationId: string, skipReason: string): PricedLadderStep {
-  return { ...step, thresholdMm: null, probabilityBps: null, premiumRateBps: null, forecastIncluded: null, inputsHash: null, stationId, skipReason };
+  return { ...step, thresholdMm: null, probabilityBps: null, premiumRateBps: null, forecastIncluded: false, inputsHash: null, stationId, skipReason };
 }

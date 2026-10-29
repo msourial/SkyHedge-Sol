@@ -11,7 +11,7 @@ export const SALES_CLOSED = "Sales are closed for this window.";
 export const CHAIN_ERROR = "Can't read Devnet right now. Nothing is shown until it's back. Try again in a minute.";
 export const ALREADY_COVERED = "You already have cover for this window.";
 export const HOW_IT_SETTLES = "NOAA's final daily records alone decide payouts. Other weather data is context only.";
-export const SETTLED_UNITS = "Settled in NOAA units: mm, m/s, C.";
+export const SETTLED_UNITS = "Settled in NOAA units: mm, m/s, °C.";
 export const WIND_ELEMENT = "Peak wind at the station (NOAA WSF2 or WSF5).";
 export const HEAT_ELEMENT = "NOAA daily maximum temperature.";
 export const CONNECT_WALLET = "Connect wallet";
@@ -70,7 +70,6 @@ export const MAX_LOSS = "Max loss";
 export const MAX_GAIN = "Max gain";
 export const PAYOUT = "Payout";
 export const CHANCE = "Chance";
-export const CHANCE_MULTIPLE = "Chance · Multiple";
 export const BREAK_EVEN = "Break-even chance";
 export const MULTIPLE = "Multiple";
 export const TRIGGER = "Trigger";
@@ -250,9 +249,6 @@ export function gainCaption(): string {
   return "if it is reached";
 }
 
-export function notOpenMarkets(count: number): string {
-  return `Opening later · ${count}`;
-}
 
 export function ticketSheet(input: { feeLabel: string; years: number }): string | null {
   const note = chanceNote(input.years);
@@ -289,7 +285,7 @@ export function copySamples(): string[] {
     COVER_THIS, OPEN_APP, LANDING_TITLE, LANDING_SUB, ...HOW_IT_WORKS, PROTECT_TITLE, MARKETS_TITLE,
     WALLET_TITLE, YOUR_COVERS, OPEN_NOW, TECHNICAL_DETAILS, SKYT_BALANCE, MAX_LOSS, MAX_GAIN,
     PAYOUT, CHANCE, BREAK_EVEN, MULTIPLE, TRIGGER, COVER, FEE_INCLUDED, SO_FAR, WEEK, MONTH, WINDOW_WORD,
-    CHANCE_MULTIPLE, COVERED_TAG, BALANCE, marketHeroLine("Central Park", salesCloseLine("Nov 1")),
+    COVERED_TAG, BALANCE, marketHeroLine("Central Park", salesCloseLine("Nov 1")),
     notOpenYet("snow"), totalsCaption(1), totalsCaption(4),
     pricingSentence("1.00"), refundSentence(), years, highInYears(10) ?? "", feeLine("1.00"),
     capLine(), protectCta("24.00"), salesCloseLine("Oct 26"), sinceLine("Oct 26"),
@@ -303,7 +299,7 @@ export function copySamples(): string[] {
     triggerHeader("mm"), openRowName({ trigger: "69 mm", chance: "20.0%", multiple: "4.1x", maxLoss: "24.00" }),
     modelledRowName({ trigger: "47 mm", chance: "60.0%", multiple: "1.4x" }),
     resultLine("+", "76.00"), resultLine("-", "24.00"), lossCaption(), gainCaption(),
-    notOpenMarkets(3), ticketSheet({ feeLabel: "1.00", years: 10 }) ?? "", infoSheetTitle(),
+    ticketSheet({ feeLabel: "1.00", years: 10 }) ?? "", infoSheetTitle(),
     perilById("wind")?.honesty("O'Hare") ?? "", perilById("heat")?.honesty("Miami Intl") ?? "",
   ];
 }
@@ -334,3 +330,40 @@ const FORBIDDEN = [
 export function forbiddenHits(text: string): string[] {
   return FORBIDDEN.filter((pattern) => pattern.test(text)).map((pattern) => pattern.source);
 }
+
+/** City-led Markets copy. Keep removed discovery copy out of this path. */
+export const CHOOSE_CITY = "Choose a city";
+export const NOTHING_OPEN = "Nothing open yet";
+export const NO_MARKETS_SCHEDULED = "No markets are scheduled.";
+export const MARKETS_ERROR = "Couldn't load markets";
+export const MARKETS_PARTIAL = "Some markets didn't load.";
+export const OPEN_ELSEWHERE = "Open elsewhere";
+export const COMING_UP = "Coming up";
+export const SEE_TRIGGER_CHAIN = "See the trigger chain";
+export const NOT_AVAILABLE_YET = "Not available yet";
+export const EVERYWHERE = "Everywhere";
+export const WHY = "Why";
+export const VIEW_COVER = "View cover";
+export const FROM = "From";
+export const COLD_EXPLANATION = "Cold cover isn't available yet. The contract can't take triggers below zero.";
+export function marketsHeroSentence(station: string, verb: string, end: string): string { return `Pays out if ${station} ${verb} by ${end}.`; }
+export function closesIn(n: number, unit: "day" | "hour"): string { return `Closes in ${n} ${unit}${n === 1 ? "" : "s"}`; }
+export const CLOSES_TODAY = "Closes today";
+export function closesOn(date: string): string { return `Closes ${date}`; }
+export function moreInCityLabel(city: string): string { return `More in ${city}`; }
+export function seasonStarts(month: string): string { return `Season starts ${month}`; }
+export function nothingElseOpen(city: string): string { return `Nothing else is open in ${city} right now.`; }
+export function windowsCount(count: number): string { return count > 1 ? ` · ${count} windows` : ""; }
+export function openCoversCount(count: number): string { return `${count} open ${count === 1 ? "cover" : "covers"}`; }
+
+export const PAYS_OUT_AT = "Pays out at";
+export const CLOSES_WORD = "Closes";
+export const RETRY = "Retry";
+export function marketsCount(n: number): string { return `${n} ${n === 1 ? "market" : "markets"}`; }
+export function citiesCount(n: number): string { return `${n} ${n === 1 ? "city" : "cities"}`; }
+export function noCityPeril(peril: PerilId, city: string): string { return `No ${perilById(peril)!.label.toLowerCase()} markets in ${city} right now`; }
+export function marketsTitle(peril: PerilId, place: string): string { return `${perilById(peril)!.label} in ${place}`; }
+export function marketsWindow(start: string, end: string): string { return `${WINDOW_WORD} ${start} – ${end}`; }
+export function coverTrigger(value: string, unit: string): string { return `${COVER} ${value} ${unit}`; }
+export function daysLeft(n: number): string { return `${n} ${n === 1 ? "day" : "days"} left`; }
+export function fromMonth(month: string): string { return `${FROM} ${month}`; }

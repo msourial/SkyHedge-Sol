@@ -5,11 +5,12 @@ import { describe, it } from "node:test";
 import { Buffer } from "buffer";
 import { PublicKey } from "@solana/web3.js";
 import { LIVE_CITY_SLUGS } from "../../shared/window-ladder.ts";
+import { perilCityHashHex } from "../../shared/perils.ts";
 import { committedPremiumQuote } from "../../shared/market-pricing.ts";
 import { payGet } from "../../shared/pay-get.ts";
 import {
-  CITY_HASHES, DES_MOINES_TITLE_HASH, IDL_ACCOUNT_COUNT, IDL_INSTRUCTION_COUNT, METHODOLOGY_HASH, NOAA_STATION_IDS, PROVIDER_HASH, STATION_ID_HASHES,
-  decodeMarket, loadDevnetStatus, readDevnetStatusFrom,
+  CITY_HASHES, DES_MOINES_TITLE_HASH, IDL_ACCOUNT_COUNT, IDL_INSTRUCTION_COUNT, METHODOLOGY_HASH, NOAA_STATION_IDS, PERIL_EVIDENCE_HASHES, PROVIDER_HASH, STATION_ID_HASHES,
+  cityPerilForHash, decodeMarket, loadDevnetStatus, readDevnetStatusFrom,
 } from "./chain-status.ts";
 import { SKYT_MINT } from "./chain.ts";
 import { SKYHEDGE_PROGRAM_ID } from "./positions.ts";
@@ -18,21 +19,24 @@ const root = new URL("../../", import.meta.url);
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
 const canonical = (value: unknown) => sha(JSON.stringify(value));
 const methodology = JSON.parse(readFileSync(new URL("shared/methodology-v1.json", root), "utf8"));
+const perilMethodology = (file: string) => JSON.parse(readFileSync(new URL(`shared/${file}`, root), "utf8"));
+const PERIL_DOCS = { rain: "methodology-v1.json", snow: "methodology-snow-v1.json", wind: "methodology-wind-v1.json", heat: "methodology-heat-v1.json" } as const;
 const idl = JSON.parse(readFileSync(new URL("shared/idl/skyhedge_protection.json", root), "utf8"));
 const noaaSource = readFileSync(new URL("server/services/noaa.ts", root), "utf8");
 
 const NOW = 1_792_540_000; // Oct 20 2026
 const WEEK_START = 1_792_972_800; // Mon Oct 26 00:00 UTC
 
-function marketBuffer(opts: { slug?: keyof typeof CITY_HASHES; status?: number; salesCloseAt?: number; evidence?: boolean } = {}): Buffer {
+function marketBuffer(opts: { slug?: keyof typeof CITY_HASHES; peril?: keyof typeof PERIL_EVIDENCE_HASHES; status?: number; salesCloseAt?: number; evidence?: boolean } = {}): Buffer {
   const slug = opts.slug ?? "new-york";
+  const peril = opts.peril ?? "rain";
   const buf = Buffer.alloc(400);
   Buffer.from([219, 190, 213, 55, 0, 227, 198, 154]).copy(buf, 0);
   buf.writeBigUInt64LE(8n, 8);
-  Buffer.from(CITY_HASHES[slug], "hex").copy(buf, 80);
+  Buffer.from(perilCityHashHex(slug, peril), "hex").copy(buf, 80);
   Buffer.from(opts.evidence === false ? "00".repeat(32) : STATION_ID_HASHES[slug], "hex").copy(buf, 112);
-  Buffer.from(PROVIDER_HASH, "hex").copy(buf, 144);
-  Buffer.from(METHODOLOGY_HASH, "hex").copy(buf, 176);
+  Buffer.from(PERIL_EVIDENCE_HASHES[peril].providerHash, "hex").copy(buf, 144);
+  Buffer.from(PERIL_EVIDENCE_HASHES[peril].methodologyHash, "hex").copy(buf, 176);
   Buffer.from("fb6e901bc43fa2a99b5044c115f94345696f4bb24c85ce9fe4a1760a9b8b45e8", "hex").copy(buf, 208);
   buf[240] = 1; // GreaterThanOrEqual
   buf.writeBigInt64LE(6900n, 241);
@@ -70,6 +74,37 @@ describe("on-device Devnet status", () => {
     assert.equal(METHODOLOGY_HASH, canonical(methodology.version));
     assert.equal(IDL_INSTRUCTION_COUNT, idl.instructions.length);
     assert.equal(IDL_ACCOUNT_COUNT, idl.accounts.length);
+  });
+
+  it("resolves every open peril's city hash and methodology pair like the server", () => {
+    for (const [peril, file] of Object.entries(PERIL_DOCS)) {
+      const doc = perilMethodology(file);
+      assert.deepEqual(PERIL_EVIDENCE_HASHES[peril as keyof typeof PERIL_DOCS], { providerHash: canonical(doc), methodologyHash: canonical(doc.version) }, peril);
+      for (const city of LIVE_CITY_SLUGS) assert.deepEqual(cityPerilForHash(perilCityHashHex(city, peril as keyof typeof PERIL_DOCS)), { city, peril }, `${city} ${peril}`);
+    }
+    assert.deepEqual(cityPerilForHash(DES_MOINES_TITLE_HASH), { city: "des-moines", peril: "rain" });
+    assert.equal(cityPerilForHash(sha("chicago:cold")), null);
+    assert.equal(cityPerilForHash("00".repeat(32)), null);
+  });
+
+  it("lists snow, wind and heat windows with their peril, not only rain", async () => {
+    const accounts = [
+      marketBuffer(), marketBuffer({ slug: "new-york", peril: "snow" }), marketBuffer({ slug: "chicago", peril: "snow" }),
+      marketBuffer({ slug: "chicago", peril: "wind" }), marketBuffer({ slug: "miami", peril: "heat" }), marketBuffer({ slug: "des-moines", peril: "snow" }),
+    ];
+    let call = 0;
+    const status = await readDevnetStatusFrom(async (keys) => {
+      call++;
+      if (call === 1) return [info(Buffer.alloc(36), true), info(mintBuffer()), info(protocolBuffer(BigInt(accounts.length))), info(tokenBuffer(5n))];
+      if (call === 2) return keys.map((_, index) => info(accounts[index]!));
+      return keys.map(() => info(tokenBuffer(2_000_000_000n)));
+    }, NOW);
+    assert.deepEqual(status.cityWindows!.map((w) => `${w.city}:${w.peril}:${w.evidenceStatus}`), [
+      "new-york:rain:validated", "new-york:snow:validated", "chicago:snow:validated", "chicago:wind:validated", "miami:heat:validated", "des-moines:snow:validated",
+    ]);
+    assert.deepEqual(status.ladderMarkets!.map((m) => m.peril), ["rain", "snow", "snow", "wind", "heat", "snow"]);
+    // The legacy Des Moines slot stays a rain market; a Des Moines snow market never fills it.
+    assert.equal(status.desMoinesMarket.status, "pending");
   });
 
   it("decodes the committed Market layout", () => {

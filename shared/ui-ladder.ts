@@ -4,6 +4,7 @@
  */
 import { cityById } from "./peril-registry.ts";
 import {
+  displayUnit,
   chanceLabel,
   formatBaseGrouped,
   measureLabel,
@@ -59,7 +60,7 @@ export type ChainFigures = {
 
 /** Lowest trigger first. Max loss comes from the premium, never from the multiple. */
 export function chainFigures(quote: WindowQuote, cover: CoverSize): ChainFigures[] {
-  const unit = quote.unit;
+  const unit = displayUnit(quote.unit);
   return [...quote.rungs]
     .map((rung) => figuresFor(rung, cover, unit))
     .filter((row): row is ChainFigures => row != null)
