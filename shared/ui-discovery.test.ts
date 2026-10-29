@@ -98,3 +98,29 @@ test("Markets exposes factual quote data with no wry odds band", () => {
     assert.deepEqual(forbiddenHits(JSON.stringify(market)), []);
   }
 });
+
+test("every open Devnet window of every peril gets its own quote request (Oct 2026 snapshot)", () => {
+  const rows: Array<[string, "rain" | "snow" | "wind" | "heat", "weekly" | "monthly", number, number, number, string]> = [
+    ["des-moines", "rain", "monthly", 1793491200, 1796083200, 1793491200, "m5"],
+    ["new-york", "rain", "monthly", 1793491200, 1796083200, 1793491200, "m9"],
+    ["new-york", "rain", "weekly", 1793577600, 1794182400, 1793577600, "m19"],
+    ["new-york", "rain", "weekly", 1793577600, 1794182400, 1793577600, "m20"],
+    ["des-moines", "rain", "monthly", 1796083200, 1798761600, 1796083200, "m6"],
+    ["new-york", "rain", "monthly", 1796083200, 1798761600, 1796083200, "m10"],
+    ["chicago", "snow", "monthly", 1796083200, 1798761600, 1796083200, "m11"],
+    ["chicago", "snow", "monthly", 1796083200, 1798761600, 1796083200, "m12"],
+    ["chicago", "wind", "monthly", 1796083200, 1798761600, 1796083200, "m13"],
+    ["chicago", "wind", "monthly", 1796083200, 1798761600, 1796083200, "m14"],
+    ["miami", "heat", "monthly", 1796083200, 1798761600, 1796083200, "m15"],
+    ["new-york", "snow", "monthly", 1796083200, 1798761600, 1796083200, "m16"],
+    ["new-york", "snow", "monthly", 1796083200, 1798761600, 1796083200, "m17"],
+    ["new-york", "rain", "monthly", 1796083200, 1798761600, 1796083200, "m18"],
+  ];
+  const windows = rows.map(([city, peril, tenor, observationStart, observationEnd, salesCloseAt, address]) => ({ city, peril, tenor, observationStart, observationEnd, salesCloseAt, address }));
+  const now = Date.UTC(2026, 9, 29) / 1000;
+  const paths = new Set(discoveryRequests(windows, now).map((r) => r.path));
+  for (const w of windows) {
+    const params = new URLSearchParams({ resource: "window-quote", city: w.city, peril: w.peril, windowStart: new Date(w.observationStart * 1000).toISOString().slice(0, 10), windowEnd: new Date(w.observationEnd * 1000).toISOString().slice(0, 10) });
+    assert(paths.has(`/api/mobile?${params}`), `${w.city} ${w.peril} ${w.address}`);
+  }
+});

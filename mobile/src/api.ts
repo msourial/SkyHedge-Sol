@@ -1,5 +1,6 @@
 import type { LiveCitySlug } from "../../shared/window-ladder.ts";
 import type { WindowEvidencePackage } from "../../shared/window-chain.ts";
+import type { PerilId } from "../../shared/ui-types.ts";
 
 export type CityIndex = {
   slug: string;
@@ -65,11 +66,15 @@ export type DevnetStatus = {
   };
   ladderMarkets?: Array<{
     city: LiveCitySlug;
+    /** Absent on older servers; absent means rain. */
+    peril?: PerilId;
     state: "draft" | "open" | "cancelled" | "other";
     salesCloseAt: number | null;
   }>;
   cityWindows?: Array<{
     city: LiveCitySlug;
+    /** Absent on older servers; absent means rain. */
+    peril?: PerilId;
     tenor: "weekly" | "monthly";
     status: "ready";
     address: string;
