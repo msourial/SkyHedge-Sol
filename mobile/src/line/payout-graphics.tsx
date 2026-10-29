@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Platform, StyleSheet, View, type ViewStyle } from "react-native";
+import { Animated, Easing, Platform, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import Svg, { Rect, Text as SvgText } from "react-native-svg";
 import { lineMotion, lineTokens as C } from "../../../shared/ui-tokens.ts";
 import { payoffGeometry, payoffLabelBoxes, sparkHeights, splitProportion, type PayoffDomain } from "../../../shared/ui-payoff.ts";
@@ -43,7 +43,11 @@ export function PayoffChart({ diagram: d, trigger, unit, peril, highLabel, dim =
   const label = (title: string, amount: string, y: number, color: string) => <><Rect x={251} y={y - 9} width={10} height={10} rx={3} fill={color}/><SvgText fontFeatureSettings={features} x={325} y={y} textAnchor="end" fontFamily="Inter_400Regular" fontSize={13} fill={C.fg2}>{title}</SvgText><SvgText fontFeatureSettings={features} x={325} y={y + 18} textAnchor="end" fontFamily="Inter_650" fontSize={15} fill={C.fg}>{amount}</SvgText></>;
   const draw = ([x, zero, lossY, gainY, loss, gain, strike]: number[], hidden = false) => {
     const labels = payoffLabelBoxes(strike, d.maximum, d.openTriggers.filter(v => v !== strike), unit, highLabel);
-    return <Svg style={svgType} width="100%" height={162} viewBox="0 0 329 162" accessible={!hidden} accessibilityRole="image" accessibilityLabel={hidden ? undefined : `${d.description}. Square-root horizontal scale, 0 to ${d.maximum} ${unit}. Vertical scale fixed across open strikes for this cover size.`}>
+    // A single native Text run avoids Android SVG positioning each JSX text child separately.
+    const selectedLabel = `${Number.isInteger(trigger) ? Math.round(strike) : strike.toFixed(1)} ${unit}`;
+    const labelWidth = Math.max(64, selectedLabel.length * 10);
+    const labelCenter = Math.min(329 - labelWidth / 2, Math.max(labelWidth / 2, x));
+    return <View><Svg style={svgType} width="100%" height={162} viewBox="0 0 329 162" accessible={!hidden} accessibilityRole="image" accessibilityLabel={hidden ? undefined : `${d.description}. Square-root horizontal scale, 0 to ${d.maximum} ${unit}. Vertical scale fixed across open strikes for this cover size.`}>
     <Rect x={0} y={zero} width={x} height={Math.max(0, lossY - zero)} fill={C.avatarFill.heat} opacity={dim ? .5 : 1}/>
     <Rect x={x} y={gainY} width={329 - x} height={Math.max(0, zero - gainY)} fill={C.avatarFill[peril]} opacity={dim ? .5 : 1}/>
     <Rect x={0} y={lossY - 3} width={x} height={3} fill={C.heat} opacity={dim ? .5 : 1}/>
@@ -54,10 +58,9 @@ export function PayoffChart({ diagram: d, trigger, unit, peril, highLabel, dim =
     <Rect x={x - 1.5} y={2} width={3} height={134} rx={1.5} fill={C.slicker}/>
     {label("Max gain", `+${gain.toFixed(2)}`, zero - 26, C[peril])}
     {label("Max loss", `−${loss.toFixed(2)}`, zero + 18, C.heat)}
-    <SvgText fontFeatureSettings={features} x={Math.min(304, Math.max(24, x))} y={labels.selected.y} textAnchor="middle" fontFamily="Inter_650" fontSize={13} fill={C.fg}>{Number.isInteger(trigger) ? Math.round(strike) : strike.toFixed(1)} {unit}</SvgText>
     {labels.ticks.map(t => <SvgText fontFeatureSettings={features} key={t.label} x={(t.left + t.right) / 2} y={t.y} textAnchor="middle" fontFamily="Inter_400Regular" fontSize={13} fill={C.dryText}>{t.label}</SvgText>)}
     <SvgText fontFeatureSettings={features} x={329} y={labels.high.y} textAnchor="end" fontFamily="Inter_400Regular" fontSize={13} fill={C.dryText}>{highLabel}</SvgText>
-  </Svg>;
+  </Svg><Text numberOfLines={1} style={{ position: "absolute", top: labels.selected.y - 14, left: `${(labelCenter - labelWidth / 2) / 329 * 100}%`, width: `${labelWidth / 329 * 100}%`, fontFamily: "Inter_650", fontSize: 13, lineHeight: 18, color: C.fg, textAlign: "center" }}>{selectedLabel}</Text></View>;
   };
   return <View style={{ marginTop: 10 }}><Animated.View style={{ opacity }}>{draw(frame)}</Animated.View>{previous ? <Animated.View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[StyleSheet.absoluteFill, { opacity: opacity.interpolate({ inputRange: [0,1], outputRange: [1,0] }) }]}>{draw(previous, true)}</Animated.View> : null}</View>;
 }

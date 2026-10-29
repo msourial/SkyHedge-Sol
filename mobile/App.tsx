@@ -89,6 +89,13 @@ export default function App() {
     BarlowCondensed_600SemiBold, BarlowCondensed_700Bold, IBMPlexMono_500Medium,
   });
   const [tab, setTab] = useState<Tab>("catalog");
+  useEffect(() => {
+    if (tab === "wallet") scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [tab]);
+  const openWallet = () => {
+    setTab("wallet");
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  };
   const [signReview, setSignReview] = useState<SignReview | null>(null);
   const [confirmedLine, setConfirmedLine] = useState<{ wallet: string; market: string } | null>(null);
   const lineSubmitting = useRef(false);
@@ -630,7 +637,7 @@ export default function App() {
         {showLanding ? (
           <LandingLine quotes={discovery.quotes} loading={discovery.loading} failed={discovery.failed} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect(); }} />
         ) : null}
-        {!showLanding && tab === "catalog" ? <MarketsLine {...discovery} markets={marketModels(discovery.quotes, nowSeconds, 100, storedCovers.map((position) => position.market))} receipts={walletCovers.receipts} totals={walletCovers.totals} onSelect={openMarketSelection} selectedCity={selectedMarketsCity} onCity={setSelectedMarketsCity} onRetry={() => setEvidenceNonce((count) => count + 1)} onPreview={(preview) => { line.clearMarketSelection(); setSelectedCity(preview.cityId); line.setPeril(preview.peril); line.setTenor(preview.tenor); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} onWallet={() => setTab("wallet")} /> : null}
+        {!showLanding && tab === "catalog" ? <MarketsLine {...discovery} markets={marketModels(discovery.quotes, nowSeconds, 100, storedCovers.map((position) => position.market))} receipts={walletCovers.receipts} totals={walletCovers.totals} onSelect={openMarketSelection} selectedCity={selectedMarketsCity} onCity={setSelectedMarketsCity} onRetry={() => setEvidenceNonce((count) => count + 1)} onPreview={(preview) => { line.clearMarketSelection(); setSelectedCity(preview.cityId); line.setPeril(preview.peril); line.setTenor(preview.tenor); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} onWallet={openWallet} /> : null}
         {!showLanding && tab === "protect" && claimReadiness?.state === "claimable" && claimReadiness.action === "claim_payout" ? (
           <LineCollectPayout
             observedMm={claimReadiness.observation ? Number(claimReadiness.observation.rainfallMmX100) / 100 : null}
@@ -653,7 +660,7 @@ export default function App() {
             <ProtectBody
               line={line}
               onCity={changeCity}
-              onWallet={() => { setTab("wallet"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
+              onWallet={openWallet}
               onRetry={() => setEvidenceNonce((count) => count + 1)}
             />
             </>
@@ -675,7 +682,7 @@ export default function App() {
         if (!line.approveTarget || !line.model.ticket) return;
         const target = { ...line.approveTarget };
         setSignReview({ target, wallet, ticket: line.model.ticket, context: { premiumBase: target.premiumBase, balanceBase: walletBalances ? String(walletBalances.skytBaseUnits) : null, cityName: line.model.cityName, peril: line.model.peril, triggerLabel: target.triggerLabel, windowLabel: target.windowLabel } });
-      }} onWallet={() => setTab("wallet")} onRetry={() => setEvidenceNonce((count) => count + 1)} onCity={changeCity} />}</View> : null}
+      }} onWallet={openWallet} onRetry={() => setEvidenceNonce((count) => count + 1)} onCity={changeCity} />}</View> : null}
       {coverConfirm ? <ConfirmCover {...coverConfirm} onClose={() => setCoverConfirm(null)} onCover={(skyt) => {
         const option = coverageOptions(walletBalances ? String(walletBalances.skytBaseUnits) : null).find((item) => item.id === String(skyt));
         if (option) chooseCoverage(option);
@@ -705,11 +712,11 @@ export default function App() {
       {showLanding ? null : <View style={styles.bottomBar} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setTabHeight((prev) => prev === next ? prev : next); }} accessibilityRole="tablist" accessibilityLabel="Main navigation">
         <TabButton label="Markets" glyph="markets" selected={tab === "catalog" || tab === "weather"} onPress={() => { setTab("catalog"); setDetailCode(null); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} />
         <TabButton label="Protect" glyph="protect" selected={tab === "protect"} onPress={() => setTab("protect")} />
-        <TabButton label="Wallet" glyph="wallet" selected={tab === "wallet"} onPress={() => { setTab("wallet"); }} />
+        <TabButton label="Wallet" glyph="wallet" selected={tab === "wallet"} onPress={openWallet} />
       </View>}
       {signReview ? <SignSheet review={signReview} onClose={() => setSignReview(null)}
         onApprove={(review, onStep) => submitApprovedAction("open_position", review.target.market, review.target.amount, { review, onStep })}
-        onWallet={() => { setTab("wallet"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
+        onWallet={openWallet}
         onMarkets={() => { setTab("catalog"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} /> : null}
       </GlassTargetContext.Provider>
     </SafeAreaView>

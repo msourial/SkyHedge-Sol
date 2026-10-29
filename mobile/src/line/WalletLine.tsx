@@ -3,7 +3,7 @@ import { Clipboard, StyleSheet, Text, View } from "react-native";
 import { Copy, CaretRight } from "phosphor-react-native";
 import { perilById } from "../../../shared/peril-registry.ts";
 import * as copy from "../../../shared/ui-copy.ts";
-import { walletPerils, groupReceiptsByWindow, type ReceiptModel } from "../../../shared/ui-discovery.ts";
+import { walletPerils, type ReceiptModel } from "../../../shared/ui-discovery.ts";
 import { payoffDomain } from "../../../shared/ui-payoff.ts";
 import { lineTokens as C } from "../../../shared/ui-tokens.ts";
 import { F } from "../theme.ts";
@@ -23,7 +23,10 @@ export function WalletLine({ wallet, balance, receipts, totals, loading, failed,
   const receipt = receipts.find(r => r.id === selected);
   const active = receipts.filter(r => r.kind === "open"), perils = walletPerils(active), allPerils = walletPerils(receipts);
   const mixed = allPerils.length > 1;
-  const groups = groupReceiptsByWindow(receipts.filter(r => !filter || r.peril === filter));
+  const visibleReceipts = receipts.filter(r => !filter || r.peril === filter);
+  const firstWindow = visibleReceipts[0];
+  const commonWindow = firstWindow?.windowKey && firstWindow.windowLabel && visibleReceipts.every(r => r.windowKey === firstWindow.windowKey && r.windowLabel)
+    ? firstWindow.windowLabel.replace(" to ", " – ") : null;
   const domain = payoffDomain(receipts.map(r => ({ loss: number(r.loss), gain: number(r.gain) })));
   return <View><View style={s.header}><Text style={s.title}>Wallet</Text><Pill devnet/></View>
     {receipt ? <Receipt receipt={receipt} domain={domain} onClose={() => setSelected(null)}/> : <>
@@ -37,14 +40,14 @@ export function WalletLine({ wallet, balance, receipts, totals, loading, failed,
       {failed ? <Group style={{ marginTop: 12 }}><Row><Text accessibilityRole="alert" style={[ui.body, { flex: 1 }]}>{copy.CHAIN_ERROR}</Text><LinePressable onPress={onRetry} style={s.action}><Text style={s.link}>{copy.TRY_AGAIN}</Text></LinePressable></Row></Group> : null}
       {wallet ? <>
         {mixed ? <View style={s.filters}>{[{ id: null, label: "All" }, ...allPerils.map(p => ({ id: p, label: perilById(p)!.label }))].map(p => <LinePressable key={p.id ?? "all"} onPress={() => setFilter(p.id)} accessibilityState={{ selected: filter === p.id }} style={[s.filter, filter === p.id && { backgroundColor: C.bgRaised }]}><Text style={ui.label}>{p.label}</Text></LinePressable>)}</View> : null}
-        {groups.length ? <>
-          <View style={s.section}><Text style={ui.section}>Your covers</Text>{groups.length === 1 ? <Text numberOfLines={1} style={[ui.label, { flexShrink: 1, textAlign: "right" }]}>{[!mixed && allPerils[0] ? perilById(allPerils[0])?.label : null, groups[0].label?.replace(" to ", " – ")].filter(Boolean).join(" · ")}</Text> : null}</View>
-          <Group>{groups.map((group, gi) => <View key={`${group.label}-${gi}`}>{groups.length > 1 ? <Row height={48}><Text style={ui.label}>{group.label?.replace(" to ", " – ") ?? "Window unavailable"}</Text></Row> : null}<View style={s.columnHeader}><View style={{ flex: 1 }}/><View style={s.values}><Text style={s.columnLabel}>Max loss</Text><Text style={s.columnLabel}>Max gain</Text></View></View>{group.receipts.map(r => <Row key={r.id} height={64} onPress={() => setSelected(r.id)} style={s.coverRow}>
+        {visibleReceipts.length ? <>
+          <View style={s.section}><Text style={ui.section}>Your covers</Text>{commonWindow ? <Text numberOfLines={1} style={[ui.label, { flexShrink: 1, textAlign: "right" }]}>{[!mixed && allPerils[0] ? perilById(allPerils[0])?.label : null, commonWindow].filter(Boolean).join(" · ")}</Text> : null}</View>
+          <Group><View style={s.columnHeader}><View style={{ flex: 1 }}/><View style={s.values}><Text style={s.columnLabel}>Max loss</Text><Text style={s.columnLabel}>Max gain</Text></View></View>{visibleReceipts.map(r => <Row key={r.id} height={64} onPress={() => setSelected(r.id)} style={s.coverRow}>
             <View style={s.coverDivider}/>{r.peril ? <PerilAvatar peril={r.peril} size={36}/> : <TabGlyph name="wallet" size={36} color={C.fg2}/>}
-            <View style={{ flex: 1, minWidth: 0 }}><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.85} style={ui.figure}>{triggerLabel(r)}</Text><Text numberOfLines={1} style={[ui.label, { marginTop: 2 }]}>{mixed ? `${r.peril ? perilById(r.peril)?.label : "Weather"} · ${r.city}` : r.city}</Text></View>
+            <View style={{ flex: 1, minWidth: 0 }}><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.85} style={ui.figure}>{triggerLabel(r)}</Text><Text style={[ui.label, { marginTop: 2 }]}>{mixed ? `${r.peril ? perilById(r.peril)?.label : "Weather"} · ${r.city}` : r.city}{!commonWindow && r.windowLabel ? `\n${r.windowLabel.replace(" to ", " – ")}` : ""}</Text></View>
             <CoverSparkline available={r.loss != null && r.gain != null && r.peril != null} loss={number(r.loss)} gain={number(r.gain)} domain={domain} peril={r.peril ?? "rain"} state={r.kind}/>
             {r.kind === "open" || r.kind === "pending" ? <View style={s.values}><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={13 / 15} style={s.amount}>{lossLabel(r.loss)}</Text><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={13 / 15} style={s.amount}>{gainLabel(r.gain)}</Text></View> : <View style={[s.values, { flexDirection: "column", alignItems: "flex-end" }]}>{r.kind !== "refunded" ? <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={13 / 15} style={[s.amount, { width: "100%", color: r.kind === "paid" ? C.slicker : C.fg2 }]}>{r.kind === "paid" ? `${r.payout ?? "—"} SKYT` : r.kind === "dry" ? lossLabel(r.loss) : r.result ?? "—"}</Text> : null}<Text style={[ui.label, { textAlign: "right" }]}>{receiptStatus(r)}</Text></View>}
-          </Row>)}</View>)}</Group>
+          </Row>)}</Group>
         </> : !loading && !failed ? <Text style={s.note}>{copy.EMPTY_COVERS}</Text> : null}
       </> : null}
       <Row onPress={() => setDetails(!details)} style={{ marginTop: 22, paddingHorizontal: 4 }}><Text style={[ui.body, { flex: 1, fontFamily: F.bodySemi }]}>{copy.TECHNICAL_DETAILS}</Text><CaretRight size={16} color={C.dryText} weight="bold"/></Row>
@@ -56,6 +59,6 @@ function Receipt({ receipt: r, domain, onClose }: { receipt: ReceiptModel; domai
 const s = StyleSheet.create({
   header: { height: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }, title: { ...lineType, color: C.fg, fontFamily: "Inter_750", fontSize: 28, letterSpacing: -.6 },
   hero: { backgroundColor: C.surface1, borderRadius: 24, marginTop: 8, paddingTop: 20, paddingHorizontal: 16, paddingBottom: 16 }, stack: { flexDirection: "row", justifyContent: "center", height: 32 }, center: { textAlign: "center" }, count: { ...lineType, color: C.fg, fontFamily: "Inter_750", fontSize: 52, lineHeight: 58, letterSpacing: -1.6, textAlign: "center" },
-  section: { marginTop: 28, marginBottom: 10, marginHorizontal: 4, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 }, columnHeader: { height: 36, paddingHorizontal: 14, flexDirection: "row", alignItems: "center" }, values: { width: 122, flexDirection: "row" }, columnLabel: { ...ui.label, flex: 1, textAlign: "right" }, amount: { ...ui.figure, flex: 1, fontSize: 15, lineHeight: 20, textAlign: "right" }, coverRow: { height: 64 }, coverDivider: { position: "absolute", top: 0, left: 66, right: 0, height: 1, backgroundColor: C.divider },
+  section: { marginTop: 28, marginBottom: 10, marginHorizontal: 4, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 }, columnHeader: { height: 36, paddingHorizontal: 14, flexDirection: "row", alignItems: "center" }, values: { width: 122, flexDirection: "row" }, columnLabel: { ...ui.label, flex: 1, textAlign: "right" }, amount: { ...ui.figure, flex: 1, fontSize: 15, lineHeight: 20, textAlign: "right" }, coverRow: { minHeight: 64, paddingVertical: 8 }, coverDivider: { position: "absolute", top: 0, left: 66, right: 0, height: 1, backgroundColor: C.divider },
   note: { ...ui.body, fontSize: 13, marginVertical: 12 }, link: { ...ui.figure, color: C.glacier, fontSize: 15 }, action: { minHeight: 48, minWidth: 48, justifyContent: "center", alignItems: "center" }, filters: { flexDirection: "row", marginTop: 12, flexWrap: "wrap", gap: 8 }, filter: { minHeight: 48, paddingHorizontal: 14, justifyContent: "center", borderRadius: 999, backgroundColor: C.surface1 },
 });
