@@ -1,12 +1,12 @@
-import { displayUnit, trimMm } from "./ui-money.ts";
-import { marketIdentity } from "./ui-market-identity.ts";
-import { perilById } from "./peril-registry.ts";
-import type { PerilId } from "./ui-types.ts";
+import { displayUnit, trimMm } from "./ui-money.js";
+import { marketIdentity } from "./ui-market-identity.js";
+import { perilById } from "./peril-registry.js";
+import type { PerilId } from "./ui-types.js";
 import { Buffer } from "buffer";
 import { PublicKey } from "@solana/web3.js";
-import { consumerCityName } from "./consumer-cities.ts";
-import { DEVNET_RPC_URLS, devnetConnection, tryDevnetUrls } from "./wallet-reader.ts";
-import { committedWindowLabel } from "./window-chain.ts";
+import { consumerCityName } from "./consumer-cities.js";
+import { DEVNET_RPC_URLS, devnetConnection, tryDevnetUrls } from "./wallet-reader.js";
+import { committedWindowLabel } from "./window-chain.js";
 
 export const SKYHEDGE_PROGRAM_ID = new PublicKey("5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx");
 export const POSITION_DATA_SIZE = 106;

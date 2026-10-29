@@ -4,10 +4,10 @@
  * Wind is Chicago only (peak wind). Heat is Miami (TMAX). Snow is Chicago
  * from the Nov 9 week through December, and New York in December only.
  */
-import { consumerCityBySlug } from "./consumer-cities.ts";
-import { lineTokens } from "./ui-tokens.ts";
-import { LIVE_CITY_SLUGS } from "./window-ladder.ts";
-import type { PerilId } from "./ui-types.ts";
+import { consumerCityBySlug } from "./consumer-cities.js";
+import { lineTokens } from "./ui-tokens.js";
+import { LIVE_CITY_SLUGS } from "./window-ladder.js";
+import type { PerilId } from "./ui-types.js";
 
 export type PerilDefinition = {
   id: PerilId;

@@ -2,8 +2,8 @@
  * Integer SKYT base units only. Display strings are sliced from those integers.
  * Premiums are never derived from a truncated multiple.
  */
-import { COVER_SIZES, MARKET_CAP_SKYT, SKYT_BASE } from "./ui-tokens.ts";
-import type { CoverSize, PremiumByCover, RungQuote } from "./ui-types.ts";
+import { COVER_SIZES, MARKET_CAP_SKYT, SKYT_BASE } from "./ui-tokens.js";
+import type { CoverSize, PremiumByCover, RungQuote } from "./ui-types.js";
 
 export { COVER_SIZES, MARKET_CAP_SKYT, SKYT_BASE };
 
