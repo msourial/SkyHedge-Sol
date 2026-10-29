@@ -1,0 +1,571 @@
+{
+  "timezone": "America/New_York",
+  "daily": {
+    "time": [
+      "2026-10-30",
+      "2026-10-31",
+      "2026-11-01"
+    ],
+    "precipitation_sum": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "snowfall_sum": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member01": [
+      0.1,
+      0.1,
+      0.1
+    ],
+    "snowfall_sum_member01": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member01": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member02": [
+      0.2,
+      0.2,
+      0.2
+    ],
+    "snowfall_sum_member02": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member02": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member03": [
+      0.3,
+      0.3,
+      0.3
+    ],
+    "snowfall_sum_member03": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member03": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member04": [
+      0.4,
+      0.4,
+      0.4
+    ],
+    "snowfall_sum_member04": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member04": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member05": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "snowfall_sum_member05": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member05": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member06": [
+      0.6,
+      0.6,
+      0.6
+    ],
+    "snowfall_sum_member06": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member06": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member07": [
+      0.7,
+      0.7,
+      0.7
+    ],
+    "snowfall_sum_member07": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member07": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member08": [
+      0.8,
+      0.8,
+      0.8
+    ],
+    "snowfall_sum_member08": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member08": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member09": [
+      0.9,
+      0.9,
+      0.9
+    ],
+    "snowfall_sum_member09": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member09": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member10": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "snowfall_sum_member10": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member10": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member11": [
+      1.1,
+      1.1,
+      1.1
+    ],
+    "snowfall_sum_member11": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member11": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member12": [
+      1.2,
+      1.2,
+      1.2
+    ],
+    "snowfall_sum_member12": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member12": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member13": [
+      1.3,
+      1.3,
+      1.3
+    ],
+    "snowfall_sum_member13": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member13": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member14": [
+      1.4,
+      1.4,
+      1.4
+    ],
+    "snowfall_sum_member14": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member14": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member15": [
+      1.5,
+      1.5,
+      1.5
+    ],
+    "snowfall_sum_member15": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member15": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member16": [
+      1.6,
+      1.6,
+      1.6
+    ],
+    "snowfall_sum_member16": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member16": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member17": [
+      1.7,
+      1.7,
+      1.7
+    ],
+    "snowfall_sum_member17": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member17": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member18": [
+      1.8,
+      1.8,
+      1.8
+    ],
+    "snowfall_sum_member18": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member18": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member19": [
+      1.9,
+      1.9,
+      1.9
+    ],
+    "snowfall_sum_member19": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member19": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member20": [
+      2.0,
+      2.0,
+      2.0
+    ],
+    "snowfall_sum_member20": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member20": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member21": [
+      2.1,
+      2.1,
+      2.1
+    ],
+    "snowfall_sum_member21": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member21": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member22": [
+      2.2,
+      2.2,
+      2.2
+    ],
+    "snowfall_sum_member22": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member22": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member23": [
+      2.3,
+      2.3,
+      2.3
+    ],
+    "snowfall_sum_member23": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member23": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member24": [
+      2.4,
+      2.4,
+      2.4
+    ],
+    "snowfall_sum_member24": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member24": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member25": [
+      2.5,
+      2.5,
+      2.5
+    ],
+    "snowfall_sum_member25": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member25": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member26": [
+      2.6,
+      2.6,
+      2.6
+    ],
+    "snowfall_sum_member26": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member26": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member27": [
+      2.7,
+      2.7,
+      2.7
+    ],
+    "snowfall_sum_member27": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member27": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member28": [
+      2.8,
+      2.8,
+      2.8
+    ],
+    "snowfall_sum_member28": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member28": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member29": [
+      2.9,
+      2.9,
+      2.9
+    ],
+    "snowfall_sum_member29": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member29": [
+      25,
+      29,
+      27
+    ],
+    "precipitation_sum_member30": [
+      3.0,
+      3.0,
+      3.0
+    ],
+    "snowfall_sum_member30": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "temperature_2m_max_member30": [
+      25,
+      29,
+      27
+    ]
+  },
+  "daily_units": {
+    "time": "iso8601",
+    "precipitation_sum": "mm",
+    "snowfall_sum": "cm",
+    "temperature_2m_max": "°C",
+    "precipitation_sum_member01": "mm",
+    "snowfall_sum_member01": "cm",
+    "temperature_2m_max_member01": "°C",
+    "precipitation_sum_member02": "mm",
+    "snowfall_sum_member02": "cm",
+    "temperature_2m_max_member02": "°C",
+    "precipitation_sum_member03": "mm",
+    "snowfall_sum_member03": "cm",
+    "temperature_2m_max_member03": "°C",
+    "precipitation_sum_member04": "mm",
+    "snowfall_sum_member04": "cm",
+    "temperature_2m_max_member04": "°C",
+    "precipitation_sum_member05": "mm",
+    "snowfall_sum_member05": "cm",
+    "temperature_2m_max_member05": "°C",
+    "precipitation_sum_member06": "mm",
+    "snowfall_sum_member06": "cm",
+    "temperature_2m_max_member06": "°C",
+    "precipitation_sum_member07": "mm",
+    "snowfall_sum_member07": "cm",
+    "temperature_2m_max_member07": "°C",
+    "precipitation_sum_member08": "mm",
+    "snowfall_sum_member08": "cm",
+    "temperature_2m_max_member08": "°C",
+    "precipitation_sum_member09": "mm",
+    "snowfall_sum_member09": "cm",
+    "temperature_2m_max_member09": "°C",
+    "precipitation_sum_member10": "mm",
+    "snowfall_sum_member10": "cm",
+    "temperature_2m_max_member10": "°C",
+    "precipitation_sum_member11": "mm",
+    "snowfall_sum_member11": "cm",
+    "temperature_2m_max_member11": "°C",
+    "precipitation_sum_member12": "mm",
+    "snowfall_sum_member12": "cm",
+    "temperature_2m_max_member12": "°C",
+    "precipitation_sum_member13": "mm",
+    "snowfall_sum_member13": "cm",
+    "temperature_2m_max_member13": "°C",
+    "precipitation_sum_member14": "mm",
+    "snowfall_sum_member14": "cm",
+    "temperature_2m_max_member14": "°C",
+    "precipitation_sum_member15": "mm",
+    "snowfall_sum_member15": "cm",
+    "temperature_2m_max_member15": "°C",
+    "precipitation_sum_member16": "mm",
+    "snowfall_sum_member16": "cm",
+    "temperature_2m_max_member16": "°C",
+    "precipitation_sum_member17": "mm",
+    "snowfall_sum_member17": "cm",
+    "temperature_2m_max_member17": "°C",
+    "precipitation_sum_member18": "mm",
+    "snowfall_sum_member18": "cm",
+    "temperature_2m_max_member18": "°C",
+    "precipitation_sum_member19": "mm",
+    "snowfall_sum_member19": "cm",
+    "temperature_2m_max_member19": "°C",
+    "precipitation_sum_member20": "mm",
+    "snowfall_sum_member20": "cm",
+    "temperature_2m_max_member20": "°C",
+    "precipitation_sum_member21": "mm",
+    "snowfall_sum_member21": "cm",
+    "temperature_2m_max_member21": "°C",
+    "precipitation_sum_member22": "mm",
+    "snowfall_sum_member22": "cm",
+    "temperature_2m_max_member22": "°C",
+    "precipitation_sum_member23": "mm",
+    "snowfall_sum_member23": "cm",
+    "temperature_2m_max_member23": "°C",
+    "precipitation_sum_member24": "mm",
+    "snowfall_sum_member24": "cm",
+    "temperature_2m_max_member24": "°C",
+    "precipitation_sum_member25": "mm",
+    "snowfall_sum_member25": "cm",
+    "temperature_2m_max_member25": "°C",
+    "precipitation_sum_member26": "mm",
+    "snowfall_sum_member26": "cm",
+    "temperature_2m_max_member26": "°C",
+    "precipitation_sum_member27": "mm",
+    "snowfall_sum_member27": "cm",
+    "temperature_2m_max_member27": "°C",
+    "precipitation_sum_member28": "mm",
+    "snowfall_sum_member28": "cm",
+    "temperature_2m_max_member28": "°C",
+    "precipitation_sum_member29": "mm",
+    "snowfall_sum_member29": "cm",
+    "temperature_2m_max_member29": "°C",
+    "precipitation_sum_member30": "mm",
+    "snowfall_sum_member30": "cm",
+    "temperature_2m_max_member30": "°C"
+  }
+}

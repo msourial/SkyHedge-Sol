@@ -307,3 +307,17 @@ export async function postJson<T>(path: string, value: unknown, opts: { timeoutM
 export function getApiHost() {
   return apiBase.replace(/^https?:\/\//, "");
 }
+
+/** Hourly cached observations for each cover's own committed window. No UI side effects. */
+export function getCoverProgress(markets: readonly string[]): Promise<import("../../shared/weather-signals.ts").CoverProgressResponse> {
+  return getJson(weatherSignalsPath("cover-progress", markets));
+}
+export function getForecastEdge(markets: readonly string[]): Promise<import("../../shared/weather-signals.ts").ForecastEdgeResponse> {
+  return getJson(weatherSignalsPath("forecast-edge", markets));
+}
+export function weatherSignalsPath(resource: "cover-progress" | "forecast-edge", markets: readonly string[]): string {
+  const unique = [...new Set(markets)];
+  if (!unique.length || unique.length > 20) throw new Error("Supply 1–20 markets.");
+  return `/api/mobile?resource=${resource}&markets=${encodeURIComponent(unique.join(","))}`;
+}
+export type { CoverProgress, ForecastExceedance, ForecastEdge, CoverProgressResponse, ForecastEdgeResponse } from "../../shared/weather-signals.ts";

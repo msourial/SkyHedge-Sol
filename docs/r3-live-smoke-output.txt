@@ -1,0 +1,111 @@
+{"now":"2026-10-29T17:03:30.510Z","dateConvention":"Half-open [start,end); past sample includes Oct 1 through Oct 28."}
+{
+  "label": "New York rain 2026-10-01 through 2026-10-28",
+  "result": {
+    "valueNative": 56.4,
+    "unit": "mm",
+    "observedThrough": "2026-10-28",
+    "daysReported": 28,
+    "daysTotal": 28,
+    "complete": true,
+    "state": "complete",
+    "source": "NOAA GHCN-Daily via RCC-ACIS",
+    "fetchedAt": "2026-10-29T17:03:31.323Z"
+  }
+}
+{
+  "label": "New York rain current window",
+  "result": {
+    "valueNative": 0,
+    "unit": "mm",
+    "observedThrough": "2026-10-28",
+    "daysReported": 3,
+    "daysTotal": 7,
+    "complete": false,
+    "state": "tracking",
+    "source": "NOAA GHCN-Daily via RCC-ACIS",
+    "fetchedAt": "2026-10-29T17:03:31.810Z"
+  }
+}
+{
+  "label": "New York rain upcoming window",
+  "result": {
+    "valueNative": null,
+    "unit": "mm",
+    "observedThrough": null,
+    "daysReported": 0,
+    "daysTotal": 7,
+    "complete": false,
+    "state": "not_started",
+    "source": "NOAA GHCN-Daily",
+    "fetchedAt": "2026-10-29T17:03:31.810Z"
+  }
+}
+{
+  "label": "New York rain >= 2 mm next 7 days starting tomorrow",
+  "result": {
+    "probability": 0.6774193548387096,
+    "membersAtOrAbove": 21,
+    "membersTotal": 31,
+    "model": "NOAA GEFS (gfs025) via Open-Meteo Ensemble API",
+    "source": "NOAA GEFS ensemble",
+    "issuedAt": null,
+    "fetchedAt": "2026-10-29T17:03:32.238Z",
+    "windowStart": "2026-10-30",
+    "windowEnd": "2026-11-06",
+    "trigger": 2,
+    "unit": "mm"
+  }
+}
+{
+  "label": "Chicago snow market FHE9Ftt9dsUzUtgEskyUaGZSnFiE6d72ZNJvdgPPFU1w",
+  "result": {
+    "window": {
+      "city": "chicago",
+      "peril": "snow",
+      "start": "2026-12-01",
+      "end": "2027-01-01",
+      "trigger": 135,
+      "operator": "gte",
+      "historyProbability": 0.3
+    },
+    "progress": {
+      "valueNative": null,
+      "unit": "mm",
+      "observedThrough": null,
+      "daysReported": 0,
+      "daysTotal": 31,
+      "complete": false,
+      "state": "not_started",
+      "source": "NOAA GHCN-Daily",
+      "fetchedAt": "2026-10-29T17:03:40.605Z"
+    },
+    "forecast": null
+  }
+}
+{
+  "label": "Chicago wind market C8boKzvVpotQFmRypGkB8JVf6rjDo6H3YMi1HRPhGTD4",
+  "result": {
+    "window": {
+      "city": "chicago",
+      "peril": "wind",
+      "start": "2026-12-01",
+      "end": "2027-01-01",
+      "trigger": 14.8,
+      "operator": "gte",
+      "historyProbability": 0.5
+    },
+    "progress": {
+      "valueNative": null,
+      "unit": "m/s",
+      "observedThrough": null,
+      "daysReported": 0,
+      "daysTotal": 31,
+      "complete": false,
+      "state": "not_started",
+      "source": "NOAA GHCN-Daily",
+      "fetchedAt": "2026-10-29T17:03:41.035Z"
+    },
+    "forecast": null
+  }
+}
