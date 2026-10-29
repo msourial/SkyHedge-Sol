@@ -46,6 +46,7 @@ export function signCapLine(): string { return `Cover limit reached: ${MARKET_CA
 export function signContextLine(city: string, peril: PerilId): string { return `${city} . ${perilById(peril)?.label ?? WEATHER_WORD} . ${DEVNET_TAG}`; }
 export function signSuccessLine(trigger: string, window: string): string { return `${TRIGGER} ${trigger} . ${window}`; }
 export const COVERED_WORD = "Covered";
+export const COVERED_TAG = "Covered";
 export const VIEW_WALLET = "View in Wallet";
 export const YOUR_COVER = "Your cover";
 export const NOT_OPEN_WORD = "Not open";
@@ -64,10 +65,12 @@ export const YOUR_COVERS = "Your covers";
 export const OPEN_NOW = "Open now";
 export const TECHNICAL_DETAILS = "Technical details";
 export const SKYT_BALANCE = "SKYT balance";
+export const BALANCE = "Balance";
 export const MAX_LOSS = "Max loss";
 export const MAX_GAIN = "Max gain";
 export const PAYOUT = "Payout";
 export const CHANCE = "Chance";
+export const CHANCE_MULTIPLE = "Chance · Multiple";
 export const BREAK_EVEN = "Break-even chance";
 export const MULTIPLE = "Multiple";
 export const TRIGGER = "Trigger";
@@ -137,10 +140,14 @@ export function chanceNote(years: number): string | null {
   return `Chance is from ${years} years of NOAA history, not a forecast.`;
 }
 
-export function highestInYears(years: number): string | null {
+export const HIGH_YEAR_TAG = "year high";
+export function highInYears(years: number): string | null {
   if (!Number.isInteger(years) || years <= 0) return null;
-  return `Highest in ${years} years`;
+  return `${years}-${HIGH_YEAR_TAG}`;
 }
+
+/** @deprecated Use highInYears. */
+export const highestInYears = highInYears;
 
 export function feeLine(feeLabel: string): string {
   return `${feeLabel} SKYT fee, included in what you pay.`;
@@ -156,6 +163,15 @@ export function protectCta(premiumLabel: string): string {
 
 export function salesCloseLine(day: string): string {
   return `Sales close ${day}`;
+}
+
+export function marketHeroLine(station: string, close: string): string { return `${station} · ${close}`; }
+export function notOpenYet(peril: PerilId): string { return `${perilById(peril)?.label ?? WEATHER_WORD} isn't open yet.`; }
+export function futurePerilWindow(city: string, peril: PerilId, month: string): string {
+  return `${city} ${(perilById(peril)?.label ?? WEATHER_WORD).toLowerCase()} opens in ${month}`;
+}
+export function totalsCaption(count: number): string {
+  return `Totals in SKYT across ${count} open ${count === 1 ? "cover" : "covers"}.`;
 }
 
 export function salesCloseSentence(day: string): string { return `${salesCloseLine(day)}.`; }
@@ -235,7 +251,7 @@ export function gainCaption(): string {
 }
 
 export function notOpenMarkets(count: number): string {
-  return `Not open yet · ${count} markets`;
+  return `Opening later · ${count}`;
 }
 
 export function ticketSheet(input: { feeLabel: string; years: number }): string | null {
@@ -273,7 +289,9 @@ export function copySamples(): string[] {
     COVER_THIS, OPEN_APP, LANDING_TITLE, LANDING_SUB, ...HOW_IT_WORKS, PROTECT_TITLE, MARKETS_TITLE,
     WALLET_TITLE, YOUR_COVERS, OPEN_NOW, TECHNICAL_DETAILS, SKYT_BALANCE, MAX_LOSS, MAX_GAIN,
     PAYOUT, CHANCE, BREAK_EVEN, MULTIPLE, TRIGGER, COVER, FEE_INCLUDED, SO_FAR, WEEK, MONTH, WINDOW_WORD,
-    pricingSentence("1.00"), refundSentence(), years, highestInYears(10) ?? "", feeLine("1.00"),
+    CHANCE_MULTIPLE, COVERED_TAG, BALANCE, marketHeroLine("Central Park", salesCloseLine("Nov 1")),
+    notOpenYet("snow"), totalsCaption(1), totalsCaption(4),
+    pricingSentence("1.00"), refundSentence(), years, highInYears(10) ?? "", feeLine("1.00"),
     capLine(), protectCta("24.00"), salesCloseLine("Oct 26"), sinceLine("Oct 26"),
     notOpenLine("wind", "New York"), notOpenLine("cold", "Miami"), goThereLine("wind", "Chicago"),
     coverSentence({ payoutLabel: "100", station: "Central Park", peril: "rain", triggerLabel: "69 mm", dateLabel: "Nov 2", premiumLabel: "24.00" }) ?? "",

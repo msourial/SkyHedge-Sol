@@ -34,17 +34,20 @@ test("modelled quotes have no offer and Cold stays selectable with a ghost", asy
   await expect(page.locator(".ln-market-row")).toHaveCount(0);
   await page.getByRole("tab", { name: "Cold", exact: true }).click();
   await expect(page.getByText("Cold isn't open yet.")).toBeVisible();
-  await expect(page.locator(".ln-empty svg")).toHaveAccessibleName(/Cold/);
-  await expect(page.locator(".ln-empty svg [stroke='#F2C230']")).toHaveCount(0);
+  await expect(page.locator(".ln-empty svg")).toHaveCount(0);
 });
 test("Wallet totals use equal figure styles and receipts distinguish paid, dry and claimable", async ({ page }) => {
   for (const [state, status, result] of [["open", "Open", null], ["paid", "Paid out", "Result +76.00 SKYT"], ["dry", "Dry window", "Result -24.00 SKYT"], ["pending", "Payout ready to collect", null]] as const) {
     await page.goto(`/preview?screen=wallet&state=${state}`);
-    await expect(page.locator(".ln-wallet-row")).toContainText(status);
+    if (state === "open") await expect(page.locator(".ln-wallet-row")).not.toContainText(status);
+    else await expect(page.locator(".ln-wallet-row")).toContainText(status);
     if (state === "open") {
       await expect(page.locator(".ln-cells")).toContainText("-24.00");
       await expect(page.locator(".ln-cells")).toContainText("+76.00");
-      await expect(page.locator(".ln-wallet-row")).toContainText("69 mm or more · Nov 1 to Dec 1");
+      await expect(page.locator(".ln-wallet-totals")).not.toContainText("SKYT");
+      await expect(page.locator(".ln-wallet-total-caption")).toHaveText("Totals in SKYT across 1 open cover.");
+      await expect(page.locator(".ln-wallet-trigger")).toHaveText("69 mm or more");
+      await expect(page.locator(".ln-wallet-row")).toContainText("Rain · New York · Oct 26 to Nov 2");
       await expect(page.locator(".ln-wallet-figures")).toContainText("Max loss");
       await expect(page.locator(".ln-wallet-figures")).toContainText("Max gain");
     }
@@ -75,7 +78,7 @@ test("Wallet open rows and total labels stay on clean lines at 393px", async ({ 
     return { overlap, rowHeight: el.getBoundingClientRect().height, cells: [...document.querySelectorAll<HTMLElement>(".ln-wallet-totals .ln-money-cell")].map((cell) => ({ width: cell.getBoundingClientRect().width, height: cell.getBoundingClientRect().height, label: cell.querySelector(".ln-label")?.getBoundingClientRect().height, labelScroll: cell.querySelector(".ln-label")?.scrollHeight })) };
   });
   expect(layout.overlap).toBe(false);
-  expect(layout.rowHeight).toBeGreaterThanOrEqual(104);
+  expect(layout.rowHeight).toBeGreaterThanOrEqual(96);
   expect(layout.cells).toHaveLength(2);
   for (const cell of layout.cells) {
     expect(cell.width).toBe(172);
@@ -138,4 +141,141 @@ test("Protect has no first-run strip", async ({ page }) => {
   await expect(page.locator(".ln-intro")).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Trigger chain" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Ticket", exact: true })).toHaveCount(1);
+});
+
+test("v5 mixed markets skips the held hero and Wallet multi leads with triggers", async ({ page }) => {
+  await page.goto("/preview?screen=markets&state=markets-mixed");
+  const hero = page.locator(".ln-market-hero");
+  await expect(hero).toBeVisible();
+  await expect(hero).not.toContainText("New York · Rain");
+  const heldRow = page.locator(".ln-market-row").filter({ hasText: "Covered" });
+  await expect(heldRow).toHaveCount(1);
+  await expect(heldRow.locator(".ln-covered-tag svg")).toHaveAttribute("width", "16");
+  await expect(page.locator(".ln-market-row").last()).toContainText("Covered");
+  await page.goto("/preview?screen=wallet&state=wallet-multi");
+  await expect(page.locator(".ln-wallet-row")).toHaveCount(4);
+  for (const row of await page.locator(".ln-wallet-row").all()) {
+    await expect(row.locator(".ln-wallet-trigger")).toHaveText(/or more$/);
+  }
+  await expect(page.locator(".ln-peril-tabs")).toBeVisible();
+  await expect(page.locator(".ln-wallet-window")).toHaveCount(1);
+  const tiny = await page.locator(".ln").evaluate((root) => [...root.querySelectorAll<HTMLElement>("*")].filter((el) => el.textContent?.trim() && el.getBoundingClientRect().height && Number.parseFloat(getComputedStyle(el).fontSize) < 13).map((el) => el.className));
+  expect(tiny).toEqual([]);
+  const firstRow = page.locator(".ln-wallet-row").first();
+  const textOverlaps = await firstRow.evaluate((row) => {
+    const nodes = [...row.querySelectorAll<HTMLElement>(".ln-wallet-trigger, .ln-label, .ln-wallet-figures, .ln-wallet-state")];
+    return nodes.some((a, i) => nodes.slice(i + 1).some((b) => { const x = a.getBoundingClientRect(), y = b.getBoundingClientRect(); return x.left < y.right && x.right > y.left && x.top < y.bottom && x.bottom > y.top; }));
+  });
+  expect(textOverlaps).toBe(false);
+});
+
+test("Markets loading keeps the quote list visible and reserves the complete hero", async ({ page }) => {
+  await page.goto("/preview?screen=markets&state=loading");
+  await expect(page.getByRole("heading", { name: "OPEN NOW" })).toBeVisible();
+  await expect(page.locator(".ln-market-row").first()).toBeVisible();
+  const hero = page.locator(".ln-market-hero--loading");
+  await expect(hero).toBeVisible();
+  await expect(hero.locator(".ln-stat-strip .ln-label")).toHaveText(["Chance", "Multiple", "Max loss"]);
+  await expect(hero.locator(".ln-placeholder-value")).toHaveText(["--", "--", "--"]);
+  await expect(hero.locator(".ln-art rect").first()).toBeVisible();
+  await expect(hero.locator(".ln-cta")).toBeDisabled();
+  await expect(page.getByText("Getting your quote")).toHaveCount(0);
+  const dimensions = await hero.evaluate((node) => {
+    const stage = node.querySelector(".ln-market-stage")!.getBoundingClientRect();
+    const stats = node.querySelector(".ln-stat-strip")!.getBoundingClientRect();
+    const cta = node.querySelector(".ln-cta")!.getBoundingClientRect();
+    return [stage.height, stats.height, cta.height];
+  });
+  await page.goto("/preview?screen=markets&state=ready");
+  const loadedDimensions = await page.locator(".ln-market-hero").evaluate((node) => {
+    const stage = node.querySelector(".ln-market-stage")!.getBoundingClientRect();
+    const stats = node.querySelector(".ln-stat-strip")!.getBoundingClientRect();
+    const cta = node.querySelector(".ln-cta")!.getBoundingClientRect();
+    return [stage.height, stats.height, cta.height];
+  });
+  expect(dimensions).toEqual(loadedDimensions);
+});
+
+test("Markets text lines share a left edge and Opening later is a 48px rule row", async ({ page }) => {
+  await page.goto("/preview?screen=markets&state=ready");
+  const lineEdges = await page.locator(".ln-market-row").first().evaluate((row) =>
+    [...row.querySelectorAll<HTMLElement>(".ln-row-copy > strong, .ln-row-trigger, .ln-row-copy > .ln-label")].map((line) => line.getBoundingClientRect().left));
+  expect(lineEdges.length).toBe(3);
+  expect(new Set(lineEdges).size).toBe(1);
+
+  await page.goto("/preview?screen=markets&peril=cold");
+  const later = page.locator(".ln-unavailable-toggle");
+  await expect(later).toHaveText("Opening later · 1");
+  const layout = await later.evaluate((node) => ({ height: node.getBoundingClientRect().height, border: getComputedStyle(node).borderTopWidth, fontSize: getComputedStyle(node).fontSize }));
+  expect(layout.height).toBeGreaterThanOrEqual(48);
+  expect(layout.border).toBe("1px");
+  expect(layout.fontSize).toBe("13px");
+  await expect(later.locator("svg")).toHaveCount(1);
+});
+
+test("Wallet removes redundant open status and keeps dates in groups", async ({ page }) => {
+  await page.goto("/preview?screen=wallet&state=open");
+  const single = page.locator(".ln-wallet-row");
+  await expect(single).toHaveCount(1);
+  await expect(single).not.toContainText("Open");
+  await expect(single.locator(".ln-label")).toContainText("Oct 26 to Nov 2");
+
+  await page.goto("/preview?screen=wallet&state=wallet-two");
+  await expect(page.locator(".ln-wallet-row")).toHaveCount(2);
+  await expect(page.locator(".ln-wallet-window")).toHaveCount(1);
+  await expect(page.locator(".ln-wallet-window")).toHaveCSS("font-size", "13px");
+  await expect(page.locator(".ln-wallet-row .ln-wallet-state")).toHaveCount(0);
+  await expect(page.locator(".ln-wallet-row .ln-label").first()).not.toContainText("Nov 1 to Dec 1");
+  const groupGap = await page.evaluate(() => {
+    const zone = document.querySelector(".ln-browse > .ln-zone")!.getBoundingClientRect();
+    const group = document.querySelector(".ln-wallet-window")!.getBoundingClientRect();
+    return group.top - zone.bottom;
+  });
+  expect(groupGap).toBeLessThanOrEqual(12);
+
+  await page.goto("/preview?screen=wallet&state=paid");
+  await expect(page.locator(".ln-wallet-state")).toHaveText("Paid out");
+  await expect(page.locator(".ln-wallet-state")).toHaveCSS("color", "rgb(242, 194, 48)");
+});
+
+test("Protect dry rows separate Multiple from regular 13px Not open", async ({ page }) => {
+  await page.goto("/preview?state=dry");
+  const row = page.locator(".ln-row[data-open=false]").filter({ hasText: "Not open" }).first();
+  await expect(row).toBeVisible();
+  const dry = await row.evaluate((node) => {
+    const multiple = node.children[2].getBoundingClientRect();
+    const maxLoss = node.children[3].getBoundingClientRect();
+    const style = getComputedStyle(node.children[3]);
+    return { gap: maxLoss.left - multiple.right, fontSize: style.fontSize, family: style.fontFamily };
+  });
+  expect(dry.gap).toBeGreaterThanOrEqual(16);
+  expect(dry.fontSize).toBe("13px");
+  expect(dry.family.toLowerCase()).toContain("inter");
+});
+
+test("covered Protect uses an inline receipt without a bar; other Protect states clear the bar", async ({ page }) => {
+  for (const state of ["covered", "ready", "loading", "error", "connect", "paid", "dry", "closed", "modelled", "cold"]) {
+    await page.goto(`/preview?state=${state}`);
+    const scroll = page.locator("[data-testid=protect-scroll]");
+    await scroll.evaluate((node) => { node.scrollTop = node.scrollHeight; });
+    if (state === "covered") {
+      await expect(page.locator(".ln-pay")).toHaveCount(0);
+      await expect(page.locator(".ln-covered-row")).toContainText("Covered");
+      await expect(page.getByRole("button", { name: "View in Wallet", exact: true })).toBeVisible();
+    } else {
+      const bar = page.locator(".ln-pay, .ln-not-open").first();
+      const clearance = await page.evaluate(() => {
+        const content = document.querySelector("[data-testid=protect-scroll]")!;
+        const bar = document.querySelector(".ln-pay, .ln-not-open")!;
+        const last = content.lastElementChild!;
+        return last.getBoundingClientRect().bottom <= bar.getBoundingClientRect().top + 1;
+      });
+      await expect(bar).toBeVisible();
+      expect(clearance).toBe(true);
+    }
+    await expect(page.getByText("Your cover", { exact: true })).toHaveCount(state === "covered" ? 1 : 0);
+    await expect(page.getByText("Highest in", { exact: false })).toHaveCount(0);
+    const tiny = await page.locator(".ln").evaluate((root) => [...root.querySelectorAll<HTMLElement>("*")].filter((el) => el.textContent?.trim() && el.getBoundingClientRect().height && Number.parseFloat(getComputedStyle(el).fontSize) < 13).map((el) => el.className));
+    expect(tiny).toEqual([]);
+  }
 });

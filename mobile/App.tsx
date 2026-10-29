@@ -46,7 +46,9 @@ import { coverageOptions, type CoverageOption } from "./src/ticket";
 import { TechnicalContext } from "./src/line/TechnicalContext";
 import { MarketsLine, WalletLine, LandingLine } from "./src/line/Discovery";
 import { useDiscovery, useReceipts } from "./src/line/use-discovery";
-import { formatBase } from "../shared/ui-money.ts";
+import { formatBaseGrouped } from "../shared/ui-money.ts";
+import { marketModels } from "../shared/ui-discovery.ts";
+import { scrollBottomPadding } from "../shared/ui-view.ts";
 import { firstOpenPair } from "../shared/peril-registry.ts";
 import { upcomingWindow } from "../shared/ui-ladder.ts";
 import type { MarketSelection } from "../shared/ui-discovery.ts";
@@ -338,7 +340,6 @@ export default function App() {
   const activePackage = matchingWindowPackage(windowEvidence, protectCity, activeWindow?.observationStart, activeWindow?.observationEnd);
   const safeBottom = initialWindowMetrics?.insets.bottom ?? 0;
   const stickyOpen = !showLanding && tab === "protect";
-  const scrollBottom = SCROLL_FADE_HEIGHT + 16; // Both bars occupy layout space outside the scroll viewport.
   useEffect(() => {
     let cancelled = false;
     setEvidenceLoading(true);
@@ -595,6 +596,7 @@ export default function App() {
 
   const storedCovers = chainPositions ?? portfolio?.protections ?? [];
   const walletCovers = useReceipts(storedCovers, wallet, status?.cityWindows ?? [], discovery.quotes, evidenceNonce);
+  const scrollBottom = stickyOpen ? scrollBottomPadding(line.model) : SCROLL_FADE_HEIGHT + 16;
   const openMarketSelection = (market: MarketSelection) => {
     changeCity(market.cityId); line.chooseMarket(market);
     setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -624,7 +626,7 @@ export default function App() {
         {showLanding ? (
           <LandingLine quotes={discovery.quotes} loading={discovery.loading} failed={discovery.failed} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect(); }} />
         ) : null}
-        {!showLanding && tab === "catalog" ? <MarketsLine {...discovery} receipts={walletCovers.receipts} totals={walletCovers.totals} onSelect={openMarketSelection} onWallet={() => setTab("wallet")} /> : null}
+        {!showLanding && tab === "catalog" ? <MarketsLine {...discovery} markets={marketModels(discovery.quotes, nowSeconds, 100, storedCovers.map((position) => position.market))} receipts={walletCovers.receipts} totals={walletCovers.totals} onSelect={openMarketSelection} onWallet={() => setTab("wallet")} /> : null}
         {!showLanding && tab === "protect" && claimReadiness?.state === "claimable" && claimReadiness.action === "claim_payout" ? (
           <CollectPayoutView
             observedMm={claimReadiness.observation ? Number(claimReadiness.observation.rainfallMmX100) / 100 : null}
@@ -653,7 +655,7 @@ export default function App() {
             </>
           )
         ) : null}
-        {!showLanding && tab === "wallet" ? <WalletLine wallet={wallet} balance={walletBalances ? formatBase(BigInt(walletBalances.skytBaseUnits)) : null} {...walletCovers}
+        {!showLanding && tab === "wallet" ? <WalletLine wallet={wallet} balance={walletBalances ? formatBaseGrouped(BigInt(walletBalances.skytBaseUnits)) : null} {...walletCovers}
           loading={balancesLoading || loading} failed={Boolean(balancesError || portfolioError || walletError || portfolio?.indexed === false)}
           onConnect={() => { void connect(); }} onRetry={() => { if (wallet) void loadWalletData(wallet, true); setEvidenceNonce((n) => n + 1); }}
           onDisconnect={() => { void clearWalletSession(); setWallet(null); setWalletSession(null); setPortfolio(null); setChainPositions(null); setWalletBalances(null); setBalancesError(null); setPortfolioError(null); setWalletError(null); }}
@@ -664,7 +666,7 @@ export default function App() {
       </View>
 
 
-      {!showLanding && tab === "protect" ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><ScrollEdgeFade style={styles.scrollEdgeFade} />{claimReadiness?.state === "claimable" && claimReadiness.action ? <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness.action) void submitApprovedAction(claimReadiness.action); }} /> : <LinePay line={line} sheetOpen={signReview != null} onConnect={() => { void connect(); }} onReview={() => {
+      {!showLanding && tab === "protect" && line.model.panel.kind !== "covered" && (claimReadiness?.state === "claimable" && claimReadiness.action || line.model.showBar) ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><ScrollEdgeFade style={styles.scrollEdgeFade} />{claimReadiness?.state === "claimable" && claimReadiness.action ? <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness.action) void submitApprovedAction(claimReadiness.action); }} /> : <LinePay line={line} sheetOpen={signReview != null} onConnect={() => { void connect(); }} onReview={() => {
         if (!line.approveTarget || !line.model.ticket) return;
         const target = { ...line.approveTarget };
         setSignReview({ target, wallet, ticket: line.model.ticket, context: { premiumBase: target.premiumBase, balanceBase: walletBalances ? String(walletBalances.skytBaseUnits) : null, cityName: line.model.cityName, peril: line.model.peril, triggerLabel: target.triggerLabel, windowLabel: target.windowLabel } });

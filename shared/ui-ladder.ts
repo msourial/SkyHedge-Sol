@@ -5,6 +5,7 @@
 import { cityById } from "./peril-registry.ts";
 import {
   chanceLabel,
+  formatBaseGrouped,
   measureLabel,
   multipleLabel,
   rungEconomics,
@@ -94,9 +95,7 @@ function figuresFor(rung: RungQuote, cover: CoverSize, unit: string): ChainFigur
 }
 
 function formatLoss(base: bigint): string {
-  const whole = base / 1_000_000n;
-  const fraction = (base % 1_000_000n).toString().padStart(6, "0").slice(0, 2);
-  return `-${whole}.${fraction}`;
+  return `-${formatBaseGrouped(base)}`;
 }
 
 export function stationFor(cityId: string): string {

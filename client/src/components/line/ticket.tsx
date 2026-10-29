@@ -1,4 +1,4 @@
-import { COVER, gainCaption, infoSheetTitle, lossCaption, MAX_GAIN, MAX_LOSS } from "../../../../shared/ui-copy.ts";
+import { COVER, COVERED_TAG, VIEW_WALLET, gainCaption, infoSheetTitle, lossCaption, MAX_GAIN, MAX_LOSS } from "../../../../shared/ui-copy.ts";
 import { lineTokens } from "../../../../shared/ui-tokens.ts";
 import type { MoneyFigure, TicketModel } from "../../../../shared/ui-view.ts";
 import type { CoverSize } from "../../../../shared/ui-types.ts";
@@ -14,12 +14,13 @@ export function MoneyCell({ figure, caption, label }: { figure: MoneyFigure; cap
   );
 }
 
-export function Ticket({ ticket, chips, cap, onCover, onInfo }: {
+export function Ticket({ ticket, chips, cap, onCover, onInfo, onWallet }: {
   ticket: TicketModel;
   chips: Array<{ cover: CoverSize; selected: boolean; disabled: boolean }>;
   cap: string | null;
   onCover: (cover: CoverSize) => void;
   onInfo: () => void;
+  onWallet?: () => void;
 }) {
   const diagram = ticket.diagram;
   const stepX = 28 + diagram.step * 300;
@@ -32,8 +33,8 @@ export function Ticket({ ticket, chips, cap, onCover, onInfo }: {
           {chips.map((chip) => (
             <button key={chip.cover} type="button" className="ln-chip ln-press" aria-pressed={chip.selected} disabled={chip.disabled} onClick={() => onCover(chip.cover)}>{chip.cover}</button>
           ))}
-        </div> : <span className="ln-label">Your cover</span>}
-        <button type="button" className="ln-info ln-press" aria-label={infoSheetTitle()} onClick={onInfo}>i</button>
+        </div> : <div className="ln-covered-row"><span className="ln-covered-title"><CoveredTick/> {COVERED_TAG}</span><button type="button" className="ln-text-btn" onClick={onWallet}>{VIEW_WALLET}</button></div>}
+        {!ticket.readOnly ? <button type="button" className="ln-info ln-press" aria-label={infoSheetTitle()} onClick={onInfo}>i</button> : null}
       </div>
       {cap ? <p className="ln-note">{cap}</p> : null}
       <div className="ln-cells">
@@ -59,8 +60,8 @@ export function Ticket({ ticket, chips, cap, onCover, onInfo }: {
       </dl>
       <p className="ln-sentence">{ticket.sentence}</p>
       <p className="ln-note">{ticket.salesClose}</p>
-      {ticket.note ? <p className="ln-note">{ticket.note}</p> : null}
       {ticket.honesty ? <p className="ln-note">{ticket.honesty}</p> : null}
     </section>
   );
 }
+function CoveredTick() { return <svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true"><path d="m3.5 9.2 3.6 3.6 7.4-7.6" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/></svg>; }

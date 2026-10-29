@@ -27,14 +27,12 @@ export function Chain({ unit, rows, footnote, onSelect }: { unit: string; rows: 
           >
             {row.selected ? <i className="ln-row-tick" /> : null}
             <span className="ln-chain-trigger">
-              {row.selected ? <i className="ln-row-mark" /> : null}
-              {row.triggerLabel.replace(` ${unit}`, "")}
-              {row.topTag ? <small>{row.topTag}</small> : null}
-              {row.yourCover ? <small>{YOUR_COVER}</small> : null}
+              <span className="ln-trigger-line">{row.selected ? <i className="ln-row-mark" /> : null}<span>{row.triggerLabel.replace(` ${unit}`, "")}</span>{row.yourCover ? <small className="ln-your-cover">{YOUR_COVER}</small> : null}</span>
+              {row.topTag ? <small className="ln-top-tag">10-year high</small> : null}
             </span>
             <span className="ln-fig-s">{row.chance}</span>
             <span className="ln-fig-s">{row.multiple}</span>
-            <span className="ln-fig-s">{row.maxLoss ?? NOT_OPEN_WORD}</span>
+            <span className={row.maxLoss === NOT_OPEN_WORD ? "ln-not-open-dry" : "ln-fig-s"}>{row.maxLoss ?? NOT_OPEN_WORD}</span>
           </button>
         ))}
       </div>

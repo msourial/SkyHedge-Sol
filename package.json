@@ -13,7 +13,7 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "typecheck": "tsc",
-    "test:line": "node --import tsx --test shared/ui-line.test.ts shared/ui-discovery.test.ts shared/ui-sign.test.ts",
+    "test:line": "node --import tsx --test shared/ui-line.test.ts shared/ui-discovery.test.ts shared/ui-sign.test.ts shared/ui-polish.test.ts",
     "db:push": "drizzle-kit push",
     "solana:test": "cargo-build-sbf --manifest-path anchor/Cargo.toml && cargo +nightly test --manifest-path anchor/Cargo.toml",
     "solana:check": "cargo +nightly check --manifest-path anchor/Cargo.toml",

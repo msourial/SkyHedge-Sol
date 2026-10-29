@@ -76,6 +76,21 @@ export function formatBase(base: bigint, decimals = 2): string {
   return negative ? `-${body}` : body;
 }
 
+/** Display only: retain the sign, fraction and integer-unit truncation. */
+export function groupDigits(figure: string): string {
+  return figure.replace(/^([+-]?)(\d+)(?=\.|$)/, (_match, sign: string, whole: string) =>
+    sign + whole.replace(/\B(?=(\d{3})+(?!\d))/g, ","));
+}
+
+export function formatBaseGrouped(base: bigint, decimals = 2): string {
+  return groupDigits(formatBase(base, decimals));
+}
+
+export type BalanceModel = { figure: string | null; unit: "SKYT" };
+export function walletBalanceModel(base: bigint | null): BalanceModel {
+  return { figure: base == null ? null : formatBaseGrouped(base), unit: "SKYT" };
+}
+
 export function formatTenths(tenths: number, suffix: string): string | null {
   if (!Number.isSafeInteger(tenths) || tenths < 0) return null;
   return `${Math.floor(tenths / 10)}.${tenths % 10}${suffix}`;
@@ -120,7 +135,7 @@ export function rungEconomics(rung: RungQuote, cover: CoverSize): { premium: big
 export function moneyParts(base: bigint): { sign: "-" | "+"; whole: string; fraction: string } {
   const sign = base < 0n ? "-" : "+";
   const value = base < 0n ? -base : base;
-  const whole = (value / SKYT_BASE).toString();
+  const whole = groupDigits((value / SKYT_BASE).toString());
   const fraction = (value % SKYT_BASE).toString().padStart(6, "0").slice(0, 2);
   return { sign, whole, fraction };
 }

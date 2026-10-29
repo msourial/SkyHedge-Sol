@@ -45,7 +45,7 @@ export function ProtectScreen(props: {
   return (
     <div ref={root} className="ln ln-protect" data-motion={props.motion} data-peril={model.peril}>
       <div className="ln-page" ref={(node) => { if (node) node.inert = props.sheet != null; }}>
-        <div className="ln-scroll">
+        <div className="ln-scroll" data-testid="protect-scroll">
           <header className="ln-head">
             <div className="ln-city-heading">
               <button type="button" className="ln-city ln-press" onClick={() => props.onSheet("city")}>
@@ -95,11 +95,11 @@ export function ProtectScreen(props: {
             </div>
           </div> : null}
           {model.showChain ? <Chain unit={model.unit} rows={model.rows} footnote={null} onSelect={(trigger) => { if (trigger !== model.selected) navigator.vibrate?.(10); props.onSelect(trigger); }} /> : null}
-          {model.footnotes.map((note) => <p className="ln-note ln-chain-note" key={note}>{note}</p>)}
-          {model.ticket ? <Ticket ticket={model.ticket} chips={model.chips} cap={model.capMessage} onCover={props.onCover} onInfo={() => props.onSheet("info")} /> : null}
+          {model.footnotes.filter((note) => model.panel.kind !== "covered" || !note.startsWith("Only the highlighted trigger")).map((note) => <p className="ln-note ln-chain-note" key={note}>{note}</p>)}
+          {model.ticket ? <Ticket ticket={model.ticket} chips={model.chips} cap={model.capMessage} onCover={props.onCover} onInfo={() => props.onSheet("info")} onWallet={props.onWallet} /> : null}
         </div>
-        <PayBar disabled={model.chips.some((chip) => chip.selected && chip.disabled)} panel={model.panel} ticket={model.ticket} onConnect={props.onConnect} onProtect={() => props.onSheet("sign")}
-          onWallet={props.onWallet} onRetry={props.onRetry} onGo={props.onGo} />
+        {model.panel.kind === "covered" ? null : <PayBar disabled={model.chips.some((chip) => chip.selected && chip.disabled)} panel={model.panel} ticket={model.ticket} onConnect={props.onConnect} onProtect={() => props.onSheet("sign")}
+          onWallet={props.onWallet} onRetry={props.onRetry} onGo={props.onGo} />}
       </div>
       {props.sheet === "sign" && props.sign ? <SignSheet {...props.sign} onAction={props.onSignAction} /> : null}
       {props.sheet === "info" && model.ticket?.sheet ? <InfoSheet body={model.ticket.sheet} onClose={() => props.onSheet(null)} /> : null}
