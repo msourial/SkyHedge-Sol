@@ -6,7 +6,7 @@ import { NYC_RAIN_MODELLED } from "../../shared/ui-fixtures.ts";
 import { instrumentArt } from "../../shared/ui-instrument.ts";
 import { buildProtectModel, scrollBottomPadding, type ProtectBuildInput } from "../../shared/ui-view.ts";
 import { marketModels } from "../../shared/ui-discovery.ts";
-import { leadMarket, featuredCity, marketsLayout } from "../../shared/ui-markets.ts";
+import { leadMarket, featuredCity, marketsV4Layout } from "../../shared/ui-markets.ts";
 import { lineCoverage, withCoveredReceipt } from "./line-covered.ts";
 import { protectChainRowBottom, protectLayout } from "./line/layout.ts";
 import type { ChainProtection } from "./positions.ts";
@@ -107,21 +107,21 @@ test("Markets keeps the featured city and uses a receipt hero only when its open
   const unheld = { ...markets[0], id: "second-window", held: false };
   assert.equal(leadMarket("new-york", [...markets, unheld])?.id, unheld.id);
   const screen = readFileSync(new URL("./line/MarketsLine.tsx", import.meta.url), "utf8");
-  assert.match(screen, /featuredCity\(markets, quoteWindows/);
-  assert.match(screen, /marketsPanel\(/);
+  assert.match(screen, /const city = selectedCity \?\? "new-york"/);
+  assert.match(screen, /marketsView\(/);
   assert.doesNotMatch(screen, /orderMarkets|pickHero|<Filter/);
 });
 
-test("Markets loading and loaded use the same shared hero/card geometry; Protect dry copy stays regular 13px", () => {
+test("Markets uses approved v4 loading and row geometry; Protect dry copy stays regular 13px", () => {
   const markets = readFileSync(new URL("./line/MarketsLine.tsx", import.meta.url), "utf8");
   const protect = readFileSync(new URL("./line/ProtectLine.tsx", import.meta.url), "utf8");
-  assert.equal(marketsLayout.hero.height, 336);
-  assert.equal(marketsLayout.hero.cta, 56);
-  assert.match(markets, /hero: \{ height: L.hero.height/);
-  assert.match(markets, /cardShell: \{ height: L.card.height/);
-  assert.match(markets, /card: \{ height: L.card.height/);
-  assert.match(markets, /disabled=\{!m\}/);
-  assert.doesNotMatch(markets, /unavailableToggle|perilDot|ctaReserved/);
+  assert.equal(marketsV4Layout.heroSkeleton, 340);
+  assert.equal(marketsV4Layout.cta, 52);
+  assert.equal(marketsV4Layout.row, 72);
+  assert.match(markets, /heroSkeleton:.*height: L.heroSkeleton/);
+  assert.match(markets, /rowSkeleton: \{ height: L.row/);
+  assert.match(markets, /tile: \{ flex: 1, height: L.tile/);
+  assert.doesNotMatch(markets, /ActivityIndicator|unavailableToggle|perilDot|ctaReserved/);
   assert.match(protect, /value === "Not open" \? styles\.notOpenDry/);
   assert.match(protect, /notOpenDry: \{ color: C\.fg2, fontFamily: F\.body, fontSize: 13/);
   assert.match(protect, /index === 2 \? \{ marginRight: 16 \}/);

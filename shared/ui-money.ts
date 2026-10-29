@@ -152,3 +152,6 @@ export function payoffPixels(loss: bigint, gain: bigint): { loss: number; gain: 
   const px = (value: bigint) => Number((value * 400n) / larger) / 10;
   return { loss: px(loss), gain: px(gain) };
 }
+
+/** Normalize the program's temperature unit for customer-facing figures. */
+export function displayUnit(unit: string): string { return unit === "C" ? "°C" : unit; }

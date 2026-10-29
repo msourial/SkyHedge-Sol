@@ -11,7 +11,7 @@ export const SALES_CLOSED = "Sales are closed for this window.";
 export const CHAIN_ERROR = "Can't read Devnet right now. Nothing is shown until it's back. Try again in a minute.";
 export const ALREADY_COVERED = "You already have cover for this window.";
 export const HOW_IT_SETTLES = "NOAA's final daily records alone decide payouts. Other weather data is context only.";
-export const SETTLED_UNITS = "Settled in NOAA units: mm, m/s, C.";
+export const SETTLED_UNITS = "Settled in NOAA units: mm, m/s, °C.";
 export const WIND_ELEMENT = "Peak wind at the station (NOAA WSF2 or WSF5).";
 export const HEAT_ELEMENT = "NOAA daily maximum temperature.";
 export const CONNECT_WALLET = "Connect wallet";
@@ -335,9 +335,9 @@ export function forbiddenHits(text: string): string[] {
 export const CHOOSE_CITY = "Choose a city";
 export const NOTHING_OPEN = "Nothing open yet";
 export const NO_MARKETS_SCHEDULED = "No markets are scheduled.";
-export const MARKETS_ERROR = "Couldn't load markets.";
+export const MARKETS_ERROR = "Couldn't load markets";
 export const MARKETS_PARTIAL = "Some markets didn't load.";
-export const OPEN_ELSEWHERE = "Open now elsewhere";
+export const OPEN_ELSEWHERE = "Open elsewhere";
 export const COMING_UP = "Coming up";
 export const SEE_TRIGGER_CHAIN = "See the trigger chain";
 export const NOT_AVAILABLE_YET = "Not available yet";
@@ -355,3 +355,15 @@ export function seasonStarts(month: string): string { return `Season starts ${mo
 export function nothingElseOpen(city: string): string { return `Nothing else is open in ${city} right now.`; }
 export function windowsCount(count: number): string { return count > 1 ? ` · ${count} windows` : ""; }
 export function openCoversCount(count: number): string { return `${count} open ${count === 1 ? "cover" : "covers"}`; }
+
+export const PAYS_OUT_AT = "Pays out at";
+export const CLOSES_WORD = "Closes";
+export const RETRY = "Retry";
+export function marketsCount(n: number): string { return `${n} ${n === 1 ? "market" : "markets"}`; }
+export function citiesCount(n: number): string { return `${n} ${n === 1 ? "city" : "cities"}`; }
+export function noCityPeril(peril: PerilId, city: string): string { return `No ${perilById(peril)!.label.toLowerCase()} markets in ${city} right now`; }
+export function marketsTitle(peril: PerilId, place: string): string { return `${perilById(peril)!.label} in ${place}`; }
+export function marketsWindow(start: string, end: string): string { return `${WINDOW_WORD} ${start} – ${end}`; }
+export function coverTrigger(value: string, unit: string): string { return `${COVER} ${value} ${unit}`; }
+export function daysLeft(n: number): string { return `${n} ${n === 1 ? "day" : "days"} left`; }
+export function fromMonth(month: string): string { return `${FROM} ${month}`; }

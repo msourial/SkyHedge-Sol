@@ -142,7 +142,6 @@ function Payoff({ diagram: d, width }: { diagram: PayoffModel; width: number }) 
     <SvgText x={Math.max(48, Math.min(width - 48, x))} y={110} textAnchor="middle" fill={C.fg2} fontFamily={F.mono} fontSize={13}>{d.triggerLabel}</SvgText>
   </Svg>;
 }
-export function TabGlyph({ name, color }: { name: "markets" | "protect" | "wallet"; color: string }) { return <Glyph name={name} color={color} />; }
 function Glyph({ name, color }: { name: keyof typeof lineGlyphs; color: string }) { return <Svg width={24} height={24} viewBox="0 0 24 24">{lineGlyphs[name].map((d) => <Path key={d} d={d} stroke={color} fill="none" strokeWidth={1.75} strokeLinecap="round" />)}</Svg>; }
 function figure(fig: MoneyFigure) { return `${fig.sign}${fig.whole}.${fig.fraction}`; }
 function PayFigs({ loss, gain }: { loss: MoneyFigure | null; gain: MoneyFigure | null }) { return <View style={styles.payFigs}>{([[MAX_LOSS, loss], [MAX_GAIN, gain]] as const).map(([label, fig], index) => <View key={label} style={styles.paySide}><Text style={styles.label}>{label} </Text><Text style={[styles.figM, !fig && styles.dry]}>{fig ? figure(fig) : "…"}</Text>{index === 1 ? <Text style={styles.label}> SKYT</Text> : null}</View>)}</View>; }

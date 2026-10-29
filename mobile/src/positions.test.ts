@@ -84,7 +84,7 @@ describe("position accounts", () => {
   });
 
   it("decodes the native unit and city for snow, wind and heat without calling them rain", () => {
-    for (const [city, peril, unit] of [["chicago", "snow", "mm"], ["chicago", "wind", "m/s"], ["miami", "heat", "C"]] as const) {
+    for (const [city, peril, unit] of [["chicago", "snow", "mm"], ["chicago", "wind", "m/s"], ["miami", "heat", "°C"]] as const) {
       const data = marketBytes();
       Buffer.from(perilCityHashHex(city, peril), "hex").copy(data, 80);
       const view = protectionView(POSITION, positionBytes(), data, DURING_NEW_YORK);

@@ -1,3 +1,4 @@
+import { displayUnit } from "../../shared/ui-money.ts";
 import { marketIdentity } from "../../shared/ui-market-identity.ts";
 import { perilById } from "../../shared/peril-registry.ts";
 import type { PerilId } from "../../shared/ui-types.ts";
@@ -171,7 +172,7 @@ function windowLabel(start: number, end: number): string {
 function triggerLabel(operator: (typeof OPERATORS)[number], threshold: string, unit?: string): string {
   if (!/^-?\d+$/.test(threshold)) return "—";
   const symbol = operator === "gt" ? ">" : operator === "lt" ? "<" : operator === "lte" ? "≤" : "≥";
-  return unit ? `${symbol} ${trimMm(Number(threshold) / 100)} ${unit}` : "—";
+  return unit ? `${symbol} ${trimMm(Number(threshold) / 100)} ${displayUnit(unit)}` : "—";
 }
 
 function statusLabel(position: { payoutClaimed: boolean; refundClaimed: boolean }, market: ReturnType<typeof decodeMarket>, nowSeconds: number): string {

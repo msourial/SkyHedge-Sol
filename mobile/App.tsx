@@ -61,7 +61,9 @@ import { formatSkytFixed, shortAddress } from "./src/ticket";
 import { consumerCityByCode } from "../shared/consumer-cities.ts";
 import { marketByCode, type CatalogMarket } from "./src/markets-catalog";
 import { lineTokens } from "../shared/ui-tokens.ts";
-import { LinePay, ProtectBody, TabGlyph } from "./src/line/ProtectLine";
+import { LinePressable } from "./src/line/pressable";
+import { TabGlyph } from "./src/line/TabGlyph";
+import { LinePay, ProtectBody } from "./src/line/ProtectLine";
 import { useLineProtect } from "./src/line/use-line";
 import { SignSheet, type SignReview } from "./src/line/SignSheet";
 import { signFailure, signStepForPhase, submitLineOpenPosition } from "./src/line-submit";
@@ -84,6 +86,8 @@ export default function App() {
   const scrollRef = useRef<ScrollView>(null);
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
+    Inter_650: require("./assets/fonts/Inter-650.ttf"),
+    Inter_750: require("./assets/fonts/Inter-750.ttf"),
     BarlowCondensed_600SemiBold, BarlowCondensed_700Bold, IBMPlexMono_500Medium,
   });
   const [tab, setTab] = useState<Tab>("catalog");
@@ -92,7 +96,7 @@ export default function App() {
   const lineSubmitting = useRef(false);
   const [coverConfirm, setCoverConfirm] = useState<{ sentence: string; station: string; expiry: string; windowLabel: string; pay: string; getLabel: string; market: string; amount: string; multiple: string | null; feeLine: string | null; getLine: string | null; preSign: string | null; conditionLine: string | null; placeLine: string | null; triggerLine: string | null; shortLabel: string | null; coverSkyt: CoverChip } | null>(null);
   const [stickyHeight, setStickyHeight] = useState(188);
-  const [tabHeight, setTabHeight] = useState(76);
+  const [tabHeight, setTabHeight] = useState(80);
   const [scrollViewportHeight, setScrollViewportHeight] = useState(0);
   const [cities, setCities] = useState<CityIndex[]>([]);
   const [catalog, setCatalog] = useState<AgriculturalMarket[]>([]);
@@ -624,7 +628,7 @@ export default function App() {
       >
         <ScreenTransition transitionKey={tab}>
         {error ? <ErrorBanner message={error} onRetry={() => { void retryData(); }} /> : null}
-        {!showLanding && homeLoading && cities.length === 0 && catalog.length === 0 ? <View style={styles.loadingPanel} accessibilityLabel="Loading"><ActivityIndicator color={C.rain} /><Text style={styles.emptyText}>Loading finalized weather, market catalog, and Devnet readiness…</Text></View> : null}
+        {!showLanding && tab !== "catalog" && homeLoading && cities.length === 0 && catalog.length === 0 ? <View style={styles.loadingPanel} accessibilityLabel="Loading"><ActivityIndicator color={C.rain} /><Text style={styles.emptyText}>Loading finalized weather, market catalog, and Devnet readiness…</Text></View> : null}
         {showLanding ? (
           <LandingLine quotes={discovery.quotes} loading={discovery.loading} failed={discovery.failed} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect(); }} />
         ) : null}
@@ -717,11 +721,10 @@ export default function App() {
 
 function TabButton({ label, glyph, selected, onPress }: { label: string; glyph: "markets" | "protect" | "wallet"; selected: boolean; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="tab" accessibilityLabel={`${label} tab`} accessibilityState={{ selected }} onPress={onPress} style={styles.tabButton}>
-      <View style={selected ? styles.tabTick : styles.tabTickSpace} />
-      <TabGlyph name={glyph} color={selected ? lineTokens.fg : lineTokens.fg2} />
+    <LinePressable accessibilityRole="tab" accessibilityLabel={`${label} tab`} accessibilityState={{ selected }} onPress={onPress} style={styles.tabButton}>
+      <TabGlyph name={glyph} color={selected ? lineTokens.fg : lineTokens.dryText} />
       <Text style={[styles.tabLabel, selected && styles.tabLabelSelected]}>{label}</Text>
-    </Pressable>
+    </LinePressable>
   );
 }
 
@@ -771,11 +774,9 @@ const styles = StyleSheet.create({
   retryButtonText: { ...T.label, color: C.ink },
   emptyState: { backgroundColor: glass.fill, borderColor: glass.border, borderWidth: 1, borderRadius: glass.radius, padding: S.lg, marginTop: S.sm, boxShadow: glass.shadow },
   emptyTitle: { ...T.heading, color: C.ink, marginBottom: S.xs },
-  bottomBar: { zIndex: 6, minHeight: 64, backgroundColor: lineTokens.bg, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 6, paddingHorizontal: S.sm },
+  bottomBar: { zIndex: 6, height: 80, borderTopWidth: 1, borderTopColor: lineTokens.divider, backgroundColor: lineTokens.bg, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 6, paddingHorizontal: S.sm },
   tabButtonWrap: { flex: 1, minWidth: 0 },
   tabButton: { flex: 1, minWidth: 0, minHeight: 64, alignItems: "center", justifyContent: "center", paddingHorizontal: 2 },
-  tabTick: { width: 24, height: 3, backgroundColor: lineTokens.glacier, marginBottom: 4 },
-  tabTickSpace: { width: 24, height: 3, marginBottom: 4 },
-  tabLabel: { color: lineTokens.fg2, fontFamily: F.bodyMedium, fontSize: 13, marginTop: 2 },
+  tabLabel: { color: lineTokens.dryText, fontFamily: F.bodySemi, fontSize: 13, marginTop: 2 },
   tabLabelSelected: { color: lineTokens.fg },
 });

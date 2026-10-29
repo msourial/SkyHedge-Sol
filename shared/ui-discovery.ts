@@ -2,7 +2,7 @@
 import { CITIES, PERILS, cityById, perilById } from "./peril-registry.ts";
 import * as copy from "./ui-copy.ts";
 import { dayFromIso, fractionOnScale, scaleFor } from "./ui-ladder.ts";
-import { chanceLabel, formatBaseGrouped, measureLabel, multipleLabel, payoffPixels, rungEconomics, ticketFromBases } from "./ui-money.ts";
+import { displayUnit, chanceLabel, formatBaseGrouped, measureLabel, multipleLabel, payoffPixels, rungEconomics, ticketFromBases } from "./ui-money.ts";
 import { isoFromSeconds } from "./ui-ladder.ts";
 import { perilOpen } from "./peril-registry.ts";
 import { matchingQuote, quoteNotOpen, windowQuoteRequest, type QuoteWindow } from "./ui-window-quote.ts";
@@ -28,10 +28,10 @@ export function marketModels(quotes: readonly WindowQuote[], nowSeconds: number,
       const span = Date.parse(quote.windowEnd) - Date.parse(quote.windowStart);
       return [{ id: rung.marketAddress!, cityId: city.id, city: city.name, station: city.station, peril: peril.id,
         tenor: span > 7 * 86400000 ? "monthly" as const : "weekly" as const, trigger: rung.triggerValue,
-        windowStart: quote.windowStart, windowEnd: quote.windowEnd, quote, rungs: quote.rungs.map((r) => r.triggerValue), unit: quote.unit, chance,
+        windowStart: quote.windowStart, windowEnd: quote.windowEnd, quote, rungs: quote.rungs.map((r) => r.triggerValue), unit: displayUnit(quote.unit), chance,
         multiple: multipleLabel(ticket.multipleTenths)!, loss: formatBaseGrouped(ticket.maxLoss), gain: formatBaseGrouped(ticket.maxGain), note,
         close, heroLine: copy.marketHeroLine(city.station, close), held: held.has(rung.marketAddress!),
-        triggerLabel: `${peril.direction === "down" ? "≤" : "≥"} ${measureLabel(rung.triggerValue)} ${quote.unit} ${copy.BY} ${dayFromIso(quote.windowEnd) ?? quote.windowEnd}` }];
+        triggerLabel: `${peril.direction === "down" ? "≤" : "≥"} ${measureLabel(rung.triggerValue)} ${displayUnit(quote.unit)} ${copy.BY} ${dayFromIso(quote.windowEnd) ?? quote.windowEnd}` }];
     });
   }).sort((a, b) => Date.parse(a.quote.salesCloseAt) - Date.parse(b.quote.salesCloseAt));
 }
@@ -140,7 +140,7 @@ export function receiptModel(position: StoredCover, windows: readonly QuoteWindo
   const reading = peril === "rain" && readingRaw && /^\d+$/.test(readingRaw) ? Number(readingRaw) / 100 : null;
   const trigger = rung?.triggerValue ?? position.triggerValue ?? (window && "thresholdMmX100" in window && typeof window.thresholdMmX100 === "string" ? Number(window.thresholdMmX100) / 100 : null);
   const rungs = quote?.rungs.map((r) => r.triggerValue) ?? (trigger != null ? [trigger] : []);
-  const unit = quote?.unit ?? (peril ? perilById(peril)?.unit ?? "" : "");
+  const unit = displayUnit(quote?.unit ?? (peril ? perilById(peril)?.unit ?? "" : ""));
   const heights = ticket ? payoffPixels(ticket.maxLoss, ticket.maxGain) : null;
   const scale = peril && rungs.length ? scaleFor(peril, rungs) : null;
   const definition = peril ? perilById(peril) : null;

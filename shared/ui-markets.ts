@@ -7,7 +7,7 @@ import { measureLabel } from "./ui-money.ts";
 import type { PerilId } from "./ui-types.ts";
 import type { QuoteWindow } from "./ui-window-quote.ts";
 import * as copy from "./ui-copy.ts";
-export { marketsLayout, marketsMotion } from "./ui-markets-layout.ts";
+export { marketsLayout, marketsMotion, marketsV4Layout } from "./ui-markets-layout.ts";
 export type HeldMarkets = ReadonlySet<string> | readonly string[];
 export type PreviewSelection = { cityId: string; peril: PerilId; tenor: "weekly" | "monthly" };
 export const rankedCities = CONSUMER_CITIES.flatMap((c) => { const city = cityById(c.slug); return city ? [city] : []; });
@@ -104,4 +104,31 @@ export function marketsPanel(input: { cityId: string; markets: readonly MarketMo
   const market = lead && receipt ? { ...lead, loss: receipt.loss ?? "--", gain: receipt.gain ?? "--" } : lead;
   if (!market) return cityNotOpenPanel(input.cityId, input.pending);
   return { kind: market.held ? "held-receipt-hero" as const : "open" as const, market, sentence: heroSentence(market), honesty: perilById(market.peril)?.honesty(market.station) ?? null, cta: market.held ? copy.VIEW_COVER : copy.COVER_THIS, note: market.held ? copy.nothingElseOpen(market.city) : null };
+}
+
+/** Tile order is a product contract, independent of the availability feed. */
+export const PERIL_TILE_ORDER = ["rain", "snow", "wind", "heat", "cold"] as const;
+export function perilTileAction(current: PerilId | null, tapped: PerilId) {
+  return tapped === "cold" ? { filter: current, sheet: "cold" as const }
+    : { filter: current === tapped ? null : tapped, sheet: null };
+}
+const sameWindow = (a: MarketModel, b: MarketModel) => a.cityId === b.cityId && a.peril === b.peril
+  && a.quote.windowStart === b.quote.windowStart && a.quote.windowEnd === b.quote.windowEnd;
+/** Real open models only. Held strikes never become purchase controls. */
+export function marketStrikes(hero: MarketModel, markets: readonly MarketModel[]): MarketModel[] {
+  return markets.filter((m) => !m.held && sameWindow(m, hero)).sort((a, b) => a.trigger - b.trigger);
+}
+/** Filter changes prefer the current city, then consumer rank; never mutate the feed. */
+export function marketsView(city: string, markets: readonly MarketModel[], filter: PerilId | null, strikeId: string | null = null) {
+  const filtered = markets.filter((m) => m.peril !== "cold" && (!filter || m.peril === filter));
+  const local = filtered.filter((m) => m.cityId === city);
+  const localOpen = local.filter((m) => !m.held);
+  const fallbackCity = rankedCities.find((c) => filtered.some((m) => m.cityId === c.id && !m.held))?.id;
+  const lead = localOpen.length ? leadMarket(city, localOpen)
+    : filter && fallbackCity ? leadMarket(fallbackCity, filtered.filter((m) => !m.held)) : leadMarket(city, local);
+  const strikes = lead && !lead.held ? marketStrikes(lead, filtered) : [];
+  const hero = strikes.find((m) => m.id === strikeId) ?? lead;
+  const rows = local.filter((m) => m.id !== hero?.id && (m.held || !hero || !sameWindow(m, hero)))
+    .sort((a, b) => Number(a.held) - Number(b.held) || closing(a, b));
+  return { hero, strikes, rows, elsewhere: elsewhereCards(city, filtered), noLocalPeril: !!filter && !localOpen.length };
 }

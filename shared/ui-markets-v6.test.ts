@@ -125,7 +125,66 @@ test("Markets runtime copy contains none of the removed screen strings", () => {
   assert.doesNotMatch(JSON.stringify(values), /Opening later|Chance · Multiple|Opening soon|Notify|Opens |\bsoon\b/);
 });
 
-test("wind art fits its native reserved columns under uniform scaling", () => {
+test("legacy web instrument geometry remains valid under uniform scaling", () => {
   assert.ok(112 * marketsLayout.hero.windInstrumentScale <= marketsLayout.hero.instrumentWidth);
   assert.ok(112 * marketsLayout.card.windInstrumentScale <= 44);
+});
+
+test("v4 tiles have a fixed equal-peril order, toggle off and route Cold to its sheet", async () => {
+  const { PERIL_TILE_ORDER, perilTileAction } = await import("./ui-markets.ts");
+  assert.deepEqual(PERIL_TILE_ORDER, ["rain", "snow", "wind", "heat", "cold"]);
+  assert.deepEqual(perilTileAction(null, "snow"), { filter: "snow", sheet: null });
+  assert.deepEqual(perilTileAction("snow", "snow"), { filter: null, sheet: null });
+  assert.deepEqual(perilTileAction("rain", "heat"), { filter: "heat", sheet: null });
+  assert.deepEqual(perilTileAction("snow", "cold"), { filter: "snow", sheet: "cold" });
+});
+
+test("v4 filter prefers current city, then consumer rank, skipping held heroes", async () => {
+  const { marketsView } = await import("./ui-markets.ts");
+  const local = market("new-york", "snow", "local-snow");
+  const held = { ...ny, held: true };
+  const data = [desMoines, chicago, local, held, nyLater];
+  const before = structuredClone(data);
+  assert.equal(marketsView("new-york", data, null).hero?.id, nyLater.id);
+  assert.equal(marketsView("new-york", data, "snow").hero?.id, local.id);
+  assert.equal(marketsView("miami", data, "snow").hero?.id, local.id);
+  assert.equal(marketsView("miami", [desMoines, chicago], "snow").hero?.id, chicago.id);
+  assert.equal(marketsView("new-york", [held, desMoines], "rain").hero?.id, desMoines.id);
+  assert.equal(marketsView("new-york", [held], null).hero?.held, true);
+  assert.equal(marketsView("new-york", [chicago], "snow").noLocalPeril, true);
+  assert.equal(marketsView("new-york", data, "heat").hero, null);
+  assert.equal(marketsView("new-york", data, "cold").hero, null);
+  assert.deepEqual(data, before);
+});
+
+test("v4 strike controls use only real unheld markets in the hero window", async () => {
+  const { marketsView, marketStrikes } = await import("./ui-markets.ts");
+  const first = { ...ny, trigger: 2 }, second = { ...ny, id: "ny-6", trigger: 6 };
+  const held = { ...ny, id: "held-102", trigger: 102, held: true };
+  const later = { ...nyLater, windowStart: "2026-12-01", quote: { ...nyLater.quote, windowStart: "2026-12-01" } };
+  const data = [second, later, first, held, chicago];
+  assert.deepEqual(marketStrikes(first, data).map((m) => m.trigger), [2, 6]);
+  const view = marketsView("new-york", data, null, second.id);
+  assert.equal(view.hero?.id, second.id);
+  assert.deepEqual(view.rows.map((m) => m.id), [later.id, held.id]);
+  assert.notEqual(marketsView("new-york", data, null, held.id).hero?.id, held.id);
+  assert.notEqual(marketsView("new-york", data, "snow", second.id).hero?.id, second.id);
+  assert.deepEqual(marketStrikes(first, []), []);
+});
+
+test("temperature formatting uses °C throughout browsing, receipts and Protect", async () => {
+  const { displayUnit } = await import("./ui-money.ts");
+  const { buildProtectModel } = await import("./ui-view.ts");
+  const { receiptModel } = await import("./ui-discovery.ts");
+  assert.equal(displayUnit("C"), "°C"); assert.equal(displayUnit("°C"), "°C");
+  assert.equal(displayUnit("mm"), "mm"); assert.equal(displayUnit("m/s"), "m/s");
+  const source = DISCOVERY_QUOTES.find((q) => q.peril === "heat")!;
+  const quote = { ...source, unit: "C" };
+  const [heat] = marketModels([quote], PREVIEW_NOW);
+  assert.equal(heat.unit, "°C"); assert.match(heat.triggerLabel, /°C/);
+  const model = buildProtectModel({ cityId: quote.cityId, peril: "heat", tenor: "weekly", quote, windowStart: quote.windowStart, windowEnd: quote.windowEnd, selectedTrigger: heat.trigger, single: null, loading: false, failed: false, connected: true, signing: false, cover: 100, defaultTrigger: heat.trigger, coveredMarket: null, settlement: null, usedSkyt: 0, reading: null, running: false });
+  assert.equal(model.unit, "°C");
+  assert.match(model.ticket?.payoff.triggerLabel ?? "", /°C/);
+  const receipt = receiptModel({ market: heat.id, address: "position", premiumPaid: "24000000", protectedAmount: "100000000", statusLabel: "Active" }, [], [quote]);
+  assert.equal(receipt.unit, "°C"); assert.match(receipt.triggerLine ?? "", /°C/);
 });

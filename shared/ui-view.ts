@@ -1,7 +1,7 @@
 /** Shared Protect data. Renderers never reconstruct a premium or payout. */
 import * as copy from "./ui-copy.ts";
 import { chainFigures, dayFromIso, fractionOnScale, payoffPixels, scaleFor, stationFor, isoFromSeconds } from "./ui-ladder.ts";
-import { breakEvenLabel, chanceLabel, chipExceedsCap, formatBaseGrouped, moneyParts, multipleLabel, protocolFeeBase, rungEconomics, ticketFromBases, COVER_SIZES } from "./ui-money.ts";
+import { displayUnit, breakEvenLabel, chanceLabel, chipExceedsCap, formatBaseGrouped, moneyParts, multipleLabel, protocolFeeBase, rungEconomics, ticketFromBases, COVER_SIZES } from "./ui-money.ts";
 import { PROTECT_BAR_HEIGHT } from "./ui-tokens.ts";
 import { CITIES, cityById, perilById, perilOpen } from "./peril-registry.ts";
 import { openQuoteWindows, pickDefaultWindow, type QuoteWindow, type TenorAvailability } from "./ui-window-quote.ts";
@@ -142,7 +142,7 @@ export type ProtectBuildInput = {
 export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
   const cityName = cityById(input.cityId)?.name ?? copy.THIS_CITY;
   const station = cityById(input.cityId)?.station ?? stationFor(input.cityId);
-  const unit = input.quote?.unit || input.single?.unit || perilById(input.peril)?.unit || "";
+  const unit = displayUnit(input.quote?.unit || input.single?.unit || perilById(input.peril)?.unit || "");
   const eligible = input.peril !== "cold" && perilOpen({ ...input, windowStart: input.windowStart });
   const salesOpen = input.nowSeconds == null || Date.parse(input.quote?.salesCloseAt ?? input.windowStart) > input.nowSeconds * 1000;
   const currentOpen = eligible && salesOpen && !!(input.quote?.rungs.some((rung) => rungEconomics(rung, input.cover)) || (input.single && rungEconomics(input.single, input.cover)));

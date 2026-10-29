@@ -115,7 +115,7 @@ test("receipt lead and detail lines retain the matched window, direction and nat
   const cases = [
     ["rain", 102, "102 mm or more", "Rain · New York"],
     ["wind", 14.8, "14.8 m/s or more", "Wind · Chicago"],
-    ["heat", 30.6, "30.6 C or more", "Heat · Miami"],
+    ["heat", 30.6, "30.6 °C or more", "Heat · Miami"],
   ] as const;
   for (const [peril, trigger, triggerLine, detailLine] of cases) {
     const receipt = monthlyReceipt(peril, "2026-11-01", "2026-12-01", trigger);
@@ -126,7 +126,7 @@ test("receipt lead and detail lines retain the matched window, direction and nat
     assert.equal(receipt.windowLabel, "Nov 1 to Dec 1");
   }
   const cold = receiptModel({ ...fixturePosition(), market: "fixture-cold", peril: "cold", cityId: "new-york", triggerValue: -4 }, [], []);
-  assert.equal(cold.triggerLine, "-4 C or less");
+  assert.equal(cold.triggerLine, "-4 °C or less");
   assert.equal(cold.detailLine, "Cold · New York");
   assert.equal(cold.windowKey, null); assert.equal(cold.windowLabel, null);
 });
