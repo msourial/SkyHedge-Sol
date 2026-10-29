@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Animated, Clipboard, Pressable, StyleSheet, Text, View, Vibration, Easing } from "react-native";
-import Svg, { Circle, Line, Path, Text as SvgText } from "react-native-svg";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Pressable, StyleSheet, Text, View, Vibration, Easing } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { PERILS, perilById } from "../../../shared/peril-registry.ts";
 import * as copy from "../../../shared/ui-copy.ts";
-import { marketModels, walletPerils, groupReceiptsByWindow, type MarketModel, type ReceiptModel } from "../../../shared/ui-discovery.ts";
+import { marketModels, type MarketModel } from "../../../shared/ui-discovery.ts";
 import { instrumentArt } from "../../../shared/ui-instrument.ts";
 import { lineGlyphs } from "../../../shared/ui-glyphs.ts";
 import { lineTokens as C } from "../../../shared/ui-tokens.ts";
@@ -43,32 +43,7 @@ export function FigurePair({ loss, gain, across = false, caption }: { loss: stri
 export function FirstRunStrip({ onDismiss }: { onDismiss: () => void }) { return null; }
 export { MarketsLine } from "./MarketsLine.tsx";
 
-function Receipt({ receipt: r, onClose }: { receipt: ReceiptModel; onClose: () => void }) {
-  const d = r.diagram, step = d ? 20 + d.step * 320 : 0;
-  return <View><Pressable style={s.textButton} onPress={onClose}><Text style={s.link}>{copy.DONE}</Text></Pressable><Text style={s.title}>{r.title}</Text><Text style={[s.zone, { color: r.kind === "paid" ? C.slicker : C.fg2 }]}>{r.status}</Text>
-    <View style={{ alignItems: "center" }}>{r.peril ? <Instrument peril={r.peril} rungs={r.rungs} trigger={r.trigger} reading={r.reading} state={r.trigger == null ? "ghost" : r.kind === "paid" ? "paid" : r.kind === "dry" ? "dry" : "covered"}/> : null}</View>
-    {r.loss && r.gain ? <FigurePair loss={r.loss} gain={r.gain}/> : null}
-    {d ? <Svg width="100%" height={112} viewBox="0 0 361 112" accessibilityLabel={`${copy.MAX_LOSS} ${d.loss} · ${copy.MAX_GAIN} ${d.gain}`}><Line x1={16} x2={345} y1={56} y2={56} stroke={C.tick}/><Path d={`M20 ${56 + d.lossPx} H${step}`} stroke={C.fg2} strokeWidth={3}/><Path d={`M${step} ${56 + d.lossPx} V${56 - d.gainPx}`} stroke={C.slicker} strokeWidth={2}/><Path d={`M${step} ${56 - d.gainPx} H345`} stroke={C.fg} strokeWidth={3}/>{d.ticks.map((fraction, i) => <Line key={i} x1={20 + fraction * 320} x2={20 + fraction * 320} y1={56} y2={64} stroke={C.tick}/>)}{d.reading != null ? <Circle cx={20 + d.reading * 320} cy={56} r={3} fill={C.glacier}/> : null}<SvgText x={20} y={110} fill={C.fg2} fontSize={13}>{d.loss} SKYT</SvgText><SvgText x={345} y={14} textAnchor="end" fill={C.fg} fontSize={13}>{d.gain} SKYT</SvgText><SvgText x={step} y={80} textAnchor="middle" fill={C.fg2} fontSize={13}>{d.trigger}</SvgText></Svg> : <Text style={s.note}>{copy.RECEIPT_DATA_UNAVAILABLE}</Text>}
-    <Text style={s.note}>{r.reading == null ? copy.FINAL_READING_UNAVAILABLE : `${r.reading} ${r.unit}`}</Text>{r.settled ? <Text style={s.note}>{copy.NOAA_WINDOW_ENDED} · {r.settled}</Text> : null}<Text style={[s.mono, r.kind === "paid" && { color: C.slicker }]}>{copy.PAYOUT} {r.payout ?? "—"} SKYT</Text><Text style={s.mono}>{copy.MAX_LOSS} -{r.loss ?? "—"} SKYT</Text>{r.result ? <Text style={s.mono}>{r.result}</Text> : null}<Text selectable style={s.note}>{r.station} · {r.market}</Text>
-  </View>;
-}
-export function WalletLine({ wallet, balance, receipts, totals, loading, failed, onConnect, onRetry, onDisconnect, technical }: { wallet: string | null; balance: string | null; receipts: ReceiptModel[]; totals: { loss: string; gain: string } | null; loading: boolean; failed: boolean; onConnect: () => void; onRetry: () => void; onDisconnect: () => void; technical?: ReactNode }) {
-  const [selected, setSelected] = useState<string | null>(null), [details, setDetails] = useState(false);
-  const [filter, setFilter] = useState<PerilId | "all">("all");
-  const [copyStatus, setCopyStatus] = useState<string | null>(null);
-  const receipt = receipts.find((r) => r.id === selected);
-  const perils = walletPerils(receipts);
-  const filteredReceipts = receipts.filter((r) => filter === "all" || r.peril === filter);
-  const groups = groupReceiptsByWindow(filteredReceipts);
-  return <Enter><View style={s.head}><Text style={s.title}>{copy.WALLET_TITLE}</Text><Text style={s.label}>{copy.DEVNET_TAG}</Text></View>{receipt ? <Receipt receipt={receipt} onClose={() => setSelected(null)}/> : <>
-    {wallet ? <><Text style={s.label}>{copy.BALANCE}</Text><View style={s.balanceRow}><Text style={s.balance}>{balance ?? "—"}</Text><Text style={s.balanceUnit}>SKYT</Text></View><View style={s.copyAddress}><Text selectable style={s.address}>{wallet.slice(0, 4)}…{wallet.slice(-4)}</Text><Pressable accessibilityLabel={copy.COPY_ADDRESS} accessibilityRole="button" style={s.copyIcon} onPress={() => { try { Clipboard.setString(wallet); setCopyStatus(copy.COPIED); } catch { setCopyStatus(copy.COPY_FAILED); } }}><Text style={s.copyGlyph}>⧉</Text></Pressable></View>{copyStatus ? <Text accessibilityLiveRegion="polite" style={s.note}>{copyStatus}</Text> : null}
-      {loading ? <Text style={s.note}>{copy.READING_WALLET}</Text> : null}{failed ? <View accessibilityRole="alert"><Text style={s.note}>{copy.CHAIN_ERROR}</Text><Pressable onPress={onRetry} style={s.textButton}><Text style={s.link}>{copy.TRY_AGAIN}</Text></Pressable></View> : null}
-      {totals ? <FigurePair {...totals} across caption={copy.totalsCaption(receipts.filter((r) => r.kind === "open").length)}/> : null}{perils.length >= 2 ? <Filter value={filter} onChange={setFilter} markets={[]} perilIds={perils}/> : null}<Text style={s.zone}>{copy.YOUR_COVERS}</Text>{!loading && !failed && !receipts.length ? <Text style={s.note}>{copy.EMPTY_COVERS}</Text> : null}
-      {groups.map((group, index) => <View key={`${group.label ?? "none"}-${index}`}>{filteredReceipts.length >= 2 && group.label ? <Text style={s.windowZone}>{group.label}</Text> : null}{group.receipts.map((r) => { const status = r.kind === "open" ? null : r.kind === "paid" ? copy.PAID_OUT : r.status; const detail = filteredReceipts.length < 2 ? [r.detailLine, r.windowLabel].filter(Boolean).join(" · ") : r.detailLine; return <SpringPress key={r.id} onPress={() => setSelected(r.id)} style={s.walletRow}><View style={s.walletGlyph}><Glyph name={r.peril ?? "protect"}/></View><View style={s.walletMain}><Text numberOfLines={1} style={s.walletTrigger}>{r.triggerLine ?? r.status}</Text><Text numberOfLines={1} style={s.label}>{detail}</Text><View style={s.walletFigures}>{r.kind === "open" || r.kind === "pending" ? <><View style={s.walletFigure}><Text style={s.label}>{copy.MAX_LOSS}</Text><Text style={s.walletAmount} numberOfLines={1}>-{r.loss ?? "—"}</Text></View><View style={s.walletFigure}><Text style={s.label}>{copy.MAX_GAIN}</Text><Text style={s.walletAmount} numberOfLines={1}>+{r.gain ?? "—"}</Text></View></> : <View><Text style={s.mono}>{r.result ?? r.status}</Text><Text style={s.label}>{r.status}</Text></View>}</View></View>{status ? <Text style={[s.walletState, r.kind === "paid" && s.walletPaid]}>{status}</Text> : null}<Glyph name="chevron"/></SpringPress>})}</View>)}
-      </> : <View style={s.empty}><Glyph name="wallet"/><Text style={s.body}>{copy.WALLET_INTRO}</Text><SpringPress onPress={onConnect} style={s.cta}><Text style={s.ctaText}>{copy.CONNECT_WALLET}</Text></SpringPress></View>}
-    <Pressable style={s.textButton} accessibilityState={{ expanded: details }} onPress={() => setDetails(!details)}><Text style={s.body}>{copy.TECHNICAL_DETAILS} ›</Text></Pressable>{details ? <View><Text style={s.note}>{copy.CONTRACT_LABEL}</Text><Text style={s.note}>{copy.SETTLED_UNITS}</Text><Text style={s.note}>{copy.TECH_CONTEXT}</Text>{technical}{wallet ? <Pressable onPress={onDisconnect} style={s.disconnect}><Text style={s.label}>{copy.DISCONNECT}</Text></Pressable> : null}</View> : null}
-  </>}</Enter>;
-}
+export { WalletLine } from "./WalletLine.tsx";
 export function LandingLine({ quotes, loading, failed, onBrowse, onConnect }: { quotes: WindowQuote[]; loading: boolean; failed: boolean; onBrowse: () => void; onConnect: () => void }) {
   const [peril, setPeril] = useState<PerilId>(PERILS[0].id), [cover, setCover] = useState<CoverSize>(100);
   const markets = marketModels(quotes, Math.floor(Date.now() / 1000), cover), market = markets.find((m) => m.peril === peril);

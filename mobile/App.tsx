@@ -36,7 +36,7 @@ import { ActionButton, AppIcon, Text } from "./src/ui";
 import { friendlyError, isNetworkError, stationLabel } from "./src/friendly-errors";
 import { ScreenTransition, TactilePressable } from "./src/liquid-glass";
 import { GuidePanel, type GuideTurn } from "./src/GuidePanel";
-import { ConfirmCover, MarketsScreen, StickyCta, WalletV2 } from "./src/v2";
+import { ConfirmCover, MarketsScreen, WalletV2 } from "./src/v2";
 import { liveMarketLabel, protectCityFor, sellingWindows, windowsForCity, type Tenor } from "./src/windows";
 import { committedWindowLabel, expiryChipLabel, matchingWindowPackage, sortByExpiry, type WindowEvidencePackage } from "../shared/window-chain.ts";
 import { payGet } from "../shared/pay-get.ts";
@@ -53,7 +53,6 @@ import { firstOpenPair } from "../shared/peril-registry.ts";
 import { upcomingWindow } from "../shared/ui-ladder.ts";
 import type { MarketSelection } from "../shared/ui-discovery.ts";
 import { Landing, MarketDetail } from "./src/revamp";
-import { CollectPayoutView, ReceiptView } from "./src/journey";
 import { BrandMark } from "./src/BrandMark";
 import { BlurTargetView } from "expo-blur";
 import { GlassTargetContext } from "./src/liquid-glass";
@@ -63,12 +62,11 @@ import { marketByCode, type CatalogMarket } from "./src/markets-catalog";
 import { lineTokens } from "../shared/ui-tokens.ts";
 import { LinePressable } from "./src/line/pressable";
 import { TabGlyph } from "./src/line/TabGlyph";
-import { LinePay, ProtectBody } from "./src/line/ProtectLine";
+import { LinePay, ProtectBody, LineClaimBar, LineCollectPayout } from "./src/line/ProtectLine";
 import { useLineProtect } from "./src/line/use-line";
 import { SignSheet, type SignReview } from "./src/line/SignSheet";
 import { signFailure, signStepForPhase, submitLineOpenPosition } from "./src/line-submit";
 import type { SignOutcome, SignStep } from "../shared/ui-sign.ts";
-import { ScrollEdgeFade } from "./src/scroll-edge-fade";
 import { SCROLL_FADE_HEIGHT } from "./src/scroll-fade";
 import { APP_BUILD, APP_VERSION } from "./src/version";
 
@@ -602,7 +600,7 @@ export default function App() {
 
   const storedCovers = chainPositions ?? portfolio?.protections ?? [];
   const walletCovers = useReceipts(storedCovers, wallet, status?.cityWindows ?? [], discovery.quotes, evidenceNonce);
-  const scrollBottom = stickyOpen ? scrollBottomPadding(line.model) : SCROLL_FADE_HEIGHT + 16;
+  const scrollBottom = stickyOpen ? ((line.model.peril === "cold" || line.model.panel.kind === "covered") ? scrollBottomPadding("closed") : scrollBottomPadding(line.model)) : SCROLL_FADE_HEIGHT + 16;
   const openMarketSelection = (market: MarketSelection) => {
     changeCity(market.cityId); line.chooseMarket(market);
     setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -622,7 +620,7 @@ export default function App() {
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottom }, !showLanding && (tab === "protect" || tab === "catalog") && { paddingHorizontal: 16, paddingTop: 0 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottom }, !showLanding && (tab === "protect" || tab === "catalog" || tab === "wallet") && { paddingHorizontal: 16, paddingTop: 0 }]}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.rain} />}
       >
@@ -634,7 +632,7 @@ export default function App() {
         ) : null}
         {!showLanding && tab === "catalog" ? <MarketsLine {...discovery} markets={marketModels(discovery.quotes, nowSeconds, 100, storedCovers.map((position) => position.market))} receipts={walletCovers.receipts} totals={walletCovers.totals} onSelect={openMarketSelection} selectedCity={selectedMarketsCity} onCity={setSelectedMarketsCity} onRetry={() => setEvidenceNonce((count) => count + 1)} onPreview={(preview) => { line.clearMarketSelection(); setSelectedCity(preview.cityId); line.setPeril(preview.peril); line.setTenor(preview.tenor); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} onWallet={() => setTab("wallet")} /> : null}
         {!showLanding && tab === "protect" && claimReadiness?.state === "claimable" && claimReadiness.action === "claim_payout" ? (
-          <CollectPayoutView
+          <LineCollectPayout
             observedMm={claimReadiness.observation ? Number(claimReadiness.observation.rainfallMmX100) / 100 : null}
             triggerMm={activeWindow?.thresholdMmX100 && /^\d+$/.test(activeWindow.thresholdMmX100) ? Number(activeWindow.thresholdMmX100) / 100 : null}
             source={`NOAA · ${stationLabel(status?.noaaEvidence.package?.stationId)}`} windowLabel={null}
@@ -663,6 +661,7 @@ export default function App() {
         ) : null}
         {!showLanding && tab === "wallet" ? <WalletLine wallet={wallet} balance={walletBalances ? formatBaseGrouped(BigInt(walletBalances.skytBaseUnits)) : null} {...walletCovers}
           loading={balancesLoading || loading} failed={Boolean(balancesError || portfolioError || walletError || portfolio?.indexed === false)}
+          onMarkets={() => { setTab("catalog"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
           onConnect={() => { void connect(); }} onRetry={() => { if (wallet) void loadWalletData(wallet, true); setEvidenceNonce((n) => n + 1); }}
           onDisconnect={() => { void clearWalletSession(); setWallet(null); setWalletSession(null); setPortfolio(null); setChainPositions(null); setWalletBalances(null); setBalancesError(null); setPortfolioError(null); setWalletError(null); }}
           technical={<TechnicalContext catalog={catalog} program={SKYHEDGE_PROGRAM_ID.toBase58()}/>}
@@ -672,7 +671,7 @@ export default function App() {
       </View>
 
 
-      {!showLanding && tab === "protect" && line.model.panel.kind !== "covered" && (claimReadiness?.state === "claimable" && claimReadiness.action || line.model.showBar) ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}><ScrollEdgeFade style={styles.scrollEdgeFade} />{claimReadiness?.state === "claimable" && claimReadiness.action ? <StickyCta label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness.action) void submitApprovedAction(claimReadiness.action); }} /> : <LinePay line={line} sheetOpen={signReview != null} onConnect={() => { void connect(); }} onReview={() => {
+      {!showLanding && tab === "protect" && (claimReadiness?.state === "claimable" && claimReadiness.action || line.model.showBar || line.model.peril === "cold" || line.model.panel.kind === "covered") ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}>{claimReadiness?.state === "claimable" && claimReadiness.action ? <LineClaimBar label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness.action) void submitApprovedAction(claimReadiness.action); }} /> : <LinePay line={line} sheetOpen={signReview != null} onConnect={() => { void connect(); }} onReview={() => {
         if (!line.approveTarget || !line.model.ticket) return;
         const target = { ...line.approveTarget };
         setSignReview({ target, wallet, ticket: line.model.ticket, context: { premiumBase: target.premiumBase, balanceBase: walletBalances ? String(walletBalances.skytBaseUnits) : null, cityName: line.model.cityName, peril: line.model.peril, triggerLabel: target.triggerLabel, windowLabel: target.windowLabel } });

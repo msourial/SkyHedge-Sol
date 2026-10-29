@@ -11,4 +11,4 @@ export function TechnicalContext({ catalog, program }: { catalog: AgriculturalMa
   const market = catalog.find((item) => item.slug === "des-moines");
   return <View><Text selectable style={s.note}>{CONTRACT_LABEL} · {program}</Text>{CITIES.map((city) => <Text key={city.id} selectable style={s.note}>{city.name} · {city.stationId}</Text>)}<Text style={s.note}>{TECH_CONTEXT}</Text><ReferenceAreaMap point={referencePointFor(market)} location={market ? `${market.locality}, ${market.administrativeArea}, ${market.country}` : CITIES.find((c) => c.id === "des-moines")!.name} evidenceLabel={REFERENCE_ONLY}/></View>;
 }
-const s = StyleSheet.create({ note: { color: lineTokens.fg2, fontFamily: F.body, fontSize: 13, lineHeight: 18, marginVertical: 8 } });
+const s = StyleSheet.create({ note: { color: lineTokens.fg2, fontFamily: F.body, fontVariant: ["tabular-nums"], fontSize: 13, lineHeight: 18, marginVertical: 8 } });
