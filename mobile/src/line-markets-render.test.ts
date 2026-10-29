@@ -19,6 +19,8 @@ const host = `
     return React.createElement(tag, { role, disabled, 'aria-label': accessibilityLabel, 'data-style': JSON.stringify(style) }, children);
   }
   export const View = p => node('div', p), Text = p => node('span', p), Pressable = p => node('button', p), ScrollView = p => node('section', p), Modal = p => node('dialog', p);
+  export const AppState = { addEventListener: () => ({remove() {}}) };
+  export const Linking = { openURL: async () => {} };
   export const StyleSheet = { create: v => v, absoluteFill: {}, absoluteFillObject: {} };
   class Value { constructor(v) { this.value = v; } setValue(v) { this.value = v; } stopAnimation() {} interpolate({outputRange}) { return outputRange.at(-1); } toJSON() { return this.value; } }
   export const Vibration = { vibrate() {} };

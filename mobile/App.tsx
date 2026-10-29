@@ -158,6 +158,7 @@ export default function App() {
   const [transactionMessage, setTransactionMessage] = useState<string | null>(null);
   const [transactionError, setTransactionError] = useState<string | null>(null);
   const [transactionDetail, setTransactionDetail] = useState<string | null>(null);
+  const [purchaseTransactions, setPurchaseTransactions] = useState<Record<string, string>>({});
   const [transactionSignature, setTransactionSignature] = useState<string | null>(null);
   const [buyPhase, setBuyPhase] = useState<BuyPhase | null>(null);
 
@@ -465,6 +466,7 @@ export default function App() {
       if (lineSubmitting.current) return { kind: "error", error: "unconfirmed" };
       lineSubmitting.current = true;
       const { review, onStep } = lineRequest;
+      setTransactionSignature(null);
       try {
         const outcome = await submitLineOpenPosition({
           target: review.target, wallet, sessionAddress: walletSession?.address ?? null, reviewWallet: review.wallet,
@@ -475,7 +477,7 @@ export default function App() {
             onDevice: (input) => buildOpenPositionOnDevice(input),
             server: () => postJson<UnsignedTransaction>("/api/transactions/unsigned", { action, market: target.market, wallet: owner, amount: target.amount, approved: true }, { attempts: 2, timeoutMs: 20_000 }),
           }),
-          sign: (base64, onPhase) => signAndConfirmDevnetTransaction({ transactionBase64: base64, wallet: walletSession!, rpcUrl: DEVNET_RPC_URL, onPhase }),
+          sign: (base64, onPhase) => signAndConfirmDevnetTransaction({ transactionBase64: base64, wallet: walletSession!, rpcUrl: DEVNET_RPC_URL, onPhase, onSignature: signature => { setTransactionSignature(signature); setPurchaseTransactions(previous => ({ ...previous, [review.target.market]: signature })); } }),
           check: async (duplicate) => {
             const found = await findPositionAfterBuy({ read: () => readFinalizedProtections(wallet!), windowAddress: review.target.market, attempts: duplicate ? 2 : 4 });
             if (found.protections) setChainPositions([...found.protections]);
@@ -514,7 +516,10 @@ export default function App() {
         throw new Error("The price changed for this window. Review the new price, then approve again.");
       }
       if (action === "open_position" && (amountMode !== "devnet-test" || protectionUnavailableReason || !quote || !amount || quotePaymentReason)) throw new Error(protectionUnavailableReason ?? quotePaymentReason ?? "Enter Devnet test mode and request a valid SKYT quote before approving a protection position.");
-      if (action.startsWith("claim_") && (claimReadiness?.state !== "claimable" || claimReadiness.action !== action)) throw new Error("The finalized claim-readiness API does not currently allow this claim.");
+      if (action.startsWith("claim_")) {
+        const readiness = await getJson<ClaimReadiness>(claimReadinessPath(market, wallet));
+        if (readiness.state !== "claimable" || readiness.action !== action) throw new Error("The finalized claim-readiness API does not currently allow this claim.");
+      }
       const unsigned = await prepareUnsignedTransaction({
         action, market, wallet, amount: amount ?? "",
         onDevice: (input) => buildOpenPositionOnDevice(input),
@@ -607,7 +612,7 @@ export default function App() {
 
   const storedCovers = chainPositions ?? portfolio?.protections ?? [];
   const walletCovers = useReceipts(storedCovers, wallet, status?.cityWindows ?? [], discovery.quotes, evidenceNonce);
-  const scrollBottom = stickyOpen ? ((line.model.peril === "cold" || line.model.panel.kind === "covered") ? scrollBottomPadding("closed") : scrollBottomPadding(line.model)) : SCROLL_FADE_HEIGHT + 16;
+  const scrollBottom = Math.max(stickyOpen ? stickyHeight + 32 : 32, stickyOpen ? ((line.model.peril === "cold" || line.model.panel.kind === "covered") ? scrollBottomPadding("closed") : scrollBottomPadding(line.model)) : SCROLL_FADE_HEIGHT + 16);
   const openMarketSelection = (market: MarketSelection) => {
     changeCity(market.cityId); line.chooseMarket(market);
     setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -637,7 +642,7 @@ export default function App() {
         {showLanding ? (
           <LandingLine quotes={discovery.quotes} loading={discovery.loading} failed={discovery.failed} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect(); }} />
         ) : null}
-        {!showLanding && tab === "catalog" ? <MarketsLine {...discovery} markets={marketModels(discovery.quotes, nowSeconds, 100, storedCovers.map((position) => position.market))} receipts={walletCovers.receipts} totals={walletCovers.totals} onSelect={openMarketSelection} selectedCity={selectedMarketsCity} onCity={setSelectedMarketsCity} onRetry={() => setEvidenceNonce((count) => count + 1)} onPreview={(preview) => { line.clearMarketSelection(); setSelectedCity(preview.cityId); line.setPeril(preview.peril); line.setTenor(preview.tenor); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} onWallet={openWallet} /> : null}
+        {!showLanding && tab === "catalog" ? <MarketsLine {...discovery} revision={evidenceNonce} markets={marketModels(discovery.quotes, nowSeconds, 100, storedCovers.map((position) => position.market))} receipts={walletCovers.receipts} totals={walletCovers.totals} onSelect={openMarketSelection} selectedCity={selectedMarketsCity} onCity={setSelectedMarketsCity} onRetry={() => setEvidenceNonce((count) => count + 1)} onPreview={(preview) => { line.clearMarketSelection(); setSelectedCity(preview.cityId); line.setPeril(preview.peril); line.setTenor(preview.tenor); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} onWallet={openWallet} /> : null}
         {!showLanding && tab === "protect" && claimReadiness?.state === "claimable" && claimReadiness.action === "claim_payout" ? (
           <LineCollectPayout
             observedMm={claimReadiness.observation ? Number(claimReadiness.observation.rainfallMmX100) / 100 : null}
@@ -666,7 +671,7 @@ export default function App() {
             </>
           )
         ) : null}
-        {!showLanding && tab === "wallet" ? <WalletLine wallet={wallet} balance={walletBalances ? formatBaseGrouped(BigInt(walletBalances.skytBaseUnits)) : null} {...walletCovers}
+        {!showLanding && tab === "wallet" ? <WalletLine focusMarket={confirmedLine?.wallet === wallet ? confirmedLine.market : null} transactions={purchaseTransactions} onCollect={async market => { const outcome = await submitApprovedAction("claim_payout", market); if (outcome.kind === "error") throw new Error(outcome.message ?? "Collection did not complete. Try again."); setEvidenceNonce(n => n + 1); }} revision={evidenceNonce} wallet={wallet} balance={walletBalances ? formatBaseGrouped(BigInt(walletBalances.skytBaseUnits)) : null} {...walletCovers}
           loading={balancesLoading || loading} failed={Boolean(balancesError || portfolioError || walletError || portfolio?.indexed === false)}
           onMarkets={() => { setTab("catalog"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
           onConnect={() => { void connect(); }} onRetry={() => { if (wallet) void loadWalletData(wallet, true); setEvidenceNonce((n) => n + 1); }}
@@ -714,7 +719,7 @@ export default function App() {
         <TabButton label="Protect" glyph="protect" selected={tab === "protect"} onPress={() => setTab("protect")} />
         <TabButton label="Wallet" glyph="wallet" selected={tab === "wallet"} onPress={openWallet} />
       </View>}
-      {signReview ? <SignSheet review={signReview} onClose={() => setSignReview(null)}
+      {signReview ? <SignSheet signature={transactionSignature} review={signReview} onClose={() => setSignReview(null)}
         onApprove={(review, onStep) => submitApprovedAction("open_position", review.target.market, review.target.amount, { review, onStep })}
         onWallet={openWallet}
         onMarkets={() => { setTab("catalog"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} /> : null}

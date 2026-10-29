@@ -37,7 +37,7 @@ export function usePayoutTween(target: number[], pressDelay = 150, duration = li
   }, [key, reduced, progress, opacity, pressDelay, duration]);
   return { frame, previous, opacity };
 }
-export function PayoffChart({ diagram: d, trigger, unit, peril, highLabel, dim = false }: { diagram: PayoffModel; trigger: number; unit: string; peril: PerilId; highLabel: string; dim?: boolean }) {
+export function PayoffChart({ diagram: d, trigger, unit, peril, highLabel, dim = false, triggerColor = C.slicker }: { diagram: PayoffModel; trigger: number; unit: string; peril: PerilId; highLabel: string; dim?: boolean; triggerColor?: string }) {
   const geometry = payoffGeometry(trigger, d.maximum, Number(d.lossBase) / 1e6, Number(d.gainBase) / 1e6, d.domain);
   const { frame, previous, opacity } = usePayoutTween([geometry.x, geometry.zero, geometry.lossY, geometry.gainY, Number(d.lossBase) / 1e6, Number(d.gainBase) / 1e6, trigger]);
   const label = (title: string, amount: string, y: number, color: string) => <><Rect x={251} y={y - 9} width={10} height={10} rx={3} fill={color}/><SvgText fontFeatureSettings={features} x={325} y={y} textAnchor="end" fontFamily="Inter_400Regular" fontSize={13} fill={C.fg2}>{title}</SvgText><SvgText fontFeatureSettings={features} x={325} y={y + 18} textAnchor="end" fontFamily="Inter_650" fontSize={15} fill={C.fg}>{amount}</SvgText></>;
@@ -55,7 +55,7 @@ export function PayoffChart({ diagram: d, trigger, unit, peril, highLabel, dim =
     <Rect x={0} y={zero - .5} width={329} height={1} fill={C.fg2} opacity={.35}/>
     <SvgText fontFeatureSettings={features} x={x + 8} y={zero + 16} fontFamily="Inter_400Regular" fontSize={13} fill={C.dryText}>0</SvgText>
     {d.openTriggers.filter(t => t !== strike).map(t => <Rect key={t} x={Math.sqrt(Math.max(0,t / (d.maximum || 1))) * 329 - 1} y={124} width={2} height={12} rx={1} fill={C.dryText}/>)}
-    <Rect x={x - 1.5} y={2} width={3} height={134} rx={1.5} fill={C.slicker}/>
+    <Rect x={x - 1.5} y={2} width={3} height={134} rx={1.5} fill={triggerColor}/>
     {label("Max gain", `+${gain.toFixed(2)}`, zero - 26, C[peril])}
     {label("Max loss", `−${loss.toFixed(2)}`, zero + 18, C.heat)}
     {labels.ticks.map(t => <SvgText fontFeatureSettings={features} key={t.label} x={(t.left + t.right) / 2} y={t.y} textAnchor="middle" fontFamily="Inter_400Regular" fontSize={13} fill={C.dryText}>{t.label}</SvgText>)}

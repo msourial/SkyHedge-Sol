@@ -9,16 +9,21 @@ import { F } from "../theme.ts";
 import { MoneyCells, TicketRow } from "./ProtectLine.tsx";
 import { LinePressable } from "./pressable.tsx";
 
+import { purchaseState } from "../round3.ts";
+import { PurchaseReceipt } from "./PurchaseReceipt.tsx";
+
 export type SignReview = { target: LineSubmitTarget; context: SignContext; ticket: TicketModel; wallet: string | null };
 
 /** Frozen quote and wallet survive page refreshes throughout a single signing attempt. */
-export function SignSheet({ review, onApprove, onClose, onWallet, onMarkets }: {
+export function SignSheet({ review, onApprove, onClose, onWallet, onMarkets, signature }: {
+  signature?: string | null;
   review: SignReview;
   onApprove: (review: SignReview, onStep: (step: SignStep) => void) => Promise<SignOutcome>;
   onClose: () => void;
   onWallet: () => void;
   onMarkets: () => void;
 }) {
+  const [outcome, setOutcome] = useState<SignOutcome | null>(null);
   const [state, setState] = useState<SignState>({ status: "review" });
   const [displayed, setDisplayed] = useState<SignState>(state);
   const [motionPreference, setMotionPreference] = useState<boolean | null>(null);
@@ -53,7 +58,7 @@ export function SignSheet({ review, onApprove, onClose, onWallet, onMarkets }: {
     });
     return () => { out.stop(); swap.stopAnimation(); };
   }, [state, reduced, entry, swap]);
-  useEffect(() => { if (state.status === "success") Vibration.vibrate(10); }, [state.status]);
+
   const close = (after?: () => void) => {
     if (closing.current || busy.current) return;
     closing.current = true;
@@ -74,6 +79,7 @@ export function SignSheet({ review, onApprove, onClose, onWallet, onMarkets }: {
       outcome = { kind: "error", error: "unconfirmed" };
     }
     busy.current = false;
+    if (mounted.current) setOutcome(outcome);
     if (mounted.current) setState(outcome.kind === "confirmed" ? { status: "success" } : { status: "error", kind: outcome.kind === "already-covered" ? "already-covered" : outcome.error });
   };
   const act = (action: SignAction) => {
@@ -84,6 +90,8 @@ export function SignSheet({ review, onApprove, onClose, onWallet, onMarkets }: {
     else if (action === "markets") close(onMarkets);
     else if (action === "close" || action === "done") close();
   };
+  const receiptState = purchaseState(state, outcome, !!signature);
+  if (receiptState !== "hidden") return <Modal visible animationType="none" onRequestClose={onClose}><PurchaseReceipt review={review} state={receiptState} signature={signature} reason={outcome?.kind === "error" ? outcome.message : null} reducedMotion={reduced} onDone={onClose} onWallet={() => { onClose(); onWallet(); }} onRetry={() => { setOutcome(null); setState({ status: "review" }); }}/></Modal>;
   return <Modal transparent visible animationType="none" statusBarTranslucent onRequestClose={dismiss} accessibilityViewIsModal>
     <View style={styles.modal}>
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: entry }]}><Pressable accessibilityLabel="Dismiss cover review" accessible={false} onPress={dismiss} style={styles.scrim} /></Animated.View>
