@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { createMobileApiHandler } from "./mobile-api";
-import { readFinalizedWalletState } from "../../mobile/src/chain";
+import { readFinalizedWalletState } from "../../shared/wallet-reader.ts";
 import { hazardPresentation, type HazardId } from "../../mobile/src/hazards";
 
 function recorder() {

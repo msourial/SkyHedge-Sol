@@ -155,3 +155,8 @@ export function payoffPixels(loss: bigint, gain: bigint): { loss: number; gain: 
 
 /** Normalize the program's temperature unit for customer-facing figures. */
 export function displayUnit(unit: string): string { return unit === "C" ? "°C" : unit; }
+
+/** Whole millimetres, or one decimal for a fractional trigger. */
+export function trimMm(mm: number): string {
+  return Number.isInteger(mm) ? String(mm) : mm.toFixed(1);
+}

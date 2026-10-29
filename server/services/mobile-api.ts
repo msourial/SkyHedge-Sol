@@ -116,7 +116,7 @@ export function createMobileApiHandler(dependencies: {
           return res.status(400).json({ error: "INVALID_WALLET", message: "A valid Solana wallet address is required." });
         }
         const read = dependencies.readPortfolio ?? (async (address: string) => {
-          const { readFinalizedProtections } = await import("../../mobile/src/positions.js");
+          const { readFinalizedProtections } = await import("../../shared/positions-reader.ts");
           return readFinalizedProtections(address);
         });
         const protections = await read(canonicalWallet);
@@ -140,7 +140,7 @@ export function createMobileApiHandler(dependencies: {
           return res.status(400).json({ error: "INVALID_WALLET", message: "A valid Solana wallet address is required." });
         }
         const read = dependencies.readWalletState ?? (async (address: string) => {
-          const { readFinalizedWalletState } = await import("../../mobile/src/chain.js");
+          const { readFinalizedWalletState } = await import("../../shared/wallet-reader.ts");
           return readFinalizedWalletState(address);
         });
         res.setHeader("Cache-Control", "no-store");

@@ -1,4 +1,7 @@
 import { formatSkyt } from "./protection.ts";
+import { trimMm } from "../../shared/ui-money.ts";
+
+export { trimMm };
 
 /** Pure formatting + selection helpers for the v2 Protect ticket, Markets hero and Wallet. */
 
@@ -64,10 +67,6 @@ export function triggerSentence(input: { station: string; thresholdMmX100: strin
   const end = shortUtcDate(input.end ? input.end - 1 : null);
   const window = start && end ? ` between ${start} and ${end}` : "";
   return `Pays out if ${input.station} records ${symbol} ${mm} mm of rain${window}.`;
-}
-
-export function trimMm(mm: number): string {
-  return Number.isInteger(mm) ? String(mm) : mm.toFixed(1);
 }
 
 /** "Closes 1d 4h" / "Closes 3h 12m" / "Closes 9m" / "Sales closed". */
