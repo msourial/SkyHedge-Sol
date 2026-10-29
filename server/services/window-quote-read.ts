@@ -56,25 +56,28 @@ export async function marketsForWindowQuote(
   windowStart: string,
   windowEnd: string,
 ): Promise<WindowQuoteMarket[]> {
+  let status: DevnetStatus;
   try {
-    const status = await readStatus();
-    return (status.cityWindows ?? []).flatMap((window) => {
-      if (window.city !== city || (window.peril ?? "rain") !== peril) return [];
-      const start = new Date(window.observationStart * 1_000).toISOString().slice(0, 10);
-      const end = new Date(window.observationEnd * 1_000).toISOString().slice(0, 10);
-      if (start !== windowStart || end !== windowEnd || !window.address || !window.thresholdMmX100) return [];
-      const scaledX100 = Number(window.thresholdMmX100);
-      if (!Number.isSafeInteger(scaledX100)) return [];
-      return [{
-        scaledX100,
-        address: window.address,
-        operator: window.operator,
-        probabilityBps: window.quoteProbabilityBps,
-        premiumRateBps: window.premiumRateBps,
-        quoteInputsHash: window.quoteInputsHash,
-      }];
-    });
+    status = await readStatus();
   } catch {
-    return [];
+    // A failed chain read must not look like "no market is open": surface it as DATA_UNAVAILABLE (503).
+    // The raw RPC error is not echoed, since it can name the provider endpoint.
+    throw new DataUnavailableError("Devnet market state could not be read. Try again shortly.");
   }
+  return (status.cityWindows ?? []).flatMap((window) => {
+    if (window.city !== city || (window.peril ?? "rain") !== peril) return [];
+    const start = new Date(window.observationStart * 1_000).toISOString().slice(0, 10);
+    const end = new Date(window.observationEnd * 1_000).toISOString().slice(0, 10);
+    if (start !== windowStart || end !== windowEnd || !window.address || !window.thresholdMmX100) return [];
+    const scaledX100 = Number(window.thresholdMmX100);
+    if (!Number.isSafeInteger(scaledX100)) return [];
+    return [{
+      scaledX100,
+      address: window.address,
+      operator: window.operator,
+      probabilityBps: window.quoteProbabilityBps,
+      premiumRateBps: window.premiumRateBps,
+      quoteInputsHash: window.quoteInputsHash,
+    }];
+  });
 }

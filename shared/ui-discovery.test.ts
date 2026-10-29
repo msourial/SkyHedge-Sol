@@ -36,6 +36,10 @@ test("discovery never requests cold, rejects misrouted replies, distinguishes no
   assert.equal(notOpen.failed, false);
   const unavailable = await loadDiscovery([], PREVIEW_NOW, async () => { throw new Error("offline"); });
   assert.equal(unavailable.failed, true);
+  // A 503 DATA_UNAVAILABLE quote (for example a rate-limited chain read) is a failure, never "not open".
+  const rateLimited = await loadDiscovery([], PREVIEW_NOW, async () => { throw Object.assign(new Error("Devnet market state could not be read."), { status: 503 }); });
+  assert.equal(rateLimited.failed, true);
+  assert.deepEqual(rateLimited.quotes, []);
 });
 test("a ready payout is never labelled Paid out, and missing settlement remains unknown", () => {
   const p = fixturePosition();

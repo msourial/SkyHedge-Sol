@@ -17,6 +17,13 @@ type ApiResponse = ServerResponse & {
   json: (body: unknown) => void;
 };
 
+/** One reader per warm instance, so concurrent quote reads share its in-flight status read and cache. */
+let sharedStatusReader: DevnetStatusReader | null = null;
+export function sharedDevnetStatusReader(): DevnetStatusReader {
+  sharedStatusReader ??= new DevnetStatusReader();
+  return sharedStatusReader;
+}
+
 function queryValue(req: ApiRequest, key: string): string | undefined {
   const value = req.query?.[key];
   if (typeof value === "string") return value;
@@ -130,7 +137,7 @@ export function createMobileApiHandler(dependencies: {
           return res.status(400).json({ error: "INVALID_WINDOW_QUOTE", message: "city, peril, observationStart, and observationEnd are required." });
         }
         const read = dependencies.readWindowQuote ?? (async (query: { peril: string; cityId: string; windowStart: string; windowEnd: string }) => {
-          const reader = new DevnetStatusReader();
+          const reader = sharedDevnetStatusReader();
           if (!isPerilId(query.peril)) throw Object.assign(new Error("Unknown peril."), { code: "DATA_UNAVAILABLE" });
           const markets = await marketsForWindowQuote(() => reader.read(), query.cityId, query.peril, query.windowStart, query.windowEnd);
           return readCatalogueWindowQuote({ ...query, markets });
