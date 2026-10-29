@@ -1,7 +1,16 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures";
 import { NYC_RAIN_MODELLED } from "../shared/ui-fixtures";
 
+const TEST_NOW = new Date("2026-10-25T12:00:00Z");
+
 async function openReferenceExplorer(page: Page) {
+  // The reference explorer now lives under Wallet's Technical details.
+  if (!new URL(page.url()).searchParams.get("tab")?.includes("wallet")) {
+    const params = new URL(page.url()).searchParams;
+    await page.goto(`/app?tab=wallet&city=${params.get("city") ?? "des-moines"}`);
+  }
+  const technical = page.locator("details.ln-technical");
+  if ((await technical.getAttribute("open")) == null) await technical.locator(":scope > summary").click();
   const explorer = page.locator("details.reference-explorer");
   if ((await explorer.getAttribute("open")) == null) await explorer.locator("summary").click();
 }
@@ -12,6 +21,7 @@ const transparentTile = Buffer.from(
 );
 
 test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(TEST_NOW);
   await page.route("https://api.maptiler.com/maps/**", async (route) => {
     if (route.request().url().includes("/style.json")) {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
@@ -56,8 +66,11 @@ test("Markets names all five perils and leaves purchases to the trigger chain", 
   await page.goto("/app?tab=markets&city=des-moines");
 
   const markets = page.getByRole("region", { name: "Weather markets", exact: true });
-  await expect(markets.getByRole("heading", { name: "Where are your plans?" })).toBeVisible();
-  await expect(markets.getByText("Rain, snow, wind, heat and cold. Each trigger shows whether cover is open.", { exact: true })).toBeVisible();
+  await expect(markets.getByRole("heading", { name: "Markets", exact: true })).toBeVisible();
+  for (const name of ["All", "Rain", "Snow", "Wind", "Heat", "Cold"]) {
+    await expect(markets.getByRole("tab", { name, exact: true })).toBeVisible();
+  }
+  await expect(markets.getByRole("searchbox")).toHaveCount(0);
   await expect(page.getByText("Rain only for now. Wind, snow and heat later.", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Wind, snow and heat coming")).toHaveCount(0);
   await expect(page.getByText("Rain only for now")).toHaveCount(0);
@@ -65,6 +78,8 @@ test("Markets names all five perils and leaves purchases to the trigger chain", 
   await expect(page.getByRole("button", { name: "Snowfall" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Wind gust protection is research-only" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Snowfall protection is research-only" })).toHaveCount(0);
+  expect(apiRequests).toEqual([]);
+  await openReferenceExplorer(page);
   await expect(page.locator('[data-testid^="market-index-option-"]')).toHaveCount(12);
   expect(apiRequests).toEqual([]);
 });
@@ -77,12 +92,12 @@ test("research-only hazard selection on Protect hides rainfall inputs and blocks
   await page.goto("/app?tab=protect&city=des-moines");
   await page.getByRole("tab", { name: "Wind" }).click();
 
-  await expect(page.getByText("Wind isn't open for Des Moines yet.")).toBeVisible();
+  await expect(page.getByText("Wind isn't open for Des Moines this week.")).toBeVisible();
   await expect(page.getByText("Rainfall threshold (mm / in)")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Request NOAA quote" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Approve Devnet protection" })).toHaveCount(0);
   await page.getByRole("tab", { name: "Snow" }).click();
-  await expect(page.getByText("Snow isn't open for Des Moines yet.")).toBeVisible();
+  await expect(page.getByText("Snow isn't open for Des Moines this week.")).toBeVisible();
   expect(apiRequests).toEqual([]);
 
   await page.getByRole("tab", { name: "Rain" }).click();
@@ -91,12 +106,24 @@ test("research-only hazard selection on Protect hides rainfall inputs and blocks
 });
 
 test("rain quote shows one pinned open rung, five modelled rungs and exact premiums", async ({ page }) => {
-  await page.clock.setFixedTime(new Date("2026-10-24T12:00:00Z"));
+  const requestedWindows: string[] = [];
   await page.route("**/api/mobile?resource=window-quote&**", (route) => {
     const query = new URL(route.request().url()).searchParams;
-    expect(query.get("city")).toBe("new-york");
-    expect(query.get("peril")).toBe("rain");
-    expect(query.get("windowStart")).toBe("2026-10-26");
+    // Dashboard discovery also loads other cities, perils, and monthly windows.
+    if (query.get("city") !== "new-york" || query.get("peril") !== "rain") {
+      return route.fulfill({ status: 409, json: { error: "not open" } });
+    }
+    const start = query.get("windowStart");
+    requestedWindows.push(start!);
+    const discoveryMonths: Record<string, string> = {
+      "2026-11-01": "2026-12-01",
+      "2026-12-01": "2027-01-01",
+    };
+    if (start && discoveryMonths[start]) {
+      expect(query.get("windowEnd")).toBe(discoveryMonths[start]);
+      return route.fulfill({ status: 409, json: { error: "not open" } });
+    }
+    expect(start).toBe("2026-10-26");
     expect(query.get("windowEnd")).toBe("2026-11-02");
     return route.fulfill({ json: NYC_RAIN_MODELLED });
   });
@@ -118,7 +145,7 @@ test("rain quote shows one pinned open rung, five modelled rungs and exact premi
     desMoinesMarket: { status: "ready", address: "Market11111111111111111111111111111111111", marketId: "1", vault: "Vault111111111111111111111111111111111111", vaultBalance: "2000000000", onchainStatus: "{\"open\":{}}", salesCloseAt: week, observationStart: week, observationEnd: week + 7 * 86_400, thresholdMmX100: "2900", operator: "gte", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, quoteInputsHash: "ab".repeat(32), evidenceStatus: "validated", targetCityHash: "" },
     cityWindows: windows,
     noaaEvidence: { status: "pending", settlementSource: "NOAA", message: "Historical sample only", package: null },
-    generatedAt: new Date().toISOString(),
+    generatedAt: TEST_NOW.toISOString(),
   } });
   });
   const signed: string[] = [];
@@ -128,8 +155,9 @@ test("rain quote shows one pinned open rung, five modelled rungs and exact premi
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto("/app?tab=protect");
   await expect(page.locator(".ln-sub")).toHaveText("Central Park · Oct 26 – Nov 2 · Sales close Oct 26");
-  await expect(page.getByRole("button", { name: "Week" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Week" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: "Month" })).toBeVisible();
+  await expect.poll(() => requestedWindows).toEqual(expect.arrayContaining(["2026-10-26", "2026-11-01", "2026-12-01"]));
   const chain = page.getByRole("region", { name: "Trigger chain" });
   await expect(chain.getByRole("radio")).toHaveCount(1);
   await expect(chain.getByRole("radio", { name: "Trigger 69 mm, chance 20.0 percent, multiple 4.1 times, max loss 24.00 SKYT" })).toBeChecked();
@@ -161,9 +189,9 @@ test("switching hazards clears an earlier rainfall quote until a new quote is re
     protocol: { address: "Protocol111111111111111111111111111111111", status: "ready", initialized: true, admin: null, settlementAuthority: null, collateralMint: null, nextMarketId: "1" },
     feeVault: { address: "Fee1111111111111111111111111111111111111", status: "ready", exists: true, balance: "0" },
     skytMint: { address: "Mint1111111111111111111111111111111111111", status: "ready", exists: true, decimals: 6, supply: "350000000000", mintAuthority: null },
-    desMoinesMarket: { status: "ready", address: "Market11111111111111111111111111111111111", marketId: "1", vault: "Vault111111111111111111111111111111111111", vaultBalance: "2000000000", onchainStatus: "{\"open\":{}}", salesCloseAt: Math.floor(Date.now() / 1000) + 3600, observationStart: Date.parse("2026-09-29T00:00:00Z") / 1000, observationEnd: Date.parse("2026-10-04T00:00:00Z") / 1000, thresholdMmX100: "5000", operator: "gte", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, quoteInputsHash: "ab".repeat(32), evidenceStatus: "validated", targetCityHash: "" },
+    desMoinesMarket: { status: "ready", address: "Market11111111111111111111111111111111111", marketId: "1", vault: "Vault111111111111111111111111111111111111", vaultBalance: "2000000000", onchainStatus: "{\"open\":{}}", salesCloseAt: Math.floor(TEST_NOW.getTime() / 1000) + 3600, observationStart: Date.parse("2026-09-29T00:00:00Z") / 1000, observationEnd: Date.parse("2026-10-04T00:00:00Z") / 1000, thresholdMmX100: "5000", operator: "gte", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, quoteInputsHash: "ab".repeat(32), evidenceStatus: "validated", targetCityHash: "" },
     noaaEvidence: { status: "ready", settlementSource: "NOAA", message: "Historical sample only", package: null },
-    generatedAt: new Date().toISOString(),
+    generatedAt: TEST_NOW.toISOString(),
   } }));
   let quoteCalls = 0;
   await page.route("**/api/quotes", (route) => {
@@ -174,7 +202,7 @@ test("switching hazards clears an earlier rainfall quote until a new quote is re
   });
   await page.goto("/app?tab=protect&city=des-moines");
   await page.getByRole("tab", { name: "Wind" }).click();
-  await expect(page.getByText("Wind isn't open for Des Moines yet.")).toBeVisible();
+  await expect(page.getByText("Wind isn't open for Des Moines this week.")).toBeVisible();
   await page.getByRole("tab", { name: "Rain" }).click();
   await expect(page.getByText("Quote ready", { exact: true })).toHaveCount(0);
   expect(quoteCalls).toBe(0);
@@ -235,6 +263,7 @@ test("Markets gives the selected reference location one enterprise next action",
 test("the explorer uses the twelve catalog reference coordinates and accessible marker controls", async ({ page }) => {
   test.skip(!process.env.MAP_TEST_KEY, "Provide a test-only MapTiler key to exercise vector-map markers.");
   await page.goto("/app?tab=markets&city=des-moines");
+  await openReferenceExplorer(page);
   const map = page.getByTestId("market-explorer-map");
   await expect(map).toHaveAttribute("data-map-state", "ready");
   await expect(map.locator(".sky-index-marker")).toHaveCount(12);
@@ -279,6 +308,7 @@ test("MapLibre reports repeated map tile failures and offers a retry", async ({ 
   });
 
   await page.goto("/app?tab=markets&city=des-moines");
+  await openReferenceExplorer(page);
   const map = page.getByTestId("market-explorer-map");
   await expect(map).toHaveAttribute("data-map-state", "unavailable", { timeout: 18_000 });
   await expect(map.getByRole("alert")).toContainText("Map unavailable");
@@ -335,9 +365,9 @@ test("changing the protection amount invalidates a quote priced for the previous
     protocol: { address: "Protocol111111111111111111111111111111111", status: "ready", initialized: true, admin: null, settlementAuthority: null, collateralMint: null, nextMarketId: "1" },
     feeVault: { address: "Fee1111111111111111111111111111111111111", status: "ready", exists: true, balance: "0" },
     skytMint: { address: "Mint1111111111111111111111111111111111111", status: "ready", exists: true, decimals: 6, supply: "350000000000", mintAuthority: null },
-    desMoinesMarket: { status: "ready", address: "Market11111111111111111111111111111111111", marketId: "0", vault: "Vault111111111111111111111111111111111111", vaultBalance: "2000000000", onchainStatus: "{\"open\":{}}", salesCloseAt: Math.floor(Date.now() / 1000) + 3600, observationStart: Date.parse("2026-09-29T00:00:00Z") / 1000, observationEnd: Date.parse("2026-10-04T00:00:00Z") / 1000, thresholdMmX100: "5000", operator: "gte", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, quoteInputsHash: "ab".repeat(32), evidenceStatus: "validated", targetCityHash: "" },
+    desMoinesMarket: { status: "ready", address: "Market11111111111111111111111111111111111", marketId: "0", vault: "Vault111111111111111111111111111111111111", vaultBalance: "2000000000", onchainStatus: "{\"open\":{}}", salesCloseAt: Math.floor(TEST_NOW.getTime() / 1000) + 3600, observationStart: Date.parse("2026-09-29T00:00:00Z") / 1000, observationEnd: Date.parse("2026-10-04T00:00:00Z") / 1000, thresholdMmX100: "5000", operator: "gte", quoteProbabilityBps: 2_000, premiumRateBps: 2_400, quoteInputsHash: "ab".repeat(32), evidenceStatus: "validated", targetCityHash: "" },
     noaaEvidence: { status: "ready", settlementSource: "NOAA", message: "Historical sample only", package: null },
-    generatedAt: new Date().toISOString(),
+    generatedAt: TEST_NOW.toISOString(),
   } }));
   await page.route("**/api/quotes", (route) => route.fulfill({ json: {
     probabilityBps: 2_000, premiumRateBps: 2_400, premium: "2400000", protocolFee: "1000000", protectedAmount: "100000000", modelVersion: "noaa-rain-v1", inputsHash: "ab".repeat(32),
@@ -412,31 +442,20 @@ test("locations wrap without horizontal overflow at supported widths", async ({ 
   }
 });
 
-test("waitlist landing owns the root hero and the product lives at /app", async ({ page }) => {
+test("multi-peril landing owns the root hero and the product lives at /app", async ({ page }) => {
   await page.goto("/");
-  const hero = page.getByRole("region", { name: /Rain on your plans/i });
-  await expect(hero.getByRole("heading", { name: "Rain on your plans? Get paid." })).toBeVisible();
-  await expect(hero.getByRole("link", { name: "Join the waitlist" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Join waitlist" })).toBeVisible();
-  await expect(page.getByText("Weekend in Central Park?")).toBeVisible();
-  await expect(page.getByText("Lollapalooza weekend?")).toBeVisible();
-  await expect(page.getByText("Beach day in South Beach?")).toBeVisible();
-  await expect(page.getByText("Rained-out game day?")).toBeVisible();
-  await expect(page.getByText("Rooftop party?")).toBeVisible();
-  await expect(hero.getByText("Toronto")).toHaveCount(0);
-  await expect(hero.getByText("Des Moines")).toHaveCount(0);
-  const examples = page.getByRole("list", { name: "Rainfall cities" });
-  await expect(examples.getByText("Los Angeles", { exact: true })).toBeVisible();
-  await expect(examples.getByText("Boston", { exact: true })).toBeVisible();
-  await expect(examples.getByText("Austin", { exact: true })).toBeVisible();
-  await expect(examples.getByText("Des Moines", { exact: true })).toBeVisible();
-  await expect(examples.getByText("Toronto")).toBeVisible();
-  await expect(examples.getByText("Waiting on Environment Canada data")).toBeVisible();
-  await expect(examples.getByText("Opens soon")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Open web app" }).first()).toHaveAttribute("href", "/app");
+  await expect(page.getByRole("heading", { name: "Weather on your plans? Get paid." })).toBeVisible();
+  await expect(page.getByText("Pick a kind of weather and a city. Set the line. If NOAA's record crosses it, you're paid in SKYT.")).toBeVisible();
+  for (const name of ["Rain", "Snow", "Wind", "Heat", "Cold"]) await expect(page.getByRole("tab", { name, exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open app" })).toHaveAttribute("href", "/app");
+  await expect(page.getByRole("listitem")).toHaveText(["Pick a city and a kind of weather.", "Choose your cover.", "Approve in your wallet."]);
+  await expect(page.getByText("NOAA's final daily records alone decide payouts. Other weather data is context only.")).toBeVisible();
+  await page.getByRole("tab", { name: "Cold", exact: true }).click();
+  await expect(page.getByText("Cold isn't open yet.")).toBeVisible();
+  await expect(page.locator(".ln-money-cell")).toHaveCount(0);
   await expect(page.getByText("insurance", { exact: false })).toHaveCount(0);
-
-  await page.goto("/app?tab=markets&city=des-moines");
+  await expect(page.getByText("Rain on your plans? Get paid.")).toHaveCount(0);
+  await page.goto("/app?tab=wallet&city=des-moines");
   await openReferenceExplorer(page);
   await expect(page.getByRole("heading", { name: "Find a weather reference area" })).toBeVisible();
   await expect(page).toHaveURL(/\/app\?/);
@@ -468,9 +487,9 @@ test("Builder does not call an expired zero-funded Draft market ready", async ({
     protocol: { address: "Protocol111111111111111111111111111111111", status: "ready", initialized: true, admin: null, settlementAuthority: null, collateralMint: null, nextMarketId: "1" },
     feeVault: { address: "Fee1111111111111111111111111111111111111", status: "ready", exists: true, balance: "0" },
     skytMint: { address: "Mint1111111111111111111111111111111111111", status: "ready", exists: true, decimals: 6, supply: "350000000000", mintAuthority: null },
-    desMoinesMarket: { status: "ready", address: "Market11111111111111111111111111111111111", marketId: "0", vault: "Vault111111111111111111111111111111111111", vaultBalance: "0", onchainStatus: JSON.stringify({ draft: {} }), salesCloseAt: Math.floor(Date.now() / 1_000) - 3_600, observationStart: null, observationEnd: null, thresholdMmX100: null, operator: null, quoteProbabilityBps: null, premiumRateBps: null, quoteInputsHash: null, evidenceStatus: "researching_evidence", targetCityHash: "" },
+    desMoinesMarket: { status: "ready", address: "Market11111111111111111111111111111111111", marketId: "0", vault: "Vault111111111111111111111111111111111111", vaultBalance: "0", onchainStatus: JSON.stringify({ draft: {} }), salesCloseAt: Math.floor(TEST_NOW.getTime() / 1_000) - 3_600, observationStart: null, observationEnd: null, thresholdMmX100: null, operator: null, quoteProbabilityBps: null, premiumRateBps: null, quoteInputsHash: null, evidenceStatus: "researching_evidence", targetCityHash: "" },
     noaaEvidence: { status: "ready", settlementSource: "NOAA", message: "Historical sample only", package: null },
-    generatedAt: new Date().toISOString(),
+    generatedAt: TEST_NOW.toISOString(),
   } }));
   await page.route("**/api/health", (route) => route.fulfill({ json: {
     status: "degraded",
@@ -493,7 +512,7 @@ test("Builder shows that automatic oracle settlement is blocked when cron auth i
     skytMint: { address: "Mint1111111111111111111111111111111111111", status: "ready", exists: true, decimals: 6, supply: "350000000000", mintAuthority: null },
     desMoinesMarket: { status: "pending", address: null, marketId: null, vault: null, vaultBalance: null, onchainStatus: null, salesCloseAt: null, observationStart: null, observationEnd: null, thresholdMmX100: null, operator: null, evidenceStatus: "researching_evidence", targetCityHash: "" },
     noaaEvidence: { status: "ready", settlementSource: "NOAA", message: "Historical NOAA sample for 2026-09-13 through 2026-09-20 confirms station data availability only; it does not validate a future market window, settlement rainfall, or pricing.", package: null },
-    generatedAt: new Date().toISOString(),
+    generatedAt: TEST_NOW.toISOString(),
   } }));
   await page.route("**/api/health", (route) => route.fulfill({ json: {
     status: "ok",

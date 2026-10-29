@@ -48,7 +48,6 @@ export function PlanCities({ onOpen, windows = [] }: { onOpen: (slug: ConsumerCi
                   <p className="plan-cities__place font-semibold">{city.city}</p>
                   <p className="plan-cities__payout">{row.stationLine}</p>
                   {row.figures ? <p className="plan-cities__figures"><MixedCopy text={row.figures} /></p> : null}
-                  {row.forecaster ? <p className="plan-cities__fore">{row.forecaster.band} {row.forecaster.detail}</p> : null}
                 </div>
                 <span className={`status-word status-word--${row.ink}`}>{row.status}</span>
               </button>

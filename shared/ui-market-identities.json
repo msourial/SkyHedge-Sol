@@ -1,0 +1,227 @@
+[
+  {
+    "cityId": "new-york",
+    "peril": "rain",
+    "hash": "572990d52a3b8c590c8c62555f04b89e58733f5b0d5616605fe782e6cc6776db"
+  },
+  {
+    "cityId": "new-york",
+    "peril": "snow",
+    "hash": "ddc5ff8f8b7ec4a5caf869ba52ea2e14164ba7082b89ecf3448b3fd5d2457853"
+  },
+  {
+    "cityId": "new-york",
+    "peril": "wind",
+    "hash": "0043d1d2e7c50a53788977db3409cb811426412ce7002d343a9e7e46d8485e7b"
+  },
+  {
+    "cityId": "new-york",
+    "peril": "heat",
+    "hash": "1befaa682aca4ccd038d2e127fc2ab6e9321835136f7afd4fc1c7fb2a769854e"
+  },
+  {
+    "cityId": "new-york",
+    "peril": "cold",
+    "hash": "549084b6ad672ec77fd50058fa4a7e1a772ed92f10395ac9926a89db307bec53"
+  },
+  {
+    "cityId": "chicago",
+    "peril": "rain",
+    "hash": "a2470c9d137c1c5d3567d1180a64cb43a9269c4d6f1ff13ac8cdbaf6fc5df3b7"
+  },
+  {
+    "cityId": "chicago",
+    "peril": "snow",
+    "hash": "bbc906b3f0602f0855b6cfb9b6c6577f5f22183a4981d7804d4b24c02018b469"
+  },
+  {
+    "cityId": "chicago",
+    "peril": "wind",
+    "hash": "07ab53a666cd9b43e59a0ad73b5420dda84283b7c0e6f25e386a12778fd11e5a"
+  },
+  {
+    "cityId": "chicago",
+    "peril": "heat",
+    "hash": "15c16a6b1c278bf0c7f4113f9d9ac5a124513037f14380ecf7c6b750409bfe55"
+  },
+  {
+    "cityId": "chicago",
+    "peril": "cold",
+    "hash": "c56948a13db6b751c84065ee83303632e46a2fe39a68286fe98bc2864d6cd041"
+  },
+  {
+    "cityId": "miami",
+    "peril": "rain",
+    "hash": "c55ec4bbe9c7c1614204f286194b109010ca0680f41325ec1a82302a34b4f3f7"
+  },
+  {
+    "cityId": "miami",
+    "peril": "snow",
+    "hash": "105ae19cc8e7148ddf30f3b3b1d3c0086a2222af7a13982b3af7609a4756e32c"
+  },
+  {
+    "cityId": "miami",
+    "peril": "wind",
+    "hash": "54872ef10eb1d2ee707ac6e2aa07dec19b450d117737e130006a3f1acad66c29"
+  },
+  {
+    "cityId": "miami",
+    "peril": "heat",
+    "hash": "560ebb7fcad67ebba4ad345e834eb0c176e9584204005140d99146d46d4cb11c"
+  },
+  {
+    "cityId": "miami",
+    "peril": "cold",
+    "hash": "823fcc205084f7e0042aa4337da2816e31432f13042d60fbefd4b2e60910ad14"
+  },
+  {
+    "cityId": "dallas",
+    "peril": "rain",
+    "hash": "fa2115f8d576a6ab722956697fc759c31d1cd6b93c8336bfebf73ed5cba2ff49"
+  },
+  {
+    "cityId": "dallas",
+    "peril": "snow",
+    "hash": "a1fe1eeedec44a41520d5002d64111317cc192599168ff7bfe84b9a61cdb33fe"
+  },
+  {
+    "cityId": "dallas",
+    "peril": "wind",
+    "hash": "f2d238b4174957098f391f1075a97c7cbb069b9095830e8dc5086a7f0c806300"
+  },
+  {
+    "cityId": "dallas",
+    "peril": "heat",
+    "hash": "504a88d7687021757a1bf14dcdd2ce2c4e4f778e19b359d7d9620b5f1854fae5"
+  },
+  {
+    "cityId": "dallas",
+    "peril": "cold",
+    "hash": "d92bd5fc367c6d9a447ea9bce638d264c69b9ed5fea50aad6fc112e2d3c1cc88"
+  },
+  {
+    "cityId": "los-angeles",
+    "peril": "rain",
+    "hash": "7d312c3425ddb796b057b9f5b9ee841a6bb779515740a897dfc3a2ccbc3c5d4d"
+  },
+  {
+    "cityId": "los-angeles",
+    "peril": "snow",
+    "hash": "153869c6e4de132f0f593bee67698d68da29eb4172ea963120a85bd98a125e49"
+  },
+  {
+    "cityId": "los-angeles",
+    "peril": "wind",
+    "hash": "edb9c81483ad334cc7b2d440c4989a70d62715a57fd3fed9f283d9afe0e5d8f1"
+  },
+  {
+    "cityId": "los-angeles",
+    "peril": "heat",
+    "hash": "44bc5ab287c357479988ddabfbbf4feab21816552b0445106b8a2875b9c2dd9d"
+  },
+  {
+    "cityId": "los-angeles",
+    "peril": "cold",
+    "hash": "316cba0819d056dc4f630ef1756cd3034676cf98f3ab1d572d3f65bc5d90b9eb"
+  },
+  {
+    "cityId": "seattle",
+    "peril": "rain",
+    "hash": "3151a8f227c0e11fd9a7fd1aa24ebfee734503dea095c22c3b2fae09d62eeb25"
+  },
+  {
+    "cityId": "seattle",
+    "peril": "snow",
+    "hash": "9639363f13c80f707325cd44183bf3cfc9a5bab05cccc971fb2db3dc9162d7c2"
+  },
+  {
+    "cityId": "seattle",
+    "peril": "wind",
+    "hash": "9769bfdb4910468462c7b65eba7ffa842825bca3fb41f1854714d498b428ae24"
+  },
+  {
+    "cityId": "seattle",
+    "peril": "heat",
+    "hash": "e3945c4bca87678793db7832efe997db898c8fc17ce9edd47dfd0a5693e5f8fa"
+  },
+  {
+    "cityId": "seattle",
+    "peril": "cold",
+    "hash": "a7b2e575b7a1d3e2e0cf5dba24666585620057161abe9b7ac3688dd5643ba37b"
+  },
+  {
+    "cityId": "boston",
+    "peril": "rain",
+    "hash": "3c66157844fa8ce7e9b67b0022383d7709ba2b30f8306d3c9b2eceb2cd91e4dc"
+  },
+  {
+    "cityId": "boston",
+    "peril": "snow",
+    "hash": "3a793597268d548f32af417256e9a3ff717e97fb8f57d8a801a48aab420df05c"
+  },
+  {
+    "cityId": "boston",
+    "peril": "wind",
+    "hash": "bd0609a9c07d0480f128df957e30955ce58f9e383260585d2d1d6c071bf87bc1"
+  },
+  {
+    "cityId": "boston",
+    "peril": "heat",
+    "hash": "c9ae14821512c90e6b38d89155c20ae96d67761d3ed8659f60a0e358118c4813"
+  },
+  {
+    "cityId": "boston",
+    "peril": "cold",
+    "hash": "18b2ccbbfbe4c687ef29fb3449bf0bd96042937cf2b1a42c1cee880230692a57"
+  },
+  {
+    "cityId": "austin",
+    "peril": "rain",
+    "hash": "c7c1319276e936c8d64f1d5ed80cd8a0cf54e6dea7b0125533eb4163e03a2c11"
+  },
+  {
+    "cityId": "austin",
+    "peril": "snow",
+    "hash": "d644263ee1ab56d5971e19b91ec3cc98610be1a4dd1c97b179afc4a41a826b2d"
+  },
+  {
+    "cityId": "austin",
+    "peril": "wind",
+    "hash": "d5d0f94118c41e020d7c86c2ae1e0e7c38a64c71ba5136c5d458e485a3185608"
+  },
+  {
+    "cityId": "austin",
+    "peril": "heat",
+    "hash": "f2258e6ca7d8d7329b909d5e4d2b6c917377eb95692420192572b1e639a1fb5d"
+  },
+  {
+    "cityId": "austin",
+    "peril": "cold",
+    "hash": "ceb5647d10eb2cd9b655f93c271a80298f3cdfc182effde0b2aee49882a520e7"
+  },
+  {
+    "cityId": "des-moines",
+    "peril": "rain",
+    "hash": "13e27a0bebb4e79691313774caca41ef97af036a17240088665be784afbf8d32"
+  },
+  {
+    "cityId": "des-moines",
+    "peril": "snow",
+    "hash": "4124f7b538fc7a65dbce95e9ac73414f91a7fbcaa42ff9a88534e4307f00ff0e"
+  },
+  {
+    "cityId": "des-moines",
+    "peril": "wind",
+    "hash": "01cd9d08430bec6350ca25375c74d2998a12b8303c5c4c7beb1009b76ca96d57"
+  },
+  {
+    "cityId": "des-moines",
+    "peril": "heat",
+    "hash": "7ccaf71fa3878544dcbdb260aed290c46710a54ffcd359768909d9eb80f059c9"
+  },
+  {
+    "cityId": "des-moines",
+    "peril": "cold",
+    "hash": "9907cf245cf6d7a56998f5edcab333a3292ed5a0e9984075eb19f87bf1714b36"
+  }
+]

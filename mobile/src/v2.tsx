@@ -209,7 +209,6 @@ export function MarketsScreen(props: {
             <Text style={s.resultName} android_hyphenationFrequency="none">{a}<Text style={{ fontFamily: F.bodyBold, color: C.ink }}>{b}</Text>{c}</Text>
             <Text style={s.resultSub} android_hyphenationFrequency="none">{row?.stationLine ?? moment ?? `${m.region} · ${m.source}`}</Text>
             {row?.figures ? <Text style={[s.resultSub, { color: C.ink }]} android_hyphenationFrequency="none">{row.figures}</Text> : null}
-            {row?.forecaster ? <Text style={s.caption}>{row.forecaster.band} {row.forecaster.detail}</Text> : null}
             <Text style={[s.caption, { color: row?.ink === "glacier" ? C.rain : C.dryText }]}>{row?.status ?? (m.code === "YYZ" ? "Waiting on Environment Canada data" : productStatusLabel("soon").text)}</Text>
           </View>
           <AppIcon name="chevron-right" color={C.quiet} size={16} />

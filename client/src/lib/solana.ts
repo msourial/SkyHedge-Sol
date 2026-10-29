@@ -55,11 +55,13 @@ export function shortAddress(value: string, pad = 4): string {
  * Sign a base64-serialized VersionedTransaction with the connected wallet and
  * broadcast it and wait for finalized commitment. Returns the finalized signature.
  */
-export async function signAndSend(base64: string, wallet: WalletContextState): Promise<string> {
+export async function signAndSend(base64: string, wallet: WalletContextState, onProgress?: (step: "send" | "confirm") => void): Promise<string> {
   if (!wallet.signTransaction || !wallet.publicKey) throw new Error("Wallet cannot sign transactions.");
   const transaction = VersionedTransaction.deserialize(Buffer.from(base64, "base64"));
   const signed = await wallet.signTransaction(transaction);
+  onProgress?.("send");
   const signature = await connection.sendTransaction(signed, { maxRetries: 2 });
+  onProgress?.("confirm");
   const confirmation = await connection.confirmTransaction(signature, "finalized");
   if (confirmation.value.err) throw new Error(`Devnet transaction failed: ${JSON.stringify(confirmation.value.err)}`);
   return signature;

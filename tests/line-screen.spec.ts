@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { NYC_RAIN_MODELLED } from "../shared/ui-fixtures";
 
 test("max loss and max gain share size, weight, and colour", async ({ page }) => {
@@ -59,15 +59,13 @@ test("live wind and heat quotes are modelled, and cold never requests a quote", 
       rungs: NYC_RAIN_MODELLED.rungs.map((rung) => ({ ...rung, marketAddress: null })),
     } });
   });
-  for (const [city, label, unit] of [["chicago", "Wind", "m/s"], ["miami", "Heat", "C"]]) {
+  for (const [city, label] of [["chicago", "Wind", "m/s"], ["miami", "Heat", "C"]]) {
     await page.goto(`/app?tab=protect&city=${city}`);
     await page.getByRole("tab", { name: label, exact: true }).click();
     const chain = page.getByRole("region", { name: "Trigger chain" });
-    await expect(chain).toBeVisible();
-    await expect(chain).toContainText(`Trigger (${unit})`);
-    await expect(chain.locator('[data-open="false"]')).toHaveCount(6);
-    await expect(chain.getByRole("radio")).toHaveCount(0);
-    await expect(chain).toContainText("Chance is from 8 years of NOAA history, not a forecast.");
+    await expect(chain).toHaveCount(0);
+    await expect(page.locator(".ln-instrument svg > *")).toHaveCount(0);
+    await expect(page.getByText(`${label} isn't open for ${city === "chicago" ? "Chicago" : "Miami"} this week.`, { exact: true })).toBeVisible();
     await expect(page.getByRole("region", { name: "Ticket", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /^Protect for/ })).toHaveCount(0);
     await page.getByRole("tab", { name: "Cold", exact: true }).click();

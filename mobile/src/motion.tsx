@@ -44,11 +44,11 @@ export function ProgressRail({ progress, color, track, height = 4 }: { progress:
   const v = useRef(new Animated.Value(reduced ? p : 0)).current;
   useEffect(() => {
     if (reduced) { v.setValue(p); return; }
-    const a = Animated.timing(v, { toValue: p, duration: motion.progress, easing: Easing.out(Easing.cubic), useNativeDriver: false });
+    const a = Animated.timing(v, { toValue: p, duration: motion.progress, easing: Easing.out(Easing.cubic), useNativeDriver: true });
     a.start();
     return () => a.stop();
   }, [p, reduced, v]);
   return <Animated.View style={{ height, borderRadius: height / 2, backgroundColor: track, overflow: "hidden" }}>
-    <Animated.View style={{ height, borderRadius: height / 2, backgroundColor: color, width: v.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }) }} />
+    <Animated.View style={{ height, borderRadius: height / 2, backgroundColor: color, width: "100%", transformOrigin: "left", transform: [{ scaleX: v }] }} />
   </Animated.View>;
 }

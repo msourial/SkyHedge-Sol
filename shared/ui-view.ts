@@ -1,80 +1,42 @@
-/**
- * Protect view model. Web and Seeker render this and do not recompute money.
- * A position on the window locks every rung: the current app allows one
- * position per window, which is stricter than one position per market.
- */
-import {
-  ALREADY_COVERED,
-  BREAK_EVEN,
-  SALES_CLOSED,
-  CHAIN_ERROR,
-  CHANCE,
-  COVER,
-  COVERED_WORD,
-  FEE_INCLUDED,
-  GETTING_QUOTE,
-  MAX_GAIN,
-  MAX_LOSS,
-  PAYOUT,
-  SO_FAR,
-  TRIGGER,
-  WAITING_WALLET,
-  WINDOW_WORD,
-  capLine,
-  chanceNote,
-  coverSentence,
-  feeLine,
-  gainCaption,
-  goThereLine,
-  highestInYears,
-  lossCaption,
-  modelledRowName,
-  notOpenLine,
-  oddsLine,
-  openRowName,
-  payoffDescription,
-  pricingSentence,
-  protectCta,
-  resultLine,
-  salesCloseLine,
-  sinceLine,
-  startsLine,
-  subline,
-  ticketSheet,
-} from "./ui-copy.ts";
-import { chainFigures, dayFromIso, fractionOnScale, payoffPixels, scaleFor, stationFor } from "./ui-ladder.ts";
-import {
-  breakEvenLabel,
-  chanceLabel,
-  chipExceedsCap,
-  formatBase,
-  moneyParts,
-  multipleLabel,
-  protocolFeeBase,
-  rungEconomics,
-  ticketFromBases,
-  COVER_SIZES,
-} from "./ui-money.ts";
-import { cityById, openCityFor, perilById, perilOpen } from "./peril-registry.ts";
+/** Shared Protect data. Renderers never reconstruct a premium or payout. */
+import * as copy from "./ui-copy.ts";
+import { chainFigures, dayFromIso, fractionOnScale, payoffPixels, scaleFor, stationFor, isoFromSeconds } from "./ui-ladder.ts";
+import { breakEvenLabel, chanceLabel, chipExceedsCap, formatBase, moneyParts, multipleLabel, protocolFeeBase, rungEconomics, ticketFromBases, COVER_SIZES } from "./ui-money.ts";
+import { CITIES, cityById, perilById, perilOpen } from "./peril-registry.ts";
+import { openQuoteWindows, pickDefaultWindow, type QuoteWindow, type TenorAvailability } from "./ui-window-quote.ts";
 import { rungTrigger, type CoverSize, type PerilId, type RungQuote, type WindowQuote } from "./ui-types.ts";
 import type { InstrumentState } from "./ui-instrument.ts";
 
 export type MoneyFigure = { sign: "-" | "+"; whole: string; fraction: string };
-
+export type SignRow = { label: string; value: string; payout?: boolean };
 export type ChainRowModel = {
   trigger: number;
   triggerLabel: string;
   chance: string;
   multiple: string;
-  maxLoss: string | null;
+  maxLoss: string;
+  kind: "open" | "modelled";
   open: boolean;
   selected: boolean;
   inert: boolean;
   topTag: string | null;
   yourCover: boolean;
+  tag: string | null;
   name: string;
 };
-
+export type PayoffModel = {
+  /** Exact base units, safe to freeze for the sign flow. */
+  lossBase: string;
+  gainBase: string;
+  lossPx: number;
+  gainPx: number;
+  step: number;
+  ticks: number[];
+  lossLabel: string;
+  gainLabel: string;
+  triggerLabel: string;
+  description: string;
+};
 export type TicketModel = {
   loss: MoneyFigure;
   gain: MoneyFigure;
@@ -85,25 +47,20 @@ export type TicketModel = {
   note: string | null;
   sentence: string;
   salesClose: string;
+  refund: string;
   honesty: string | null;
   sheet: string | null;
-  diagram: {
-    lossPx: number;
-    gainPx: number;
-    step: number;
-    ticks: number[];
-    lossLabel: string;
-    gainLabel: string;
-    triggerLabel: string;
-    description: string;
-  };
-  signRows: Array<{ label: string; value: string; payout?: boolean }>;
+  readOnly: boolean;
+  payoff: PayoffModel;
+  /** @deprecated Use payoff. Kept for the existing renderers. */
+  diagram: PayoffModel;
+  signRows: SignRow[];
 };
-
+export type NotOpenLink = { label: string; cityId: string; tenor?: "weekly" | "monthly"; windowStart?: string; windowEnd?: string };
 export type PanelModel =
   | { kind: "loading"; cta: string }
   | { kind: "error"; message: string }
-  | { kind: "not-open"; line: string; go: { label: string; cityId: string } | null }
+  | { kind: "not-open"; line: string; go: NotOpenLink | null }
   | { kind: "closed"; line: string }
   | { kind: "connect"; loss: MoneyFigure; gain: MoneyFigure; cta: string }
   | { kind: "ready"; loss: MoneyFigure; gain: MoneyFigure; cta: string }
@@ -111,15 +68,24 @@ export type PanelModel =
   | { kind: "covered"; loss: MoneyFigure; gain: MoneyFigure; title: string }
   | { kind: "paid"; result: string; payout: string }
   | { kind: "dry"; result: string };
-
+export type ProtectHero = {
+  label: string;
+  numeral: string;
+  unit: string;
+  chance: string;
+  multiple: string;
+  soFar: { label: string; value: string } | null;
+};
 export type ProtectModel = {
   cityName: string;
   station: string;
   peril: PerilId;
   unit: string;
   tenor: "weekly" | "monthly";
+  tenorOpen: TenorAvailability;
   subline: string | null;
-  odds: string | null;
+  hero: ProtectHero | null;
+  /** @deprecated Use hero.soFar. These aliases never contain a start date. */
   soFarLabel: string;
   soFarValue: string;
   soFarSince: string | null;
@@ -127,16 +93,23 @@ export type ProtectModel = {
   instrument: InstrumentState;
   rungs: number[];
   selected: number | null;
+  header: [string, string, string, string];
   rows: ChainRowModel[];
   showChain: boolean;
+  readOnly: boolean;
+  yourCover: string | null;
   footnote: string | null;
+  optionAFootnote: string | null;
+  footnotes: string[];
   chips: Array<{ cover: CoverSize; selected: boolean; disabled: boolean }>;
   capMessage: string | null;
   blocked: string | null;
   ticket: TicketModel | null;
+  payoff: PayoffModel | null;
+  coverSentence: string | null;
+  signRows: SignRow[];
   panel: PanelModel;
 };
-
 export type ProtectBuildInput = {
   cityId: string;
   peril: PerilId;
@@ -150,304 +123,164 @@ export type ProtectBuildInput = {
   connected: boolean;
   signing: boolean;
   cover: CoverSize;
-  /** User's choice. Null until they tap a row. */
   selectedTrigger: number | null;
-  /** Pinned rung when the user has not chosen. Rank 8 on the current rain markets. */
   defaultTrigger: number | null;
   coveredMarket: string | null;
   settlement: null | { kind: "paid" | "dry" };
   usedSkyt: number;
   reading: number | null;
   running: boolean;
+  windows?: readonly QuoteWindow[];
+  nowSeconds?: number;
+  tenorOpen?: TenorAvailability;
 };
 
 export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
-  const city = cityById(input.cityId);
-  const peril = perilById(input.peril);
-  const cityName = city?.name ?? "This city";
-  const station = city?.station ?? stationFor(input.cityId);
-  const unit = input.quote?.unit || input.single?.unit || peril?.unit || "";
-  const open = input.peril !== "cold" && (input.quote != null || perilOpen({ cityId: input.cityId, peril: input.peril, windowStart: input.windowStart, tenor: input.tenor }));
-  const start = dayFromIso(input.windowStart);
-  const end = dayFromIso(input.windowEnd);
-  const years = input.quote?.analogueYears ?? null;
-  const footnote = years ? chanceNote(years) : null;
-  const chips = COVER_SIZES.map((cover) => ({
-    cover,
-    selected: cover === input.cover,
-    disabled: chipExceedsCap(cover, input.usedSkyt),
-  }));
-  const capMessage = chips.some((chip) => chip.disabled) ? capLine() : null;
-  const base = {
-    cityName,
-    station,
-    peril: input.peril,
-    unit,
-    tenor: input.tenor,
-    subline: start && end ? subline({ station, start, end, salesClose: dayFromIso(input.quote?.salesCloseAt ?? input.windowStart) ?? start }) : null,
-    chips,
-    capMessage,
-    soFarLabel: SO_FAR,
+  const cityName = cityById(input.cityId)?.name ?? copy.THIS_CITY;
+  const station = cityById(input.cityId)?.station ?? stationFor(input.cityId);
+  const unit = input.quote?.unit || input.single?.unit || perilById(input.peril)?.unit || "";
+  const eligible = input.peril !== "cold" && perilOpen({ ...input, windowStart: input.windowStart });
+  const salesOpen = input.nowSeconds == null || Date.parse(input.quote?.salesCloseAt ?? input.windowStart) > input.nowSeconds * 1000;
+  const currentOpen = eligible && salesOpen && !!(input.quote?.rungs.some((rung) => rungEconomics(rung, input.cover)) || (input.single && rungEconomics(input.single, input.cover)));
+  const tenorOpen = input.tenorOpen ?? (input.windows ? pickDefaultWindow({ ...input, windows: input.windows, nowSeconds: input.nowSeconds ?? 0 }).tenorAvailability
+    : { weekly: input.tenor === "weekly" && currentOpen, monthly: input.tenor === "monthly" && currentOpen });
+  const start = dayFromIso(input.windowStart), end = dayFromIso(input.windowEnd);
+  const chips = input.coveredMarket ? [] : COVER_SIZES.map((cover) => ({ cover, selected: cover === input.cover, disabled: chipExceedsCap(cover, input.usedSkyt) }));
+  const base: ProtectModel = {
+    cityName, station, peril: input.peril, unit, tenor: input.tenor, tenorOpen,
+    subline: start && end ? copy.subline({ station, start, end, salesClose: dayFromIso(input.quote?.salesCloseAt ?? input.windowStart) ?? start }) : null,
+    hero: null, soFarLabel: copy.SO_FAR, soFarValue: "", soFarSince: null, reading: null,
+    instrument: "ghost", rungs: [], selected: null, header: [copy.triggerHeader(unit), copy.CHANCE, copy.MULTIPLE, copy.MAX_LOSS],
+    rows: [], showChain: false, readOnly: !!input.coveredMarket, yourCover: input.coveredMarket ? copy.YOUR_COVER : null,
+    footnote: null, optionAFootnote: null, footnotes: [], chips: [], capMessage: null,
+    blocked: null, ticket: null, payoff: null, coverSentence: null, signRows: [], panel: notOpenPanel(input, cityName),
   };
+  if (!eligible) return base;
+  if (input.failed && !input.quote && !input.single) return { ...base, panel: { kind: "error", message: copy.CHAIN_ERROR } };
+  if (input.loading && !input.quote && !input.single) return { ...base, instrument: "loading", panel: { kind: "loading", cta: copy.GETTING_QUOTE } };
+  if (!currentOpen && !input.coveredMarket && !input.settlement) return base;
 
-  if (!open) {
-    const other = openCityFor(input.peril, input.cityId, input.windowStart, input.tenor);
-    return {
-      ...base,
-      odds: null,
-      soFarValue: start ? startsLine(start) : "",
-      soFarSince: null,
-      reading: null,
-      instrument: "ghost",
-      rungs: [],
-      selected: null,
-      rows: [],
-      showChain: false,
-      footnote: null,
-      blocked: null,
-      ticket: null,
-      panel: {
-        kind: "not-open",
-        line: notOpenLine(input.peril, cityName),
-        go: other ? { label: goThereLine(input.peril, other.name), cityId: other.id } : null,
-      },
-    };
-  }
-
-  if (input.failed && !input.quote && !input.single) {
-    return empty(base, start, { kind: "error", message: CHAIN_ERROR }, "ghost");
-  }
-  if (input.loading && !input.quote && !input.single) {
-    return empty(base, start, { kind: "loading", cta: GETTING_QUOTE }, "loading");
-  }
-  if (!input.quote && !input.single) {
-    if (input.peril === "rain") return empty(base, start, { kind: "closed", line: SALES_CLOSED }, "ghost");
-    const elsewhere = openCityFor(input.peril, input.cityId, input.windowStart, input.tenor);
-    return {
-      ...empty(base, start, {
-        kind: "not-open",
-        line: notOpenLine(input.peril, cityName),
-        go: elsewhere ? { label: goThereLine(input.peril, elsewhere.name), cityId: elsewhere.id } : null,
-      }, "ghost"),
-    };
-  }
-
-  const quote = input.quote;
-  const figures = quote ? chainFigures(quote, input.cover) : [];
-  const rows = figures.length > 1 ? chainRows(quote!, input) : [];
-  const showChain = rows.length > 1;
+  const figures = input.quote ? chainFigures(input.quote, input.cover) : [];
   const chosen = pickTrigger(figures, input);
-  const ticket = buildTicket(input, station, unit, end, years, chosen);
-  const reading = input.running ? input.reading : null;
-  const instrument = instrumentState(input, Boolean(ticket));
-  const soFarValue = reading != null && unit ? `${formatMeasure(reading)} ${unit}` : start ? startsLine(start) : "";
-  const odds = ticket && input.settlement?.kind !== "dry" && !input.failed
-    ? oddsLine(input.peril, chanceBps(quote, input, chosen))
-    : null;
-
+  const ticket = buildTicket(input, station, unit, end, chosen);
+  if (!ticket || chosen == null) return base;
+  const rows = figures.length > 1 ? chainRows(input.quote!, input, chosen) : [];
+  const showChain = rows.length > 1;
+  const reading = input.running && input.reading != null && Number.isFinite(input.reading) ? input.reading : null;
+  const soFarValue = reading == null ? "" : `${formatMeasure(reading)} ${unit}`;
+  const footnote = input.quote ? copy.chanceNote(input.quote.analogueYears) : null;
+  const optionAFootnote = showChain && rows.filter((row) => row.open).length === 1 ? copy.CHAIN_OPTION_A : null;
   let panel: PanelModel;
-  if (!ticket) {
-    panel = input.loading ? { kind: "loading", cta: GETTING_QUOTE } : { kind: "not-open", line: notOpenLine(input.peril, cityName), go: null };
-  } else if (input.settlement?.kind === "paid") {
-    panel = { kind: "paid", result: resultLine("+", formatBase(ticketGain(ticket), 2)), payout: ticket.payout };
-  } else if (input.settlement?.kind === "dry") {
-    panel = { kind: "dry", result: resultLine("-", `${ticket.loss.whole}.${ticket.loss.fraction}`) };
-  } else if (input.coveredMarket) {
-    panel = { kind: "covered", loss: ticket.loss, gain: ticket.gain, title: COVERED_WORD };
-  } else if (input.signing) {
-    panel = { kind: "signing", loss: ticket.loss, gain: ticket.gain, cta: WAITING_WALLET };
-  } else if (!input.connected) {
-    panel = { kind: "connect", loss: ticket.loss, gain: ticket.gain, cta: "Connect wallet" };
-  } else if (chips.find((chip) => chip.cover === input.cover)?.disabled) {
-    panel = { kind: "ready", loss: ticket.loss, gain: ticket.gain, cta: protectCta(`${ticket.loss.whole}.${ticket.loss.fraction}`) };
-  } else {
-    panel = { kind: "ready", loss: ticket.loss, gain: ticket.gain, cta: protectCta(`${ticket.loss.whole}.${ticket.loss.fraction}`) };
-  }
-
+  if (input.settlement?.kind === "paid") panel = { kind: "paid", result: copy.resultLine("+", `${ticket.gain.whole}.${ticket.gain.fraction}`), payout: ticket.payout };
+  else if (input.settlement?.kind === "dry") panel = { kind: "dry", result: copy.resultLine("-", `${ticket.loss.whole}.${ticket.loss.fraction}`) };
+  else if (input.coveredMarket) panel = { kind: "covered", loss: ticket.loss, gain: ticket.gain, title: copy.COVERED_WORD };
+  else if (input.signing) panel = { kind: "signing", loss: ticket.loss, gain: ticket.gain, cta: copy.WAITING_WALLET };
+  else if (!input.connected) panel = { kind: "connect", loss: ticket.loss, gain: ticket.gain, cta: copy.CONNECT_WALLET };
+  else panel = { kind: "ready", loss: ticket.loss, gain: ticket.gain, cta: copy.protectCta(`${ticket.loss.whole}.${ticket.loss.fraction}`) };
+  const deal = dealFor(input, chosen)!;
   return {
-    ...base,
-    odds,
-    soFarValue,
-    soFarSince: reading != null && start ? sinceLine(start) : null,
-    reading,
-    instrument,
-    rungs: rows.length ? rows.map((row) => row.trigger) : chosen == null ? [] : [chosen],
-    selected: chosen,
-    rows,
-    showChain,
-    footnote: showChain || ticket ? footnote : null,
-    blocked: input.coveredMarket ? ALREADY_COVERED : null,
-    ticket,
-    panel,
+    ...base, hero: { label: copy.TRIGGER, numeral: formatMeasure(chosen), unit, chance: ticket.chance,
+      multiple: multipleLabel(deal.multipleTenths)!, soFar: reading == null ? null : { label: copy.SO_FAR, value: soFarValue } },
+    soFarValue, soFarSince: reading != null && start ? copy.sinceLine(start) : null, reading,
+    instrument: input.settlement?.kind ?? (input.coveredMarket ? "covered" : "idle"),
+    rungs: figures.length ? figures.map((row) => row.trigger) : [chosen], selected: chosen, rows, showChain, footnote, optionAFootnote,
+    footnotes: [optionAFootnote, footnote].filter((line): line is string => line != null), chips,
+    capMessage: chips.some((chip) => chip.disabled) ? copy.capLine() : null,
+    blocked: input.coveredMarket ? copy.ALREADY_COVERED : null, ticket, payoff: ticket.payoff, coverSentence: ticket.sentence, signRows: ticket.signRows, panel,
   };
 }
 
-function empty(
-  base: Omit<ProtectModel, "odds" | "soFarValue" | "soFarSince" | "reading" | "instrument" | "rungs" | "selected" | "rows" | "showChain" | "footnote" | "blocked" | "ticket" | "panel">,
-  start: string | null,
-  panel: PanelModel,
-  instrument: InstrumentState,
-): ProtectModel {
-  return {
-    ...base,
-    odds: null,
-    soFarValue: start ? startsLine(start) : "",
-    soFarSince: null,
-    reading: null,
-    instrument,
-    rungs: [],
-    selected: null,
-    rows: [],
-    showChain: false,
-    footnote: null,
-    blocked: null,
-    ticket: null,
-    panel,
-  };
+function notOpenPanel(input: ProtectBuildInput, cityName: string): Extract<PanelModel, { kind: "not-open" }> {
+  let go: NotOpenLink | null = null;
+  if (input.peril !== "cold") {
+    const otherWindow = input.windows && openQuoteWindows({ ...input, windows: input.windows, nowSeconds: input.nowSeconds ?? 0 })
+      .find((window) => isoFromSeconds(window.observationStart) !== input.windowStart || window.tenor !== input.tenor);
+    if (otherWindow) {
+      const windowStart = isoFromSeconds(otherWindow.observationStart)!, windowEnd = isoFromSeconds(otherWindow.observationEnd)!;
+      go = { label: copy.openWindowInstead(dayFromIso(windowStart)!, dayFromIso(windowEnd)!), cityId: input.cityId, tenor: otherWindow.tenor, windowStart, windowEnd };
+    } else if (input.windows) {
+      for (const city of CITIES.filter((city) => city.id !== input.cityId)) {
+        const other = pickDefaultWindow({ cityId: city.id, peril: input.peril, windows: input.windows, nowSeconds: input.nowSeconds ?? 0 });
+        if (!other.window || !other.tenor) continue;
+        go = { label: copy.goThereLine(input.peril, city.name), cityId: city.id, tenor: other.tenor,
+          windowStart: isoFromSeconds(other.window.observationStart)!, windowEnd: isoFromSeconds(other.window.observationEnd)! };
+        break;
+      }
+    }
+  }
+  return { kind: "not-open", line: copy.notOpenLine(input.peril, cityName, undefined, input.tenor), go };
 }
 
 function pickTrigger(rows: Array<{ trigger: number; open: boolean }>, input: ProtectBuildInput): number | null {
+  if (input.coveredMarket) {
+    const covered = input.quote?.rungs.find((rung) => rung.marketAddress === input.coveredMarket);
+    if (covered) return covered.triggerValue;
+    if (input.single?.marketAddress === input.coveredMarket) return input.single.triggerValue;
+    return null;
+  }
   const live = rows.filter((row) => row.open);
   if (input.selectedTrigger != null && live.some((row) => row.trigger === input.selectedTrigger)) return input.selectedTrigger;
   if (input.defaultTrigger != null && live.some((row) => row.trigger === input.defaultTrigger)) return input.defaultTrigger;
-  if (!rows.length && input.single) return input.single.triggerValue;
-  return live[0]?.trigger ?? input.single?.triggerValue ?? null;
+  return live[0]?.trigger ?? (input.single?.marketAddress ? input.single.triggerValue : null);
 }
 
-function chainRows(quote: WindowQuote, input: ProtectBuildInput): ChainRowModel[] {
-  const locked = !!input.coveredMarket;
+function chainRows(quote: WindowQuote, input: ProtectBuildInput, selected: number): ChainRowModel[] {
   const figures = chainFigures(quote, input.cover);
-  const selected = pickTrigger(figures, input);
-  return figures.map((row) => {
-    const rung = quote.rungs.find((item) => rungTrigger(item) === row.trigger);
+  return figures.map((row, index) => {
+    const rung = quote.rungs.find((rung) => rungTrigger(rung) === row.trigger);
     const yourCover = !!rung?.marketAddress && rung.marketAddress === input.coveredMarket;
-    const inert = locked || !row.open;
-    const topTag = row.top && quote.analogueYears ? highestInYears(quote.analogueYears) : null;
-    const name = row.open && row.maxLoss
-      ? openRowName({ trigger: row.triggerLabel, chance: row.chance, multiple: row.multiple, maxLoss: row.maxLoss.replace("-", "") })
-      : modelledRowName({ trigger: row.triggerLabel, chance: row.chance, multiple: row.multiple });
-    return {
-      ...row,
-      selected: yourCover || (!locked && row.open && row.trigger === selected),
-      inert,
-      topTag,
-      yourCover,
-      name,
-    };
+    return { ...row, kind: row.open ? "open" : "modelled", maxLoss: row.maxLoss ?? copy.NOT_OPEN_WORD,
+      selected: row.trigger === selected, inert: !!input.coveredMarket || !row.open, yourCover, tag: yourCover ? copy.YOUR_COVER : null,
+      topTag: index === figures.length - 1 && row.top ? copy.highestInYears(quote.analogueYears) : null,
+      name: row.open && row.maxLoss ? copy.openRowName({ trigger: row.triggerLabel, chance: row.chance, multiple: row.multiple, maxLoss: row.maxLoss.replace("-", "") })
+        : copy.modelledRowName({ trigger: row.triggerLabel, chance: row.chance, multiple: row.multiple }) };
   });
 }
 
-function buildTicket(
-  input: ProtectBuildInput,
-  station: string,
-  unit: string,
-  end: string | null,
-  years: number | null,
-  chosen: number | null,
-): TicketModel | null {
+function buildTicket(input: ProtectBuildInput, station: string, unit: string, end: string | null, chosen: number | null): TicketModel | null {
   const peril = perilById(input.peril);
-  if (!peril || !end || chosen == null) return null;
-  const deal = dealFor(input, chosen);
-  if (!deal) return null;
-  const loss = moneyParts(-deal.maxLoss);
-  const gain = moneyParts(deal.maxGain);
-  const fee = protocolFeeBase(input.cover);
-  const feeLabel = fee == null ? null : formatBase(fee, 2);
-  const chance = chanceLabel(chanceBps(input.quote, input, chosen));
+  const deal = chosen == null ? null : dealFor(input, chosen);
+  if (!peril || !end || chosen == null || !deal) return null;
+  const fee = protocolFeeBase(input.cover), chance = chanceLabel(chanceBps(input, chosen));
   const breakEven = breakEvenLabel(deal.breakEvenTenths);
-  const multiple = multipleLabel(deal.multipleTenths);
-  const measure = formatMeasure(chosen);
-  if (!feeLabel || !chance || !breakEven || !multiple || !measure) return null;
-  const triggerLabel = `${measure} ${unit}`;
-  const payoutLabel = formatBase(deal.payout, 0);
-  const premiumLabel = formatBase(deal.premium, 2);
-  const sentence = coverSentence({
-    payoutLabel,
-    station,
-    peril: input.peril,
-    triggerLabel,
-    dateLabel: end,
-    premiumLabel,
-  });
+  if (fee == null || !chance || !breakEven) return null;
+  const feeLabel = formatBase(fee), triggerLabel = `${formatMeasure(chosen)} ${unit}`, payoutLabel = formatBase(deal.payout);
+  const sentence = copy.coverSentence({ payoutLabel, station, peril: input.peril, triggerLabel, dateLabel: end, premiumLabel: formatBase(deal.premium) });
   if (!sentence) return null;
-  const triggers = input.quote ? input.quote.rungs.map((rung) => rungTrigger(rung)).filter((value): value is number => value != null) : [chosen];
-  const scale = scaleFor(input.peril, triggers);
-  const pixels = payoffPixels(deal.maxLoss, deal.maxGain);
-  const start = dayFromIso(input.windowStart);
+  const triggers = input.quote?.rungs.map((rung) => rung.triggerValue) ?? [chosen];
+  const scale = scaleFor(input.peril, triggers), pixels = payoffPixels(deal.maxLoss, deal.maxGain), start = dayFromIso(input.windowStart);
+  const years = input.quote?.analogueYears;
+  const payoff: PayoffModel = {
+    lossBase: deal.maxLoss.toString(), gainBase: deal.maxGain.toString(), lossPx: pixels.loss, gainPx: pixels.gain,
+    step: fractionOnScale(chosen, scale), ticks: triggers.map((value) => fractionOnScale(value, scale)),
+    lossLabel: `-${formatBase(deal.maxLoss)}`, gainLabel: `+${formatBase(deal.maxGain)}`, triggerLabel,
+    description: copy.payoffDescription({ station, triggerLabel, lossLabel: formatBase(deal.maxLoss), gainLabel: formatBase(deal.maxGain), direction: peril.direction }),
+  };
   return {
-    loss,
-    gain,
-    payout: payoutLabel,
-    chance,
-    breakEven,
-    fee: feeLabel,
-    note: years ? chanceNote(years) : null,
-    sentence,
-    salesClose: salesCloseLine(dayFromIso(input.quote?.salesCloseAt ?? input.windowStart) ?? ""),
-    honesty: peril.honesty(station),
-    sheet: years ? ticketSheet({ feeLabel, years }) : `${pricingSentence(feeLabel)} ${feeLine(feeLabel)}`,
-    diagram: {
-      lossPx: pixels.loss,
-      gainPx: pixels.gain,
-      step: fractionOnScale(chosen, scale),
-      ticks: triggers.map((value) => fractionOnScale(value, scale)),
-      lossLabel: `-${formatBase(deal.maxLoss, 2)} SKYT`,
-      gainLabel: `+${formatBase(deal.maxGain, 2)} SKYT`,
-      triggerLabel,
-      description: payoffDescription({
-        station,
-        triggerLabel,
-        lossLabel: formatBase(deal.maxLoss, 2),
-        gainLabel: formatBase(deal.maxGain, 2),
-        direction: peril.direction,
-      }),
-    },
+    loss: moneyParts(-deal.maxLoss), gain: moneyParts(deal.maxGain), payout: payoutLabel, chance, breakEven, fee: feeLabel,
+    note: years ? copy.chanceNote(years) : null, sentence, salesClose: copy.salesCloseSentence(dayFromIso(input.quote?.salesCloseAt ?? input.windowStart) ?? ""),
+    refund: copy.refundSentence(), honesty: peril.honesty(station),
+    sheet: years ? copy.ticketSheet({ feeLabel, years }) : `${copy.pricingSentence(feeLabel)} ${copy.feeLine(feeLabel)}`,
+    readOnly: !!input.coveredMarket, payoff, diagram: payoff,
     signRows: [
-      { label: MAX_LOSS, value: `-${formatBase(deal.maxLoss, 2)} SKYT` },
-      { label: MAX_GAIN, value: `+${formatBase(deal.maxGain, 2)} SKYT` },
-      { label: PAYOUT, value: `${payoutLabel} SKYT`, payout: true },
-      { label: TRIGGER, value: triggerLabel },
-      { label: WINDOW_WORD, value: start ? `${start} – ${end}` : end },
-      { label: FEE_INCLUDED, value: `${feeLabel} SKYT` },
-      { label: CHANCE, value: chance },
-      { label: BREAK_EVEN, value: breakEven },
-      { label: COVER, value: `${input.cover} SKYT` },
+      { label: copy.TRIGGER, value: copy.triggerCondition(triggerLabel, peril.direction) },
+      { label: copy.WINDOW_WORD, value: start ? copy.windowLabel(start, end) : end },
+      { label: copy.STATION, value: station },
+      { label: copy.PAYOUT, value: `${payoutLabel} SKYT`, payout: true },
+      { label: copy.CHANCE, value: chance },
+      { label: copy.BREAK_EVEN, value: breakEven },
+      { label: copy.FEE_INCLUDED, value: `${feeLabel} SKYT` },
     ],
   };
 }
-
 function dealFor(input: ProtectBuildInput, chosen: number) {
-  const rung = input.quote?.rungs.find((item) => rungTrigger(item) === chosen && item.marketAddress);
-  if (rung) {
-    const economics = rungEconomics(rung, input.cover);
-    return economics ? ticketFromBases(economics.premium, economics.payout) : null;
-  }
-  if (!input.single || input.single.triggerValue !== chosen) return null;
-  const economics = rungEconomics(input.single, input.cover);
+  const rung = input.quote?.rungs.find((rung) => rung.triggerValue === chosen && rung.marketAddress)
+    ?? (input.single?.triggerValue === chosen ? input.single : null);
+  const economics = rung && rungEconomics(rung, input.cover);
   return economics ? ticketFromBases(economics.premium, economics.payout) : null;
 }
-
-function chanceBps(quote: WindowQuote | null, input: ProtectBuildInput, chosen: number | null): number {
-  const rung = quote?.rungs.find((item) => rungTrigger(item) === chosen);
-  if (rung) return rung.chanceBps;
-  return input.single?.chanceBps ?? -1;
+function chanceBps(input: ProtectBuildInput, chosen: number): number {
+  return input.quote?.rungs.find((rung) => rung.triggerValue === chosen)?.chanceBps ?? input.single?.chanceBps ?? -1;
 }
-
-function instrumentState(input: ProtectBuildInput, hasTicket: boolean): InstrumentState {
-  if (input.settlement?.kind === "paid") return "paid";
-  if (input.settlement?.kind === "dry") return "dry";
-  if (input.coveredMarket) return "covered";
-  if (input.loading && !hasTicket) return "loading";
-  return "idle";
-}
-
-function ticketGain(ticket: TicketModel): bigint {
-  return BigInt(ticket.gain.whole) * 1_000_000n + BigInt(ticket.gain.fraction.padEnd(6, "0"));
-}
-
-function formatMeasure(value: number): string {
-  if (Number.isInteger(value)) return String(value);
-  return value.toFixed(1);
-}
-
-export const TICKET_LABELS = { MAX_LOSS, MAX_GAIN, PAYOUT, CHANCE, BREAK_EVEN, FEE_INCLUDED };
+function formatMeasure(value: number): string { return Number.isInteger(value) ? String(value) : value.toFixed(1); }
+export const TICKET_LABELS = { MAX_LOSS: copy.MAX_LOSS, MAX_GAIN: copy.MAX_GAIN, PAYOUT: copy.PAYOUT, CHANCE: copy.CHANCE, BREAK_EVEN: copy.BREAK_EVEN, FEE_INCLUDED: copy.FEE_INCLUDED };
