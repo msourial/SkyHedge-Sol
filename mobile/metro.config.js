@@ -8,6 +8,8 @@ const sharedRoot = path.resolve(workspaceRoot, "shared");
 const config = getDefaultConfig(projectRoot);
 // Shared Storm Glass tokens live in ../shared — allow Metro to resolve them.
 config.watchFolders = [...(config.watchFolders ?? []), sharedRoot];
+// Bare imports from ../shared must also resolve against the mobile install.
+config.resolver.nodeModulesPaths = [path.resolve(projectRoot, "node_modules")];
 config.resolver.extraNodeModules = {
   ...config.resolver.extraNodeModules,
   crypto: require.resolve("expo-crypto"),
