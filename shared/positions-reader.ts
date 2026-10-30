@@ -43,6 +43,10 @@ export type ChainProtection = {
   peril?: PerilId;
   triggerValue?: number;
   windowLabel: string;
+  /** ISO UTC timestamps from this position's market, independent of the sales catalogue. */
+  windowStart?: string | null;
+  windowEnd?: string | null;
+  settlementDate?: string | null;
   triggerLabel: string;
   statusLabel: string;
   openedAt: number;
@@ -100,6 +104,9 @@ export function protectionView(address: string, positionData: Buffer, marketData
     city: citySlug ? consumerCityName(citySlug) : "Unknown city",
     cityId: citySlug, peril,
     triggerValue: market && peril ? Number(market.thresholdMmX100) / 100 : undefined,
+    windowStart: market ? marketDate(market.observationStart) : null,
+    windowEnd: market ? marketDate(market.observationEnd) : null,
+    settlementDate: market ? marketDate(market.observationEnd) : null,
     windowLabel: market ? windowLabel(market.observationStart, market.observationEnd) : "—",
     triggerLabel: market ? triggerLabel(market.operator, market.thresholdMmX100, peril ? perilById(peril)?.unit : undefined) : "—",
     statusLabel: statusLabel(position, market, nowSeconds),
@@ -108,6 +115,11 @@ export function protectionView(address: string, positionData: Buffer, marketData
     refundClaimed: position.refundClaimed,
     explorerUrl: `https://explorer.solana.com/address/${address}?cluster=devnet`,
   };
+}
+
+function marketDate(seconds: number): string | null {
+  const date = new Date(seconds * 1000);
+  return Number.isSafeInteger(seconds) && seconds > 0 && Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
 /** Finalized position accounts for this owner. Program scan first, then PDA derivation. */

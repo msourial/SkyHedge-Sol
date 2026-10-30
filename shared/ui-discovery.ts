@@ -111,9 +111,9 @@ export async function loadDiscovery(windows: readonly QuoteWindow[], nowSeconds:
   return { quotes: results.flatMap((r) => r.quote ? [r.quote] : []), failed: results.some((r) => r.failed), reason: results.find((r) => r.failed && r.reason)?.reason ?? null };
 }
 
-export type StoredCover = { market: string; address: string; premiumPaid: string; protectedAmount: string; potentialPayout?: string; city?: string; statusLabel?: string; peril?: PerilId; cityId?: string; triggerValue?: number; payoutClaimed?: boolean; refundClaimed?: boolean };
+export type StoredCover = { market: string; address: string; premiumPaid: string; protectedAmount: string; potentialPayout?: string; city?: string; statusLabel?: string; peril?: PerilId; cityId?: string; triggerValue?: number; payoutClaimed?: boolean; refundClaimed?: boolean; windowStart?: string | null; windowEnd?: string | null; settlementDate?: string | null };
 export type CoverClaim = { state: string; action: string | null; result: string; observation?: null | { rainfallMmX100: string; windowEnd: number } };
-export type ReceiptModel = { id: string; market: string; title: string; triggerLine: string | null; detailLine: string; windowKey: string | null; windowLabel: string | null; windowStart: string | null; windowEnd: string | null; peril: PerilId | null; city: string; station: string | null; unit: string; rungs: number[]; trigger: number | null; reading: number | null; settled: string | null; status: string; kind: "open" | "paid" | "dry" | "pending" | "refunded" | "unknown"; loss: string | null; gain: string | null; payout: string | null; result: string | null; diagram: null | { step: number; ticks: number[]; reading: number | null; lossPx: number; gainPx: number; loss: string; gain: string; trigger: string } };
+export type ReceiptModel = { id: string; market: string; title: string; triggerLine: string | null; detailLine: string; windowKey: string | null; windowLabel: string | null; windowStart: string | null; windowEnd: string | null; settlementDate?: string | null; peril: PerilId | null; city: string; station: string | null; unit: string; rungs: number[]; trigger: number | null; reading: number | null; settled: string | null; status: string; kind: "open" | "paid" | "dry" | "pending" | "refunded" | "unknown"; loss: string | null; gain: string | null; payout: string | null; result: string | null; diagram: null | { step: number; ticks: number[]; reading: number | null; lossPx: number; gainPx: number; loss: string; gain: string; trigger: string } };
 const formatStored = (amount: bigint) => formatBaseGrouped(amount, amount % 10_000n === 0n ? 2 : 6);
 const integer = (raw: string | undefined) => raw && /^\d+$/.test(raw) ? BigInt(raw) : null;
 
@@ -146,14 +146,16 @@ export function receiptModel(position: StoredCover, windows: readonly QuoteWindo
   const definition = peril ? perilById(peril) : null;
   const measured = trigger == null ? null : measureLabel(trigger);
   const triggerLine = measured != null && definition && unit ? copy.triggerCondition(`${measured} ${unit}`, definition.direction) : null;
-  // Dates come only from an address-matched quote or window, never a current/default window.
-  const windowStart = quote ? validDate(quote.windowStart) : window ? isoFromSeconds(window.observationStart) : null;
-  const windowEnd = quote ? validDate(quote.windowEnd) : window ? isoFromSeconds(window.observationEnd) : null;
+  // The position reader knows the committed market even after it leaves the sales catalogue.
+  // Older responses can still use an address-matched quote/window, never a default window.
+  const windowStart = positionDate(position.windowStart) ?? (quote ? validDate(quote.windowStart) : window ? isoFromSeconds(window.observationStart) : null);
+  const windowEnd = positionDate(position.windowEnd) ?? (quote ? validDate(quote.windowEnd) : window ? isoFromSeconds(window.observationEnd) : null);
+  const settlementDate = positionDate(position.settlementDate) ?? windowEnd;
   const startLabel = windowStart && dayFromIso(windowStart), endLabel = windowEnd && dayFromIso(windowEnd);
   const windowLabel = startLabel && endLabel ? copy.windowLabel(startLabel, endLabel) : startLabel || endLabel;
   const title = `${definition?.label ?? copy.WEATHER_WORD} · ${city?.name ?? position.city ?? copy.UNKNOWN_CITY}`;
   return { id: position.address, market: position.market, title, triggerLine,
-    detailLine: title, windowStart, windowEnd,
+    detailLine: title, windowStart, windowEnd, settlementDate,
     windowKey: windowStart || windowEnd ? `${windowStart ?? ""}/${windowEnd ?? ""}` : null, windowLabel,
     peril, city: city?.name ?? position.city ?? copy.UNKNOWN_CITY,
     station: quote?.stationId ?? city?.stationId ?? null, unit, rungs, trigger, reading,
@@ -162,6 +164,13 @@ export function receiptModel(position: StoredCover, windows: readonly QuoteWindo
     payout: ticket ? formatStored(ticket.payout) : null,
     result: ticket && (kind === "paid" || kind === "dry" || kind === "refunded") ? copy.resultLine(kind === "paid" ? "+" : kind === "refunded" ? "" : "-", kind === "paid" ? formatStored(ticket.maxGain) : kind === "refunded" ? formatStored(0n) : formatStored(ticket.maxLoss)) : null,
     diagram: ticket && heights && scale && trigger != null ? { step: fractionOnScale(trigger, scale), ticks: rungs.map((value) => fractionOnScale(value, scale)), reading: reading == null ? null : fractionOnScale(reading, scale), lossPx: heights.loss, gainPx: heights.gain, loss: `-${formatStored(ticket.maxLoss)}`, gain: `+${formatStored(ticket.maxGain)}`, trigger: `${measureLabel(trigger)} ${unit}` } : null };
+}
+
+/** Preserve time of day in new portfolio responses; legacy date-only fields stay valid. */
+function positionDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (validDate(value)) return value;
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value) && Number.isFinite(Date.parse(value)) ? value : null;
 }
 
 function validDate(value: string): string | null {

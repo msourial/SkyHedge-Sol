@@ -4,7 +4,14 @@ import type { ReceiptModel } from "../../shared/ui-discovery.ts";
 import type { SignOutcome, SignState } from "../../shared/ui-sign.ts";
 
 export const shortDate = (iso: string | null) => iso && Number.isFinite(Date.parse(iso)) ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : "—";
-export const windowDates = (start: string | null, end: string | null) => `${shortDate(start)} – ${shortDate(end)}`;
+export function windowDates(start: string | null, end: string | null) {
+  const from = shortDate(start), to = shortDate(end);
+  return from !== "—" && to !== "—" ? `${from} – ${to}` : from !== "—" ? `From ${from}` : to !== "—" ? `Until ${to}` : "Window not available";
+}
+export function settlementDateLabel(iso: string | null | undefined): string | null {
+  const date = shortDate(iso ?? null);
+  return date === "—" ? null : `${date} (UTC)`;
+}
 export function forecastChip(edge: ForecastEdge | null | undefined) {
   return edge?.forecast ? edgeChip(edge.forecast.probability * 100, edge.historyProbability * 100) : null;
 }
@@ -41,11 +48,11 @@ export const MULTIPLE_TIP_KEY = "line.tip.multiple";
 export type TipStorage = { getItem: (key: string) => Promise<string | null>; setItem: (key: string, value: string) => Promise<unknown> };
 export async function shouldShowMultipleTip(storage: TipStorage) { try { return await storage.getItem(MULTIPLE_TIP_KEY) !== "1"; } catch { return false; } }
 export async function dismissMultipleTip(storage: TipStorage) { await storage.setItem(MULTIPLE_TIP_KEY, "1"); }
-export type PayoutExplanation = { station: string; peril: string; end: string; pay: string; payout: string };
+export type PayoutExplanation = { station: string; peril: string; end: string | null; pay: string; payout: string };
 export function payoutSteps(p: PayoutExplanation) {
   return [
     { title: `${p.station} station is the source`, body: `NOAA daily ${p.peril} observations from the ${p.station} station. Nothing else counts.` },
-    { title: `Settles on its own after ${p.end}`, body: "When NOAA posts the final data, SkyHedge settles the market on Solana. No claims form, no proof to send." },
+    { title: `Settles on its own after ${p.end?.trim() && p.end.trim() !== "—" ? p.end.trim() : "the window ends"}`, body: "When NOAA posts the final data, SkyHedge settles the market on Solana. No claims form, no proof to send." },
     { title: "Collect with one tap", body: `If it hit, approve one transaction in Phantom to move ${p.payout} SKYT to your wallet. Collect within 30 days of the data deadline; the exact deadline appears when ready.` },
     { title: "Max loss is what you pay", body: `If it doesn't hit, you lose the ${p.pay} SKYT you paid. Never more.` },
     { title: "No NOAA data, money back", body: "If NOAA data isn't available within 7 days of the window ending, your full premium is refundable." },

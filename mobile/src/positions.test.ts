@@ -5,6 +5,8 @@ import { describe, it } from "node:test";
 import { Buffer } from "buffer";
 import { PublicKey } from "@solana/web3.js";
 import { positionAccountFilters, POSITION_DATA_SIZE, POSITION_OWNER_OFFSET, protectionView, readFinalizedProtections, SKYHEDGE_PROGRAM_ID } from "./positions.ts";
+import { receiptModel } from "../../shared/ui-discovery.ts";
+import { settlementDateLabel, windowDates, payoutSteps } from "./round3.ts";
 
 const OWNER = "DKA9RkGvaW4isyj5xdiZ2oGVUkD1UL64Ha1BazXZFD6y";
 const MARKET = "Bi7RnLKP7cvp4Q8F5YzZmaRiR9J9p51k2SbtEToGbd7U";
@@ -62,11 +64,51 @@ describe("position accounts", () => {
     assert.ok(view);
     assert.equal(view.city, "New York");
     assert.equal(view.windowLabel, "Oct 19 – Oct 26 (UTC)");
+    assert.equal(view.windowStart, "2026-10-19T00:00:00.000Z");
+    assert.equal(view.windowEnd, "2026-10-26T00:00:00.000Z");
+    assert.equal(view.settlementDate, view.windowEnd);
     assert.equal(view.triggerLabel, "≥ 29 mm");
     assert.equal(view.premiumPaid, "24000000");
     assert.equal(view.potentialPayout, "100000000");
     assert.equal(view.statusLabel, "Active");
     assert.equal(view.explorerUrl, `https://explorer.solana.com/address/${POSITION}?cluster=devnet`);
+  });
+
+  it("carries a legacy 69mm cover's market dates to Wallet and its payout sheet without catalogue matches", async () => {
+    const market = marketBytes();
+    market.writeBigInt64LE(6900n, 241);
+    market.writeBigInt64LE(BigInt(Date.parse("2026-10-22T00:00:00Z") / 1000), 257);
+    market.writeBigInt64LE(BigInt(Date.parse("2026-10-29T00:00:00Z") / 1000), 265);
+    const [position] = await readFinalizedProtections(OWNER, {
+      urls: ["https://rpc.test"], attempts: 1,
+      getProgramAccounts: async () => [{ pubkey: new PublicKey(POSITION), data: positionBytes() }],
+      getMultipleAccounts: async () => [market],
+    });
+    // JSON round-trip is the portfolio response boundary. No status windows or quotes are needed.
+    const receipt = receiptModel(JSON.parse(JSON.stringify(position)), [], []);
+    assert.equal(receipt.trigger, 69);
+    assert.equal(receipt.windowStart, "2026-10-22T00:00:00.000Z");
+    assert.equal(receipt.windowEnd, "2026-10-29T00:00:00.000Z");
+    assert.equal(windowDates(receipt.windowStart, receipt.windowEnd), "Oct 22 – Oct 29");
+    const end = settlementDateLabel(receipt.settlementDate);
+    assert.equal(end, "Oct 29 (UTC)");
+    assert.equal(payoutSteps({ station: "Central Park", peril: "rain", end, pay: "24.00", payout: "100.00" })[1].title, "Settles on its own after Oct 29 (UTC)");
+  });
+
+  it("keeps unknown or invalid market dates null instead of inventing a window", () => {
+    const unknown = protectionView(POSITION, positionBytes(), null)!;
+    assert.equal(unknown.windowStart, null);
+    assert.equal(unknown.windowEnd, null);
+    assert.equal(unknown.settlementDate, null);
+    const receipt = receiptModel(unknown, [], []);
+    assert.equal(windowDates(receipt.windowStart, receipt.windowEnd), "Window not available");
+    const market = marketBytes();
+    market.writeBigInt64LE(0n, 257);
+    market.writeBigInt64LE(9_223_372_036_854_775_807n, 265);
+    const invalid = protectionView(POSITION, positionBytes(), market)!;
+    assert.equal(invalid.windowStart, null);
+    assert.equal(invalid.windowEnd, null);
+    assert.equal(invalid.settlementDate, null);
   });
 
   it("uses the account window, and waits for NOAA after that window ends", () => {

@@ -36,6 +36,6 @@ export function withCoveredReceipt(model: ProtectModel, position: ChainProtectio
   const sheet = years ? copy.ticketSheet({ feeLabel: fee, years }) : `${copy.pricingSentence(fee)} ${copy.feeLine(fee)}`;
   const multiple = multipleLabel(deal.multipleTenths) ?? model.hero.multiple;
   const ticket = { ...model.ticket, sheet, loss, gain, payout, fee, breakEven, sentence, signRows, payoff, diagram: payoff };
-  return { ...model, ticket, signRows, payoff, coverSentence: sentence, hero: { ...model.hero, multiple },
+  return { ...model, settlementDate: position.settlementDate ?? position.windowEnd ?? model.settlementDate, ticket, signRows, payoff, coverSentence: sentence, hero: { ...model.hero, multiple },
     rows: model.rows.map((row) => row.yourCover ? { ...row, maxLoss: payoff.lossLabel, multiple, name: copy.openRowName({ trigger: row.triggerLabel, chance: row.chance, multiple, maxLoss: formatBase(deal.maxLoss) }) } : row), panel: { ...model.panel, loss, gain } };
 }

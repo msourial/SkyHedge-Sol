@@ -82,6 +82,8 @@ export type ProtectHero = {
   soFar: { label: string; value: string } | null;
 };
 export type ProtectModel = {
+  /** Structured observation-end timestamp for payout copy, formatted in UTC by the renderer. */
+  settlementDate: string | null;
   cityName: string;
   station: string;
   peril: PerilId;
@@ -155,6 +157,7 @@ export function buildProtectModel(input: ProtectBuildInput): ProtectModel {
   const start = dayFromIso(input.windowStart), end = dayFromIso(input.windowEnd);
   const chips = input.coveredMarket ? [] : COVER_SIZES.map((cover) => ({ cover, selected: cover === input.cover, disabled: chipExceedsCap(cover, input.usedSkyt) }));
   const base: ProtectModel = {
+    settlementDate: Number.isFinite(Date.parse(input.quote?.windowEnd ?? input.windowEnd)) ? input.quote?.windowEnd ?? input.windowEnd : null,
     cityName, station, peril: input.peril, unit, tenor: input.tenor, tenorOpen,
     subline: start && end ? copy.subline({ station, start, end, salesClose: dayFromIso(input.quote?.salesCloseAt ?? input.windowStart) ?? start }) : null,
     hero: null, soFarLabel: copy.SO_FAR, soFarValue: "", soFarSince: null, reading: null,

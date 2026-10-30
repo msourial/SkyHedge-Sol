@@ -112,3 +112,35 @@ test("all tab changes and Wallet reselect reset scroll after mounting", () => {
   assert.match(app, /label="Wallet"[^\n]*onPress=\{openWallet\}/);
   assert.doesNotMatch(app, /onWallet=\{(?!openWallet)/);
 });
+
+test("chart extends the right-edge trigger, renders it once and separates values from plot and axis", () => {
+  for (const [loss, gain] of [[24, 76], [.000001, 1e9], [1e9, .000001]]) {
+    const nodes: any[] = [];
+    (globalThis as any).__walletNodes = nodes;
+    try {
+      const html = renderToStaticMarkup(React.createElement(PayoffChart, { diagram: { maximum: 69, lossBase: String(loss * 1e6), gainBase: String(gain * 1e6), domain: { loss, gain }, openTriggers: [69], description: "Payoff" }, trigger: 69, unit: "mm", peril: "rain", highLabel: "69 mm" }));
+      assert.equal((html.match(/>69 mm</g) ?? []).length, 1);
+      const gainText = nodes.find(n => n.children === `+${gain.toFixed(2)}`);
+      const lossText = nodes.find(n => n.children === `−${loss.toFixed(2)}`);
+      assert.equal(gainText.style.color, "#7CC4FF");
+      assert.equal(lossText.style.color, "#E8795A");
+      assert.deepEqual(gainText.style.fontVariant, ["tabular-nums"]);
+      assert.deepEqual(lossText.style.fontVariant, ["tabular-nums"]);
+      const gainBox = nodes.find(n => n.children?.[1]?.props?.children === gainText.children);
+      const lossBox = nodes.find(n => n.children?.[1]?.props?.children === lossText.children);
+      const trigger = nodes.find(n => n.children === "69 mm");
+      assert.ok(parseFloat(lossBox.style.left) + parseFloat(lossBox.style.width) < parseFloat(gainBox.style.left));
+      assert.ok(gainBox.style.top + gainBox.style.height + 8 <= 44);
+      assert.ok(lossBox.style.top + lossBox.style.height + 8 <= 44);
+      const rects = [...html.matchAll(/<rect\b([^>]*)>/g)].map(m => Object.fromEntries([...m[1].matchAll(/([\w-]+)="([^"]*)"/g)].map(a => [a[1], a[2]])));
+      const gainBand = rects.find(r => r.fill === "#1E3550")!;
+      const lossBand = rects.find(r => r.fill === "#432A26")!;
+      assert.ok(Number(gainBand.width) > 100 && Number(gainBand.height) > 0);
+      assert.ok(Number(lossBand.width) > 0 && Number(lossBand.height) > 0);
+      assert.equal(rects.filter(r => r.fill === "#F2C230").length, 1);
+      assert.match(html, /0 to 155.25 mm/);
+      assert.ok(lossBox.style.top + lossBox.style.height + 8 <= trigger.style.top);
+      assert.deepEqual(trigger.style.fontVariant, ["tabular-nums"]);
+    } finally { delete (globalThis as any).__walletNodes; }
+  }
+});

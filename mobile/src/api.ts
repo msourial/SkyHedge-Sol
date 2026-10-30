@@ -178,6 +178,9 @@ export type Portfolio = {
     potentialPayout?: string;
     city?: string;
     windowLabel?: string;
+    windowStart?: string | null;
+    windowEnd?: string | null;
+    settlementDate?: string | null;
     triggerLabel?: string;
     statusLabel?: string;
     explorerUrl?: string;

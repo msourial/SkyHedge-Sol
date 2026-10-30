@@ -147,6 +147,21 @@ test("receipt dates use address matches only, with missing date parts omitted", 
   assert.equal(missing.windowLabel, null);
 });
 
+test("receipt dates prefer the committed position market over catalogue dates", () => {
+  const position = { ...fixturePosition(), windowStart: "2026-10-22T00:00:00.000Z", windowEnd: "2026-10-29T00:00:00.000Z", settlementDate: "2026-10-29T00:00:00.000Z" };
+  for (const quotes of [[], [marketQuote("rain", position.market)]]) {
+    const receipt = receiptModel(position, [], quotes);
+    assert.equal(receipt.windowStart, position.windowStart);
+    assert.equal(receipt.windowEnd, position.windowEnd);
+    assert.equal(receipt.settlementDate, position.settlementDate);
+    assert.equal(receipt.windowLabel, "Oct 22 to Oct 29");
+  }
+  const legacy = receiptModel(fixturePosition(), [], [marketQuote("rain", position.market)]);
+  assert.equal(legacy.settlementDate, legacy.windowEnd);
+  const unknown = receiptModel({ ...position, windowStart: "invalid", windowEnd: "invalid", settlementDate: "invalid" }, [], []);
+  assert.equal(unknown.windowStart, null); assert.equal(unknown.windowEnd, null); assert.equal(unknown.settlementDate, null);
+});
+
 test("wallet peril filters preserve list order and include every held state in registry order", () => {
   const receipts = [monthlyReceipt("heat"), monthlyReceipt("rain"), monthlyReceipt("wind"), monthlyReceipt("rain", "2026-12-01", "2027-01-01"), monthlyReceipt("snow")];
   receipts[0] = { ...receipts[0], kind: "paid" };

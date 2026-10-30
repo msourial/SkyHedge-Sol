@@ -28,26 +28,28 @@ const host = `
   export const StyleSheet = { create: v => v, absoluteFill: {}, absoluteFillObject: {} };
   class Value { constructor(v) { this.value = v; } setValue(v) { this.value = v; } stopAnimation() {} interpolate({outputRange}) { return outputRange.at(-1); } toJSON() { return this.value; } }
   export const Vibration = { vibrate() {} };
+  export const AccessibilityInfo = { isScreenReaderEnabled: async () => false, addEventListener: () => ({ remove() {} }), announceForAccessibility() {} };
   export const Animated = { Value, View, Text, createAnimatedComponent: c => c, timing: () => ({ start() {}, stop() {} }), spring: () => ({ start() {}, stop() {} }), multiply: () => 0 };
   export const Easing = { bezier: () => null, out: () => null, cubic: null };
   export const useWindowDimensions = () => ({ width: 393, height: 852 });
 `;
-let PurchaseReceipt: any, ForecastBlock: any, EdgeChip: any, HowPayout: any, CoverGauge: any;
+let PurchaseReceipt: any, ForecastBlock: any, EdgeChip: any, HowPayout: any, CoverGauge: any, CoverDetail: any, ProtectBody: any;
 before(async () => {
 const result = await build({
-  stdin: { contents: 'export { PurchaseReceipt } from "./line/PurchaseReceipt.tsx"; export { ForecastBlock, EdgeChip } from "./line/ForecastBlock.tsx"; export { HowPayout } from "./line/HowPayout.tsx"; export { CoverGauge } from "./line/CoverGauge.tsx";', resolveDir: new URL("./", import.meta.url).pathname }, bundle: true, write: false, platform: "node", format: "cjs", jsx: "automatic", logLevel: "silent",
+  stdin: { contents: 'export { PurchaseReceipt } from "./line/PurchaseReceipt.tsx"; export { ForecastBlock, EdgeChip } from "./line/ForecastBlock.tsx"; export { HowPayout } from "./line/HowPayout.tsx"; export { CoverGauge } from "./line/CoverGauge.tsx"; export { CoverDetail } from "./line/CoverDetail.tsx"; export { ProtectBody } from "./line/ProtectLine.tsx";', resolveDir: new URL("./", import.meta.url).pathname }, bundle: true, write: false, platform: "node", format: "cjs", jsx: "automatic", logLevel: "silent",
   plugins: [{ name: "native-test-host", setup(builder) {
     builder.onResolve({ filter: /^react(?:\/.*)?$/ }, (args) => ({ path: args.path, external: true }));
+    builder.onResolve({ filter: /multiple-tip-store(?:\.ts)?$/ }, () => ({ path: "store", namespace: "host" }));
     builder.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "host" }));
     builder.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: "svg", namespace: "host" }));
     builder.onResolve({ filter: /^react-native-safe-area-context$/ }, () => ({ path: "safe", namespace: "host" }));
     builder.onResolve({ filter: /liquid-glass(?:\.tsx)?$/ }, () => ({ path: "motion", namespace: "host" }));
-    builder.onLoad({ filter: /.*/, namespace: "host" }, ({ path }) => ({ contents: path === "native" ? host : path === "safe" ? 'export const useSafeAreaInsets = () => ({top:28, bottom:24});' : path === "motion" ? 'export const useReducedMotion = () => true;' : `import React from 'react'; const tag = name => ({children, accessible, ...props}) => React.createElement(name, props, children); export default tag('svg'); export const G=tag('g'), Path=tag('path'), Line=tag('line'), Rect=tag('rect'), Circle=tag('circle'), Text=tag('text');` }));
+    builder.onLoad({ filter: /.*/, namespace: "host" }, ({ path }) => ({ contents: path === "store" ? "export const multipleTipStorage = { getItem: async () => null, setItem: async () => {} };" : path === "native" ? host : path === "safe" ? 'export const useSafeAreaInsets = () => ({top:28, bottom:24});' : path === "motion" ? 'export const useReducedMotion = () => true;' : `import React from 'react'; const tag = name => ({children, accessible, ...props}) => React.createElement(name, props, children); export default tag('svg'); export const G=tag('g'), Path=tag('path'), Line=tag('line'), Rect=tag('rect'), Circle=tag('circle'), Text=tag('text');` }));
   } }],
 });
 const module = { exports: {} as any };
 new Function("require", "module", "exports", result.outputFiles[0].text)(rootRequire, module, module.exports);
-({ PurchaseReceipt, ForecastBlock, EdgeChip, HowPayout, CoverGauge } = module.exports);
+({ PurchaseReceipt, ForecastBlock, EdgeChip, HowPayout, CoverGauge, CoverDetail, ProtectBody } = module.exports);
 });
 
 const noop = () => {};
@@ -94,4 +96,58 @@ test("actual gauge shows unavailable rather than a fabricated observation", () =
   const receipt = receiptModel({ address: "p", market: "m", premiumPaid: "47000000", protectedAmount: "100000000", city: "New York", peril: "rain", triggerValue: 2, statusLabel: "Active" }, [], []);
   const html = render(CoverGauge, { receipt, progress: null });
   assert.match(html, /Rain so far unavailable/); assert.doesNotMatch(html, /0.0 of/);
+});
+
+// Force only the owning component's sheet state open; child hooks keep their normal state.
+function renderOpenSheet(component: any, props: any, stateIndex: number) {
+  const useState = React.useState;
+  let calls = 0;
+  React.useState = (initial: unknown) => {
+    const [value, setter] = useState(initial);
+    return [calls++ === stateIndex ? true : value, setter];
+  };
+  try { return render(component, props); } finally { React.useState = useState; }
+}
+test("CoverDetail renders portfolio window dates in header and row and passes the UTC date to its sheet", () => {
+  const receipt = receiptModel({ address: "cover", market: "legacy", premiumPaid: "24000000", protectedAmount: "100000000", cityId: "new-york", peril: "rain", triggerValue: 69, statusLabel: "Active", windowStart: "2026-10-22T00:00:00.000Z", windowEnd: "2026-10-29T00:00:00.000Z", settlementDate: "2026-10-29T00:00:00.000Z" }, [], []);
+  const html = renderOpenSheet(CoverDetail, { receipt, progress: null, now: Date.parse("2026-10-25"), onClose: noop }, 0);
+  assert.equal((html.match(/Oct 22 – Oct 29/g) ?? []).length, 2);
+  assert.match(html, /Central Park, New York/);
+  assert.match(html, /Settles on its own after Oct 29 \(UTC\)/);
+  assert.doesNotMatch(html, /— – —|after —/);
+  const unknown = renderOpenSheet(CoverDetail, { receipt: { ...receipt, windowStart: null, windowEnd: null, settlementDate: null }, onClose: noop }, 0);
+  assert.match(unknown, /Window not available/);
+  assert.match(unknown, /Settles on its own after the window ends/);
+  assert.doesNotMatch(unknown, /— – —|after —/);
+});
+test("Protect's market payout sheet uses the structured UTC end even without a Window display row", () => {
+  const model = buildProtectModel({ cityId: "new-york", peril: "rain", tenor: "weekly", windowStart: NYC_RAIN_MODELLED.windowStart, windowEnd: NYC_RAIN_MODELLED.windowEnd, quote: NYC_RAIN_MODELLED, single: null, loading: false, failed: false, connected: true, signing: false, cover: 100, selectedTrigger: null, defaultTrigger: null, coveredMarket: null, settlement: null, usedSkyt: 0, reading: null, running: false });
+  const html = renderOpenSheet(ProtectBody, { line: { model: { ...model, signRows: [] }, sheet: null, cities: [], approveTarget: null }, onCity: noop, onWallet: noop, onRetry: noop }, 1);
+  const end = new Date(NYC_RAIN_MODELLED.windowEnd).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  assert.ok(html.includes(`Settles on its own after ${end} (UTC)`));
+  assert.doesNotMatch(html, /after —|after null/);
+  const unknown = renderOpenSheet(ProtectBody, { line: { model: { ...model, settlementDate: null }, sheet: null, cities: [], approveTarget: null }, onCity: noop, onWallet: noop, onRetry: noop }, 1);
+  assert.match(unknown, /Settles on its own after the window ends/);
+});
+
+test("CoverDetail passes a real 69mm receipt to a two-band step chart with one trigger label", () => {
+  for (const rungs of [[69], [2, 6, 69], [69, 69]]) {
+    const receipt = { ...receiptModel({ address: "cover", market: "legacy", premiumPaid: "24000000", protectedAmount: "100000000", cityId: "new-york", peril: "rain", triggerValue: 69, statusLabel: "Active" }, [], []), rungs };
+    assert.ok(receipt.diagram);
+    const html = render(CoverDetail, { receipt, onClose: noop });
+    assert.match(html, /Payout at the trigger/);
+    assert.match(html, /Max loss 24.00, max gain 76.00 SKYT/);
+    assert.match(html, /0 to 155.25 mm/);
+    assert.equal((html.match(/>69 mm</g) ?? []).length, 1);
+    const rects = [...html.matchAll(/<rect\b([^>]*)>/g)].map(m => Object.fromEntries([...m[1].matchAll(/([\w-]+)="([^"]*)"/g)].map(a => [a[1], a[2]])));
+    const loss = rects.find(r => r.fill === "#432A26")!, gain = rects.find(r => r.fill === "#1E3550")!;
+    const lossLine = rects.find(r => r.fill === "#E8795A")!, gainLine = rects.find(r => r.fill === "#7CC4FF")!;
+    assert.ok(Number(loss.width) > 0 && Number(loss.height) > 0);
+    assert.ok(Number(gain.width) > 100 && Number(gain.height) > 0);
+    assert.equal(Number(gain.x), Number(loss.width));
+    assert.equal(Number(loss.y), Number(gain.y) + Number(gain.height));
+    assert.equal(lossLine.width, loss.width);
+    assert.equal(gainLine.width, gain.width);
+    assert.equal(rects.filter(r => r.fill === "#F2C230").length, 1);
+  }
 });

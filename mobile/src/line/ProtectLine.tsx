@@ -13,7 +13,7 @@ import { LinePressable } from "./pressable.tsx";
 import { CityPill, EqualPair, Group, LineSheet, PerilTiles, Pill, PillSegmented, Row, lineType, ui } from "./primitives.tsx";
 import { PayoffChart, usePayoutTween } from "./payout-graphics.tsx";
 
-import { dismissMultipleTip, shouldShowMultipleTip } from "../round3.ts";
+import { dismissMultipleTip, settlementDateLabel, shouldShowMultipleTip } from "../round3.ts";
 import { multipleTipStorage } from "../multiple-tip-store.ts";
 import { HowPayout } from "./HowPayout.tsx";
 
@@ -35,12 +35,12 @@ export function ProtectBody(props: { line: LineController; onCity: (cityId: stri
   if (model.ticket) prior.current = model;
   const chartModel = model.ticket ? model : model.peril === "cold" && prior.current.cityName === model.cityName && prior.current.tenor === model.tenor ? prior.current : model;
   const dim = model.panel.kind === "closed" || model.panel.kind === "not-open";
-  const end = chartModel.signRows.find(r => r.label === "Window")?.value.split(/ to | – /).pop() ?? "";
+  const end = settlementDateLabel(chartModel.settlementDate);
   const high = chartModel.rows.find(r => r.topTag);
   const highLabel = `${chartModel.payoff?.maximum ?? ""} ${chartModel.unit}${high?.topTag ? ` · ${high.topTag}` : ""}`;
   const selectedRow = model.rows.findIndex(r => r.selected);
   const multiple = model.rows.find(r => r.selected)?.multiple ?? "—";
-  const tipText = `${multiple} means pay ${pay} and get ${payout} SKYT if ${station} gets ${model.signRows.find(r => r.label === "Trigger")?.value ?? "the trigger"} by ${end}. If not, you lose the ${pay}.`;
+  const tipText = `${multiple} means pay ${pay} and get ${payout} SKYT if ${station} gets ${model.signRows.find(r => r.label === "Trigger")?.value ?? "the trigger"} by ${end ?? "the end of the window"}. If not, you lose the ${pay}.`;
   useEffect(() => { if (showTip && screenReader === true) { AccessibilityInfo.announceForAccessibility(tipText); dismissTip(); } }, [showTip, screenReader]);
   return <View onStartShouldSetResponderCapture={() => { if (showTip) dismissTip(); return false; }}>
     <View style={styles.head}><CityPill city={model.cityName} onPress={() => line.setSheet("city")}/><PillSegmented items={[{ value: "weekly", label: "Week" }, { value: "monthly", label: "Month" }]} value={model.tenor} onChange={line.setTenor} height={40}/></View>
@@ -48,7 +48,7 @@ export function ProtectBody(props: { line: LineController; onCity: (cityId: stri
     <View style={styles.tiles}><PerilTiles size="xs" value={model.peril} onChange={peril => { line.setPeril(peril); if (peril === "cold") setColdSheet(true); }}/></View>
     <View style={styles.hero}>
       <View style={styles.heroHead}><View style={{ flex: 1 }}><Text style={[ui.label, { lineHeight: 20 }]}>Pays out at</Text><View style={styles.numeralRow}>{model.panel.kind === "not-open" ? <Text style={[ui.figure, { fontSize: 19 }]}>Not available yet</Text> : chartModel.hero ? <><TriggerFigure value={Number(chartModel.hero.numeral)}/><Text style={styles.unit}>{chartModel.unit} {perilById(chartModel.peril)?.direction === "down" ? "or less" : "or more"}</Text></> : <Text style={styles.unit}>—</Text>}</View></View><View style={{ marginBottom: 8, flexDirection: "row", alignItems: "center", gap: 6 }}><LinePressable accessibilityRole="button" accessibilityLabel="How payout works" onPress={() => { dismissTip(); setPayoutSheet(true); }} style={{ width: 48, height: 48, justifyContent: "center", alignItems: "center" }}><View style={[styles.infoDot, { width: 28, height: 28, borderRadius: 14 }]}><Text style={ui.figure}>i</Text></View></LinePressable><Pill devnet compact/></View></View>
-      {chartModel.payoff && chartModel.selected != null ? <PayoffChart diagram={chartModel.payoff} trigger={chartModel.selected} unit={chartModel.unit} peril={chartModel.peril} highLabel={highLabel} dim={dim} triggerColor={C.fg2}/> : <View style={{ height: 172, justifyContent: "center" }}><Text style={ui.body}>{model.panel.kind === "loading" ? GETTING_QUOTE : "Not available yet"}</Text></View>}
+      {chartModel.payoff && chartModel.selected != null ? <PayoffChart diagram={chartModel.payoff} trigger={chartModel.selected} unit={chartModel.unit} peril={chartModel.peril} highLabel={highLabel} dim={dim}/> : <View style={{ height: 172, justifyContent: "center" }}><Text style={ui.body}>{model.panel.kind === "loading" ? GETTING_QUOTE : "Not available yet"}</Text></View>}
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginTop: 6, flexWrap: "wrap" }}><Text style={[ui.figure, { fontSize: 15 }]}>Pay {pay} · get {payout} if it hits</Text><Text style={ui.label}>by {end}</Text></View>
       {model.panel.kind === "closed" ? <View style={{ position: "absolute", top: 12, right: 16 }}><Pill>{model.panel.line}</Pill></View> : null}
       {model.panel.kind === "not-open" ? <View style={{ marginTop: 8 }}><Text style={ui.body}>{model.peril === "cold" ? null : model.panel.line}</Text>{model.peril === "cold" ? <LinePressable onPress={() => setColdSheet(true)} style={styles.textButton}><Text style={styles.link}>See why</Text></LinePressable> : model.panel.go ? <LinePressable onPress={() => { if (model.panel.kind !== "not-open" || !model.panel.go) return; props.onCity(model.panel.go.cityId); if (model.panel.go.tenor) line.setTenor(model.panel.go.tenor); }} style={styles.textButton}><Text style={styles.link}>{model.panel.go.label}</Text></LinePressable> : null}</View> : null}

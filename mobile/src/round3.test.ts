@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { coverGauge, forecastChip, purchaseState, payoutSteps, shouldShowMultipleTip, dismissMultipleTip, MULTIPLE_TIP_KEY } from "./round3.ts";
+import { coverGauge, forecastChip, purchaseState, payoutSteps, shouldShowMultipleTip, dismissMultipleTip, MULTIPLE_TIP_KEY, windowDates, settlementDateLabel } from "./round3.ts";
 import { TransactionFailedError } from "./buy-phase.ts";
 import { signFailure } from "./line-submit.ts";
 import type { CoverProgress, ForecastEdge } from "./api.ts";
@@ -54,4 +54,19 @@ test("payout explanation names Phantom approval, data deadline and live amounts"
   assert.match(text, /Collect with one tap/); assert.doesNotMatch(text, /automatic/i);
   assert.match(text, /approve one transaction in Phantom/); assert.match(text, /30 days of the data deadline/);
   assert.match(text, /Central Park/); assert.match(text, /47.00/); assert.match(text, /100.00/);
+});
+
+test("window and settlement dates use UTC with readable missing-date copy", () => {
+  assert.equal(windowDates("2026-10-22T00:00:00Z", "2026-10-29T00:00:00Z"), "Oct 22 – Oct 29");
+  assert.equal(windowDates(null, "bad date"), "Window not available");
+  assert.equal(windowDates("bad date", "2026-10-29"), "Until Oct 29");
+  assert.equal(windowDates("2026-10-22", null), "From Oct 22");
+  assert.equal(settlementDateLabel("2026-10-29T00:00:00Z"), "Oct 29 (UTC)");
+  assert.equal(settlementDateLabel("2026-10-28T23:00:00-04:00"), "Oct 29 (UTC)");
+  for (const iso of [null, undefined, "", "invalid"]) assert.equal(settlementDateLabel(iso), null);
+  for (const end of [null, "", " ", "—", settlementDateLabel("invalid")]) {
+    const title = payoutSteps({ station: "Central Park", peril: "rain", end, pay: "24.00", payout: "100.00" })[1].title;
+    assert.equal(title, "Settles on its own after the window ends");
+    assert.doesNotMatch(title, /—|null|undefined/);
+  }
 });

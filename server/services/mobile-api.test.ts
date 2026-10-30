@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { createMobileApiHandler } from "./mobile-api";
 import { readFinalizedWalletState } from "../../shared/wallet-reader.ts";
+import { readFinalizedProtections, POSITION_DATA_SIZE } from "../../shared/positions-reader.ts";
 import { hazardPresentation, type HazardId } from "../../mobile/src/hazards";
 
 function recorder() {
@@ -71,6 +72,32 @@ describe("mobile read APIs", () => {
     await createMobileApiHandler()({ method: "GET", query: { resource: "portfolio", wallet: "not-a-public-key" } } as never, record.response as never);
     expect(record.result().statusCode).to.equal(400);
     expect(record.result().body).to.have.property("error", "INVALID_WALLET");
+  });
+
+  it("returns ISO window and settlement dates from each position's own market account", async () => {
+    const wallet = "DKA9RkGvaW4isyj5xdiZ2oGVUkD1UL64Ha1BazXZFD6y";
+    const position = Buffer.alloc(POSITION_DATA_SIZE);
+    Buffer.from([157, 171, 49, 175, 119, 109, 126, 129]).copy(position);
+    new PublicKey(wallet).toBuffer().copy(position, 8);
+    new PublicKey(wallet).toBuffer().copy(position, 40);
+    const market = Buffer.alloc(384);
+    market[240] = 1; market[381] = 1;
+    market.writeBigInt64LE(6900n, 241);
+    market.writeBigInt64LE(BigInt(Date.parse("2026-10-22T00:00:00Z") / 1000), 257);
+    market.writeBigInt64LE(BigInt(Date.parse("2026-10-29T00:00:00Z") / 1000), 265);
+    const record = recorder();
+    await createMobileApiHandler({ readPortfolio: (address) => readFinalizedProtections(address, {
+      urls: ["https://rpc.test"], attempts: 1,
+      getProgramAccounts: async () => [{ pubkey: new PublicKey(wallet), data: position }],
+      getMultipleAccounts: async () => [market],
+    }) })({ method: "GET", query: { resource: "portfolio", wallet } } as never, record.response as never);
+    expect(record.result().statusCode).to.equal(200);
+    const body = JSON.parse(JSON.stringify(record.result().body));
+    expect(body.protections[0]).to.include({
+      windowStart: "2026-10-22T00:00:00.000Z",
+      windowEnd: "2026-10-29T00:00:00.000Z",
+      settlementDate: "2026-10-29T00:00:00.000Z",
+    });
   });
 
   it("only dispatches supported read resources and rejects non-GET calls", async () => {
