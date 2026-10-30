@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { before, test } from "node:test";
 import { build } from "esbuild";
+import { settlementDateLabel } from "./round3.ts";
 import { buildProtectModel } from "../../shared/ui-view.ts";
 import { NYC_RAIN_MODELLED } from "../../shared/ui-fixtures.ts";
 import { DISCOVERY_QUOTES } from "../../shared/ui-discovery-fixtures.ts";
@@ -111,9 +112,9 @@ function renderOpenSheet(component: any, props: any, stateIndex: number) {
 test("CoverDetail renders portfolio window dates in header and row and passes the UTC date to its sheet", () => {
   const receipt = receiptModel({ address: "cover", market: "legacy", premiumPaid: "24000000", protectedAmount: "100000000", cityId: "new-york", peril: "rain", triggerValue: 69, statusLabel: "Active", windowStart: "2026-10-22T00:00:00.000Z", windowEnd: "2026-10-29T00:00:00.000Z", settlementDate: "2026-10-29T00:00:00.000Z" }, [], []);
   const html = renderOpenSheet(CoverDetail, { receipt, progress: null, now: Date.parse("2026-10-25"), onClose: noop }, 0);
-  assert.equal((html.match(/Oct 22 – Oct 29/g) ?? []).length, 2);
+  assert.equal((html.match(/Oct\u00A022\u00A0– Oct\u00A029/g) ?? []).length, 2);
   assert.match(html, /Central Park, New York/);
-  assert.match(html, /Settles on its own after Oct 29 \(UTC\)/);
+  assert.match(html, /Settles on its own after Oct\u00A029 \(UTC\)/);
   assert.doesNotMatch(html, /— – —|after —/);
   const unknown = renderOpenSheet(CoverDetail, { receipt: { ...receipt, windowStart: null, windowEnd: null, settlementDate: null }, onClose: noop }, 0);
   assert.match(unknown, /Window not available/);
@@ -123,8 +124,8 @@ test("CoverDetail renders portfolio window dates in header and row and passes th
 test("Protect's market payout sheet uses the structured UTC end even without a Window display row", () => {
   const model = buildProtectModel({ cityId: "new-york", peril: "rain", tenor: "weekly", windowStart: NYC_RAIN_MODELLED.windowStart, windowEnd: NYC_RAIN_MODELLED.windowEnd, quote: NYC_RAIN_MODELLED, single: null, loading: false, failed: false, connected: true, signing: false, cover: 100, selectedTrigger: null, defaultTrigger: null, coveredMarket: null, settlement: null, usedSkyt: 0, reading: null, running: false });
   const html = renderOpenSheet(ProtectBody, { line: { model: { ...model, signRows: [] }, sheet: null, cities: [], approveTarget: null }, onCity: noop, onWallet: noop, onRetry: noop }, 1);
-  const end = new Date(NYC_RAIN_MODELLED.windowEnd).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-  assert.ok(html.includes(`Settles on its own after ${end} (UTC)`));
+  const end = settlementDateLabel(NYC_RAIN_MODELLED.windowEnd);
+  assert.ok(html.includes(`Settles on its own after ${end}`));
   assert.doesNotMatch(html, /after —|after null/);
   const unknown = renderOpenSheet(ProtectBody, { line: { model: { ...model, settlementDate: null }, sheet: null, cities: [], approveTarget: null }, onCity: noop, onWallet: noop, onRetry: noop }, 1);
   assert.match(unknown, /Settles on its own after the window ends/);

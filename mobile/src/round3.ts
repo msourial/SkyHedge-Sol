@@ -3,10 +3,10 @@ import { edgeChip } from "../../shared/weather-signals.ts";
 import type { ReceiptModel } from "../../shared/ui-discovery.ts";
 import type { SignOutcome, SignState } from "../../shared/ui-sign.ts";
 
-export const shortDate = (iso: string | null) => iso && Number.isFinite(Date.parse(iso)) ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : "—";
+export const shortDate = (iso: string | null) => iso && Number.isFinite(Date.parse(iso)) ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).replace(" ", "\u00A0") : "—";
 export function windowDates(start: string | null, end: string | null) {
   const from = shortDate(start), to = shortDate(end);
-  return from !== "—" && to !== "—" ? `${from} – ${to}` : from !== "—" ? `From ${from}` : to !== "—" ? `Until ${to}` : "Window not available";
+  return from !== "—" && to !== "—" ? `${from}\u00A0– ${to}` : from !== "—" ? `From ${from}` : to !== "—" ? `Until ${to}` : "Window not available";
 }
 export function settlementDateLabel(iso: string | null | undefined): string | null {
   const date = shortDate(iso ?? null);

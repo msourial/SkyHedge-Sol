@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { coverGauge, forecastChip, purchaseState, payoutSteps, shouldShowMultipleTip, dismissMultipleTip, MULTIPLE_TIP_KEY, windowDates, settlementDateLabel } from "./round3.ts";
+import { coverGauge, forecastChip, purchaseState, payoutSteps, shouldShowMultipleTip, dismissMultipleTip, MULTIPLE_TIP_KEY, shortDate, windowDates, settlementDateLabel } from "./round3.ts";
 import { TransactionFailedError } from "./buy-phase.ts";
 import { signFailure } from "./line-submit.ts";
 import type { CoverProgress, ForecastEdge } from "./api.ts";
@@ -17,7 +17,7 @@ test("gauge never substitutes a final claim reading or a missing value with zero
 test("gauge maps start, tracking, hit, waiting, complete and settlement states", () => {
   assert.equal(coverGauge(receipt, null, Date.parse("2026-11-01")).state, "not_started");
   const g = coverGauge(receipt, progress, now);
-  assert.equal(g.state, "tracking"); assert.equal(g.fraction, .6); assert.equal(g.daysLeft, 3); assert.equal(g.through, "NOAA through Nov 4"); assert.equal(g.coverage, "3 of 7 days reported");
+  assert.equal(g.state, "tracking"); assert.equal(g.fraction, .6); assert.equal(g.daysLeft, 3); assert.equal(g.through, "NOAA through Nov\u00A04"); assert.equal(g.coverage, "3 of 7 days reported");
   assert.equal(coverGauge(receipt, { ...progress, valueNative: 2.6 }, now).state, "hit");
   assert.equal(coverGauge(receipt, progress, Date.parse("2026-11-10")).state, "ended_waiting");
   assert.equal(coverGauge(receipt, { ...progress, state: "complete", complete: true }, Date.parse("2026-11-10")).state, "complete");
@@ -57,16 +57,26 @@ test("payout explanation names Phantom approval, data deadline and live amounts"
 });
 
 test("window and settlement dates use UTC with readable missing-date copy", () => {
-  assert.equal(windowDates("2026-10-22T00:00:00Z", "2026-10-29T00:00:00Z"), "Oct 22 – Oct 29");
+  assert.equal(windowDates("2026-10-22T00:00:00Z", "2026-10-29T00:00:00Z"), "Oct\u00A022\u00A0– Oct\u00A029");
   assert.equal(windowDates(null, "bad date"), "Window not available");
-  assert.equal(windowDates("bad date", "2026-10-29"), "Until Oct 29");
-  assert.equal(windowDates("2026-10-22", null), "From Oct 22");
-  assert.equal(settlementDateLabel("2026-10-29T00:00:00Z"), "Oct 29 (UTC)");
-  assert.equal(settlementDateLabel("2026-10-28T23:00:00-04:00"), "Oct 29 (UTC)");
+  assert.equal(windowDates("bad date", "2026-10-29"), "Until Oct\u00A029");
+  assert.equal(windowDates("2026-10-22", null), "From Oct\u00A022");
+  assert.equal(settlementDateLabel("2026-10-29T00:00:00Z"), "Oct\u00A029 (UTC)");
+  assert.equal(settlementDateLabel("2026-10-28T23:00:00-04:00"), "Oct\u00A029 (UTC)");
   for (const iso of [null, undefined, "", "invalid"]) assert.equal(settlementDateLabel(iso), null);
   for (const end of [null, "", " ", "—", settlementDateLabel("invalid")]) {
     const title = payoutSteps({ station: "Central Park", peril: "rain", end, pay: "24.00", payout: "100.00" })[1].title;
     assert.equal(title, "Settles on its own after the window ends");
     assert.doesNotMatch(title, /—|null|undefined/);
   }
+});
+
+test("dates keep month and day together and only allow a window break after the dash", () => {
+  for (const iso of ["2026-10-26", "2026-11-02"]) {
+    assert.match(shortDate(iso), /^[A-Za-z]+\u00A0\d+$/);
+    assert.doesNotMatch(shortDate(iso), /[A-Za-z] [0-9]/);
+  }
+  const window = windowDates("2026-10-26", "2026-11-02");
+  assert.equal(window, "Oct\u00A026\u00A0– Nov\u00A02");
+  assert.deepEqual(window.split(" "), ["Oct\u00A026\u00A0–", "Nov\u00A02"]);
 });
