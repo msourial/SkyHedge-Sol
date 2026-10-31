@@ -10,6 +10,9 @@ export async function resolve(specifier, context, nextResolve) {
     if (error?.code === "ERR_MODULE_NOT_FOUND" && /^\\.{1,2}\\//.test(specifier) && specifier.endsWith(".js")) {
       return nextResolve(specifier.slice(0, -3) + ".ts", context);
     }
+    if (error?.code === "ERR_MODULE_NOT_FOUND" && /^\\.{1,2}\\//.test(specifier) && !/\\.[a-z]+$/i.test(specifier)) {
+      return nextResolve(specifier + ".ts", context);
+    }
     throw error;
   }
 }

@@ -14,7 +14,7 @@ import { CityPill, EqualPair, Group, LineSheet, PerilTiles, Pill, PillSegmented,
 import { PayoffChart, usePayoutTween } from "./payout-graphics.tsx";
 
 import { dismissMultipleTip, settlementDateLabel, shouldShowMultipleTip } from "../round3.ts";
-import { multipleTipStorage } from "../multiple-tip-store.ts";
+import { multipleTipStorage } from "../multiple-tip-store";
 import { HowPayout } from "./HowPayout.tsx";
 
 export function ProtectBody(props: { line: LineController; onCity: (cityId: string) => void; onWallet: () => void; onRetry: () => void }) {

@@ -2,7 +2,7 @@ import { View, Text, StyleSheet } from "react-native";
 import { CITIES } from "../../../shared/peril-registry.ts";
 import { CONTRACT_LABEL, TECH_CONTEXT, REFERENCE_ONLY } from "../../../shared/ui-copy.ts";
 import { lineTokens } from "../../../shared/ui-tokens.ts";
-import { ReferenceAreaMap } from "../ReferenceAreaMap.tsx";
+import { ReferenceAreaMap } from "../ReferenceAreaMap";
 import { referencePointFor } from "../reference-map.ts";
 import type { AgriculturalMarket } from "../api.ts";
 import { F } from "../theme.ts";

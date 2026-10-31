@@ -1,6 +1,7 @@
 import type { LiveCitySlug } from "../../shared/window-ladder.ts";
 import type { WindowEvidencePackage } from "../../shared/window-chain.ts";
 import type { PerilId } from "../../shared/ui-types.ts";
+import { apiOrigin } from "./api-origin";
 
 export type CityIndex = {
   slug: string;
@@ -196,7 +197,7 @@ export type FinalizedWalletState = {
   slot: number;
 };
 
-const apiBase = (process.env.EXPO_PUBLIC_API_BASE_URL || "https://skyhedge.app").replace(/\/$/, "");
+const apiBase = apiOrigin;
 
 /** Thrown when a deployment answers a JSON route with HTML (e.g. an SPA rewrite). Treat as "not available yet". */
 export class NotAvailableYetError extends Error {

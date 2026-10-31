@@ -53,8 +53,13 @@
       "destination": "/api/waitlist?action=count"
     },
     {
+      "source": "/app/:path*",
+      "destination": "/app/index.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "installCommand": "npm ci && npm --prefix mobile ci"
 }

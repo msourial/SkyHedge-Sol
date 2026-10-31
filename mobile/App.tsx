@@ -69,6 +69,10 @@ import { signFailure, signStepForPhase, submitLineOpenPosition } from "./src/lin
 import type { SignOutcome, SignStep } from "../shared/ui-sign.ts";
 import { SCROLL_FADE_HEIGHT } from "./src/scroll-fade";
 import { APP_BUILD, APP_VERSION } from "./src/version";
+import { initialAppTab, initialLandingVisible, useAppNavigation, walletRestoreTab } from "./src/app-navigation";
+import { watchWalletSession } from "./src/wallet-events";
+import { BrowserWalletStatus } from "./src/BrowserWalletStatus";
+import { walletConnectionError } from "./src/wallet-connection-error";
 
 const SCROLL_CONTENT_PADDING_TOP = 18;
 
@@ -88,7 +92,8 @@ export default function App() {
     Inter_750: require("./assets/fonts/Inter-750.ttf"),
     BarlowCondensed_600SemiBold, BarlowCondensed_700Bold, IBMPlexMono_500Medium,
   });
-  const [tab, setTab] = useState<Tab>("catalog");
+  const [tab, setTab] = useState<Tab>(initialAppTab);
+  useAppNavigation(tab, setTab);
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [tab]);
@@ -141,7 +146,7 @@ export default function App() {
   const [indicativeQuote, setIndicativeQuote] = useState<ProtectionQuote | null>(null);
   const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1_000));
   const [guideOpen, setGuideOpen] = useState(false);
-  const [showLanding, setShowLanding] = useState(true);
+  const [showLanding, setShowLanding] = useState(initialLandingVisible);
   const glassTarget = useRef<View>(null);
   const [detailCode, setDetailCode] = useState<string | null>(null);
   /** Local-only "notify me" choices (in memory on this device; never sent anywhere). */
@@ -161,6 +166,11 @@ export default function App() {
   const [purchaseTransactions, setPurchaseTransactions] = useState<Record<string, string>>({});
   const [transactionSignature, setTransactionSignature] = useState<string | null>(null);
   const [buyPhase, setBuyPhase] = useState<BuyPhase | null>(null);
+
+  useEffect(() => watchWalletSession(() => {
+    setWallet(null); setWalletSession(null); setWalletBalances(null);
+    setChainPositions(null); setPortfolio(null); setSignReview(null);
+  }), []);
 
   const loadHome = useCallback(async () => {
     setHomeLoading(true);
@@ -277,7 +287,7 @@ export default function App() {
         setWalletSession(session);
         setWallet(session.address);
         setShowLanding(false);
-        setTab("protect");
+        setTab(walletRestoreTab());
         void loadWalletData(session.address);
         return;
       }
@@ -301,10 +311,7 @@ export default function App() {
       if (pair) { setSelectedCity(pair.cityId); line.setPeril(pair.peril); line.setTenor("weekly"); line.setCover(100); }
       await loadWalletData(session.address);
     } catch (reason) {
-      const detail = reason instanceof Error ? reason.message : "";
-      setWalletError(/cancel|reject|declin/i.test(detail)
-        ? "Wallet connection wasn’t approved. You can try again whenever you’re ready."
-        : "The wallet didn’t connect. Check that a compatible Solana wallet is installed, then try again.");
+      setWalletError(walletConnectionError(reason));
     } finally {
       setLoading(false);
     }
@@ -671,6 +678,7 @@ export default function App() {
             </>
           )
         ) : null}
+        {!showLanding && tab === "wallet" ? <BrowserWalletStatus wallet={wallet} balance={walletBalances ? formatBaseGrouped(BigInt(walletBalances.skytBaseUnits)) : null} error={walletError}/> : null}
         {!showLanding && tab === "wallet" ? <WalletLine focusMarket={confirmedLine?.wallet === wallet ? confirmedLine.market : null} transactions={purchaseTransactions} onCollect={async market => { const outcome = await submitApprovedAction("claim_payout", market); if (outcome.kind === "error") throw new Error(outcome.message ?? "Collection did not complete. Try again."); setEvidenceNonce(n => n + 1); }} revision={evidenceNonce} wallet={wallet} balance={walletBalances ? formatBaseGrouped(BigInt(walletBalances.skytBaseUnits)) : null} {...walletCovers}
           loading={balancesLoading || loading} failed={Boolean(balancesError || portfolioError || walletError || portfolio?.indexed === false)}
           onMarkets={() => { setTab("catalog"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}

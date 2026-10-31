@@ -13,7 +13,8 @@
     "check": "tsc --noEmit",
     "test:presentation": "node --experimental-transform-types --import ./tools/resolve-shared-ts.mjs --test src/presentation.test.ts",
     "test:mobile": "node --experimental-transform-types --import ./tools/resolve-shared-ts.mjs --test src/*.test.ts",
-    "build:apk": "npx eas build --platform android --profile hackathon-apk"
+    "build:apk": "npx eas build --platform android --profile hackathon-apk",
+    "build:web": "node tools/build-web.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/barlow-condensed": "^0.4.1",
@@ -21,6 +22,7 @@
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/inter-tight": "^0.4.2",
     "@expo-google-fonts/space-grotesk": "^0.4.1",
+    "@expo/metro-runtime": "~57.0.17",
     "@expo/vector-icons": "^15.1.1",
     "@maplibre/maplibre-react-native": "^11.5.0",
     "@solana-mobile/mobile-wallet-adapter-protocol": "2.3.0",
@@ -35,10 +37,12 @@
     "expo-secure-store": "~57.0.4",
     "phosphor-react-native": "^3.0.6",
     "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-native": "0.86.3",
     "react-native-get-random-values": "^1.11.0",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-svg": "15.15.4"
+    "react-native-svg": "15.15.4",
+    "react-native-web": "^0.21.2"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
