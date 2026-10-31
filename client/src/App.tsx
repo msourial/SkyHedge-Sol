@@ -30,7 +30,7 @@ function Landing() {
         <ol>
           <li><span className="step">01</span><h3>Pick your weather.</h3><p>Choose a city market and a weather event you want cover for.</p></li>
           <li><span className="step">02</span><h3>Know your price.</h3><p>Buy cover with a fixed premium. See what you pay and what you could get.</p></li>
-          <li><span className="step">03</span><h3>If it hits, get paid.</h3><p>If the weather event hits the trigger, you get paid automatically. No claims forms.</p></li>
+          <li><span className="step">03</span><h3>If it hits, get paid.</h3><p>If NOAA data shows it hit, collect your payout in one tap. No claims forms.</p></li>
         </ol>
       </section>
       <section className="money" aria-labelledby="money-title"><div><span className="eyebrow">Where the money goes</span><h2 id="money-title">A city vault.<br/>A shared upside.</h2></div><div className="money-copy"><p>Liquidity providers fund each city market vault and earn the margin for backing the cover.</p><p>SkyHedge takes <strong>1–4%</strong>. The premium and potential payout are clear before you buy.</p></div></section>
