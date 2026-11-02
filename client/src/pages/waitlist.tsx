@@ -82,7 +82,7 @@ function RainChart() {
     <div className="rain-card">
       <div className="rain-card__heading">
         <span>
-          <CloudRain size={16} /> When the rain adds up
+          <CloudRain aria-hidden="true" size={16} /> When the rain adds up
         </span>
         <span className="chart-tag">Illustration</span>
       </div>
@@ -124,7 +124,7 @@ function RainChart() {
       <div className="rain-card__footer">
         <span>Agreed threshold</span>
         <span>
-          <Check size={12} /> Payout triggered
+          <Check aria-hidden="true" size={12} /> Payout triggered
         </span>
       </div>
     </div>
@@ -144,22 +144,15 @@ function ProductDemo() {
       return;
     }
     reduced.addEventListener("change", stop);
-    const timer = window.setInterval(
-      () =>
-        setActive((previous) => {
-          if (previous === steps.length - 1) {
-            setPlaying(false);
-            return previous;
-          }
-          return previous + 1;
-        }),
-      5000,
-    );
+    const timer = window.setTimeout(() => {
+      if (active === steps.length - 1) setPlaying(false);
+      else setActive(active + 1);
+    }, 5000);
     return () => {
-      window.clearInterval(timer);
+      window.clearTimeout(timer);
       reduced.removeEventListener("change", stop);
     };
-  }, [playing]);
+  }, [playing, active]);
   return (
     <section
       className="product-demo section reveal"
@@ -222,7 +215,7 @@ function ProductDemo() {
                   <span className="demo-step-copy">{step.copy}</span>
                 )}
               </span>
-              <ChevronRight size={18} aria-hidden="true" />
+              <ChevronRight aria-hidden="true" size={18} />
             </button>
           ))}
         </div>
@@ -234,7 +227,11 @@ function ProductDemo() {
             setPlaying(!playing);
           }}
         >
-          {playing ? <Pause size={15} /> : <Play size={15} />}{" "}
+          {playing ? (
+            <Pause aria-hidden="true" size={15} />
+          ) : (
+            <Play aria-hidden="true" size={15} />
+          )}{" "}
           {playing ? "Pause walkthrough" : "Play walkthrough"}
         </button>
         <p className="demo-disclaimer">
@@ -253,7 +250,8 @@ function ProductDemo() {
         </span>
         <Phone screen={steps[active].screen} />
         <span className="stage-bottom">
-          <ShieldCheck size={14} aria-hidden="true" /> Your cover, in your wallet.
+          <ShieldCheck aria-hidden="true" size={14} /> Your cover, in your
+          wallet.
         </span>
       </div>
     </section>
@@ -292,7 +290,7 @@ export default function LandingPage() {
           <a href="#faq">FAQs</a>
         </nav>
         <a className="button nav-cta" href="/app">
-          Open app <ArrowUpRight size={16} />
+          Open app <ArrowUpRight aria-hidden="true" size={16} />
         </a>
       </header>
       <main id="main">
@@ -322,7 +320,7 @@ export default function LandingPage() {
             <div className="hero-links hero-enter">
               <a className="text-action" href="#demo">
                 <span className="play-icon">
-                  <Play size={12} fill="currentColor" />
+                  <Play aria-hidden="true" size={12} fill="currentColor" />
                 </span>
                 Watch demo
               </a>
@@ -333,7 +331,7 @@ export default function LandingPage() {
                 target="_blank"
                 rel="noreferrer"
               >
-                Download APK <Download size={14} />
+                Download APK <Download aria-hidden="true" size={14} />
               </a>
             </div>
           </div>
@@ -368,7 +366,7 @@ export default function LandingPage() {
               "Small businesses",
             ].map((item) => (
               <li key={item}>
-                <ArrowUpRight size={14} />
+                <ArrowUpRight aria-hidden="true" size={14} />
                 {item}
               </li>
             ))}
@@ -398,7 +396,7 @@ export default function LandingPage() {
           <ol className="money-flow">
             <li>
               <span className="flow-icon">
-                <Layers3 size={23} />
+                <Layers3 aria-hidden="true" size={23} />
               </span>
               <span className="flow-index">01 / FUNDED</span>
               <h3>LPs back the vault.</h3>
@@ -406,11 +404,11 @@ export default function LandingPage() {
                 Liquidity providers fund collateralized vaults, reserving the
                 funds that back each market’s cover.
               </p>
-              <ArrowRight className="flow-arrow" size={20} />
+              <ArrowRight aria-hidden="true" className="flow-arrow" size={20} />
             </li>
             <li>
               <span className="flow-icon">
-                <ShieldCheck size={23} />
+                <ShieldCheck aria-hidden="true" size={23} />
               </span>
               <span className="flow-index">02 / PROTECTED</span>
               <h3>You choose your cover.</h3>
@@ -418,11 +416,11 @@ export default function LandingPage() {
                 Pay a fixed premium. Know the location, weather threshold and
                 potential payout before you commit.
               </p>
-              <ArrowRight className="flow-arrow" size={20} />
+              <ArrowRight aria-hidden="true" className="flow-arrow" size={20} />
             </li>
             <li>
               <span className="flow-icon">
-                <ArrowDown size={23} />
+                <ArrowDown aria-hidden="true" size={23} />
               </span>
               <span className="flow-index">03 / SETTLED</span>
               <h3>If it hits, collect.</h3>
@@ -438,7 +436,8 @@ export default function LandingPage() {
               <strong>1–4%</strong>.
             </span>
             <span>
-              Clear terms. No claims forms. <ArrowUpRight size={15} />
+              Clear terms. No claims forms.{" "}
+              <ArrowUpRight aria-hidden="true" size={15} />
             </span>
           </div>
         </section>
@@ -531,7 +530,8 @@ export default function LandingPage() {
           <WaitlistForm variant="compact" />
           <span className="form-note">Just your email. No wallet needed.</span>
           <span className="closing-location">
-            <Globe2 size={14} /> Starting in the US. Built to go further.
+            <Globe2 aria-hidden="true" size={14} /> Starting in the US. Built to
+            go further.
           </span>
         </section>
       </main>
@@ -540,7 +540,7 @@ export default function LandingPage() {
           <Brand />
           <p>Weather on your plans? Get paid.</p>
           <a className="text-action" href="/app">
-            Explore the app <ArrowUpRight size={16} />
+            Explore the app <ArrowUpRight aria-hidden="true" size={16} />
           </a>
         </div>
         <div className="footer-bottom">

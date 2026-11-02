@@ -1497,6 +1497,34 @@ h3 {
     margin-left: auto;
   }
 }
+@media (max-width: 360px) {
+  .hero-phone {
+    width: 210px;
+  }
+  .hero-visual {
+    height: 490px;
+  }
+  .hero-orbit {
+    width: 240px;
+    height: 240px;
+  }
+  .rain-card {
+    width: 230px;
+  }
+  .rain-card__value {
+    font-size: 15px;
+  }
+  .rain-card__heading {
+    gap: 4px;
+    font-size: 7px;
+  }
+  .rain-card__heading svg {
+    width: 12px;
+  }
+  .chart-tag {
+    font-size: 7px;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -1,3 +1,11 @@
+# Landing v2 — 2026-11-02
+
+- Restored working hero and closing email capture using the existing waitlist service; validation, pending, saved, duplicate and retry states are visible and accessible.
+- Storm Glass / Inter art direction follows the founder’s attached `652f7943…html` and the earlier Airpay review: generous type and spacing, a real product phone, restrained reveals, and a fused signup pill. Uses the shared isometric umbrella; no added gradients or glows.
+- Real marketing captures are delivered as small WebP assets. The illustrative rainfall chart is explicitly labeled, and the keyboard-accessible Choose / Protect / Collect walkthrough replaces the old demo placeholder. Motion and playback respect reduced-motion preferences.
+- Positioning covers farms, events, aviation/travel, vendors, construction and small businesses. US-first rollout, LP-funded collateralized vaults, one-tap collection and the 1–4% fee are explicit; Devnet is disclosed in copy/footer.
+- Verified live Vercel acceptance and persistence via normalized duplicate lookup; browser tests cover both forms, errors, attribution, keyboard operation, playback, and layouts from 320–1440px. Screenshots and the report are in `/workspace/codex-runs/`.
+
 # Landing pass — 2026-10-15
 
 ## Devnet badge: marketing shots (no CSS mask)
