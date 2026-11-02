@@ -6,7 +6,7 @@ How skyhedge.app stores waitlist signups and how you export the list.
 
 1. The landing form (`WaitlistForm`) `POST`s JSON to `/api/waitlist` with `email`, honeypot field `company` (always empty for humans), `source`, optional `referrer`, and optional UTM fields from the URL.
 2. The Vercel function (`api/waitlist/index.ts`) validates with zod, rejects filled honeypots with a fake success (no DB write), rate-limits by **hashed** IP (`IP_HASH_SALT` + IP → SHA-256), and upserts into Neon Postgres via Drizzle.
-3. Duplicate emails return the same success JSON as new signups (`{ ok: true, status: "subscribed" }`) so the UI never errors and the API does not help email enumeration.
+3. Duplicate emails return HTTP 200 with `{ ok: true, status: "already_subscribed" }`. The form displays an “Already on the list” state; no duplicate row is inserted.
 4. Rows live in `waitlist_signups` (see `shared/schema.ts` and migrations `0002` / `0003`).
 5. After a new row is saved, the function fires a Telegram message (`New SkyHedge waitlist signup: j***@gmail.com, total: N, source: …`) and returns without waiting. The email is masked. Duplicates, honeypots, and a missing `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` send nothing. Telegram errors and the 3s timeout never change the signup response.
 
@@ -90,6 +90,8 @@ Not wired. No Resend/SendGrid/Postmark keys are in this project. Next step when 
 ## Local / Express
 
 `server/routes.ts` mounts the same handlers for `POST /api/waitlist`, `GET /api/waitlist/export`, and `GET /api/waitlist/count` when you run `npm run dev` with `DATABASE_URL` set.
+
+The built-site verification server (`node --import tsx scripts/web-preview.ts`, port 5002) loads `.env` and mounts the actual Vercel signup handler at `/api/waitlist`. It requires `DATABASE_URL` for real signups; without it, the form shows the API's unavailable message rather than a false success. Browser tests mock success/error scenarios, and also exercise invalid-email validation against the real local API without writing a row.
 
 ## Tests
 

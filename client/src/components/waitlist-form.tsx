@@ -3,7 +3,13 @@ import { api, ApiError } from "@/lib/api";
 
 type Status = "idle" | "submitting" | "success" | "already" | "error";
 
-export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "compact"; id?: string }) {
+export function WaitlistForm({
+  variant = "hero",
+  id,
+}: {
+  variant?: "hero" | "compact";
+  id?: string;
+}) {
   const fieldId = useId();
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
@@ -13,33 +19,60 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (status === "submitting") return;
+    const trimmed = email.trim();
+    if (
+      !trimmed ||
+      trimmed.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)
+    ) {
+      setStatus("error");
+      setMessage("Enter a valid email address.");
+      return;
+    }
     setStatus("submitting");
     setMessage(null);
     try {
-      const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-      const result = await api<{ ok: true; status: string }>("/api/waitlist", {
+      const params =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search)
+          : null;
+      const result = await api<{
+        ok: true;
+        status: "subscribed" | "already_subscribed";
+      }>("/api/waitlist", {
         method: "POST",
         body: JSON.stringify({
-          email,
+          email: trimmed,
           company,
           source: "landing",
-          referrer: typeof document !== "undefined" ? document.referrer || null : null,
+          referrer:
+            typeof document !== "undefined" ? document.referrer || null : null,
           utmSource: params?.get("utm_source"),
           utmMedium: params?.get("utm_medium"),
           utmCampaign: params?.get("utm_campaign"),
         }),
       });
+      if (
+        result.ok !== true ||
+        !["subscribed", "already_subscribed"].includes(result.status)
+      ) {
+        throw new Error("Invalid waitlist response");
+      }
       const already = result.status === "already_subscribed";
       setStatus(already ? "already" : "success");
       setMessage(
         already
-          ? "This email is already on the list. We'll email when Seeker access opens."
-          : "You're on the list. We'll email when Seeker access opens.",
+          ? "This email is already on the list. We'll email you with launch and availability updates."
+          : "You're on the list. We'll email you with launch and availability updates.",
       );
       setEmail("");
     } catch (error) {
       setStatus("error");
-      setMessage(error instanceof ApiError ? error.message : "Could not join the waitlist. Try again.");
+      setMessage(
+        error instanceof ApiError
+          ? error.message
+          : "Could not join the waitlist. Try again.",
+      );
     }
   }
 
@@ -55,11 +88,27 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
         aria-live="polite"
       >
         <div className="wl-form__success-head">
-          <svg className="wl-form__check" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
-            <path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          <svg
+            className="wl-form__check"
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              d="M5 12.5 L10 17.5 L19 7"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
           <p className="wl-form__success-title">
-            {status === "already" ? "Already on the list" : "You're on the waitlist"}
+            {status === "already"
+              ? "Already on the list"
+              : "You're on the waitlist"}
           </p>
         </div>
         <p className="wl-form__success-body">{message}</p>
@@ -72,6 +121,12 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
       id={id}
       className={variant === "hero" ? "wl-form" : "wl-form wl-form--compact"}
       onSubmit={(event) => void onSubmit(event)}
+      aria-label={
+        variant === "hero"
+          ? "Join the SkyHedge waitlist"
+          : "Get SkyHedge launch updates"
+      }
+      aria-busy={status === "submitting"}
       noValidate
     >
       <label className="sr-only" htmlFor={`${fieldId}-email`}>
@@ -85,9 +140,16 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
           autoComplete="email"
           inputMode="email"
           required
+          maxLength={254}
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="you@example.com…"
+          onChange={(event) => {
+            setEmail(event.target.value);
+            if (status === "error") {
+              setStatus("idle");
+              setMessage(null);
+            }
+          }}
+          placeholder="Your email address"
           spellCheck={false}
           className="wl-form__input"
           disabled={status === "submitting"}
@@ -103,7 +165,11 @@ export function WaitlistForm({ variant = "hero", id }: { variant?: "hero" | "com
           onChange={(event) => setCompany(event.target.value)}
           className="wl-form__honeypot"
         />
-        <button type="submit" className="wl-form__submit" disabled={status === "submitting"}>
+        <button
+          type="submit"
+          className="wl-form__submit"
+          disabled={status === "submitting"}
+        >
           {status === "submitting" ? "Joining…" : "Join waitlist"}
         </button>
       </div>

@@ -1,5 +1,7 @@
 // Local verification server: the actual exported pages and existing Vercel API handlers.
+import "dotenv/config";
 import express from "express";
+import waitlist from "../api/waitlist/index.ts";
 import path from "node:path";
 import mobile from "../api/mobile.ts";
 import health from "../api/health.ts";
@@ -8,6 +10,12 @@ import quotes from "../api/quotes.ts";
 import unsigned from "../api/transactions/unsigned.ts";
 const app = express();
 app.use(express.json());
+app.all("/api/waitlist", (req, res, next) => {
+  // The Vercel adapter assigns a normalized IP on Node's request. Express
+  // exposes a getter, so give this local request a writable own property.
+  Object.defineProperty(req, "ip", { value: req.ip, writable: true, configurable: true });
+  void waitlist(req, res).catch(next);
+});
 app.all("/api/mobile", mobile);
 app.all("/api/health", health);
 app.all("/api/devnet/status", status);

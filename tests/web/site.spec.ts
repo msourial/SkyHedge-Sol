@@ -35,7 +35,7 @@ test("landing has the requested copy, actions and no horizontal overflow", async
   await expect(page.getByRole("link", { name: "Open app" })).toHaveAttribute("href", "/app");
   await expect(page.getByRole("link", { name: "Watch demo" })).toHaveAttribute("href", "#demo");
   await expect(page.getByRole("link", { name: "Download APK" })).toHaveAttribute("href", "https://github.com/msourial/SkyHedge-Sol/releases");
-  await expect(page.locator(".how li")).toHaveCount(3);
+  await expect(page.locator(".money-flow li")).toHaveCount(3);
   await expect(page.locator(".money")).toContainText("1–4%");
   for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 844 });
