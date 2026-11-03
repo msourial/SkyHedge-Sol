@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowDown,
   ArrowRight,
   ArrowUpRight,
   Check,
@@ -8,7 +7,6 @@ import {
   CloudRain,
   Download,
   Globe2,
-  Layers3,
   Pause,
   Play,
   ShieldCheck,
@@ -40,10 +38,10 @@ const steps = [
   },
 ] as const;
 
-function Brand() {
+function Brand({ settle = false }: { settle?: boolean }) {
   return (
     <a className="brand" href="/" aria-label="SkyHedge home">
-      <BrandMark size={35} tile={false} />
+      <BrandMark size={40} tile={false} settle={settle} />
       <span>SkyHedge</span>
     </a>
   );
@@ -60,7 +58,7 @@ function Phone({
 }) {
   const step = steps.find((s) => s.screen === screen)!;
   return (
-    <div className={`landing-phone ${className}`}>
+    <div className={`landing-phone ${className}`} data-ui>
       <div className="landing-phone__screen">
         <img
           src={`/mockups/landing/${screen}.webp`}
@@ -79,7 +77,7 @@ function Phone({
 
 function RainChart() {
   return (
-    <div className="rain-card">
+    <div className="rain-card reveal">
       <div className="rain-card__heading">
         <span>
           <CloudRain aria-hidden="true" size={16} /> When the rain adds up
@@ -94,9 +92,9 @@ function RainChart() {
         role="img"
         aria-label="Illustration of rainfall reaching an agreed payout threshold; not live market data"
       >
-        <path d="M0 21H280M0 55H280M0 89H280" stroke="#2A3444" />
-        <path d="M0 37H280" stroke="#A9B4C7" strokeDasharray="3 5" />
-        <g className="rain-bars" fill="#354D66">
+        <path d="M0 21H280M0 55H280M0 89H280" className="rain-chart__grid" />
+        <path d="M0 37H280" className="rain-chart__threshold" strokeDasharray="3 5" />
+        <g className="rain-bars">
           {[13, 21, 18, 29, 25, 34, 41, 38, 47, 59, 65, 61, 75, 80].map(
             (h, i) => (
               <rect
@@ -106,7 +104,6 @@ function RainChart() {
                 width="10"
                 height={h}
                 rx="3"
-                style={{ animationDelay: `${i * 65}ms` }}
               />
             ),
           )}
@@ -114,12 +111,12 @@ function RainChart() {
         <path
           className="rain-chart__line"
           d="M7 79L27 76L47 77L67 70L87 72L107 64L127 58L147 60L167 49L187 34L207 27L227 31L247 18L267 10"
-          stroke="#7CC4FF"
+          pathLength="1"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <circle cx="267" cy="10" r="4" fill="#7CC4FF" />
+        <circle className="rain-chart__point" cx="267" cy="10" r="4" />
       </svg>
       <div className="rain-card__footer">
         <span>Agreed threshold</span>
@@ -155,20 +152,21 @@ function ProductDemo() {
   }, [playing, active]);
   return (
     <section
-      className="product-demo section reveal"
+      className="product-demo section"
       id="demo"
       aria-labelledby="demo-title"
     >
       <div className="demo-copy">
-        <span className="eyebrow">A forecast. A plan. A little cover.</span>
-        <h2 id="demo-title">
+        <h2 className="reveal" id="demo-title">
           Less weather worry.
           <br />
           More living.
         </h2>
-        <p className="section-lead">See how simple weather hedging can feel.</p>
+        <p className="section-lead reveal">
+          Choose your cover. Know your terms. Collect in one tap.
+        </p>
         <div
-          className="demo-tabs"
+          className="demo-tabs reveal"
           role="tablist"
           aria-label="Product walkthrough"
           aria-orientation="vertical"
@@ -207,7 +205,7 @@ function ProductDemo() {
                 tabs.current[next]?.focus();
               }}
             >
-              <span className="step-number">0{index + 1}</span>
+              <span className="sr-only">0{index + 1}</span>
               <span>
                 <span className="demo-step-name">{step.name}</span>
                 <span className="demo-step-title">{step.title}</span>
@@ -239,14 +237,14 @@ function ProductDemo() {
         </p>
       </div>
       <div
-        className="demo-stage"
+        className="demo-stage reveal"
         id="demo-panel"
         role="tabpanel"
         aria-labelledby={`step-${active}`}
         tabIndex={0}
       >
         <span className="stage-caption">
-          THE APP, AT A GLANCE <span>0{active + 1} / 03</span>
+          Inside SkyHedge <span>{steps[active].name}</span>
         </span>
         <Phone screen={steps[active].screen} />
         <span className="stage-bottom">
@@ -270,7 +268,7 @@ export default function LandingPage() {
             observer.unobserve(entry.target);
           }
         }),
-      { threshold: 0.12 },
+      { threshold: 0.15 },
     );
     root.current
       .querySelectorAll(".reveal")
@@ -283,7 +281,7 @@ export default function LandingPage() {
         Skip to content
       </a>
       <header className="landing-header">
-        <Brand />
+        <Brand settle />
         <nav aria-label="Main navigation">
           <a href="#demo">How it works</a>
           <a href="#money">The money flow</a>
@@ -296,20 +294,12 @@ export default function LandingPage() {
       <main id="main">
         <section className="hero" aria-labelledby="headline">
           <div className="hero-copy">
-            <span className="eyebrow hero-enter">
-              <span className="eyebrow-dot" /> WEATHER HEDGING. FOR REAL LIFE.
-            </span>
             <h1 className="hero-enter" id="headline">
-              Weather on
-              <br className="hero-break" /> your plans?
-              <br />
-              <span>Get paid.</span>
+              Weather on your plans? Get paid.
             </h1>
             <p className="lead hero-enter">
-              For the days you can’t leave to chance.
-              <br />
-              Simple weather cover for your plans, your work,
-              <br className="desktop-break" /> and everything you’re building.
+              Simple weather cover for your plans, your work, and everything
+              you’re building. If the weather hits, collect in one tap.
             </p>
             <div className="hero-signup hero-enter">
               <WaitlistForm />
@@ -336,27 +326,17 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="hero-visual hero-enter">
-            <div className="hero-orbit" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </div>
-            <span className="visual-note">
-              <span /> Made for whatever’s ahead.
-            </span>
-            <Phone screen="markets" priority className="hero-phone" />
+            <Phone screen="markets" priority className="hero-phone reveal" />
             <RainChart />
-            <span className="visual-footnote">
-              REAL APP. REAL WEATHER DATA.
-            </span>
+            <span className="visual-footnote">The real app. Ready to explore.</span>
           </div>
         </section>
-        <section className="audiences reveal" aria-labelledby="audience-title">
-          <div className="audiences-intro">
-            <span className="eyebrow">Life happens outdoors.</span>
-            <h2 id="audience-title">A little cover goes a long way.</h2>
+        <section className="audiences" aria-labelledby="audience-title">
+          <div className="audiences-intro reveal">
+            <h2 id="audience-title">For life outside.</h2>
+            <p>For anyone whose plans or income depend on the weather.</p>
           </div>
-          <ul>
+          <ul className="reveal">
             {[
               "Farms & growers",
               "Outdoor events",
@@ -365,40 +345,26 @@ export default function LandingPage() {
               "Construction",
               "Small businesses",
             ].map((item) => (
-              <li key={item}>
-                <ArrowUpRight aria-hidden="true" size={14} />
-                {item}
-              </li>
+              <li key={item}>{item}</li>
             ))}
           </ul>
         </section>
         <ProductDemo />
         <section
-          className="money section reveal"
+          className="money section"
           id="money"
           aria-labelledby="money-title"
         >
-          <div className="money-heading">
+          <div className="money-heading reveal">
             <div>
-              <span className="eyebrow">Clear from the first tap.</span>
-              <h2 id="money-title">
-                A forecast can be uncertain.
-                <br />
-                The money flow shouldn’t be.
-              </h2>
+              <h2 id="money-title">The money behind your cover.</h2>
             </div>
             <p className="section-lead">
-              Collateral behind the cover.
-              <br />
-              Terms you can see before you buy.
+              Collateral behind the cover. Terms you can see before you buy.
             </p>
           </div>
           <ol className="money-flow">
-            <li>
-              <span className="flow-icon">
-                <Layers3 aria-hidden="true" size={23} />
-              </span>
-              <span className="flow-index">01 / FUNDED</span>
+            <li className="reveal">
               <h3>LPs back the vault.</h3>
               <p>
                 Liquidity providers fund collateralized vaults, reserving the
@@ -406,11 +372,7 @@ export default function LandingPage() {
               </p>
               <ArrowRight aria-hidden="true" className="flow-arrow" size={20} />
             </li>
-            <li>
-              <span className="flow-icon">
-                <ShieldCheck aria-hidden="true" size={23} />
-              </span>
-              <span className="flow-index">02 / PROTECTED</span>
+            <li className="reveal">
               <h3>You choose your cover.</h3>
               <p>
                 Pay a fixed premium. Know the location, weather threshold and
@@ -418,11 +380,7 @@ export default function LandingPage() {
               </p>
               <ArrowRight aria-hidden="true" className="flow-arrow" size={20} />
             </li>
-            <li>
-              <span className="flow-icon">
-                <ArrowDown aria-hidden="true" size={23} />
-              </span>
-              <span className="flow-index">03 / SETTLED</span>
+            <li className="reveal">
               <h3>If it hits, collect.</h3>
               <p>
                 Verified weather data determines the outcome. When your cover
@@ -430,7 +388,7 @@ export default function LandingPage() {
               </p>
             </li>
           </ol>
-          <div className="money-fee">
+          <div className="money-fee reveal">
             <span>
               LPs earn the margin for backing cover. SkyHedge takes{" "}
               <strong>1–4%</strong>.
@@ -442,18 +400,17 @@ export default function LandingPage() {
           </div>
         </section>
         <section
-          className="faq section reveal"
+          className="faq section"
           id="faq"
           aria-labelledby="faq-title"
         >
-          <div>
-            <span className="eyebrow">Good to know.</span>
+          <div className="reveal">
             <h2 id="faq-title">A clearer outlook.</h2>
             <p className="section-lead">
               A few answers before you get started.
             </p>
           </div>
-          <div className="faq-items">
+          <div className="faq-items reveal">
             <details>
               <summary>
                 Who is SkyHedge for?<span aria-hidden="true">+</span>
@@ -520,11 +477,10 @@ export default function LandingPage() {
           <span className="closing-mark">
             <BrandMark size={60} tile={false} />
           </span>
-          <span className="eyebrow">You have plans. Keep them.</span>
           <h2 id="join-title">
-            Whatever the weather.
+            Whatever’s ahead.
             <br />
-            <span>Be a little more ready.</span>
+            Be ready.
           </h2>
           <p>Be first to hear when SkyHedge opens near you.</p>
           <WaitlistForm variant="compact" />

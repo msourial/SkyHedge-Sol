@@ -31,7 +31,7 @@ async function mockData(page: Page) {
 
 test("landing has the requested copy, actions and no horizontal overflow", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Weather on your plans?Get paid.");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Weather on your plans? Get paid.");
   await expect(page.getByRole("link", { name: "Open app" })).toHaveAttribute("href", "/app");
   await expect(page.getByRole("link", { name: "Watch demo" })).toHaveAttribute("href", "#demo");
   await expect(page.getByRole("link", { name: "Download APK" })).toHaveAttribute("href", "https://github.com/msourial/SkyHedge-Sol/releases");
