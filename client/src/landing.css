@@ -1534,3 +1534,11 @@ h3 {
     transition: none !important;
   }
 }
+.footer-social a {
+  color: var(--body);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.footer-social a:hover {
+  color: var(--ink, #fff);
+}

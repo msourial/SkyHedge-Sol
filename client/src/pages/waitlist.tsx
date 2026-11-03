@@ -314,7 +314,7 @@ export default function LandingPage() {
             <div className="hero-signup hero-enter">
               <WaitlistForm />
               <p className="form-note">
-                Get launch updates. US first. Then the world.
+                Early access when cover opens near you. US first, then the world.
               </p>
             </div>
             <div className="hero-links hero-enter">
@@ -547,6 +547,19 @@ export default function LandingPage() {
           <span>© {new Date().getFullYear()} SkyHedge</span>
           <span>Built on Solana. Weather data from NOAA.</span>
           <span>Devnet preview · SKYT test tokens · No real money</span>
+          <span className="footer-social">
+            <a href="https://x.com/SkyFallHedge" target="_blank" rel="noreferrer">
+              X @SkyFallHedge
+            </a>
+            {" · "}
+            <a
+              href="https://github.com/msourial/SkyHedge-Sol"
+              target="_blank"
+              rel="noreferrer"
+            >
+              GitHub
+            </a>
+          </span>
         </div>
       </footer>
     </div>
