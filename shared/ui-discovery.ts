@@ -108,7 +108,10 @@ export async function loadDiscovery(windows: readonly QuoteWindow[], nowSeconds:
     try { return { quote: matchingQuote(await read(request.path!), request), failed: false, reason: null }; }
     catch (error) { return { quote: null, failed: !quoteNotOpen(error), reason: !quoteNotOpen(error) && error instanceof Error ? error.message : null }; }
   }));
-  return { quotes: results.flatMap((r) => r.quote ? [r.quote] : []), failed: results.some((r) => r.failed), reason: results.find((r) => r.failed && r.reason)?.reason ?? null };
+  const quotes = results.flatMap((r) => r.quote ? [r.quote] : []);
+  // Only report a load failure when nothing loaded; one bad window must not hide the markets that did.
+  const failed = !quotes.length && results.some((r) => r.failed);
+  return { quotes, failed, reason: failed ? results.find((r) => r.failed && r.reason)?.reason ?? null : null };
 }
 
 export type StoredCover = { market: string; address: string; premiumPaid: string; protectedAmount: string; potentialPayout?: string; city?: string; statusLabel?: string; peril?: PerilId; cityId?: string; triggerValue?: number; payoutClaimed?: boolean; refundClaimed?: boolean; windowStart?: string | null; windowEnd?: string | null; settlementDate?: string | null };
