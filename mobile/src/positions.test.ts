@@ -92,7 +92,7 @@ describe("position accounts", () => {
     assert.equal(windowDates(receipt.windowStart, receipt.windowEnd), "Oct\u00A022\u00A0– Oct\u00A029");
     const end = settlementDateLabel(receipt.settlementDate);
     assert.equal(end, "Oct\u00A029 (UTC)");
-    assert.equal(payoutSteps({ station: "Central Park", peril: "rain", end, pay: "24.00", payout: "100.00" })[1].title, "Settles on its own after Oct\u00A029 (UTC)");
+    assert.equal(payoutSteps({ station: "Central Park", peril: "rain", end, pay: "24.00", payout: "100.00" })[1].title, "Settled from NOAA data after Oct\u00A029 (UTC)");
   });
 
   it("keeps unknown or invalid market dates null instead of inventing a window", () => {

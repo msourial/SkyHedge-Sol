@@ -52,9 +52,12 @@ export type PayoutExplanation = { station: string; peril: string; end: string | 
 export function payoutSteps(p: PayoutExplanation) {
   return [
     { title: `${p.station} station is the source`, body: `NOAA daily ${p.peril} observations from the ${p.station} station. Nothing else counts.` },
-    { title: `Settles on its own after ${p.end?.trim() && p.end.trim() !== "—" ? p.end.trim() : "the window ends"}`, body: "When NOAA posts the final data, SkyHedge settles the market on Solana. No claims form, no proof to send." },
-    { title: "Collect with one tap", body: `If it hit, approve one transaction in Phantom to move ${p.payout} SKYT to your wallet. Collect within 30 days of the data deadline; the exact deadline appears when ready.` },
+    { title: `Settled from NOAA data after ${p.end?.trim() && p.end.trim() !== "—" ? p.end.trim() : "the window ends"}`, body: "SkyHedge posts the NOAA reading on chain. Anyone can then settle: the program compares that reading to your fixed threshold." },
+    { title: "Collect with one tap", body: `If it hit, open Wallet, tap Collect and approve one transaction in Phantom to move ${p.payout} SKYT to your wallet. Collect within 30 days of the data deadline; the exact deadline appears when ready.` },
+    { title: "Why you can trust the result", body: "Your threshold, window and station are fixed on chain before purchase. Each market’s vault is fully collateralised for reserved payouts, funded by liquidity providers. Every step is verifiable on Solana Explorer (Devnet). Today you trust SkyHedge’s settlement authority to post the NOAA reading with a source-data hash; a decentralised oracle is on the roadmap, not live." },
     { title: "Max loss is what you pay", body: `If it doesn't hit, you lose the ${p.pay} SKYT you paid. Never more.` },
-    { title: "No NOAA data, money back", body: "If NOAA data isn't available within 7 days of the window ending, your full premium is refundable." },
+    { title: "No NOAA data, money back", body: "If no observation is posted within 7 days after the window ends, anyone can mark data unavailable. You can then collect your full premium back." },
   ];
 }
+
+export const PAYOUT_PRICING_NOTE = "Chance and price are fixed for each market. Rainfall pricing can combine NOAA history with a forecast signal; neither guarantees a payout.";

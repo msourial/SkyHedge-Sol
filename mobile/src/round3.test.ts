@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { coverGauge, forecastChip, purchaseState, payoutSteps, shouldShowMultipleTip, dismissMultipleTip, MULTIPLE_TIP_KEY, shortDate, windowDates, settlementDateLabel } from "./round3.ts";
+import { coverGauge, forecastChip, purchaseState, payoutSteps, shouldShowMultipleTip, dismissMultipleTip, MULTIPLE_TIP_KEY, shortDate, windowDates, settlementDateLabel, PAYOUT_PRICING_NOTE } from "./round3.ts";
 import { TransactionFailedError } from "./buy-phase.ts";
 import { signFailure } from "./line-submit.ts";
 import type { CoverProgress, ForecastEdge } from "./api.ts";
@@ -53,6 +53,19 @@ test("payout explanation names Phantom approval, data deadline and live amounts"
   const text = payoutSteps({ station: "Central Park", peril: "rain", end: "Nov 9", pay: "47.00", payout: "100.00" }).map(s => `${s.title} ${s.body}`).join(" ");
   assert.match(text, /Collect with one tap/); assert.doesNotMatch(text, /automatic/i);
   assert.match(text, /approve one transaction in Phantom/); assert.match(text, /30 days of the data deadline/);
+  assert.match(text, /Why you can trust the result/);
+  assert.match(text, /threshold, window and station are fixed on chain before purchase/);
+  assert.match(text, /fully collateralised for reserved payouts/);
+  assert.match(text, /liquidity providers/);
+  assert.match(text, /Solana Explorer \(Devnet\)/);
+  assert.match(text, /trust SkyHedge’s settlement authority/);
+  assert.match(text, /source-data hash/);
+  assert.match(text, /oracle is on the roadmap, not live/);
+  assert.match(text, /Anyone can then settle/);
+  assert.match(text, /no observation is posted within 7 days/);
+  assert.match(text, /open Wallet, tap Collect/);
+  assert.doesNotMatch(text, /Settles on its own/);
+  assert.match(PAYOUT_PRICING_NOTE, /forecast signal/);
   assert.match(text, /Central Park/); assert.match(text, /47.00/); assert.match(text, /100.00/);
 });
 
@@ -66,7 +79,7 @@ test("window and settlement dates use UTC with readable missing-date copy", () =
   for (const iso of [null, undefined, "", "invalid"]) assert.equal(settlementDateLabel(iso), null);
   for (const end of [null, "", " ", "—", settlementDateLabel("invalid")]) {
     const title = payoutSteps({ station: "Central Park", peril: "rain", end, pay: "24.00", payout: "100.00" })[1].title;
-    assert.equal(title, "Settles on its own after the window ends");
+    assert.equal(title, "Settled from NOAA data after the window ends");
     assert.doesNotMatch(title, /—|null|undefined/);
   }
 });

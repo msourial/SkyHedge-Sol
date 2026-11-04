@@ -91,6 +91,7 @@ test("forecast and history bars render below a 5-point edge while the chip stays
 });
 test("actual payout sheet includes one-tap collection copy and no automatic claim", () => {
   const html = render(HowPayout, { explanation: { station: "Central Park", peril: "rain", end: "Nov 9", pay: "47.00", payout: "100.00" }, onClose: noop });
+  assert.match(html, /Why you can trust the result/); assert.match(html, /forecast signal/); assert.match(html, /fully collateralised/);
   assert.match(html, /Collect with one tap/); assert.doesNotMatch(html, /automatic/i); assert.match(html, /Phantom/);
 });
 test("actual gauge shows unavailable rather than a fabricated observation", () => {
@@ -114,21 +115,21 @@ test("CoverDetail renders portfolio window dates in header and row and passes th
   const html = renderOpenSheet(CoverDetail, { receipt, progress: null, now: Date.parse("2026-10-25"), onClose: noop }, 0);
   assert.equal((html.match(/Oct\u00A022\u00A0– Oct\u00A029/g) ?? []).length, 2);
   assert.match(html, /Central Park, New York/);
-  assert.match(html, /Settles on its own after Oct\u00A029 \(UTC\)/);
+  assert.match(html, /Settled from NOAA data after Oct\u00A029 \(UTC\)/);
   assert.doesNotMatch(html, /— – —|after —/);
   const unknown = renderOpenSheet(CoverDetail, { receipt: { ...receipt, windowStart: null, windowEnd: null, settlementDate: null }, onClose: noop }, 0);
   assert.match(unknown, /Window not available/);
-  assert.match(unknown, /Settles on its own after the window ends/);
+  assert.match(unknown, /Settled from NOAA data after the window ends/);
   assert.doesNotMatch(unknown, /— – —|after —/);
 });
 test("Protect's market payout sheet uses the structured UTC end even without a Window display row", () => {
   const model = buildProtectModel({ cityId: "new-york", peril: "rain", tenor: "weekly", windowStart: NYC_RAIN_MODELLED.windowStart, windowEnd: NYC_RAIN_MODELLED.windowEnd, quote: NYC_RAIN_MODELLED, single: null, loading: false, failed: false, connected: true, signing: false, cover: 100, selectedTrigger: null, defaultTrigger: null, coveredMarket: null, settlement: null, usedSkyt: 0, reading: null, running: false });
   const html = renderOpenSheet(ProtectBody, { line: { model: { ...model, signRows: [] }, sheet: null, cities: [], approveTarget: null }, onCity: noop, onWallet: noop, onRetry: noop }, 1);
   const end = settlementDateLabel(NYC_RAIN_MODELLED.windowEnd);
-  assert.ok(html.includes(`Settles on its own after ${end}`));
+  assert.ok(html.includes(`Settled from NOAA data after ${end}`));
   assert.doesNotMatch(html, /after —|after null/);
   const unknown = renderOpenSheet(ProtectBody, { line: { model: { ...model, settlementDate: null }, sheet: null, cities: [], approveTarget: null }, onCity: noop, onWallet: noop, onRetry: noop }, 1);
-  assert.match(unknown, /Settles on its own after the window ends/);
+  assert.match(unknown, /Settled from NOAA data after the window ends/);
 });
 
 test("CoverDetail passes a real 69mm receipt to a two-band step chart with one trigger label", () => {
