@@ -32,7 +32,9 @@
     "brand:assets": "node scripts/generate-brand-assets.mjs",
     "build:app": "npm --prefix mobile run build:web",
     "test:web": "playwright test --config playwright.web.config.ts",
-    "test:phantom": "node --import tsx --test scripts/phantom-browser.test.ts"
+    "test:phantom": "node --import tsx --test scripts/phantom-browser.test.ts",
+    "demo:replay": "tsx scripts/demo-replay-localnet.ts",
+    "test:replay": "node --import tsx --test scripts/demo-replay-helpers.test.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",
