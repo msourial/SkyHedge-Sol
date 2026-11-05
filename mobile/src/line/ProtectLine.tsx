@@ -1,3 +1,4 @@
+import { Linking } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text, View, Vibration, useWindowDimensions } from "react-native";
 import { perilById } from "../../../shared/peril-registry.ts";
@@ -90,7 +91,7 @@ function TriggerFigure({ value }: { value: number }) {
   return <View><Animated.Text style={[styles.numeral, { opacity }]}>{format(number)}</Animated.Text>{previous ? <Animated.Text accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.numeral, StyleSheet.absoluteFill, { opacity: opacity.interpolate({ inputRange: [0,1], outputRange: [1,0] }) }]}>{format(previous[0])}</Animated.Text> : null}</View>;
 }
 function ChanceBar({ chance, selected }: { chance: number; selected: boolean }) { const { frame: [on] } = usePayoutTween([selected ? 1 : 0], 0, 150); return <View style={styles.chanceTrack}><View style={{ width: chanceBarWidth(chance), height: 4, borderRadius: 2, backgroundColor: `rgba(${Math.round(169 - 45 * on)},${Math.round(180 + 16 * on)},${Math.round(194 + 61 * on)},${.55 + .45 * on})` }}/></View>; }
-export function LinePay(props: { line: LineController; onConnect: () => void; onReview: () => void; onWallet: () => void; onRetry: () => void; onCity: (cityId: string) => void; sheetOpen?: boolean }) {
+export function LinePay(props: { line: LineController; onConnect: () => void; onReview: () => void; onWallet: () => void; onRetry: () => void; onCity: (cityId: string) => void; sheetOpen?: boolean; fundingReason?: string | null }) {
   const panel = props.line.model.panel;
   if (panel.kind === "error") return <View style={styles.pay}><Text style={ui.body}>{panel.message}</Text><LinePressable onPress={props.onRetry} style={styles.textButton}><Text style={styles.link}>{TRY_AGAIN}</Text></LinePressable></View>;
   if (panel.kind === "paid" || panel.kind === "dry") return <View style={styles.pay}><Text style={ui.figure}>{panel.result}</Text><Text style={ui.label}>{panel.kind === "paid" ? "Paid out" : "Expired"}</Text></View>;
@@ -98,8 +99,9 @@ export function LinePay(props: { line: LineController; onConnect: () => void; on
   const loss = "loss" in panel ? panel.loss : props.line.model.ticket?.loss ?? null, gain = "gain" in panel ? panel.gain : props.line.model.ticket?.gain ?? null;
   const label = loading ? GETTING_QUOTE : signing ? WAITING_WALLET : panel.kind === "closed" ? "Sales closed" : panel.kind === "not-open" ? "Not available yet" : panel.kind === "covered" ? "View cover" : panel.cta;
   return <View style={styles.pay} pointerEvents={props.sheetOpen ? "none" : "auto"} accessibilityElementsHidden={props.sheetOpen} importantForAccessibility={props.sheetOpen ? "no-hide-descendants" : "auto"}>
+    {props.fundingReason ? <View><Text accessibilityRole="alert" style={ui.body}>{props.fundingReason}</Text><LinePressable onPress={props.onWallet} style={styles.textButton}><Text style={styles.link}>Wallet funding help</Text></LinePressable><LinePressable onPress={() => { void Linking.openURL("https://faucet.solana.com/"); }} style={styles.textButton}><Text style={styles.link}>Get Devnet SOL</Text></LinePressable></View> : null}
     <View style={styles.payFigs}>{([[MAX_LOSS, loss], [MAX_GAIN, gain]] as const).map(([title, fig], index) => <Text key={title} style={ui.label}>{title} <Text style={[ui.figure, { fontSize: 13, lineHeight: 16 }]}>{fig ? figure(fig) : "…"}</Text>{index === 1 ? " SKYT" : ""}</Text>)}</View>
-    <LinePressable accessibilityRole="button" disabled={loading || signing || closed || props.sheetOpen || (panel.kind === "ready" && !props.line.approveTarget)} onPress={panel.kind === "covered" ? props.onWallet : panel.kind === "connect" ? props.onConnect : props.onReview} style={[ui.cta, (loading || signing || closed) && { backgroundColor: C.surface2 }]}><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={13 / 16} style={[ui.ctaText, (loading || signing || closed) && { color: C.fg2 }]}>{label}</Text></LinePressable>
+    <LinePressable accessibilityRole="button" accessibilityHint={props.fundingReason ?? undefined} disabled={Boolean(props.fundingReason) || loading || signing || closed || props.sheetOpen || (panel.kind === "ready" && !props.line.approveTarget)} onPress={panel.kind === "covered" ? props.onWallet : panel.kind === "connect" ? props.onConnect : props.onReview} style={[ui.cta, (loading || signing || closed) && { backgroundColor: C.surface2 }]}><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={13 / 16} style={[ui.ctaText, (loading || signing || closed) && { color: C.fg2 }]}>{label}</Text></LinePressable>
   </View>;
 }
 export function MoneyCells({ ticket }: { ticket: Pick<TicketModel, "loss" | "gain"> }) { return <EqualPair loss={figure(ticket.loss)} gain={figure(ticket.gain)}/>; }

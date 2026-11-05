@@ -1,3 +1,4 @@
+import { fundingReason } from "../funding.ts";
 import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, Vibration, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -41,6 +42,7 @@ export function SignSheet({ review, onApprove, onClose, onWallet, onMarkets, sig
   const busy = useRef(false);
   const closing = useRef(false);
   const mounted = useRef(true);
+  const blocked = fundingReason(review.target.premiumBase, review.context.balanceBase, review.context.sol);
   const copy = signCopy(displayed, review.context);
   useEffect(() => { mounted.current = true; Vibration.vibrate(10); return () => { mounted.current = false; }; }, []);
   useEffect(() => {
@@ -66,7 +68,7 @@ export function SignSheet({ review, onApprove, onClose, onWallet, onMarkets, sig
   };
   const dismiss = () => { if (signCopy(state, review.context).canDismiss) close(); };
   const approve = async () => {
-    if (busy.current || state.status !== "review") return;
+    if (busy.current || state.status !== "review" || blocked) return;
     busy.current = true;
     setState({ status: "progress", step: "wallet" });
     let outcome: SignOutcome;
@@ -101,6 +103,7 @@ export function SignSheet({ review, onApprove, onClose, onWallet, onMarkets, sig
           {displayed.status === "success" ? <Text accessibilityLabel="Cover confirmed" style={styles.success}>✓</Text> : displayed.status === "error" ? <Text style={styles.warning}>⚠</Text> : null}
           <Text accessibilityRole="header" style={displayed.status === "error" ? styles.errorTitle : styles.title}>{copy.title}</Text>
           {displayed.status === "review" ? <>
+            {blocked ? <><Text accessibilityRole="alert" style={styles.body}>{blocked}</Text><Pressable onPress={() => close(onWallet)}><Text style={styles.note}>Wallet funding help</Text></Pressable></> : null}
             <Text style={styles.note}>{copy.body}</Text>
             <MoneyCells ticket={review.ticket} />
             <ScrollView style={styles.rows} contentContainerStyle={styles.rowsContent} bounces={false}>{review.ticket.signRows.map((row) => <TicketRow key={row.label} {...row} />)}</ScrollView>
@@ -114,7 +117,7 @@ export function SignSheet({ review, onApprove, onClose, onWallet, onMarkets, sig
               <View style={styles.stepContent}><Text style={[styles.body, step.state === "pending" && styles.pending]}>{step.label}</Text>{step.state === "active" ? reduced ? <Text style={styles.note}>Working</Text> : <ProgressBar /> : null}</View>
             </View>)}</View><Text style={styles.note}>{copy.body}</Text>
           </> : displayed.status === "success" ? <><MoneyCells ticket={review.ticket} /><Text style={styles.body}>{copy.body}</Text></> : <Text style={styles.body}>{copy.body}</Text>}
-          <LinePressable accessibilityRole="button" accessibilityState={{ disabled: Boolean(copy.primary.disabled) }} disabled={copy.primary.disabled} onPress={() => act(copy.primary.action)} style={[styles.primary, copy.primary.disabled && styles.disabled]}><Text style={[styles.primaryText, copy.primary.disabled && styles.pending]}>{copy.primary.label}</Text></LinePressable>
+          <LinePressable accessibilityRole="button" accessibilityState={{ disabled: Boolean(copy.primary.disabled || (displayed.status === "review" && blocked)) }} disabled={Boolean(copy.primary.disabled || (displayed.status === "review" && blocked))} onPress={() => act(copy.primary.action)} style={[styles.primary, copy.primary.disabled && styles.disabled]}><Text style={[styles.primaryText, copy.primary.disabled && styles.pending]}>{copy.primary.label}</Text></LinePressable>
           {copy.secondary ? <Pressable accessibilityRole="button" onPress={() => act(copy.secondary!.action)} style={styles.secondary}><Text style={styles.secondaryText}>{copy.secondary.label}</Text></Pressable> : null}
         </Animated.View>
       </Animated.View>

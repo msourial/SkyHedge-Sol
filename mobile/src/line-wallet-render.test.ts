@@ -30,10 +30,10 @@ const host = `
   export const Easing = { bezier: () => null, out: () => null, cubic: null };
   export const useWindowDimensions = () => ({ width: 393, height: 852 });
 `;
-let WalletLine: any, PayoffChart: any;
+let WalletLine: any, PayoffChart: any, CoverDetail: any;
 before(async () => {
 const result = await build({
-  stdin: { contents: 'export { WalletLine } from "./line/WalletLine.tsx"; export { PayoffChart } from "./line/payout-graphics.tsx";', resolveDir: new URL("./", import.meta.url).pathname }, bundle: true, write: false, platform: "node", format: "cjs", jsx: "automatic", logLevel: "silent",
+  stdin: { contents: 'export { CoverDetail } from "./line/CoverDetail.tsx"; export { WalletLine } from "./line/WalletLine.tsx"; export { PayoffChart } from "./line/payout-graphics.tsx";', resolveDir: new URL("./", import.meta.url).pathname }, bundle: true, write: false, platform: "node", format: "cjs", jsx: "automatic", logLevel: "silent",
   plugins: [{ name: "native-test-host", setup(builder) {
     builder.onResolve({ filter: /^react(?:\/.*)?$/ }, (args) => ({ path: args.path, external: true }));
     builder.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "host" }));
@@ -45,7 +45,7 @@ const result = await build({
 });
 const module = { exports: {} as { WalletLine: any; PayoffChart: any } };
 new Function("require", "module", "exports", result.outputFiles[0].text)(rootRequire, module, module.exports);
-({ WalletLine, PayoffChart } = module.exports);
+({ WalletLine, PayoffChart, CoverDetail } = module.exports as any);
 });
 const noop = () => {};
 const base = receiptModel({ address: "position", market: "unknown", premiumPaid: "24000000", protectedAmount: "100000000", statusLabel: "Active", city: "New York", peril: "rain", triggerValue: 2 }, [], DISCOVERY_QUOTES);
@@ -142,5 +142,29 @@ test("chart extends the right-edge trigger, renders it once and separates values
       assert.ok(lossBox.style.top + lossBox.style.height + 8 <= trigger.style.top);
       assert.deepEqual(trigger.style.fontVariant, ["tabular-nums"]);
     } finally { delete (globalThis as any).__walletNodes; }
+  }
+});
+
+test("Wallet and cover detail route payout and refund with the real claim amount", async () => {
+  for (const action of ["claim_payout", "claim_premium_refund"] as const) {
+    const receipt = receiptModel({ address: "receipt", market: "market", premiumPaid: "24123456", protectedAmount: "100000000" }, [], [], { state: "claimable", action, result: action === "claim_payout" ? "Triggered" : "DataUnavailable" });
+    const label = action === "claim_payout" ? "Collect 100.00" : "Refund 24.123456";
+    const calls: unknown[][] = [];
+    const presses: any[] = [];
+    (globalThis as any).__marketPresses = presses;
+    try {
+      const html = renderToStaticMarkup(React.createElement(WalletLine, { wallet: "wallet", balance: null, receipts: [receipt], totals: null, loading: false, failed: false, onConnect: noop, onRetry: noop, onDisconnect: noop, onMarkets: noop, onCollect: async (...args: unknown[]) => { calls.push(args); } }));
+      assert.ok(html.includes(action === "claim_payout" ? "Collect" : "Refund"));
+      const button = presses.find(p => p.label.replace(/\s+/g, " ").trim() === label);
+      assert.ok(button, label);
+      button.press({ stopPropagation() {} });
+      await Promise.resolve();
+      assert.deepEqual(calls, [["market", action]]);
+      presses.length = 0;
+      const detail = renderToStaticMarkup(React.createElement(CoverDetail, { receipt, onClose: noop, onCollect: (a: string) => calls.push(["detail", a]) }));
+      assert.ok(detail.includes(action === "claim_payout" ? "100.00" : "24.123456"));
+      presses.find(p => p.label.replace(/\s+/g, " ").trim() === label + " SKYT").press();
+      assert.deepEqual(calls.at(-1), ["detail", action]);
+    } finally { delete (globalThis as any).__marketPresses; }
   }
 });

@@ -34,10 +34,10 @@ const host = `
   export const Easing = { bezier: () => null, out: () => null, cubic: null };
   export const useWindowDimensions = () => ({ width: 393, height: 852 });
 `;
-let PurchaseReceipt: any, ForecastBlock: any, EdgeChip: any, HowPayout: any, CoverGauge: any, CoverDetail: any, ProtectBody: any;
+let PurchaseReceipt: any, ForecastBlock: any, EdgeChip: any, HowPayout: any, CoverGauge: any, CoverDetail: any, ProtectBody: any, LinePay: any;
 before(async () => {
 const result = await build({
-  stdin: { contents: 'export { PurchaseReceipt } from "./line/PurchaseReceipt.tsx"; export { ForecastBlock, EdgeChip } from "./line/ForecastBlock.tsx"; export { HowPayout } from "./line/HowPayout.tsx"; export { CoverGauge } from "./line/CoverGauge.tsx"; export { CoverDetail } from "./line/CoverDetail.tsx"; export { ProtectBody } from "./line/ProtectLine.tsx";', resolveDir: new URL("./", import.meta.url).pathname }, bundle: true, write: false, platform: "node", format: "cjs", jsx: "automatic", logLevel: "silent",
+  stdin: { contents: 'export { PurchaseReceipt } from "./line/PurchaseReceipt.tsx"; export { ForecastBlock, EdgeChip } from "./line/ForecastBlock.tsx"; export { HowPayout } from "./line/HowPayout.tsx"; export { CoverGauge } from "./line/CoverGauge.tsx"; export { CoverDetail } from "./line/CoverDetail.tsx"; export { ProtectBody, LinePay } from "./line/ProtectLine.tsx";', resolveDir: new URL("./", import.meta.url).pathname }, bundle: true, write: false, platform: "node", format: "cjs", jsx: "automatic", logLevel: "silent",
   plugins: [{ name: "native-test-host", setup(builder) {
     builder.onResolve({ filter: /^react(?:\/.*)?$/ }, (args) => ({ path: args.path, external: true }));
     builder.onResolve({ filter: /multiple-tip-store(?:\.ts)?$/ }, () => ({ path: "store", namespace: "host" }));
@@ -50,7 +50,7 @@ const result = await build({
 });
 const module = { exports: {} as any };
 new Function("require", "module", "exports", result.outputFiles[0].text)(rootRequire, module, module.exports);
-({ PurchaseReceipt, ForecastBlock, EdgeChip, HowPayout, CoverGauge, CoverDetail, ProtectBody } = module.exports);
+({ PurchaseReceipt, ForecastBlock, EdgeChip, HowPayout, CoverGauge, CoverDetail, ProtectBody, LinePay } = module.exports);
 });
 
 const noop = () => {};
@@ -152,4 +152,25 @@ test("CoverDetail passes a real 69mm receipt to a two-band step chart with one t
     assert.equal(gainLine.width, gain.width);
     assert.equal(rects.filter(r => r.fill === "#F2C230").length, 1);
   }
+});
+
+test("buy action is disabled with funding reason and a Wallet help action", () => {
+  const reason = "You need 24 SKYT to buy this cover. You have 0. Open Wallet for funding help.";
+  const line = { model: { panel: { kind: "ready", cta: "Buy cover" }, ticket: null }, approveTarget: { premiumBase: "24000000" } };
+  const nodes: any[] = [], presses: any[] = [];
+  (globalThis as any).__walletNodes = nodes;
+  (globalThis as any).__marketPresses = presses;
+  let wallet = 0, reviewCount = 0;
+  try {
+    const html = render(LinePay, { line, fundingReason: reason, onWallet: () => wallet++, onReview: () => reviewCount++ });
+    assert.ok(html.includes(reason));
+    assert.ok(nodes.some(n => n.disabled && n.accessibilityHint === reason));
+    assert.ok(!presses.some(p => p.label === "Buy cover"));
+    presses.find(p => p.label === "Wallet funding help").press();
+    assert.equal(wallet, 1); assert.equal(reviewCount, 0);
+    nodes.length = 0; presses.length = 0;
+    render(LinePay, { line, fundingReason: null, onReview: () => reviewCount++ });
+    presses.find(p => p.label === "Buy cover").press();
+    assert.equal(reviewCount, 1);
+  } finally { delete (globalThis as any).__walletNodes; delete (globalThis as any).__marketPresses; }
 });

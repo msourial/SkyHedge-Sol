@@ -15,7 +15,7 @@ export type SignOutcome =
   | { kind: "confirmed" }
   | { kind: "already-covered" }
   | { kind: "error"; error: SignErrorKind; message?: string; detail?: string | null };
-export type SignContext = {
+export type SignContext = { sol?: number | null;
   /** Integer base units from the frozen rung quote, never a displayed multiple. */
   premiumBase: string;
   balanceBase: string | null;
