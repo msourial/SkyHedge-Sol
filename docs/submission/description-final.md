@@ -2,7 +2,7 @@
 
 ## Short version (for a short field)
 
-SkyHedge is parametric weather hedging on Solana for anyone whose plans or income depend on the weather: farmers, event organizers, flight operators, street vendors. Pick a city, a weather risk and a trigger, pay a fixed premium in Phantom, and collect a fixed payout if NOAA data shows the trigger hit. No claims forms. Every payout is already locked in a fully collateralised on-chain vault. Live on Solana Devnet at skyhedge.app/app and as a Seeker app. Track: Best Consumer App on Solana.
+SkyHedge is parametric weather hedging on Solana for anyone whose plans or income depend on the weather: farmers, event organizers, flight operators, street vendors. Pick a city, a weather risk and a trigger, pay a fixed premium in Phantom, and collect a fixed payout if NOAA data shows the trigger hit. No claims forms. Every payout is already locked in a fully collateralised on-chain vault. Live on Solana Devnet at skyhedge.app/app and as a Seeker app. Tracks: Best Consumer App on Solana and Best Use of x402 on Solana.
 
 ## Full version
 
@@ -32,9 +32,6 @@ The judges asked this directly, so here is the honest answer. After the window e
 
 Live on Solana Devnet with SKYT, a test token with no value. Program `5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx`. Solo builder. Pre-launch, so no traction numbers are claimed.
 
-**Track entered:** Best Consumer App on Solana.
+**Track entered:** Best Consumer App on Solana and Best Use of x402 on Solana.
 
-<!-- x402 paragraph: include ONLY if Miro decides to enter the x402 track and a paid call is shown in the video.
-**x402:** SkyHedge also sells its NOAA quote as a paid API for other apps and AI agents. `GET /api/x402/quote` answers HTTP 402 with x402 V2 payment terms in Devnet USDC; after the payment settles through the x402 facilitator, it returns the quote. A payment that is submitted but not yet final returns 202 so the client retries the same payment instead of paying twice. Docs at skyhedge.app/developers.
-Then change the track line to: Best Consumer App on Solana and Best Use of x402 on Solana.
--->
+**x402:** SkyHedge also sells its NOAA weather quote as a paid API for other apps and AI agents, with no account or API key. `GET /api/x402/quote` answers HTTP 402 with x402 V2 `exact` payment terms: 0.01 Devnet USDC on Solana. The caller signs the transfer, the x402 facilitator settles it and pays the network fee, and only then does the API return the quote, priced from the same on-chain market terms the app uses. A wrong amount, asset or network is refused with a clear error and no quote. A payment that is submitted but not yet final returns 202, so the client retries the same payment instead of paying twice. Docs at skyhedge.app/developers.
