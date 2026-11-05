@@ -153,3 +153,13 @@ test("Protect has one entry CTA and no inline sign block or wallet-approval CTA"
   assert.ok(app.indexOf("<LinePay") > app.indexOf("</ScrollView>"));
   assert.match(app, /review.target.market, review.target.amount, \{ review, onStep \}/);
 });
+
+test("zero SOL stops preparation and unknown balances permit review submission", async () => {
+  const zero = setup({ sol: 0 });
+  const result = await submitLineOpenPosition(zero.input);
+  assert.equal(result.kind, "error");
+  if (result.kind === "error") assert.match(result.message!, /Devnet SOL.*fees/);
+  assert.equal(zero.calls.prepare, 0); assert.equal(zero.calls.sign, 0);
+  const unknown = setup({ balanceBase: null, sol: null });
+  assert.deepEqual(await submitLineOpenPosition(unknown.input), { kind: "confirmed" });
+});

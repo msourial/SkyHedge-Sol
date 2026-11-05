@@ -112,3 +112,32 @@ test("trusted Phantom restoration preserves a Wallet deep link", async ({ page }
   await expect(page.getByText("1,000.00 SKYT", { exact: true })).toBeVisible();
   await expect(page).toHaveURL(/\/app\/wallet$/);
 });
+
+test("first-time users can read settlement trust before buying and find funding guidance", async ({ page }) => {
+  await mockData(page);
+  await page.goto("/app/protect");
+  await page.getByRole("button", { name: "How payout works", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "How payout works" })).toBeVisible();
+  await expect(page.getByText(/Settled from NOAA data after/)).toBeVisible();
+  const trust = page.getByText("Why you can trust the result", { exact: true });
+  await trust.scrollIntoViewIfNeeded();
+  await expect(trust).toBeVisible();
+  await expect(page.getByText(/Today you trust SkyHedge’s settlement authority/)).toContainText("oracle is on the roadmap, not live");
+  const pricing = page.getByText(/Rainfall pricing can combine NOAA history/);
+  await pricing.scrollIntoViewIfNeeded();
+  await expect(pricing).toBeVisible();
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 700 });
+    await pricing.scrollIntoViewIfNeeded();
+    const footer = await pricing.boundingBox();
+    const close = await page.getByRole("button", { name: "Got it", exact: true }).boundingBox();
+    expect(footer).not.toBeNull(); expect(close).not.toBeNull();
+    expect(footer!.y + footer!.height).toBeLessThanOrEqual(close!.y);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.getByRole("button", { name: "Got it", exact: true }).click();
+  await page.getByRole("tab", { name: "Wallet tab", exact: true }).click();
+  await expect(page.getByText(/there is no in-app SKYT faucet/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Get Devnet SOL", exact: true })).toBeVisible();
+  await expect(page.getByText(/After settlement, return to Wallet/)).toBeVisible();
+});

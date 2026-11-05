@@ -1,4 +1,6 @@
 import "./src/polyfills";
+import { watchReadiness } from "./src/readiness-refresh";
+import { fundingReason } from "./src/funding";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFonts } from "expo-font";
@@ -477,7 +479,7 @@ export default function App() {
       try {
         const outcome = await submitLineOpenPosition({
           target: review.target, wallet, sessionAddress: walletSession?.address ?? null, reviewWallet: review.wallet,
-          positions: chainPositions, balanceBase: walletBalances ? String(walletBalances.skytBaseUnits) : null,
+          positions: chainPositions, sol: walletBalances?.sol, balanceBase: walletBalances ? String(walletBalances.skytBaseUnits) : null,
           nowSeconds: Math.floor(Date.now() / 1000),
           prepare: (target, owner) => prepareUnsignedTransaction({
             action, market: target.market, wallet: owner, amount: target.amount,
@@ -598,11 +600,12 @@ export default function App() {
       return;
     }
     let cancelled = false;
-    getJson<ClaimReadiness>(claimReadinessPath(activeWindow.address, wallet))
+    const read = () => getJson<ClaimReadiness>(claimReadinessPath(activeWindow.address, wallet))
       .then((value) => { if (!cancelled) { setClaimReadiness(value); setClaimError(null); } })
-      .catch((reason) => { if (!cancelled) setClaimError(reason instanceof NotAvailableYetError ? "Position status is not available yet." : reason instanceof Error ? reason.message : "Claim status is unavailable."); });
-    return () => { cancelled = true; };
-  }, [wallet, activeWindow?.address]);
+      .catch((reason) => { if (!cancelled) { setClaimReadiness(null); setClaimError(reason instanceof NotAvailableYetError ? "Position status is not available yet." : reason instanceof Error ? reason.message : "Claim status is unavailable."); } });
+    const stop = !showLanding && tab === "protect" && typeof window !== "undefined" && typeof document !== "undefined" ? watchReadiness(read, { window, document }) : (void read(), undefined);
+    return () => { cancelled = true; stop?.(); };
+  }, [wallet, activeWindow?.address, evidenceNonce, showLanding, tab]);
 
   const line = useLineProtect({
     cityId: protectCity,
@@ -617,8 +620,9 @@ export default function App() {
     nowSeconds,
   });
 
+  const buyFundingReason = wallet && line.model.panel.kind === "ready" ? fundingReason(line.approveTarget?.premiumBase, walletBalances?.skytBaseUnits ?? null, walletBalances?.sol) : null;
   const storedCovers = chainPositions ?? portfolio?.protections ?? [];
-  const walletCovers = useReceipts(storedCovers, wallet, status?.cityWindows ?? [], discovery.quotes, evidenceNonce);
+  const walletCovers = useReceipts(storedCovers, wallet, status?.cityWindows ?? [], discovery.quotes, evidenceNonce, !showLanding && tab === "wallet");
   const scrollBottom = Math.max(stickyOpen ? stickyHeight + 32 : 32, stickyOpen ? ((line.model.peril === "cold" || line.model.panel.kind === "covered") ? scrollBottomPadding("closed") : scrollBottomPadding(line.model)) : SCROLL_FADE_HEIGHT + 16);
   const openMarketSelection = (market: MarketSelection) => {
     changeCity(market.cityId); line.chooseMarket(market);
@@ -679,7 +683,7 @@ export default function App() {
           )
         ) : null}
         {!showLanding && tab === "wallet" ? <BrowserWalletStatus wallet={wallet} balance={walletBalances ? formatBaseGrouped(BigInt(walletBalances.skytBaseUnits)) : null} error={walletError}/> : null}
-        {!showLanding && tab === "wallet" ? <WalletLine focusMarket={confirmedLine?.wallet === wallet ? confirmedLine.market : null} transactions={purchaseTransactions} onCollect={async market => { const outcome = await submitApprovedAction("claim_payout", market); if (outcome.kind === "error") throw new Error(outcome.message ?? "Collection did not complete. Try again."); setEvidenceNonce(n => n + 1); }} revision={evidenceNonce} wallet={wallet} balance={walletBalances ? formatBaseGrouped(BigInt(walletBalances.skytBaseUnits)) : null} {...walletCovers}
+        {!showLanding && tab === "wallet" ? <WalletLine focusMarket={confirmedLine?.wallet === wallet ? confirmedLine.market : null} transactions={purchaseTransactions} onCollect={async (market, action) => { const outcome = await submitApprovedAction(action, market); if (outcome.kind === "error") throw new Error(outcome.message ?? "Collection did not complete. Try again."); setEvidenceNonce(n => n + 1); }} revision={evidenceNonce} wallet={wallet} balance={walletBalances ? formatBaseGrouped(BigInt(walletBalances.skytBaseUnits)) : null} {...walletCovers}
           loading={balancesLoading || loading} failed={Boolean(balancesError || portfolioError || walletError || portfolio?.indexed === false)}
           onMarkets={() => { setTab("catalog"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
           onConnect={() => { void connect(); }} onRetry={() => { if (wallet) void loadWalletData(wallet, true); setEvidenceNonce((n) => n + 1); }}
@@ -691,10 +695,10 @@ export default function App() {
       </View>
 
 
-      {!showLanding && tab === "protect" && (claimReadiness?.state === "claimable" && claimReadiness.action || line.model.showBar || line.model.peril === "cold" || line.model.panel.kind === "covered") ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}>{claimReadiness?.state === "claimable" && claimReadiness.action ? <LineClaimBar label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness.action) void submitApprovedAction(claimReadiness.action); }} /> : <LinePay line={line} sheetOpen={signReview != null} onConnect={() => { void connect(); }} onReview={() => {
-        if (!line.approveTarget || !line.model.ticket) return;
+      {!showLanding && tab === "protect" && (claimReadiness?.state === "claimable" && claimReadiness.action || line.model.showBar || line.model.peril === "cold" || line.model.panel.kind === "covered") ? <View collapsable={false} style={styles.payPanel} onLayout={(event) => { const next = Math.ceil(event.nativeEvent.layout.height); setStickyHeight((prev) => prev === next ? prev : next); }}>{claimReadiness?.state === "claimable" && claimReadiness.action ? <LineClaimBar label={claimReadiness.action === "claim_payout" ? "Collect payout to wallet" : "Claim refund in wallet"} busy={buyPhase === "preparing" || buyPhase === "waiting" || buyPhase === "sending"} busyLabel={buyPhase ? buyPhaseLabel(buyPhase) : undefined} onPress={() => { if (claimReadiness.action) void submitApprovedAction(claimReadiness.action); }} /> : <LinePay fundingReason={buyFundingReason} line={line} sheetOpen={signReview != null} onConnect={() => { void connect(); }} onReview={() => {
+        if (!line.approveTarget || !line.model.ticket || buyFundingReason) return;
         const target = { ...line.approveTarget };
-        setSignReview({ target, wallet, ticket: line.model.ticket, context: { premiumBase: target.premiumBase, balanceBase: walletBalances ? String(walletBalances.skytBaseUnits) : null, cityName: line.model.cityName, peril: line.model.peril, triggerLabel: target.triggerLabel, windowLabel: target.windowLabel } });
+        setSignReview({ target, wallet, ticket: line.model.ticket, context: { premiumBase: target.premiumBase, balanceBase: walletBalances ? String(walletBalances.skytBaseUnits) : null, sol: walletBalances?.sol, cityName: line.model.cityName, peril: line.model.peril, triggerLabel: target.triggerLabel, windowLabel: target.windowLabel } });
       }} onWallet={openWallet} onRetry={() => setEvidenceNonce((count) => count + 1)} onCity={changeCity} />}</View> : null}
       {coverConfirm ? <ConfirmCover {...coverConfirm} onClose={() => setCoverConfirm(null)} onCover={(skyt) => {
         const option = coverageOptions(walletBalances ? String(walletBalances.skytBaseUnits) : null).find((item) => item.id === String(skyt));

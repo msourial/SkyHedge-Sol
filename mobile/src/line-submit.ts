@@ -1,3 +1,4 @@
+import { fundingReason } from "./funding.ts";
 import { classifySignError, type SignOutcome, type SignStep } from "../../shared/ui-sign.ts";
 import { ApiError } from "./api.ts";
 import { TransactionFailedError, transactionFailure } from "./buy-phase.ts";
@@ -32,6 +33,7 @@ export async function submitLineOpenPosition(input: {
   sessionAddress: string | null;
   reviewWallet: string | null;
   balanceBase: string | null;
+  sol?: number | null;
   positions: readonly ChainProtection[] | null;
   nowSeconds: number;
   prepare: (target: LineSubmitTarget, wallet: string) => Promise<Prepared>;
@@ -50,7 +52,8 @@ export async function submitLineOpenPosition(input: {
     if (!market || !/^\d+$/.test(amount) || BigInt(amount) <= 0n || !/^\d+$/.test(premiumBase) || BigInt(premiumBase) <= 0n) throw new Error("Refresh the cover quote before approving.");
     if (!Number.isFinite(Date.parse(salesCloseAt))) throw new Error("Refresh the cover quote before approving.");
     if (Date.parse(salesCloseAt) <= input.nowSeconds * 1000) throw new Error("Sales for this window closed.");
-    if (input.balanceBase != null && /^\d+$/.test(input.balanceBase) && BigInt(input.balanceBase) < BigInt(premiumBase)) throw new Error("Not enough SKYT.");
+    const blocked = fundingReason(premiumBase, input.balanceBase, input.sol);
+    if (blocked) return { kind: "error", error: "insufficient", message: blocked };
     input.onPhase("preparing");
     const unsigned = await input.prepare(input.target, input.wallet);
     if (unsigned.network !== "devnet" || unsigned.market !== market || unsigned.wallet !== input.wallet) throw new Error("The prepared transaction does not match the reviewed wallet or market.");

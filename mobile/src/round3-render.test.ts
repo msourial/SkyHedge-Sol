@@ -34,10 +34,10 @@ const host = `
   export const Easing = { bezier: () => null, out: () => null, cubic: null };
   export const useWindowDimensions = () => ({ width: 393, height: 852 });
 `;
-let PurchaseReceipt: any, ForecastBlock: any, EdgeChip: any, HowPayout: any, CoverGauge: any, CoverDetail: any, ProtectBody: any;
+let PurchaseReceipt: any, ForecastBlock: any, EdgeChip: any, HowPayout: any, CoverGauge: any, CoverDetail: any, ProtectBody: any, LinePay: any;
 before(async () => {
 const result = await build({
-  stdin: { contents: 'export { PurchaseReceipt } from "./line/PurchaseReceipt.tsx"; export { ForecastBlock, EdgeChip } from "./line/ForecastBlock.tsx"; export { HowPayout } from "./line/HowPayout.tsx"; export { CoverGauge } from "./line/CoverGauge.tsx"; export { CoverDetail } from "./line/CoverDetail.tsx"; export { ProtectBody } from "./line/ProtectLine.tsx";', resolveDir: new URL("./", import.meta.url).pathname }, bundle: true, write: false, platform: "node", format: "cjs", jsx: "automatic", logLevel: "silent",
+  stdin: { contents: 'export { PurchaseReceipt } from "./line/PurchaseReceipt.tsx"; export { ForecastBlock, EdgeChip } from "./line/ForecastBlock.tsx"; export { HowPayout } from "./line/HowPayout.tsx"; export { CoverGauge } from "./line/CoverGauge.tsx"; export { CoverDetail } from "./line/CoverDetail.tsx"; export { ProtectBody, LinePay } from "./line/ProtectLine.tsx";', resolveDir: new URL("./", import.meta.url).pathname }, bundle: true, write: false, platform: "node", format: "cjs", jsx: "automatic", logLevel: "silent",
   plugins: [{ name: "native-test-host", setup(builder) {
     builder.onResolve({ filter: /^react(?:\/.*)?$/ }, (args) => ({ path: args.path, external: true }));
     builder.onResolve({ filter: /multiple-tip-store(?:\.ts)?$/ }, () => ({ path: "store", namespace: "host" }));
@@ -50,7 +50,7 @@ const result = await build({
 });
 const module = { exports: {} as any };
 new Function("require", "module", "exports", result.outputFiles[0].text)(rootRequire, module, module.exports);
-({ PurchaseReceipt, ForecastBlock, EdgeChip, HowPayout, CoverGauge, CoverDetail, ProtectBody } = module.exports);
+({ PurchaseReceipt, ForecastBlock, EdgeChip, HowPayout, CoverGauge, CoverDetail, ProtectBody, LinePay } = module.exports);
 });
 
 const noop = () => {};
@@ -91,6 +91,7 @@ test("forecast and history bars render below a 5-point edge while the chip stays
 });
 test("actual payout sheet includes one-tap collection copy and no automatic claim", () => {
   const html = render(HowPayout, { explanation: { station: "Central Park", peril: "rain", end: "Nov 9", pay: "47.00", payout: "100.00" }, onClose: noop });
+  assert.match(html, /Why you can trust the result/); assert.match(html, /forecast signal/); assert.match(html, /fully collateralised/);
   assert.match(html, /Collect with one tap/); assert.doesNotMatch(html, /automatic/i); assert.match(html, /Phantom/);
 });
 test("actual gauge shows unavailable rather than a fabricated observation", () => {
@@ -114,21 +115,21 @@ test("CoverDetail renders portfolio window dates in header and row and passes th
   const html = renderOpenSheet(CoverDetail, { receipt, progress: null, now: Date.parse("2026-10-25"), onClose: noop }, 0);
   assert.equal((html.match(/Oct\u00A022\u00A0– Oct\u00A029/g) ?? []).length, 2);
   assert.match(html, /Central Park, New York/);
-  assert.match(html, /Settles on its own after Oct\u00A029 \(UTC\)/);
+  assert.match(html, /Settled from NOAA data after Oct\u00A029 \(UTC\)/);
   assert.doesNotMatch(html, /— – —|after —/);
   const unknown = renderOpenSheet(CoverDetail, { receipt: { ...receipt, windowStart: null, windowEnd: null, settlementDate: null }, onClose: noop }, 0);
   assert.match(unknown, /Window not available/);
-  assert.match(unknown, /Settles on its own after the window ends/);
+  assert.match(unknown, /Settled from NOAA data after the window ends/);
   assert.doesNotMatch(unknown, /— – —|after —/);
 });
 test("Protect's market payout sheet uses the structured UTC end even without a Window display row", () => {
   const model = buildProtectModel({ cityId: "new-york", peril: "rain", tenor: "weekly", windowStart: NYC_RAIN_MODELLED.windowStart, windowEnd: NYC_RAIN_MODELLED.windowEnd, quote: NYC_RAIN_MODELLED, single: null, loading: false, failed: false, connected: true, signing: false, cover: 100, selectedTrigger: null, defaultTrigger: null, coveredMarket: null, settlement: null, usedSkyt: 0, reading: null, running: false });
   const html = renderOpenSheet(ProtectBody, { line: { model: { ...model, signRows: [] }, sheet: null, cities: [], approveTarget: null }, onCity: noop, onWallet: noop, onRetry: noop }, 1);
   const end = settlementDateLabel(NYC_RAIN_MODELLED.windowEnd);
-  assert.ok(html.includes(`Settles on its own after ${end}`));
+  assert.ok(html.includes(`Settled from NOAA data after ${end}`));
   assert.doesNotMatch(html, /after —|after null/);
   const unknown = renderOpenSheet(ProtectBody, { line: { model: { ...model, settlementDate: null }, sheet: null, cities: [], approveTarget: null }, onCity: noop, onWallet: noop, onRetry: noop }, 1);
-  assert.match(unknown, /Settles on its own after the window ends/);
+  assert.match(unknown, /Settled from NOAA data after the window ends/);
 });
 
 test("CoverDetail passes a real 69mm receipt to a two-band step chart with one trigger label", () => {
@@ -151,4 +152,25 @@ test("CoverDetail passes a real 69mm receipt to a two-band step chart with one t
     assert.equal(gainLine.width, gain.width);
     assert.equal(rects.filter(r => r.fill === "#F2C230").length, 1);
   }
+});
+
+test("buy action is disabled with funding reason and a Wallet help action", () => {
+  const reason = "You need 24 SKYT to buy this cover. You have 0. Open Wallet for funding help.";
+  const line = { model: { panel: { kind: "ready", cta: "Buy cover" }, ticket: null }, approveTarget: { premiumBase: "24000000" } };
+  const nodes: any[] = [], presses: any[] = [];
+  (globalThis as any).__walletNodes = nodes;
+  (globalThis as any).__marketPresses = presses;
+  let wallet = 0, reviewCount = 0;
+  try {
+    const html = render(LinePay, { line, fundingReason: reason, onWallet: () => wallet++, onReview: () => reviewCount++ });
+    assert.ok(html.includes(reason));
+    assert.ok(nodes.some(n => n.disabled && n.accessibilityHint === reason));
+    assert.ok(!presses.some(p => p.label === "Buy cover"));
+    presses.find(p => p.label === "Wallet funding help").press();
+    assert.equal(wallet, 1); assert.equal(reviewCount, 0);
+    nodes.length = 0; presses.length = 0;
+    render(LinePay, { line, fundingReason: null, onReview: () => reviewCount++ });
+    presses.find(p => p.label === "Buy cover").press();
+    assert.equal(reviewCount, 1);
+  } finally { delete (globalThis as any).__walletNodes; delete (globalThis as any).__marketPresses; }
 });

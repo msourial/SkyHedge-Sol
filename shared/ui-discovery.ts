@@ -116,7 +116,8 @@ export async function loadDiscovery(windows: readonly QuoteWindow[], nowSeconds:
 
 export type StoredCover = { market: string; address: string; premiumPaid: string; protectedAmount: string; potentialPayout?: string; city?: string; statusLabel?: string; peril?: PerilId; cityId?: string; triggerValue?: number; payoutClaimed?: boolean; refundClaimed?: boolean; windowStart?: string | null; windowEnd?: string | null; settlementDate?: string | null };
 export type CoverClaim = { state: string; action: string | null; result: string; observation?: null | { rainfallMmX100: string; windowEnd: number } };
-export type ReceiptModel = { id: string; market: string; title: string; triggerLine: string | null; detailLine: string; windowKey: string | null; windowLabel: string | null; windowStart: string | null; windowEnd: string | null; settlementDate?: string | null; peril: PerilId | null; city: string; station: string | null; unit: string; rungs: number[]; trigger: number | null; reading: number | null; settled: string | null; status: string; kind: "open" | "paid" | "dry" | "pending" | "refunded" | "unknown"; loss: string | null; gain: string | null; payout: string | null; result: string | null; diagram: null | { step: number; ticks: number[]; reading: number | null; lossPx: number; gainPx: number; loss: string; gain: string; trigger: string } };
+export type ClaimAction = "claim_payout" | "claim_premium_refund";
+export type ReceiptModel = { claimAction?: ClaimAction | null; claimAmount?: string | null; id: string; market: string; title: string; triggerLine: string | null; detailLine: string; windowKey: string | null; windowLabel: string | null; windowStart: string | null; windowEnd: string | null; settlementDate?: string | null; peril: PerilId | null; city: string; station: string | null; unit: string; rungs: number[]; trigger: number | null; reading: number | null; settled: string | null; status: string; kind: "open" | "paid" | "dry" | "pending" | "refunded" | "unknown"; loss: string | null; gain: string | null; payout: string | null; result: string | null; diagram: null | { step: number; ticks: number[]; reading: number | null; lossPx: number; gainPx: number; loss: string; gain: string; trigger: string } };
 const formatStored = (amount: bigint) => formatBaseGrouped(amount, amount % 10_000n === 0n ? 2 : 6);
 const integer = (raw: string | undefined) => raw && /^\d+$/.test(raw) ? BigInt(raw) : null;
 
@@ -157,7 +158,7 @@ export function receiptModel(position: StoredCover, windows: readonly QuoteWindo
   const startLabel = windowStart && dayFromIso(windowStart), endLabel = windowEnd && dayFromIso(windowEnd);
   const windowLabel = startLabel && endLabel ? copy.windowLabel(startLabel, endLabel) : startLabel || endLabel;
   const title = `${definition?.label ?? copy.WEATHER_WORD} · ${city?.name ?? position.city ?? copy.UNKNOWN_CITY}`;
-  return { id: position.address, market: position.market, title, triggerLine,
+  return { claimAction: claim?.state === "claimable" && (claim.action === "claim_payout" || claim.action === "claim_premium_refund") ? claim.action : null, claimAmount: claim?.action === "claim_premium_refund" ? (premium == null ? null : formatStored(premium)) : (payout == null ? null : formatStored(payout)), id: position.address, market: position.market, title, triggerLine,
     detailLine: title, windowStart, windowEnd, settlementDate,
     windowKey: windowStart || windowEnd ? `${windowStart ?? ""}/${windowEnd ?? ""}` : null, windowLabel,
     peril, city: city?.name ?? position.city ?? copy.UNKNOWN_CITY,
