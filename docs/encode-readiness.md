@@ -1,14 +1,14 @@
 # Encode Club Solana Hackathon 2026: readiness
 
-Tracks: **Best Consumer App on Solana**, **Best Use of x402 on Solana** (`GET /api/x402/quote` is in the repo; Devnet USDC via the x402.org facilitator. Live only after `X402_PAY_TO` is set).
+Tracks: **Best Consumer App on Solana**, **Best Use of x402 on Solana** (`GET /api/x402/quote` is live on skyhedge.app: HTTP 402 for a valid unpaid quote window; Devnet USDC via the x402.org facilitator).
 
-## Deadlines (ET)
+## Deadlines
 
 | Checkpoint | Deadline | What is required |
 |---|---|---|
 | Checkpoint 1 | **Oct 19, 2026, 7:59 AM ET** | Create the project and team on the platform. No submission. |
 | Checkpoint 2 | **Nov 2, 2026, 6:59 AM ET** | Description, code, demo video, live demo, slides. |
-| Final | **Nov 9, 2026, 6:59 AM ET** | Hard cut-off. |
+| Final | **Sunday 8 November 2026, midnight UK** | Hard cut-off. |
 
 ## Checklist
 
@@ -22,7 +22,7 @@ Owner: **Miro** = needs Miro's account or decision · **On-chain** = needs an ad
 | Checkpoint 1: project exists; confirm solo team | Miro | Confirm solo in Encode dashboard |
 | Waitlist live (Neon free + migrations + signup/CSV) | Done | 2026-10-16 — see `docs/status-report.md` |
 | Encode submission pack + deck PDF | Done | `docs/submission/` |
-| x402 quote endpoint (`GET /api/x402/quote`, V2 exact, Devnet USDC). Set `X402_PAY_TO`, create the receiving USDC account, fund the agent wallet, then deploy | Miro | In the repo. Not deployed. See `docs/demo-script-x402.md` |
+| x402 quote endpoint (`GET /api/x402/quote`, V2 exact, Devnet USDC) | Miro | Live on production skyhedge.app. Remaining: fund a throwaway Devnet agent wallet, sign one 0.01 Devnet USDC paid call, and film dry-run 402, paid call + Explorer, and bad-payment refusal. See [recording checklist](submission/x402-recording-checklist.md). |
 | Commit or drop the uncommitted map work-in-progress files, then redeploy web | Miro | Open |
 | Set `OPENROUTER_API_KEY` on Vercel (guide currently runs in offline mode) | Miro | Open |
 | Demo video (narrated, max 3 min) on Vimeo; replace `<<DEMO_VIDEO_URL>>` | Miro | Open |
