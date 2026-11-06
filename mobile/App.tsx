@@ -651,7 +651,7 @@ export default function App() {
         {error ? <ErrorBanner message={error} onRetry={() => { void retryData(); }} /> : null}
         {!showLanding && tab !== "catalog" && homeLoading && cities.length === 0 && catalog.length === 0 ? <View style={styles.loadingPanel} accessibilityLabel="Loading"><ActivityIndicator color={C.rain} /><Text style={styles.emptyText}>Loading finalized weather, market catalog, and Devnet readiness…</Text></View> : null}
         {showLanding ? (
-          <LandingLine quotes={discovery.quotes} loading={discovery.loading} failed={discovery.failed} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect(); }} />
+          <LandingLine quotes={discovery.quotes} loading={discovery.loading} failed={discovery.failed} status={status} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect(); }} />
         ) : null}
         {!showLanding && tab === "catalog" ? <MarketsLine {...discovery} revision={evidenceNonce} markets={marketModels(discovery.quotes, nowSeconds, 100, storedCovers.map((position) => position.market))} receipts={walletCovers.receipts} totals={walletCovers.totals} onSelect={openMarketSelection} selectedCity={selectedMarketsCity} onCity={setSelectedMarketsCity} onRetry={() => setEvidenceNonce((count) => count + 1)} onPreview={(preview) => { line.clearMarketSelection(); setSelectedCity(preview.cityId); line.setPeril(preview.peril); line.setTenor(preview.tenor); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} onWallet={openWallet} /> : null}
         {!showLanding && tab === "protect" && claimReadiness?.state === "claimable" && claimReadiness.action === "claim_payout" ? (

@@ -8,6 +8,7 @@ import { instrumentArt } from "../../../shared/ui-instrument.ts";
 import { lineGlyphs } from "../../../shared/ui-glyphs.ts";
 import { lineTokens as C } from "../../../shared/ui-tokens.ts";
 import type { CoverSize, PerilId, WindowQuote } from "../../../shared/ui-types.ts";
+import { overviewMetricsFromStatus, type OverviewStatusSlice } from "../../../shared/app-overview.ts";
 import { LineArt } from "./art.tsx";
 import { F } from "../theme.ts";
 import { useReducedMotion } from "../liquid-glass.tsx";
@@ -44,12 +45,21 @@ export function FirstRunStrip({ onDismiss }: { onDismiss: () => void }) { return
 export { MarketsLine } from "./MarketsLine.tsx";
 
 export { WalletLine } from "./WalletLine.tsx";
-export function LandingLine({ quotes, loading, failed, onBrowse, onConnect }: { quotes: WindowQuote[]; loading: boolean; failed: boolean; onBrowse: () => void; onConnect: () => void }) {
+export function LandingLine({ quotes, loading, failed, onBrowse, onConnect, status }: { quotes: WindowQuote[]; loading: boolean; failed: boolean; onBrowse: () => void; onConnect: () => void; status?: OverviewStatusSlice | null }) {
   const [peril, setPeril] = useState<PerilId>(PERILS[0].id), [cover, setCover] = useState<CoverSize>(100);
   const markets = marketModels(quotes, Math.floor(Date.now() / 1000), cover), market = markets.find((m) => m.peril === peril);
-  return <Enter><View style={s.head}><Text style={s.title}>SkyHedge</Text><Pressable onPress={onBrowse} style={s.textButton}><Text style={s.link}>{copy.OPEN_APP}</Text></Pressable></View><Text style={s.display}>{copy.LANDING_TITLE}</Text><Text style={s.lead}>{copy.LANDING_SUB}</Text><Filter all={false} value={peril} onChange={(id) => { if (id !== "all") setPeril(id); }} markets={markets}/>
+  const { metrics } = overviewMetricsFromStatus(status ?? null);
+  return <Enter accessibilityLabel="SkyHedge overview"><View style={s.head}><Text style={s.title}>SkyHedge</Text><Text style={s.label}>{copy.DEVNET_TAG}</Text></View><Text style={s.display}>{copy.LANDING_TITLE}</Text><Text style={s.lead}>{copy.LANDING_SUB}</Text>
+    <View style={s.statRow} accessibilityLabel="Live protocol state">
+      {metrics.length === 0 ? <Text style={s.note}>{loading ? "Reading live Devnet state…" : "Live market totals unavailable right now."}</Text> : metrics.map((metric) => <View key={metric.id} style={s.statCard}><Text style={s.label}>{metric.label}</Text><Text style={s.statValue}>{metric.value}{"unit" in metric ? ` ${metric.unit}` : ""}</Text></View>)}
+    </View>
+    {copy.HOW_IT_WORKS.map((step, index) => <Text key={step} style={s.step}>{index + 1}. {step}</Text>)}
+    <Text style={s.note}>{copy.HOW_IT_SETTLES}</Text>
+    <SpringPress onPress={() => { Vibration.vibrate(10); onBrowse(); }} style={s.cta}><Text style={s.ctaText}>{copy.BROWSE_MARKETS}</Text></SpringPress>
+    <Pressable onPress={onConnect} style={[s.textButton, { marginTop: 8 }]}><Text style={s.link}>{copy.CONNECT_WALLET}</Text></Pressable>
+    <Text style={s.zone}>{copy.OPEN_NOW}</Text>
+    <Filter all={false} value={peril} onChange={(id) => { if (id !== "all") setPeril(id); }} markets={markets}/>
     {market ? <><Text style={s.note}>{market.city} · {market.station}</Text><View style={s.stage}><Instrument peril={peril} rungs={market.rungs} trigger={market.trigger}/><View><Text style={s.label}>{copy.TRIGGER}</Text><Text style={s.mono}>{market.trigger} {market.unit}</Text><Text style={s.label}>{copy.CHANCE}</Text><Text style={s.mono}>{market.chance}</Text></View></View><View style={s.chips}>{([50,100,250] as const).map((size) => <Pressable key={size} style={[s.chip, size === cover && s.segmentOn]} onPress={() => setCover(size)} accessibilityState={{ selected: size === cover }}><Text style={s.body}>{size}</Text></Pressable>)}</View><FigurePair loss={market.loss} gain={market.gain}/><Text style={s.note}>{market.note}</Text></> : <View style={s.notOpen}><Text style={s.body}>{peril === "cold" ? copy.notOpenLine("cold", "") : loading ? copy.GETTING_QUOTE : failed ? copy.CHAIN_ERROR : `${perilById(peril)?.label} · ${copy.NOT_OPEN_YET}`}</Text>{failed ? <Pressable onPress={() => {}} style={s.textButton}><Text style={s.label}>{copy.TRY_AGAIN}</Text></Pressable> : null}</View>}
-    <SpringPress onPress={() => { Vibration.vibrate(10); onConnect(); }} style={s.cta}><Text style={s.ctaText}>{copy.CONNECT_WALLET}</Text></SpringPress>{copy.HOW_IT_WORKS.map((step, index) => <Text key={step} style={s.step}>{index + 1}. {step}</Text>)}<Text style={s.zone}>{copy.HOW_SETTLES_TITLE}</Text><Text style={s.note}>{copy.HOW_IT_SETTLES}</Text>
   </Enter>;
 }
 const s = StyleSheet.create({
@@ -66,5 +76,5 @@ const s = StyleSheet.create({
   cells: { flexDirection: "row", gap: 16, marginVertical: 12 }, cell: { flex: 1, minHeight: 88, padding: 12, backgroundColor: C.bgRaised, borderRadius: 14 }, walletTotals: { gap: 16 }, walletTotalCell: { flex: 1, width: undefined, height: 88, minHeight: 88, padding: 8 }, inlineFigure: { flexDirection: "row", alignItems: "baseline", gap: 6 }, totalFigure: { fontSize: 28, lineHeight: 32 },
   walletRow: { flexDirection: "row", gap: 8, minHeight: 96, alignItems: "center", backgroundColor: C.surface1, borderRadius: 14, paddingVertical: 6, paddingHorizontal: 10, marginVertical: 4 }, walletGlyph: { width: 24 }, walletMain: { flex: 1, minWidth: 0, gap: 2 }, walletTrigger: { color: C.fg, fontFamily: F.mono, fontSize: 17, lineHeight: 24 }, windowZone: { color: C.fg2, fontFamily: F.body, fontSize: 13, lineHeight: 18, marginTop: 4, marginBottom: 4, fontWeight: "400" }, walletFigures: { flexDirection: "row", gap: 8 }, walletFigure: { flex: 1, minWidth: 80 }, walletAmount: { color: C.fg, fontFamily: F.mono, fontSize: 15, lineHeight: 20 }, walletState: { color: C.fg2, fontFamily: F.body, fontSize: 13 }, walletPaid: { color: C.slicker }, disconnect: { minHeight: 48, justifyContent: "center" }, notOpen: { minHeight: 56, justifyContent: "center" },
   empty: { minHeight: 220, justifyContent: "center", alignItems: "center", gap: 12 },
-  lead: { color: C.fg2, fontFamily: F.body, fontSize: 17, lineHeight: 26, marginBottom: 24 }, step: { color: C.fg, fontFamily: F.body, fontSize: 15, lineHeight: 22, marginTop: 20 }, chips: { flexDirection: "row", gap: 8 }, chip: { minHeight: 48, minWidth: 64, alignItems: "center", justifyContent: "center", borderRadius: 999 },
+  lead: { color: C.fg2, fontFamily: F.body, fontSize: 17, lineHeight: 26, marginBottom: 24 }, step: { color: C.fg, fontFamily: F.body, fontSize: 15, lineHeight: 22, marginTop: 20 }, statRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }, statCard: { flexGrow: 1, flexBasis: "30%", minWidth: 96, minHeight: 72, padding: 12, borderRadius: 14, backgroundColor: C.bgRaised }, statValue: { color: C.fg, fontFamily: F.heading, fontSize: 24, lineHeight: 28, marginTop: 6 }, chips: { flexDirection: "row", gap: 8 }, chip: { minHeight: 48, minWidth: 64, alignItems: "center", justifyContent: "center", borderRadius: 999 },
 });

@@ -44,7 +44,7 @@ export function AppOverview({ status, loading = false, onBrowse }: Props) {
         <p className="ao-kicker">Weather hedging · Solana Devnet</p>
         <h1 className="ao-title">Weather hedging for anyone</h1>
         <p className="ao-lede">
-          Fixed-payout cover when rain, snow, or wind hits a threshold you choose — for farmers, street vendors, events, and aviation. Not insurance.
+          Fixed-payout cover when rain, snow, or wind hits a threshold you choose — for farmers, street vendors, events, and aviation.
         </p>
       </header>
 
