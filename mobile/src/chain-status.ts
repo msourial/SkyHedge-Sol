@@ -200,7 +200,7 @@ export async function readDevnetStatusFrom(read: MultiReader, nowSeconds = Math.
       status: "pending", address: null, marketId: null, vault: null, vaultBalance: null, onchainStatus: null, salesCloseAt: null, observationStart: null, observationEnd: null,
       thresholdMmX100: null, operator: null, quoteProbabilityBps: null, premiumRateBps: null, quoteInputsHash: null, evidenceStatus: "researching_evidence", targetCityHash: CITY_HASHES["des-moines"],
     },
-    ladderMarkets: markets.map((m) => ({ city: m.slug, peril: m.peril, state: state(m.rawStatus), salesCloseAt: m.salesCloseAt })),
+    ladderMarkets: markets.map((m) => ({ city: m.slug, peril: m.peril, state: state(m.rawStatus), salesCloseAt: m.salesCloseAt, vaultBalance: m.vaultBalance })),
     cityWindows: markets.filter((m) => isSelling(m, nowSeconds)).map(strip).sort((a, b) => a.observationStart - b.observationStart),
     // NOAA evidence packages stay on the server; Protect reads them from the evidence route, which needs no RPC.
     noaaEvidence: { status: "unavailable", settlementSource: "NOAA", message: "Read directly from Devnet on this phone.", package: null },

@@ -10,7 +10,7 @@ export const DEVNET_TAG = "Devnet";
 export const SALES_CLOSED = "Sales are closed for this window.";
 export const CHAIN_ERROR = "Can't read Devnet right now. Nothing is shown until it's back. Try again in a minute.";
 export const ALREADY_COVERED = "You already have cover for this window.";
-export const HOW_IT_SETTLES = "NOAA's final daily records alone decide payouts. Other weather data is context only.";
+export const HOW_IT_SETTLES = "Settles on NOAA — the National Oceanic and Atmospheric Administration — records. Settlement rules are fixed on-chain; NOAA data is checkable. This build uses Devnet test tokens.";
 export const SETTLED_UNITS = "Settled in NOAA units: mm, m/s, °C.";
 export const WIND_ELEMENT = "Peak wind at the station (NOAA WSF2 or WSF5).";
 export const HEAT_ELEMENT = "NOAA daily maximum temperature.";
@@ -55,9 +55,10 @@ export const DRY_WINDOW = "Dry window";
 export const DONE = "Done";
 export const COVER_THIS = "Cover this";
 export const OPEN_APP = "Open app";
-export const LANDING_TITLE = "Weather on your plans? Get paid.";
-export const LANDING_SUB = "Pick a kind of weather and a city. Set the line. If NOAA's record crosses it, you're paid in SKYT.";
-export const HOW_IT_WORKS = ["Pick a city and a kind of weather.", "Choose your cover.", "Approve in your wallet."] as const;
+export const BROWSE_MARKETS = "Browse markets";
+export const LANDING_TITLE = "Weather hedging for anyone";
+export const LANDING_SUB = "Fixed-payout cover when weather hits a threshold you choose — for farmers, street vendors, events, and aviation.";
+export const HOW_IT_WORKS = ["Pick a place and a weather trigger.", "Pay a fixed amount — your max loss is the premium.", "Settles on NOAA records. Collect if the trigger hits."] as const;
 export const PROTECT_TITLE = "Protect";
 export const MARKETS_TITLE = "Markets";
 export const WALLET_TITLE = "Wallet";
@@ -282,7 +283,7 @@ export function copySamples(): string[] {
     ...DISCOVERY_COPY, DEVNET_TAG, SALES_CLOSED, CHAIN_ERROR, ALREADY_COVERED, HOW_IT_SETTLES, SETTLED_UNITS,
     WIND_ELEMENT, HEAT_ELEMENT, CONNECT_WALLET, TRY_AGAIN, GETTING_QUOTE, WAITING_WALLET, APPROVE_WALLET,
     COVERED_WORD, VIEW_WALLET, YOUR_COVER, NOT_OPEN_WORD, PAID_OUT, DRY_WINDOW, DONE,
-    COVER_THIS, OPEN_APP, LANDING_TITLE, LANDING_SUB, ...HOW_IT_WORKS, PROTECT_TITLE, MARKETS_TITLE,
+    COVER_THIS, OPEN_APP, BROWSE_MARKETS, LANDING_TITLE, LANDING_SUB, ...HOW_IT_WORKS, PROTECT_TITLE, MARKETS_TITLE,
     WALLET_TITLE, YOUR_COVERS, OPEN_NOW, TECHNICAL_DETAILS, SKYT_BALANCE, MAX_LOSS, MAX_GAIN,
     PAYOUT, CHANCE, BREAK_EVEN, MULTIPLE, TRIGGER, COVER, FEE_INCLUDED, SO_FAR, WEEK, MONTH, WINDOW_WORD,
     COVERED_TAG, BALANCE, marketHeroLine("Central Park", salesCloseLine("Nov 1")),
