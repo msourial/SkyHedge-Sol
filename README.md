@@ -45,7 +45,7 @@
 - **Des Moines:** still has open Devnet windows in the status API. It is not the demo path.
 - **Soon on the first Markets screen (18 Oct 2026):** Chicago, Miami, Dallas–Fort Worth, Los Angeles. Toronto stays closed. Wind, snow, and heat have no prices.
 
-**x402 (Best Use of x402 track).** `GET /api/x402/quote` sells one NOAA rainfall quote with x402 V2 `exact` on Solana Devnet, paid in Devnet USDC. The facilitator at `https://x402.org/facilitator` verifies and settles, and pays the Solana fee, so the server stores no signing key. A submitted transfer that Devnet has not finalized yet is HTTP 202 `SETTLEMENT_PENDING`: the same payment is retried, not a second charge. Notes: `/developers`. Demo script: [docs/demo-script-x402.md](docs/demo-script-x402.md). The route returns `PAYMENT_NOT_CONFIGURED` until `X402_PAY_TO` is set. x402-paid WeatherXM data is still not used for settlement.
+**x402 (Best Use of x402 track).** The production endpoint at https://skyhedge.app/api/x402/quote is live and returns HTTP 402 with x402 V2 `exact` terms (0.01 Devnet USDC) for a valid unpaid quote window. It sells one NOAA rainfall quote on Solana Devnet. The facilitator at `https://x402.org/facilitator` verifies and settles, and pays the Solana fee, so the server stores no signing key. A submitted transfer that Devnet has not finalized yet is HTTP 202 `SETTLEMENT_PENDING`: the same payment is retried, not a second charge. Notes: [developers docs](https://skyhedge.app/developers). Filming preparation: [x402 recording checklist](docs/submission/x402-recording-checklist.md). x402-paid WeatherXM data is still not used for settlement.
 
 No traction numbers are claimed; SkyHedge is pre-launch.
 

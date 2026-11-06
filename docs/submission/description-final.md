@@ -34,7 +34,7 @@ Live on Solana Devnet with SKYT, a test token with no value. Program `5hGLEG1ts4
 
 **Track entered:** Best Consumer App on Solana.
 
-<!-- x402 paragraph: include ONLY if Miro decides to enter the x402 track and a paid call is shown in the video.
+<!-- x402 track is entered. Do not include this paragraph in the public Encode description until Miro has filmed a real paid call and has an Explorer link.
 **x402:** SkyHedge also sells its NOAA quote as a paid API for other apps and AI agents. `GET /api/x402/quote` answers HTTP 402 with x402 V2 payment terms in Devnet USDC; after the payment settles through the x402 facilitator, it returns the quote. A payment that is submitted but not yet final returns 202 so the client retries the same payment instead of paying twice. Docs at skyhedge.app/developers.
 Then change the track line to: Best Consumer App on Solana and Best Use of x402 on Solana.
 -->
