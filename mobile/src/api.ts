@@ -71,6 +71,7 @@ export type DevnetStatus = {
     peril?: PerilId;
     state: "draft" | "open" | "cancelled" | "other";
     salesCloseAt: number | null;
+    vaultBalance?: string | null;
   }>;
   cityWindows?: Array<{
     city: LiveCitySlug;

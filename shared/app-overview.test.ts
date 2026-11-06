@@ -51,3 +51,18 @@ test("empty status omits live metrics", () => {
   assert.ok(result.omitted.includes("cities"));
   assert.ok(result.omitted.includes("vaultCollateral"));
 });
+
+test("falls back to cityWindows vault when ladder omits balances", () => {
+  const result = overviewMetricsFromStatus({
+    ladderMarkets: [
+      { city: "miami", state: "open" },
+      { city: "boston", state: "open" },
+    ],
+    cityWindows: [
+      { city: "miami", salesCloseAt: 9_999_999_999, vaultBalance: "2000000000" },
+      { city: "boston", salesCloseAt: 9_999_999_999, vaultBalance: "1500000000" },
+    ],
+  });
+  assert.equal(result.metrics.find((m) => m.id === "openMarkets")?.value, "2");
+  assert.equal(result.metrics.find((m) => m.id === "vaultCollateral")?.value, "3,500");
+});

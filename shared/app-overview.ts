@@ -12,6 +12,7 @@ export type OverviewLadderMarket = {
 export type OverviewCityWindow = {
   city: string;
   salesCloseAt: number | null;
+  vaultBalance?: string | null;
 };
 
 export type OverviewStatusSlice = {
@@ -66,13 +67,24 @@ export function overviewMetricsFromStatus(
       if (!isDigits(row.vaultBalance)) return sum;
       return sum + BigInt(row.vaultBalance);
     }, 0n);
+    // Some clients slim ladderMarkets and omit vault balances; fall back to cityWindows.
+    if (vaultSum === 0n && windows && windows.length > 0) {
+      const fromWindows = windows.reduce((sum, row) => {
+        if (!isDigits(row.vaultBalance)) return sum;
+        return sum + BigInt(row.vaultBalance);
+      }, 0n);
+      vaultSum = fromWindows > 0n ? fromWindows : null;
+    }
   } else if (windows && windows.length > 0) {
     const selling = windows.filter((row) => row.salesCloseAt != null && row.salesCloseAt > nowSeconds);
     openMarkets = selling.length;
     citySlugs = [...new Set(selling.map((row) => row.city).filter(Boolean))].sort();
-    // cityWindows do not always carry vault balances — leave vault omitted.
-    vaultSum = null;
-    omitted.push("vaultCollateral");
+    const fromWindows = windows.reduce((sum, row) => {
+      if (!isDigits(row.vaultBalance)) return sum;
+      return sum + BigInt(row.vaultBalance);
+    }, 0n);
+    vaultSum = fromWindows > 0n ? fromWindows : null;
+    if (vaultSum == null) omitted.push("vaultCollateral");
   } else {
     omitted.push("openMarkets", "cities", "vaultCollateral");
     return { metrics, omitted };
