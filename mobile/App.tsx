@@ -1,8 +1,9 @@
+import "react-native-get-random-values";
 import "./src/polyfills";
 import { watchReadiness } from "./src/readiness-refresh";
 import { fundingReason } from "./src/funding";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useContext, useCallback, useEffect, useRef, useState } from "react";
 import { useFonts } from "expo-font";
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
 import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold } from "@expo-google-fonts/barlow-condensed";
@@ -76,6 +77,11 @@ import { watchWalletSession } from "./src/wallet-events";
 import { BrowserWalletStatus } from "./src/BrowserWalletStatus";
 import { walletConnectionError } from "./src/wallet-connection-error";
 
+import appConfig from "./app.json";
+import { phantomConfig } from "./src/phantom-config";
+import { EmbeddedWalletContext } from "./src/embedded-context";
+import { selectWalletAdapter, type WalletAdapter, type SocialProvider } from "./src/wallet-adapter";
+
 const SCROLL_CONTENT_PADDING_TOP = 18;
 
 type Tab = "weather" | "catalog" | "protect" | "wallet";
@@ -86,7 +92,14 @@ const WALLET_NAME = "Your wallet";
 
 const CITY_ORDER = ["new-york", "chicago", "miami", "dallas", "los-angeles", "seattle", "boston", "austin", "des-moines"];
 
-export default function App() {
+const embeddedConfig = phantomConfig(process.env.EXPO_PUBLIC_PHANTOM_EMBEDDED, process.env.EXPO_PUBLIC_PHANTOM_APP_ID, process.env.EXPO_PUBLIC_PHANTOM_SCHEME, appConfig.expo.scheme);
+export default function Root() {
+  if (!embeddedConfig.enabled) return <App />;
+  const { PhantomRoot } = require("./src/PhantomRoot") as typeof import("./src/PhantomRoot");
+  return <PhantomRoot appId={embeddedConfig.appId} scheme={embeddedConfig.scheme}><App /></PhantomRoot>;
+}
+
+function App() {
   const scrollRef = useRef<ScrollView>(null);
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
@@ -119,8 +132,13 @@ export default function App() {
   const [selectedMarketsCity, setSelectedMarketsCity] = useState<string | null>(null);
   const [selectedHazard, setSelectedHazard] = useState<HazardId | null>("rainfall");
   const [city, setCity] = useState<CityIndex | null>(null);
-  const [wallet, setWallet] = useState<string | null>(null);
-  const [walletSession, setWalletSession] = useState<AuthorizedWallet | null>(null);
+  const [mwaAddress, setWallet] = useState<string | null>(null);
+  const [mwaSession, setWalletSession] = useState<AuthorizedWallet | null>(null);
+  const embedded = useContext(EmbeddedWalletContext);
+  const mwa: WalletAdapter = { address: mwaAddress, connect: authorizeDevnetWallet, disconnect: clearWalletSession, signAndSendTransaction: signAndConfirmDevnetTransaction };
+  const signer = selectWalletAdapter(embeddedConfig.enabled, mwa, embedded);
+  const wallet = signer.address;
+  const walletSession = signer === embedded && wallet ? { address: wallet, authToken: "embedded" } : mwaSession;
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   /** Finalized position accounts for this wallet, read on device. Drives the "You're covered" state. */
   const [chainPositions, setChainPositions] = useState<ChainProtection[] | null>(null);
@@ -297,12 +315,23 @@ export default function App() {
     return () => { cancelled = true; };
   }, [loadWalletData]);
 
+  useEffect(() => {
+    if (!embeddedConfig.enabled) return;
+    if (wallet) { setShowLanding(false); void loadWalletData(wallet); }
+    else { setWalletBalances(null); setChainPositions(null); setPortfolio(null); }
+  }, [wallet, loadWalletData]);
+  const connectEmbedded = async (provider: SocialProvider) => {
+    setLoading(true); setWalletError(null);
+    try { await embedded?.connect(provider); } catch (reason) { setWalletError(walletConnectionError(reason)); }
+    finally { setLoading(false); }
+  };
+
   const discovery = useDiscovery(status?.cityWindows ?? [], evidenceNonce, nowSeconds);
   const connect = useCallback(async () => {
     setLoading(true);
     setWalletError(null);
     try {
-      const session = await authorizeDevnetWallet();
+      const session = await mwa.connect();
       setWalletSession(session);
       setWallet(session.address);
       await saveWalletSession(session);
@@ -486,7 +515,7 @@ export default function App() {
             onDevice: (input) => buildOpenPositionOnDevice(input),
             server: () => postJson<UnsignedTransaction>("/api/transactions/unsigned", { action, market: target.market, wallet: owner, amount: target.amount, approved: true }, { attempts: 2, timeoutMs: 20_000 }),
           }),
-          sign: (base64, onPhase) => signAndConfirmDevnetTransaction({ transactionBase64: base64, wallet: walletSession!, rpcUrl: DEVNET_RPC_URL, onPhase, onSignature: signature => { setTransactionSignature(signature); setPurchaseTransactions(previous => ({ ...previous, [review.target.market]: signature })); } }),
+          sign: (base64, onPhase) => signer.signAndSendTransaction({ transactionBase64: base64, wallet: walletSession!, rpcUrl: DEVNET_RPC_URL, onPhase, onSignature: signature => { setTransactionSignature(signature); setPurchaseTransactions(previous => ({ ...previous, [review.target.market]: signature })); } }),
           check: async (duplicate) => {
             const found = await findPositionAfterBuy({ read: () => readFinalizedProtections(wallet!), windowAddress: review.target.market, attempts: duplicate ? 2 : 4 });
             if (found.protections) setChainPositions([...found.protections]);
@@ -537,7 +566,7 @@ export default function App() {
         }, { attempts: 2, timeoutMs: 20_000 }),
       });
       if (unsigned.network !== "devnet" || unsigned.market !== market || unsigned.wallet !== wallet) throw new Error("The prepared transaction does not match this wallet, market, or Devnet.");
-      const signature = await signAndConfirmDevnetTransaction({
+      const signature = await signer.signAndSendTransaction({
         transactionBase64: unsigned.base64,
         wallet: walletSession,
         rpcUrl: DEVNET_RPC_URL,
@@ -686,8 +715,8 @@ export default function App() {
         {!showLanding && tab === "wallet" ? <WalletLine focusMarket={confirmedLine?.wallet === wallet ? confirmedLine.market : null} transactions={purchaseTransactions} onCollect={async (market, action) => { const outcome = await submitApprovedAction(action, market); if (outcome.kind === "error") throw new Error(outcome.message ?? "Collection did not complete. Try again."); setEvidenceNonce(n => n + 1); }} revision={evidenceNonce} wallet={wallet} balance={walletBalances ? formatBaseGrouped(BigInt(walletBalances.skytBaseUnits)) : null} {...walletCovers}
           loading={balancesLoading || loading} failed={Boolean(balancesError || portfolioError || walletError || portfolio?.indexed === false)}
           onMarkets={() => { setTab("catalog"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
-          onConnect={() => { void connect(); }} onRetry={() => { if (wallet) void loadWalletData(wallet, true); setEvidenceNonce((n) => n + 1); }}
-          onDisconnect={() => { void clearWalletSession(); setWallet(null); setWalletSession(null); setPortfolio(null); setChainPositions(null); setWalletBalances(null); setBalancesError(null); setPortfolioError(null); setWalletError(null); }}
+          onEmbeddedConnect={embedded ? provider => { void connectEmbedded(provider); } : undefined} embeddedBusy={loading} onConnect={() => { void connect(); }} onRetry={() => { if (wallet) void loadWalletData(wallet, true); setEvidenceNonce((n) => n + 1); }}
+          onDisconnect={() => { if (embedded?.address) void embedded.disconnect().catch(reason => setWalletError(walletConnectionError(reason))); void mwa.disconnect(); setWallet(null); setWalletSession(null); setPortfolio(null); setChainPositions(null); setWalletBalances(null); setBalancesError(null); setPortfolioError(null); setWalletError(null); }}
           technical={<TechnicalContext catalog={catalog} program={SKYHEDGE_PROGRAM_ID.toBase58()}/>}
         /> : null}
         </ScreenTransition>

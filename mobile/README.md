@@ -73,3 +73,7 @@ Keyless-map candidate APK SHA-256: `e7d066fe2893197b3e8930570dbad241b67e85696fd9
 Set `EXPO_PUBLIC_API_BASE_URL` at build time. For local device development, use your host's LAN URL; use an HTTPS SkyHedge deployment for a distributable build. No API URL is inferred from or hard-coded to the hackathon site.
 
 `EXPO_PUBLIC_MAPTILER_KEY` is optional. Without it, the app uses OpenFreeMap Dark with linked OpenFreeMap, OpenMapTiles, and OpenStreetMap attribution. If supplied, it is bundled into the Android app and must be treated as a public, appropriately restricted map key—not a server secret. Native MapLibre requires a rebuilt Android app; an Expo Go session or JavaScript-only refresh cannot add that module. MapTiler Free also requires its official logo; do not distribute a key-enabled Free-plan build until that logo is added and visually verified.
+
+## Enabling Phantom Embedded Wallet
+
+See [setup and device testing](docs/phantom-embedded.md). The feature defaults off; enable it only with an existing Phantom Portal App ID and the explicit environment flag in [.env.example](.env.example).
