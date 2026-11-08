@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Pressable, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
+import { Animated, Easing, Pressable, type PressableProps, type StyleProp, type ViewStyle, type ViewProps } from "react-native";
 import { useReducedMotion } from "./liquid-glass";
 import { motion } from "./theme";
 
@@ -25,7 +25,7 @@ export function SpringPress({ style, outerStyle, selected, children, pressMotion
 }
 
 /** Fade + short rise on mount, staggered by `index`. Reduce-motion: rendered in place immediately. */
-export function Enter({ index = 0, children, style }: { index?: number; children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
+export function Enter({ index = 0, children, style, ...rest }: ViewProps & { index?: number; children: React.ReactNode }) {
   const reduced = useReducedMotion();
   const v = useRef(new Animated.Value(reduced ? 1 : 0)).current;
   useEffect(() => {
@@ -34,7 +34,7 @@ export function Enter({ index = 0, children, style }: { index?: number; children
     a.start();
     return () => a.stop();
   }, [reduced, index, v]);
-  return <Animated.View style={[style, { opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [motion.enterOffset, 0] }) }] }]}>{children}</Animated.View>;
+  return <Animated.View {...rest} style={[style, { opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [motion.enterOffset, 0] }) }] }]}>{children}</Animated.View>;
 }
 
 /** Progress rail that eases its fill to `progress` (0–1). Reduce-motion: jumps to the value. */

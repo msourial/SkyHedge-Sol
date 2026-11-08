@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { mock } from "node:test";
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import express from "express";
@@ -30,6 +31,7 @@ class ResponseStub {
 }
 
 describe("rain pricing and the five no-pay checks", () => {
+  afterEach(() => mock.restoreAll());
   it("still prices 100 SKYT of New York cover at 24 SKYT from two analogue hits", () => {
     const committed = quoteFromCommittedMarketTerms({ protectedAmount: 100_000_000n, probabilityBps: 2_000, premiumRateBps: 2_400, inputsHash: HASH });
     expect(committed.premium).to.equal(24_000_000n);
@@ -44,6 +46,7 @@ describe("rain pricing and the five no-pay checks", () => {
 
   it("returns 24 SKYT on the New York purchase quote and refuses a modelled rung", async () => {
     const start = 1_793_491_200;
+    const clock = mock.method(Date, "now", () => (start - 86_400) * 1_000);
     const end = start + 7 * 86_400;
     const observationStart = new Date(start * 1_000).toISOString().slice(0, 10);
     const observationEnd = new Date(end * 1_000).toISOString().slice(0, 10);
@@ -96,6 +99,17 @@ describe("rain pricing and the five no-pay checks", () => {
     } as ApiRequest, cold as unknown as ApiResponse);
     expect(cold.code).to.equal(409);
     expect(cold.body).to.include({ error: "PERIL_NOT_OPEN" });
+
+    // The same committed terms must stop being buyable at sales close.
+    clock.mock.mockImplementation(() => start * 1_000);
+    const closed = new ResponseStub();
+    await handler({
+      method: "POST",
+      body: { city: "new-york", observationStart, observationEnd, thresholdMm: 69, operator: "gte", protectedAmount: "100000000" },
+    } as ApiRequest, closed as unknown as ApiResponse);
+    expect(closed.code).to.equal(409);
+    expect(closed.body).to.include({ error: "TESTER_QUOTE_UNAVAILABLE" });
+    expect(liveQuotes).to.equal(0);
   });
 
   it("returns 402 with Devnet terms from x402 and does not change that rain-only path", async () => {
