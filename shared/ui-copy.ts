@@ -2,6 +2,7 @@
  * Every customer sentence for web and Seeker. Screens do not write their own.
  * Figures are passed in. This module does not invent a price or a year count.
  */
+import { LANDING_HERO_TITLE } from "./protect-copy.ts";
 import { MARKET_CAP_SKYT } from "./ui-tokens.ts";
 import { perilById, type PerilDefinition } from "./peril-registry.ts";
 import type { PerilId } from "./ui-types.ts";
@@ -56,6 +57,19 @@ export const DONE = "Done";
 export const COVER_THIS = "Cover this";
 export const OPEN_APP = "Open app";
 export const BROWSE_MARKETS = "Browse markets";
+export const WELCOME_SLOGAN = LANDING_HERO_TITLE;
+export const WELCOME_BRAND = "SkyHedge";
+export const WELCOME_AUDIENCE = "For farmers, event organizers, street vendors, aviation, and small businesses.";
+export const WELCOME_STEPS_TITLE = "How it works";
+export const WELCOME_STEPS = [
+  { title: "Pick your weather", body: "Pick a city and a risk: rain, snow, wind, heat, or cold." },
+  { title: "Know your payout", body: "See exactly what you pay and what you get back. Pay upfront." },
+  { title: "Collect if it hits", body: "If official NOAA weather data shows it hit, collect. Settled on Solana." },
+] as const;
+export const WELCOME_WALLET = "Use a mobile wallet, including on Solana Seeker.";
+export const WELCOME_CTA = "Get started";
+export const WELCOME_ABOUT = "About SkyHedge";
+export const WELCOME_ABOUT_SHORT = "About";
 export const LANDING_TITLE = "Weather hedging for anyone";
 export const LANDING_SUB = "Fixed-payout cover when weather hits a threshold you choose — for farmers, street vendors, events, and aviation.";
 export const HOW_IT_WORKS = ["Pick a place and a weather trigger.", "Pay a fixed amount — your max loss is the premium.", "Settles on NOAA records. Collect if the trigger hits."] as const;
@@ -274,6 +288,7 @@ export function infoSheetTitle(): string {
 export function copySamples(): string[] {
   const years = chanceNote(10) ?? "";
   return [
+    WELCOME_SLOGAN, WELCOME_BRAND, WELCOME_AUDIENCE, WELCOME_STEPS_TITLE, ...WELCOME_STEPS.flatMap(step => [step.title, step.body]), WELCOME_WALLET, WELCOME_CTA, WELCOME_ABOUT, WELCOME_ABOUT_SHORT,
     SIGN_REVIEW_TITLE, SIGN_APPROVE, CANCEL, CLOSE, COVERING, SENDING_DEVNET, CONFIRMING,
     CONFIRMING_DEVNET, KEEP_CHECKING, BACK_MARKETS, OPEN_WALLET,
     ...Object.values(SIGN_ERRORS).flatMap((error) => [error.title, ...("body" in error ? [error.body] : [])]),
