@@ -4,7 +4,10 @@
 | --- | --- |
 | Live waitlist | https://skyhedge.app |
 | Devnet web product | https://skyhedge.app/app |
-| Source (Encode branch) | https://github.com/msourial/SkyHedge-Sol/tree/seeker-revamp |
+| Live x402 quote endpoint | https://skyhedge.app/api/x402/quote |
+| Developers docs | https://skyhedge.app/developers |
+| x402 recording checklist (Miro) | [x402-recording-checklist.md](./x402-recording-checklist.md) |
+| Source (Encode branch) | https://github.com/msourial/SkyHedge-Sol/tree/web-app-and-landing |
 | Releases / APK | https://github.com/msourial/SkyHedge-Sol/releases |
 | Demo script | [docs/demo-script.md](../demo-script.md) |
 | Demo video (local, not published) | `~/Documents/Codex/demo-assets/skyhedge-encode-demo.mp4` |

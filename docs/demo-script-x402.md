@@ -2,7 +2,7 @@
 
 Encode “Best Use of x402 on Solana”. Devnet only. The access payment is Devnet USDC. The quote it unlocks is still a SKYT rainfall price from the same NOAA path as the app. Do not say a regulated-product noun. Do not read a premium off this page: read the terminal.
 
-This branch does not deploy and does not change Vercel env. Until `X402_PAY_TO` is set, the endpoint returns `PAYMENT_NOT_CONFIGURED` and no quote.
+Production is live on skyhedge.app and returns a payable HTTP 402 for a valid unpaid window. Filming uses the production URL. Detailed Miro-only preparation and recording commands are in the [recording checklist](submission/x402-recording-checklist.md). This is a filming plan; no paid-call clip is claimed here.
 
 ## On screen
 
@@ -33,24 +33,11 @@ Send the wrong amount and it stays a 402. If Devnet is late confirming, the scri
 
 ## Commands
 
-Local server, from the repo, after the env below is set:
-
-```sh
-npm run dev
-```
-
-```sh
-export X402_QUOTE_URL='http://127.0.0.1:5000/api/x402/quote?city=CITY&observationStart=START&observationEnd=END&thresholdMm=THRESHOLD&operator=gte&protectedAmount=AMOUNT'
-npx tsx scripts/x402-agent-demo.ts --dry-run --city CITY --observation-start START --observation-end END --threshold-mm THRESHOLD --operator gte --protected-amount AMOUNT
-npx tsx scripts/x402-agent-demo.ts --city CITY --observation-start START --observation-end END --threshold-mm THRESHOLD --operator gte --protected-amount AMOUNT
-npx tsx scripts/x402-agent-demo.ts --bad-payment --city CITY --observation-start START --observation-end END --threshold-mm THRESHOLD --operator gte --protected-amount AMOUNT
-```
-
-`START` and `END` are a Monday-to-Monday week or a calendar month, `YYYY-MM-DD` UTC. `AMOUNT` is SKYT base units (6 decimals), at most 500 SKYT. `THRESHOLD` is the millimetre trigger you want priced. The script will not fill these in.
+Use the production commands in the [recording checklist](submission/x402-recording-checklist.md), in order: dry-run, paid call, then bad-payment refusal. The script defaults to `https://skyhedge.app/api/x402/quote`. Use an open market's exact window and read the resulting premium from the terminal.
 
 ## Env vars
 
-Server (Vercel project `skyhedge`, or local `.env`). Public values only. No private key.
+Existing server configuration reference only; production is already configured. Public values only. No setup or deployment is needed for filming.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
@@ -66,15 +53,10 @@ Agent machine only. Never put these on Vercel.
 | Variable | Purpose |
 | --- | --- |
 | `X402_AGENT_KEYPAIR` | Path to a Solana CLI keypair JSON file. `.local-secrets/` is gitignored. |
-| `X402_QUOTE_URL` | Optional. Default `https://skyhedge.app/api/x402/quote`. Use localhost until this is deployed. |
+| `X402_QUOTE_URL` | Optional. Default `https://skyhedge.app/api/x402/quote`. Use production for filming. |
 | `SOLANA_RPC_URL` | Optional Devnet RPC for the agent’s own signature check. Default public Devnet. |
 | `X402_PENDING_PATH` | Optional. Default `.local-secrets/x402-pending-quote.json`. The script writes the last payment here so a re-run reuses it. Gitignored. Not a key. |
 
-## One-time setup (Miro)
+## Recording preparation (Miro)
 
-Do these yourself. This change does not fund a wallet, send a transaction, or write Vercel env.
-
-1. Create a Devnet receiving wallet. Set `X402_PAY_TO` to its public address. Keep the secret off the server and out of git.
-2. Devnet USDC mint: `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`. Create that wallet’s USDC token account and send it any Devnet USDC once (Circle’s Devnet faucet, `https://faucet.circle.com`). The exact scheme transfers into the account. It does not create the account.
-3. Agent wallet: `solana-keygen new -o .local-secrets/x402-agent.json`. Set `X402_AGENT_KEYPAIR` to that path. Fund it with Devnet USDC from the same faucet, at least the access price (default 0.01). The facilitator pays the Solana fee, so the agent does not need SOL for this transfer. The agent’s USDC token account has to exist and cover the price.
-4. Deploy when you want `skyhedge.app` to serve it. Set `X402_PAY_TO` on the Vercel project yourself. Do not set a private key there.
+Follow the [recording checklist](submission/x402-recording-checklist.md) for the throwaway Devnet agent wallet, funding, recipient token-account check, and filming. Only Miro creates/funds the wallet and signs the paid call. Keep the public description's x402 paragraph commented until a real paid-call clip and Explorer link exist.
