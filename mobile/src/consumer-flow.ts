@@ -1,12 +1,9 @@
+import { WELCOME_STEPS } from "../../shared/ui-copy.ts";
 import { formatSkytFixed, shortUtcDate, trimMm } from "./ticket.ts";
 
 /** Plain-language consumer copy. No invented numbers: every figure comes from a live quote or the on-chain market. */
 
-export const ONBOARDING_STEPS: ReadonlyArray<{ n: number; title: string; body: string }> = [
-  { n: 1, title: "Pick a city", body: "Then choose what could ruin your plans: rain today, more soon." },
-  { n: 2, title: "Choose an amount", body: "See exactly what you pay and what you get back." },
-  { n: 3, title: "Relax", body: "If official weather data shows it rained past the limit, you're paid automatically." },
-];
+export const ONBOARDING_STEPS = WELCOME_STEPS.map((step, index) => ({ n: index + 1, ...step }));
 
 export const TEST_TOKEN_NOTE = "Practice mode: SkyHedge runs on Solana's test network (Devnet) with SKYT, a free test token. It has no real-money value, so nothing here costs real money.";
 

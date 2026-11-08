@@ -46,7 +46,9 @@ import { coverBaseUnits, coverExceedsBalance, formatQuoteSkyt, notEnoughSkyt, pr
 import { showCityStep } from "./src/consumer-flow";
 import { coverageOptions, type CoverageOption } from "./src/ticket";
 import { TechnicalContext } from "./src/line/TechnicalContext";
-import { MarketsLine, WalletLine, LandingLine } from "./src/line/Discovery";
+import { WelcomeScreen } from "./src/line/WelcomeScreen";
+import { welcomeStore } from "./src/welcome-store";
+import { MarketsLine, WalletLine } from "./src/line/Discovery";
 import { useDiscovery, useReceipts } from "./src/line/use-discovery";
 import { formatBaseGrouped } from "../shared/ui-money.ts";
 import { marketModels } from "../shared/ui-discovery.ts";
@@ -149,6 +151,20 @@ export default function App() {
   const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1_000));
   const [guideOpen, setGuideOpen] = useState(false);
   const [showLanding, setShowLanding] = useState(initialLandingVisible);
+  const [welcomeReady, setWelcomeReady] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void welcomeStore.shouldShow().then(visible => {
+      if (active) { setShowLanding(visible); setWelcomeReady(true); }
+    });
+    return () => { active = false; };
+  }, []);
+  const openAbout = () => { setShowLanding(true); scrollRef.current?.scrollTo({ y: 0, animated: false }); };
+  const getStarted = () => {
+    void welcomeStore.markSeen();
+    setShowLanding(false); setTab("protect");
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  };
   const glassTarget = useRef<View>(null);
   const [detailCode, setDetailCode] = useState<string | null>(null);
   /** Local-only "notify me" choices (in memory on this device; never sent anywhere). */
@@ -288,7 +304,6 @@ export default function App() {
       if (session) {
         setWalletSession(session);
         setWallet(session.address);
-        setShowLanding(false);
         setTab(walletRestoreTab());
         void loadWalletData(session.address);
         return;
@@ -628,7 +643,7 @@ export default function App() {
     changeCity(market.cityId); line.chooseMarket(market);
     setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false });
   };
-  if (!fontsLoaded && !fontError) return <SafeAreaProvider><SafeAreaView style={styles.fontLoading}><StatusBar barStyle="light-content" backgroundColor={C.canvas} /><ActivityIndicator color={C.green} /></SafeAreaView></SafeAreaProvider>;
+  if (!welcomeReady || (!fontsLoaded && !fontError)) return <SafeAreaProvider><SafeAreaView style={styles.fontLoading}><StatusBar barStyle="light-content" backgroundColor={C.canvas} /><ActivityIndicator color={C.green} /></SafeAreaView></SafeAreaProvider>;
 
   return (
     <SafeAreaProvider>
@@ -643,17 +658,17 @@ export default function App() {
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottom }, !showLanding && (tab === "protect" || tab === "catalog" || tab === "wallet") && { paddingHorizontal: 16, paddingTop: 0 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: showLanding ? 24 : scrollBottom }, !showLanding && (tab === "protect" || tab === "catalog" || tab === "wallet") && { paddingHorizontal: 16, paddingTop: 0 }]}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.rain} />}
+        refreshControl={showLanding ? undefined : <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.rain} />}
       >
         <ScreenTransition transitionKey={tab}>
-        {error ? <ErrorBanner message={error} onRetry={() => { void retryData(); }} /> : null}
+        {!showLanding && error ? <ErrorBanner message={error} onRetry={() => { void retryData(); }} /> : null}
         {!showLanding && tab !== "catalog" && homeLoading && cities.length === 0 && catalog.length === 0 ? <View style={styles.loadingPanel} accessibilityLabel="Loading"><ActivityIndicator color={C.rain} /><Text style={styles.emptyText}>Loading finalized weather, market catalog, and Devnet readiness…</Text></View> : null}
         {showLanding ? (
-          <LandingLine quotes={discovery.quotes} loading={discovery.loading} failed={discovery.failed} status={status} onBrowse={() => setShowLanding(false)} onConnect={() => { void connect(); }} />
+          <WelcomeScreen onGetStarted={getStarted} />
         ) : null}
-        {!showLanding && tab === "catalog" ? <MarketsLine {...discovery} revision={evidenceNonce} markets={marketModels(discovery.quotes, nowSeconds, 100, storedCovers.map((position) => position.market))} receipts={walletCovers.receipts} totals={walletCovers.totals} onSelect={openMarketSelection} selectedCity={selectedMarketsCity} onCity={setSelectedMarketsCity} onRetry={() => setEvidenceNonce((count) => count + 1)} onPreview={(preview) => { line.clearMarketSelection(); setSelectedCity(preview.cityId); line.setPeril(preview.peril); line.setTenor(preview.tenor); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} onWallet={openWallet} /> : null}
+        {!showLanding && tab === "catalog" ? <MarketsLine onAbout={openAbout} {...discovery} revision={evidenceNonce} markets={marketModels(discovery.quotes, nowSeconds, 100, storedCovers.map((position) => position.market))} receipts={walletCovers.receipts} totals={walletCovers.totals} onSelect={openMarketSelection} selectedCity={selectedMarketsCity} onCity={setSelectedMarketsCity} onRetry={() => setEvidenceNonce((count) => count + 1)} onPreview={(preview) => { line.clearMarketSelection(); setSelectedCity(preview.cityId); line.setPeril(preview.peril); line.setTenor(preview.tenor); setTab("protect"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} onWallet={openWallet} /> : null}
         {!showLanding && tab === "protect" && claimReadiness?.state === "claimable" && claimReadiness.action === "claim_payout" ? (
           <LineCollectPayout
             observedMm={claimReadiness.observation ? Number(claimReadiness.observation.rainfallMmX100) / 100 : null}
@@ -683,7 +698,7 @@ export default function App() {
           )
         ) : null}
         {!showLanding && tab === "wallet" ? <BrowserWalletStatus wallet={wallet} balance={walletBalances ? formatBaseGrouped(BigInt(walletBalances.skytBaseUnits)) : null} error={walletError}/> : null}
-        {!showLanding && tab === "wallet" ? <WalletLine focusMarket={confirmedLine?.wallet === wallet ? confirmedLine.market : null} transactions={purchaseTransactions} onCollect={async (market, action) => { const outcome = await submitApprovedAction(action, market); if (outcome.kind === "error") throw new Error(outcome.message ?? "Collection did not complete. Try again."); setEvidenceNonce(n => n + 1); }} revision={evidenceNonce} wallet={wallet} balance={walletBalances ? formatBaseGrouped(BigInt(walletBalances.skytBaseUnits)) : null} {...walletCovers}
+        {!showLanding && tab === "wallet" ? <WalletLine onAbout={openAbout} focusMarket={confirmedLine?.wallet === wallet ? confirmedLine.market : null} transactions={purchaseTransactions} onCollect={async (market, action) => { const outcome = await submitApprovedAction(action, market); if (outcome.kind === "error") throw new Error(outcome.message ?? "Collection did not complete. Try again."); setEvidenceNonce(n => n + 1); }} revision={evidenceNonce} wallet={wallet} balance={walletBalances ? formatBaseGrouped(BigInt(walletBalances.skytBaseUnits)) : null} {...walletCovers}
           loading={balancesLoading || loading} failed={Boolean(balancesError || portfolioError || walletError || portfolio?.indexed === false)}
           onMarkets={() => { setTab("catalog"); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
           onConnect={() => { void connect(); }} onRetry={() => { if (wallet) void loadWalletData(wallet, true); setEvidenceNonce((n) => n + 1); }}

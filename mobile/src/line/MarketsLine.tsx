@@ -1,3 +1,4 @@
+import { AboutButton } from "./WelcomeScreen.tsx";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, View, Vibration, useWindowDimensions, type StyleProp, type ViewStyle } from "react-native";
 import { CaretDown, CaretRight, Check } from "phosphor-react-native";
@@ -100,8 +101,8 @@ function Hero({ market: m, strikes, onStrike, onSelect, onWallet, receipts, nowS
     <Text style={s.note}>{held ? copy.nothingElseOpen(m.city) : m.note}{!held && edge?.forecast ? `\nForecast: GEFS ensemble · ${edge.forecast.membersAtOrAbove} of ${edge.forecast.membersTotal} members` : ""}</Text>
   </View>;
 }
-export function MarketsLine({ markets, receipts, totals, loading, failed, onSelect, onPreview, onWallet, onRetry, selectedCity, onCity, quoteWindows = [], nowSeconds = 0, edges: suppliedEdges, revision = 0 }: {
-  markets: MarketModel[]; receipts: ReceiptModel[]; totals?: { loss: string; gain: string } | null; loading: boolean; failed: boolean; reason?: string;
+export function MarketsLine({ onAbout, markets, receipts, totals, loading, failed, onSelect, onPreview, onWallet, onRetry, selectedCity, onCity, quoteWindows = [], nowSeconds = 0, edges: suppliedEdges, revision = 0 }: {
+  onAbout?: () => void; markets: MarketModel[]; receipts: ReceiptModel[]; totals?: { loss: string; gain: string } | null; loading: boolean; failed: boolean; reason?: string;
   onSelect: (m: MarketSelection) => void; onPreview: (p: PreviewSelection) => void; onWallet: () => void; onRetry: () => void; selectedCity: string | null; onCity: (city: string) => void; quoteWindows?: readonly QuoteWindow[]; nowSeconds?: number; edges?: Record<string, ForecastEdge>; revision?: number;
 }) {
   const [sheet, setSheet] = useState<"city" | "cold" | null>(null);
@@ -137,7 +138,7 @@ export function MarketsLine({ markets, receipts, totals, loading, failed, onSele
   const titleFor = (m: MarketModel) => `${perilById(m.peril)!.label} ${perilById(m.peril)!.direction === "down" ? "≤" : "≥"} ${measureLabel(m.trigger)} ${m.unit}`;
   const tileWidth = (tilesWidth - L.tileGap * 4) / 5;
   return <View>
-    <View style={s.header}>{loading ? <Skeleton style={s.citySkeleton}/> : <LinePressable accessibilityRole="button" accessibilityLabel={`${copy.CHOOSE_CITY}, ${name}`} accessibilityState={{ expanded: sheet === "city" }} onPress={() => setSheet("city")} style={s.cityTarget}><View style={s.cityPill}><View style={s.monogram}><Text style={s.monogramText}>{city === "new-york" ? "NY" : name.split(" ").map((word) => word[0]).join("").slice(0, 2).toUpperCase()}</Text></View><Text numberOfLines={1} style={s.cityName}>{name}</Text><CaretDown size={16} weight="bold" color={C.fg2}/></View></LinePressable>}<View style={s.devnet}><View style={s.dot}/><Text style={s.devnetText}>{copy.DEVNET_TAG}</Text></View></View>
+    <View style={s.header}>{loading ? <Skeleton style={s.citySkeleton}/> : <LinePressable accessibilityRole="button" accessibilityLabel={`${copy.CHOOSE_CITY}, ${name}`} accessibilityState={{ expanded: sheet === "city" }} onPress={() => setSheet("city")} style={s.cityTarget}><View style={s.cityPill}><View style={s.monogram}><Text style={s.monogramText}>{city === "new-york" ? "NY" : name.split(" ").map((word) => word[0]).join("").slice(0, 2).toUpperCase()}</Text></View><Text numberOfLines={1} style={s.cityName}>{name}</Text><CaretDown size={16} weight="bold" color={C.fg2}/></View></LinePressable>}<View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}><View style={s.devnet}><View style={s.dot}/><Text style={s.devnetText}>{copy.DEVNET_TAG}</Text></View>{onAbout ? <AboutButton onPress={onAbout}/> : null}</View></View>
     {loading ? <Skeleton style={s.covers}/> : active.length ? <LinePressable accessibilityRole="button" onPress={onWallet} style={s.covers}>
       {avatars.length ? <View style={s.stack}>{avatars.map((peril, i) => <View key={peril} style={[s.stackAvatar, { marginLeft: i ? -10 : 0 }]}><PerilAvatar peril={peril} size={32}/><View pointerEvents="none" style={s.avatarRing}/></View>)}</View> : null}
       <View style={s.rowMain}><Text numberOfLines={1} style={s.coverCount}>{copy.openCoversCount(active.length)}</Text><Text numberOfLines={1} style={s.label}>{copy.MAX_LOSS} {totals ? `−${totals.loss}` : "—"}</Text></View><View style={s.rowRight}><Text style={s.label}>{copy.MAX_GAIN}</Text><Text style={s.coverCount}>{totals ? `+${totals.gain}` : "—"}</Text></View><CaretRight size={16} weight="bold" color={C.dryText}/>

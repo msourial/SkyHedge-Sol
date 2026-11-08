@@ -1,3 +1,4 @@
+import { AboutButton } from "./WelcomeScreen.tsx";
 import { useRef, useState, type ReactNode } from "react";
 import { Clipboard, StyleSheet, Text, View } from "react-native";
 import { Copy, CaretRight } from "phosphor-react-native";
@@ -20,7 +21,7 @@ const lossLabel = (value: string | null) => value == null ? "—" : `−${value}
 const gainLabel = (value: string | null) => value == null ? "—" : `+${value}`;
 const triggerLabel = (r: ReceiptModel) => r.trigger == null ? r.status : `${r.peril && perilById(r.peril)?.direction === "down" ? "≤" : "≥"} ${r.trigger} ${r.unit}`;
 function receiptStatus(r: ReceiptModel) { return r.kind === "paid" ? "Paid out" : r.kind === "dry" ? "Expired" : r.kind === "refunded" ? "Refunded, NOAA data unavailable" : r.status; }
-export function WalletLine({ wallet, balance, receipts, totals, loading, failed, onConnect, onRetry, onDisconnect, onMarkets, technical, progress: suppliedProgress, now, revision = 0, onCollect, transactions, focusMarket }: { wallet: string | null; balance: string | null; receipts: ReceiptModel[]; totals: { loss: string; gain: string } | null; loading: boolean; failed: boolean; onConnect: () => void; onRetry: () => void; onDisconnect: () => void; onMarkets: () => void; technical?: ReactNode; progress?: Record<string, CoverProgress | null>; now?: number; revision?: number; onCollect?: (market: string, action: ClaimAction) => Promise<void>; transactions?: Record<string, string>; focusMarket?: string | null }) {
+export function WalletLine({ onAbout, wallet, balance, receipts, totals, loading, failed, onConnect, onRetry, onDisconnect, onMarkets, technical, progress: suppliedProgress, now, revision = 0, onCollect, transactions, focusMarket }: { onAbout?: () => void; wallet: string | null; balance: string | null; receipts: ReceiptModel[]; totals: { loss: string; gain: string } | null; loading: boolean; failed: boolean; onConnect: () => void; onRetry: () => void; onDisconnect: () => void; onMarkets: () => void; technical?: ReactNode; progress?: Record<string, CoverProgress | null>; now?: number; revision?: number; onCollect?: (market: string, action: ClaimAction) => Promise<void>; transactions?: Record<string, string>; focusMarket?: string | null }) {
   const [selected, setSelected] = useState<string | null>(null), [details, setDetails] = useState(false);
   const [filter, setFilter] = useState<string | null>(null), [copyStatus, setCopyStatus] = useState<string | null>(null);
   const collectingRef = useRef(false);
@@ -39,7 +40,7 @@ export function WalletLine({ wallet, balance, receipts, totals, loading, failed,
   const commonWindow = firstWindow?.windowKey && firstWindow.windowLabel && visibleReceipts.every(r => r.windowKey === firstWindow.windowKey && r.windowLabel)
     ? firstWindow.windowLabel.replace(" to ", " – ") : null;
   const progress = useCoverProgress(receipts.map(r => r.market), suppliedProgress, revision);
-  return <View>{collecting || collectError ? <Text accessibilityLiveRegion="polite" style={s.note}>{collectError ?? "Approve collection in Phantom…"}</Text> : null}{!receipt ? <View style={s.header}><Text style={s.title}>Wallet</Text><Pill devnet/></View> : null}
+  return <View>{collecting || collectError ? <Text accessibilityLiveRegion="polite" style={s.note}>{collectError ?? "Approve collection in Phantom…"}</Text> : null}{!receipt ? <View style={s.header}><Text style={s.title}>Wallet</Text><View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><Pill devnet/>{onAbout ? <AboutButton onPress={onAbout}/> : null}</View></View> : null}
     {receipt ? <CoverDetail receipt={receipt} progress={progress[receipt.market]} now={now} signature={transactions?.[receipt.market]} onCollect={onCollect ? action => { void collect(receipt.market, action); } : undefined} onClose={() => setSelected(null)}/> : <>
       <View style={s.hero}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}><View style={s.stack}>{perils.map((p, i) => <View key={p} style={{ marginLeft: i ? -10 : 0 }}><PerilAvatar peril={p} size={36}/></View>)}{!perils.length ? <TabGlyph name="wallet" size={32} color={C.fg2}/> : null}</View><View style={{ flex: 1 }}><Text style={ui.label}>Open covers · totals in SKYT</Text><Text style={s.count}>{wallet && (loading || failed) && !receipts.length ? "—" : wallet ? active.length : "0"}</Text></View></View>

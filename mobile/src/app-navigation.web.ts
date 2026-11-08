@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 type AppTab = "weather" | "catalog" | "protect" | "wallet";
 
-/** Web /app opens on the overview landing before markets (Miro Encode review). */
+/** App resolves the independent welcome preference before revealing this initial screen. */
 export const initialLandingVisible = () => true;
 export function initialAppTab(): AppTab {
   const path = window.location.pathname.replace(/\/$/, "").split("/")[2];
