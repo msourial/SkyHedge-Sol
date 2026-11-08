@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <title>SkyHedge — Encode Club Solana Hackathon 2026</title>
   <style>
-    @page { size: landscape; margin: 0; }
+    @page { size: 1280px 720px; margin: 0; }
     :root {
       --bg: #0B1220;
       --panel: #121A2A;
@@ -43,6 +43,9 @@
     .card h3 { margin: 0 0 10px; font-size: 20px; color: var(--text);
       font-family: "Avenir Next", "Segoe UI", sans-serif; letter-spacing: 0.04em; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 16px; color: var(--accent); }
+    a { color: var(--accent); text-decoration: none; }
+    .note { font-size: 18px; }
+    .compact p { font-size: 20px; }
     @media print {
       body { background: none; }
       .slide { margin: 0; box-shadow: none; }
@@ -52,103 +55,139 @@
 <body>
 
 <section class="slide">
+
   <p class="brand">SkyHedge</p>
-  <h1>Weather protection you buy from your phone</h1>
-  <p class="lead">Parametric rainfall coverage on Solana Mobile — quote, approve in Phantom, settle from NOAA.</p>
-  <div class="footer"><span>Encode Club Solana Hackathon 2026</span><span>skyhedge.app · Devnet</span></div>
+  <h1>Rain on your plans?<br>Get paid.</h1>
+  <p class="lead">Weather hedging for individuals and businesses. Pick a trigger, pay a fixed premium, collect a fixed payout.</p>
+  <p>Best Consumer App on Solana</p>
+  <p>skyhedge.app · skyhedge.app/app · Solana Devnet</p>
+  <p class="note">Pre-launch. SKYT is a test token with no value.</p>
+  <div class="footer"><span>Encode Club Solana Hackathon 2026</span><span>1 / 10</span></div>
 </section>
 
+
 <section class="slide">
+
   <p class="brand">Problem</p>
-  <h2>Weather risk is everywhere. Cover is not.</h2>
-  <ul>
-    <li>Operators lose days to rain — flights, lifts, haul roads, events, harvests.</li>
-    <li>Traditional weather cover is slow, paperwork-heavy, and sized for big buyers.</li>
-    <li>Disputes and adjusters add delay after the storm already hit.</li>
-  </ul>
+  <h2>Weather risk reaches everyone.</h2>
+  <p class="lead">A lost day can mean a lost income. Most individuals and small businesses carry that risk alone.</p>
+  <div class="grid2">
+  <div class="card"><h3>Farmers &amp; street vendors</h3>
+  <p>A dry month hurts a harvest. A storm wipes out a day’s sales.</p></div>
+  <div class="card"><h3>Events &amp; aviation</h3>
+  <p>Rain empties a venue. Bad weather grounds a charter flight.</p></div></div>
+  <p>Traditional weather cover is slow, paperwork-heavy and sized for big buyers.</p>
   <div class="footer"><span>SkyHedge</span><span>2 / 10</span></div>
 </section>
 
+
 <section class="slide">
+
   <p class="brand">Solution</p>
-  <h2>Parametric protection on Solana</h2>
+  <h2>A clear trigger. A fixed payout.</h2>
   <ul>
-    <li>Fixed payout when public weather data crosses a published trigger.</li>
-    <li>Instant quote from NOAA history + forecast; fractional coverage amounts.</li>
-    <li>Fully collateralized per-city vaults in an Anchor program — no claims desk.</li>
-  </ul>
+  <li>Pick a city, rainfall window and threshold. See “Pay X, get Y if it hits” before buying.</li>
+  <li>Station, methodology, window and trigger are fixed on chain before purchase.</li>
+  <li>Every city market has its own fully collateralised LP vault. Your full payout is reserved when you buy.</li>
+  <li>Solana makes small tickets practical: fast confirmation and low transaction fees.</li></ul>
   <div class="footer"><span>SkyHedge</span><span>3 / 10</span></div>
 </section>
 
+
 <section class="slide">
-  <p class="brand">Demo</p>
-  <h2>New York → Nov 1 · W → Phantom</h2>
+
+  <p class="brand">Demo · real Devnet buy</p>
+  <h2>First-time user: Markets → Protect → Phantom</h2>
+  <p>Connect Phantom on Devnet. Get Devnet SOL for fees and SKYT for cover.</p>
   <div class="grid2">
-    <img src="seeker-markets.png" alt="Seeker Markets with New York Open" style="width: 100%; height: 390px; object-fit: cover; object-position: top center; border: 1px solid var(--line);" />
-    <img src="seeker-protect-nov1.png" alt="Protect expiry chain for New York, Nov 1 weekly, priced trigger row" style="width: 100%; height: 390px; object-fit: cover; object-position: center 18%; border: 1px solid var(--line);" />
-  </div>
-  <p style="margin-top:16px">Open web app, then the Seeker. 100 SKYT. One unsigned open_position. Devnet test SKYT.</p>
+  <div class="card"><h3>1 · Markets → 2 · Protect</h3>
+  <p>Choose an open city market. Pick the window, trigger and cover. Review the premium and maximum loss.</p></div>
+  <div class="card"><h3>3 · Phantom → confirmed ticket</h3>
+  <p>Approve the buy. Open the finalized Devnet transaction in Explorer. Track the position in Wallet.</p></div></div>
+  <p class="note">Recorded demo example: New York · December rain ≥118 mm · pay 47 SKYT / get 100 SKYT if triggered. Read the live ticket when recording; prices and availability can change.</p>
+  <p class="note">The recorded buy is real Devnet. Settlement and Collect are shown separately as LOCAL REPLAY.</p>
   <div class="footer"><span>SkyHedge</span><span>4 / 10</span></div>
 </section>
 
+
 <section class="slide">
-  <p class="brand">Settlement</p>
-  <h2>How settlement works</h2>
-  <ul>
-    <li>Observation window closes → settlement authority posts hashed NOAA package.</li>
-    <li>Program compares cumulative rain to the immutable trigger.</li>
-    <li>Triggered → buyer claims fixed payout from the vault. Not triggered → premiums stay for LPs.</li>
-    <li>1% protocol fee accrues in the premium; waived on data-unavailable refunds.</li>
-  </ul>
+
+  <p class="brand">Money flow</p>
+  <h2>The payout is already in the vault.</h2>
+  <div class="grid2 compact">
+  <div class="card"><h3>LP collateral + buyer premium → vault</h3>
+  <p>Each city market has a PDA-owned vault. A buy is rejected unless it covers every reserved payout, including the new purchase.</p></div>
+  <div class="card"><h3>Vault → buyer / protocol / LPs</h3>
+  <p>Trigger hit: buyer collects the fixed payout. At close: 1% of cover goes to the protocol; LPs redeem the remainder pro rata.</p></div></div>
+  <p class="note">Premium = NOAA probability × 1.15, rounded up, plus 1% of cover. The 15% margin stays for LPs. Example: 20% chance, 100 SKYT cover → pay 24; 23 stays for LPs if not triggered, 1 is the protocol fee at close.</p>
+  <p class="note">No trigger: LPs keep premiums after fees. Data-unavailable: full premium refund, fee waived. Payouts come from LP collateral; SkyHedge earns the fee.</p>
   <div class="footer"><span>SkyHedge</span><span>5 / 10</span></div>
 </section>
 
+
 <section class="slide">
-  <p class="brand">Oracle failures</p>
-  <h2>Fail closed. Refund when data never arrives.</h2>
-  <ul>
-    <li>Incomplete or flagged NOAA days are rejected — never invented.</li>
-    <li>After data deadline with no observation: permissionless <span class="mono">mark_data_unavailable</span> → premium refund.</li>
-    <li>Once an observation exists: permissionless <span class="mono">settle_market</span> so settlement cannot stall.</li>
-  </ul>
+
+  <p class="brand">Settlement · trust today</p>
+  <h2>Public data. On-chain rules. One trusted key.</h2>
+  <div class="grid2 compact">
+  <div class="card"><h3>What SkyHedge posts</h3>
+  <p>After the window ends, the worker reads NOAA GHCN-Daily, rejects missing or quality-flagged days, and posts the total plus a SHA-256 hash of the records.</p></div>
+  <div class="card"><h3>What the program checks</h3>
+  <p>Only the settlement authority may post. Station, methodology and exact window must match. Anyone can then settle: total versus fixed trigger.</p></div></div>
+  <p class="note">No valid reading by window end + 7 days → anyone can mark data-unavailable → buyers reclaim their full premium, including the fee.</p>
+  <p class="note" style="color:var(--text)">Trusted today: SkyHedge’s key copies NOAA faithfully. The hash supports audit; it does not prove the number is correct. A decentralized oracle is next, and is not built yet.</p>
   <div class="footer"><span>SkyHedge</span><span>6 / 10</span></div>
 </section>
 
+
 <section class="slide">
-  <p class="brand">Traction</p>
-  <h2>Pre-launch · honest status</h2>
+
+  <p class="brand">Collect · LOCAL REPLAY</p>
+  <h2>Trigger hit → Collect → payout from the vault</h2>
+  <p class="lead">LOCAL REPLAY · Same SkyHedge program on a local Solana validator. Separate from the real Devnet buy.</p>
   <ul>
-    <li>Live waitlist at <strong style="color:var(--text)">skyhedge.app</strong> (Neon-backed; no public count).</li>
-    <li>Devnet OpenPosition purchase proven via Seeker → Phantom (see README Explorer link).</li>
-    <li>No fabricated user or volume metrics.</li>
-  </ul>
+  <li>Observe &amp; settle: real NOAA rainfall in New York, Oct 9–15, 2026. Total: 47.2 mm.</li>
+  <li>Collect: the buyer signs the payout claim for the triggered position.</li>
+  <li>Receive: 100 local test tokens move from the vault to the buyer.</li></ul>
+  <p class="note">Replay inputs: 6 mm trigger and 20% demo probability. This is a different market from the December Devnet ticket.</p>
+  <p class="note">In the app: Wallet → Collect → Phantom approval. Live cover waits for its window to end and NOAA to publish.</p>
   <div class="footer"><span>SkyHedge</span><span>7 / 10</span></div>
 </section>
 
+
 <section class="slide">
-  <p class="brand">Product</p>
+
+  <p class="brand">Product · pre-launch</p>
   <h2>Rain on your plans? Get paid.</h2>
-  <img src="hero-desktop.png" alt="SkyHedge landing hero: Rain on your plans? Get paid." style="width: 100%; height: 430px; object-fit: cover; object-position: top center; border: 1px solid var(--line);" />
+  <img src="hero-desktop.png" alt="SkyHedge landing hero: Rain on your plans? Get paid." style="width:100%;height:340px;object-fit:contain;object-position:top center;border:1px solid var(--line);" />
+  <p class="note">Live landing: skyhedge.app · Devnet app: skyhedge.app/app<br>Pre-launch · real Devnet buy demonstrated · no user or volume metrics claimed.</p>
   <div class="footer"><span>SkyHedge</span><span>8 / 10</span></div>
 </section>
 
+
 <section class="slide">
+
   <p class="brand">Roadmap</p>
-  <h2>What comes after this Devnet demo</h2>
+  <h2>From Devnet demo to broader access</h2>
   <ul>
-    <li>More cities, plus heat markets, on the same window ladder.</li>
-    <li>Toronto when Environment Canada rainfall is wired in. No price until that data is in.</li>
-    <li>Card payments for people without a wallet: Visa and Mastercard through an onramp such as MoonPay or Stripe, plus Phantom social login. After legal review.</li>
-    <li>A separate on-chain keeper role, so window rolling is not the admin key.</li>
-  </ul>
+  <li>Decentralized oracle: replace the SkyHedge settlement key’s data-posting role.</li>
+  <li>More cities and perils: extend beyond rain as validated data sources become available.</li>
+  <li>LP interface: make vault funding, exposure and redemption easier to understand.</li>
+  <li>Broader launch after product validation and legal review.</li></ul>
+  <p class="note">These are next steps, not completed features.</p>
   <div class="footer"><span>SkyHedge</span><span>9 / 10</span></div>
 </section>
 
+
 <section class="slide">
+
   <p class="brand">Team</p>
-  <h2>Solo · Miro</h2>
-  <p class="lead">Encode project exists · solo team. Repo <span class="mono">msourial/SkyHedge-Sol</span> · branch <span class="mono">seeker-revamp</span>.</p>
-  <p>skyhedge.app · Solana Mobile · Best Consumer App track</p>
+  <h2>Solo builder · Miro</h2>
+  <p class="lead">Weather hedging for anyone whose plans or income depend on the weather.</p>
+  <p>Primary track: <strong style="color:var(--text)">Best Consumer App on Solana</strong></p>
+  <p>skyhedge.app · skyhedge.app/app · Devnet</p>
+  <p class="mono">msourial/SkyHedge-Sol<br>branch: web-app-and-landing</p>
+  <p class="note">Pre-launch · SKYT test tokens have no value.</p>
   <div class="footer"><span>SkyHedge</span><span>10 / 10</span></div>
 </section>
 
