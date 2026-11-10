@@ -1,6 +1,6 @@
 import {AccountLayout} from '@solana/spl-token';
 import {test,expect,type Page} from '@playwright/test';
-import {owner,rpcAccounts,fundMockWallet,activityTransaction,catalog} from './pm-fixture';
+import {owner,rpcAccounts,fundMockWallet,activityTransaction,catalog,fixtureQuote} from './pm-fixture';
 export async function mockChain(page:Page) {
   const accounts=await rpcAccounts();
  await page.routeWebSocket('wss://api.devnet.solana.com/**',ws=>{ws.onMessage(data=>{const req=JSON.parse(String(data));ws.send(JSON.stringify({jsonrpc:'2.0',id:req.id,result:1}));if(req.method==='signatureSubscribe')ws.send(JSON.stringify({jsonrpc:'2.0',method:'signatureNotification',params:{subscription:1,result:{context:{slot:123},value:{err:null}}}}));});});
@@ -159,4 +159,80 @@ test('Seattle thresholds stay explicit in ticket, review and positions',async({p
  }
  await page.getByRole('link',{name:'Positions',exact:true}).click();
  for(const threshold of [5,25])await expect(page.getByRole('region',{name:'Positions'}).getByText(`Rainfall ≥ ${threshold} mm · SEATTLE TACOMA AP`,{exact:true})).toBeVisible();
+});
+
+test('hedge helper parses Montreal snow with keyboard submit and lists only actual closest markets',async({page})=> {
+ await mockChain(page);await page.goto('/app');
+ const helper=page.getByRole('region',{name:'Hedge helper'});
+ await expect(helper).toBeVisible();
+ await helper.getByLabel('Describe your weather hedge').fill("I'm in Montreal, I want to hedge against snow from Dec 14 to Dec 16, max I can pay is 20");
+ await helper.getByLabel('Describe your weather hedge').press('Enter');
+ await expect(helper.getByText(/No exact match/)).toBeVisible();
+ await expect(helper.getByText('Montreal',{exact:true})).toBeVisible();
+ await expect(helper.getByText('2026-12-14 – 2026-12-16',{exact:true})).toBeVisible();
+ await expect(helper.getByText('20 mUSDC',{exact:true})).toBeVisible();
+ await expect(helper.getByRole('heading',{name:'Closest markets'})).toBeVisible();
+ await expect(helper.getByText('Seattle',{exact:true})).toBeVisible();
+ await expect(helper.getByText('Miami',{exact:true})).toBeVisible();
+ await expect(helper.getByText('New York',{exact:true})).toBeVisible();
+ await expect(helper.getByText('Chicago',{exact:true})).toHaveCount(0);
+ await expect(helper.getByText('Measures rain, not snow.').first()).toBeVisible();
+ await expect(helper.getByRole('button',{name:'Review this trade'})).toHaveCount(0);
+ for(const width of [320,390,1280]){await page.setViewportSize({width,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
+});
+
+test('hedge helper hands selected market, No and exact amount to existing review without sending',async({page})=> {
+ const chain=await mockChain(page);let sends=0;
+ await page.route('https://pm-amm-devnet.vercel.app/api/faucet',route=>{fundMockWallet(chain.accounts,route.request().postDataJSON().wallet);return route.fulfill({json:{ok:true,signature:'1'.repeat(64),amount:1000,sol:0.02}});});
+ page.on('request',request=>{if(request.url().startsWith('https://api.devnet.solana.com')&&request.postDataJSON()?.method==='sendTransaction')sends++;});
+ await page.goto('/app');await expect(page.getByText('1,000 mUSDC available')).toBeVisible();
+ const helper=page.getByRole('region',{name:'Hedge helper'});
+ await helper.getByLabel('Describe your weather hedge').fill('I am in Chicago, hedge against no rainfall from Dec 8 to Dec 9, budget 1.123456 dollars');
+ await helper.getByRole('button',{name:'Find a trade'}).click();
+ const suggested=helper.getByRole('article',{name:'Suggested trade'});
+ await expect(suggested.getByRole('heading',{name:'Chicago · No'})).toBeVisible();
+ const expected=await fixtureQuote(chain.accounts,'4Ti19PT1V5SVYrKZ4XVtYcBHsPUrtVRrSw7RhLgE5VsV','usdcToNo',1123456);
+ const units=(raw:number)=>(raw/1e6).toLocaleString('en-US',{maximumFractionDigits:6});
+ const sharesBefore=`${units(expected.out)} No`;
+ await expect(suggested.getByText(sharesBefore,{exact:true})).toBeVisible();
+ await expect(suggested.getByText(`${units(expected.fee)} mUSDC`,{exact:true})).toBeVisible();
+ await chain.change();await page.getByRole('button',{name:'Refresh markets'}).click();
+ // Accrual uses the page clock, which can advance a second during waits, so
+ // compare the review panel to the helper's live estimate rather than a
+ // separately computed snapshot taken at a fixed timestamp.
+ await expect(suggested.getByText(sharesBefore,{exact:true})).toHaveCount(0);
+ const sharesAfter=await suggested.getByRole('definition').filter({hasText:/ No$/}).textContent();
+ expect(sharesAfter).toMatch(/^[\d.]+ No$/);
+ await helper.getByRole('button',{name:'Review this trade'}).click();
+ const review=page.getByRole('region',{name:'Review trade'});
+ await expect(review.getByRole('heading',{name:'Review your trade'})).toBeFocused();
+ await expect(page.locator('.pm-ticket').getByRole('heading',{name:'Chicago',exact:true})).toBeVisible();
+ await expect(review.getByText('1.123456 mUSDC',{exact:true})).toBeVisible();
+ await expect(review.getByText(/^[\d.]+ No shares$/)).toBeVisible();
+ await expect(review.getByText('0.022469 mUSDC',{exact:true})).toBeVisible();
+ await expect(review.getByRole('button',{name:'Confirm trade'})).toBeVisible();expect(sends).toBe(0);
+ await review.getByRole('button',{name:'Back',exact:true}).click();
+ await expect(page.getByLabel('Amount · mUSDC')).toHaveValue('1.123456');
+ await expect(page.getByRole('button',{name:'No',exact:true})).toHaveAttribute('aria-pressed','true');
+ // Editing the prompt clears its previous suggestion; it cannot review stale draft text.
+ await helper.getByLabel('Describe your weather hedge').fill('Chicago');
+ await expect(suggested).toHaveCount(0);
+ await helper.getByRole('button',{name:'Find a trade'}).click();
+ await expect(helper.getByText('Add a budget in mUSDC.')).toBeVisible();
+ await expect(page.getByLabel('Amount · mUSDC')).toHaveValue('1.123456');expect(sends).toBe(0);
+});
+
+test('hedge helper shows unavailable live state without an invented estimate or breaking the ticket',async({page})=> {
+ await page.route('https://pm-amm-devnet.vercel.app/api/faucet',route=>route.fulfill({status:429,json:{error:'Faucet limit reached'}}));
+ await page.route('https://api.devnet.solana.com/**',route=>route.fulfill({status:503,body:'Unavailable'}));
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/app');
+ const helper=page.getByRole('region',{name:'Hedge helper'});
+ await helper.getByLabel('Describe your weather hedge').fill('New York rain Dec 8 to Dec 9 budget 20');
+ await helper.getByRole('button',{name:'Find a trade'}).click();
+ await expect(helper.getByText(/no positive trade can be quoted/)).toBeVisible();
+ await expect(helper.getByRole('article',{name:'Suggested trade'})).toHaveCount(0);
+ await expect(helper.getByRole('button',{name:'Review this trade'})).toHaveCount(0);
+ await expect(page.getByRole('region',{name:'Markets',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Review trade',exact:true})).toBeDisabled();expect(errors).toEqual([]);
 });

@@ -96,3 +96,28 @@ Owner decided Montreal and Toronto settle on Environment Canada daily total prec
 - Evaluator is strict: one record per day, inclusive tenths, refuse missing/flagged/foreign/incomplete values. Trace (`T`) counts as 0 mm only when the amount is zero or empty.
 - UI How to verify and trust copy name Environment Canada only when `spec.source === "eccc"`. NOAA markets keep NOAA copy and links.
 - Markets were not created: remaining creator funds were 189.720997 mUSDC, below a 400 mUSDC seed. Planned specs are in `shared/pm-amm/markets.canada.json`.
+
+## M8 hedge-helper parser review
+
+Reviewer: `m8_review`, fresh conversation (`fork_turns: none`), read-only EGM implementation-readiness/code persona. Read the bundled persona and standard, plan/helper guide, full shared helper/tests, spec/trading/official math and committed catalog. No writes, builds, tests or credential access by reviewer. One focused pass, no approval gates or multi-reviewer loop.
+
+Findings and fixes:
+
+- Major: absence matching omitted rainfall/snowfall even though risk parsing accepted them, so “no snowfall” could suggest Yes. Expanded absence detection and added synonym/No quote assertions.
+- Major: multiple named ranges or relative/explicit dates could silently select one range. Parser now checks all date candidates and rejects conflicting ranges or extra named dates; regression cases include two named ranges, ISO/named mixtures and this-week/explicit mixtures.
+- Nit: fallback sizing needed an assertion for the largest successful raw amount. Added large synthetic liquidity causing unsafe output at the full budget, asserted the reduced result matches the real quote and the next raw unit fails.
+- Author checks: normalized accent variants before city deduplication; accepted sentence punctuation after a budget, retaining strict decimal/raw-unit validation. Added regression assertions for both.
+
+Validation: `npm run check` and `npm run test:pmamm` pass for the shared helper tests; `npm run test:line` passes (80 tests). No RPC or paid model calls in unit tests. Deterministic-only parsing shipped; environment token-presence check reported OIDC unavailable and never displayed its value. No API or dependency changes. M8 complete; M9 UI pending.
+
+## M9 hedge-helper UI review
+
+Reviewer: `m9_review`, isolated read-only EGM implementation-readiness/code pass during the Codex session, then operator completion after the session hit a usage limit before the UI commit.
+
+- Nit (fixed): the helper's no-match closest list overflowed horizontally at 320px. The overflow came from the existing market card's price-and-button row; it now wraps on narrow screens. Helper reply text already uses overflow-wrap.
+- Nit (fixed): the helper estimate did not have an assertion that it updates after market state refreshes. Playwright now changes synthetic reserves, refreshes markets, and compares the review panel to the live ticket rather than a fixed-timestamp snapshot, because share counts can move by a few raw units when the page clock accrues between the helper quote and the review requote.
+- No blocker or major issue after those fixes. Review still uses the existing ticket path; Confirm trade is the only send control. No invented markets or prices. No new API secrets or AI SDK dependency.
+
+Validation is re-run after rebasing onto mid-December markets and Environment Canada settlement. No mobile, Anchor or API source changed. No secrets added.
+
+Codex finished the helper implementation and review, then hit a usage limit before committing the UI. The operator completed the refresh-assertion fix, conflict resolution, validation, rebase onto `pm-amm-web`, and the draft PR.
