@@ -60,3 +60,17 @@ M4 completion follow-up found a major verification gap: browser receipts accepte
 Supported-runtime validation: Node v22.23.4 passed root typecheck, 80 line tests, 328 server tests, 3 Phantom tests, 2 spike tests, 7 shared pm-AMM tests, Vite site build and all 17 mocked web tests. The real browser receipt verifier and read-only external-trader quote also ran under Node 22. Native/Anchor/API source diffs are empty. External creator/no-trader key files remain mode 600; no keypair, profile or environment file is staged. Added lines contain none of the prohibited vocabulary. All work remains local; no deployment, push or PR.
 
 Both root build modes passed on Node 22: `npm run build` produced the React client plus Express bundle, then `npm run build:site` produced the final static site without Expo. The final static build remains in dist for operator preview. Diff and vocabulary checks passed; no mobile, Anchor or API source changed.
+
+## M5 fresh-context review
+
+Reviewer: `m5_review`, fresh-context read-only EGM implementation-readiness/code review using the bundled persona and implementation-readiness standard. Required file reads and SDK IDL inspection completed; no writes or test execution by reviewer.
+
+- Major: a CPI router could include unrelated sibling token transfers in the same outer instruction, overstating volume/fees. Limited attribution to the swap's stack-height subtree; missing CPI stack metadata refuses stats. Added a sell fixture with an unrelated sibling transfer and missing-stack refusal.
+- Major: an undecoded sell fee transfer could silently understate gross volume/fees. Unparsed SPL token instructions in the swap subtree now refuse stats; added an incomplete-sell regression fixture.
+- Nit: plan omitted exact M5 file boundaries and edge cases. Added the file list and attribution/error/timeout acceptance details.
+
+Author live verification found creator swaps can retain their creator-fee share and debit less than the instruction's nominal input. Controlled wallets are excluded before transfer attribution and again in aggregation; their trades do not affect public figures. The finalized live scan reached all existing creation receipts and measured all zeros after exclusions (timestamped stats.devnet.json). Initial browser validation used a stale static build and a JSON import incompatible with the test runtime; rebuilt the site and switched to the existing require-based catalog fixture.
+
+Additional verification preserves integer precision in displayed stats even above JavaScript's safe-number range. A 320px browser assertion exposed an existing market-card button overflow; wrapping the card footer at narrow widths fixes it. The stats table scrolls inside its own bounded container. One overlapping browser run lost its shared preview server; final validation uses an isolated run after rebuilding static assets.
+
+M5 final validation: `npm run check`, 15 pm-AMM unit tests, 20 web tests (isolated rebuilt site), 80 line tests, 328 server tests and 3 Phantom tests pass. Site build and diff whitespace checks pass. No mobile/Anchor/API changes, secrets, deployment, push or PR actions. M5 complete.

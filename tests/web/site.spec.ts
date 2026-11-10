@@ -1,6 +1,6 @@
 import {AccountLayout} from '@solana/spl-token';
 import {test,expect,type Page} from '@playwright/test';
-import {owner,rpcAccounts,fundMockWallet} from './pm-fixture';
+import {owner,rpcAccounts,fundMockWallet,activityTransaction,catalog} from './pm-fixture';
 export async function mockChain(page:Page) {
   const accounts=await rpcAccounts();
  await page.routeWebSocket('wss://api.devnet.solana.com/**',ws=>{ws.onMessage(data=>{const req=JSON.parse(String(data));ws.send(JSON.stringify({jsonrpc:'2.0',id:req.id,result:1}));if(req.method==='signatureSubscribe')ws.send(JSON.stringify({jsonrpc:'2.0',method:'signatureNotification',params:{subscription:1,result:{context:{slot:123},value:{err:null}}}}));});});
@@ -14,6 +14,7 @@ export async function mockChain(page:Page) {
     else if(method==='getSignatureStatuses')result={context:{slot:123},value:[{slot:123,confirmations:1,err:null,confirmationStatus:'confirmed'}]};
     else if(method==='getMultipleAccounts')result={context:{slot:123},value:params[0].map((a:string)=>accounts[a]??null)};
     else if(method==='getAccountInfo')result={context:{slot:123},value:accounts[params[0]]??null};
+    else if(method==='getSignaturesForAddress'){result=[{signature:catalog[params[0]].createdTx,slot:123,err:null,memo:null,blockTime:1794355200}];}
     else if(method==='getBalance')result={context:{slot:123},value:100000000};
     else if(method==='getTokenAccountBalance'&&!accounts[params[0]])return route.fulfill({json:{jsonrpc:'2.0',id,error:{code:-32602,message:'No token account'}}});
     else if(method==='getTokenAccountBalance'){const raw=AccountLayout.decode(Buffer.from(accounts[params[0]].data[0],'base64')).amount;result={context:{slot:123},value:{amount:raw.toString(),decimals:6,uiAmount:Number(raw)/1e6,uiAmountString:String(Number(raw)/1e6)}};}
@@ -110,4 +111,38 @@ test('positive burner funds survive a refused top-up; signer switch clears revie
  await page.route('https://pm-amm-devnet.vercel.app/api/faucet',route=>{fundMockWallet(chain.accounts,route.request().postDataJSON().wallet,5000000n);return route.fulfill({status:429,json:{error:'Wait for faucet'}});});
  await page.goto('/app');await expect(page.getByText('5 mUSDC available')).toBeVisible();await expect(page.getByRole('alert').filter({hasText:'Wait for faucet'})).toBeVisible();
  await page.getByLabel('Amount · mUSDC').fill('1');await page.getByRole('button',{name:'Review trade',exact:true}).click();await expect(page.getByRole('heading',{name:'Review your trade'})).toBeVisible();await page.getByRole('button',{name:'Use Phantom',exact:true}).click();await expect(page.getByRole('heading',{name:'Review your trade'})).toHaveCount(0);await expect(page.getByText('5 mUSDC available')).toHaveCount(0);
+});
+
+
+test('public stats show real zero state from empty fixture history and source links',async({page})=>{
+ await mockChain(page);await page.goto('/app');const stats=page.getByRole('region',{name:'Public market activity'});
+ await expect(stats.getByText('No public swaps found after excluding SkyHedge wallets. All figures are zero.')).toBeVisible();
+ await expect(stats.getByRole('row').filter({hasText:'All markets'}).getByRole('cell')).toHaveText(['0','0','0','0']);
+ await expect(stats.getByRole('link').first()).toHaveAttribute('href',/explorer.solana.com\/address\/.*cluster=devnet/);
+ await page.setViewportSize({width:320,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+test('public stats sum observed fixture swaps and remain independent on errors',async({page})=>{
+ await mockChain(page);
+ let broken=false;
+ await page.route('https://api.devnet.solana.com/**',async(route)=>{
+  const {id,method,params}=route.request().postDataJSON();
+  if(!['getSignaturesForAddress','getTransaction'].includes(method))return route.fallback();
+  if(broken)return route.fulfill({status:503,body:'Unavailable'});
+  const result=method==='getTransaction'?activityTransaction(Object.keys(catalog)[0]):[...(params[0]===Object.keys(catalog)[0]?[{signature:'1'.repeat(64),slot:123,err:null,memo:null,blockTime:1794355200}]:[]),{signature:catalog[params[0]].createdTx,slot:122,err:null,memo:null,blockTime:1794355200}];
+  return route.fulfill({json:{jsonrpc:'2.0',id,result}});
+ });
+ await page.goto('/app');const stats=page.getByRole('region',{name:'Public market activity'});
+ await expect(stats.getByRole('row').filter({hasText:'All markets'}).getByRole('cell')).toHaveText(['1','1','5','0.1']);
+ broken=true;await stats.getByRole('button',{name:'Refresh stats'}).click();await expect(stats.getByRole('alert')).toContainText('Stats unavailable');
+ await expect(page.getByText('CHICAGO OHARE INTL AP',{exact:true})).toBeVisible();
+ broken=false;await stats.getByRole('button',{name:'Retry stats'}).click();await expect(stats.getByRole('row').filter({hasText:'All markets'}).getByRole('cell')).toHaveText(['1','1','5','0.1']);
+});
+
+test('slow history times out without blocking market cards',async({page})=>{
+ await mockChain(page);
+ await page.route('https://api.devnet.solana.com/**',route=>route.request().postDataJSON().method==='getSignaturesForAddress'?new Promise<void>(()=>{}):route.fallback());
+ await page.goto('/app');const stats=page.getByRole('region',{name:'Public market activity'});
+ await expect(stats.getByText('Reading on-chain trade history…')).toBeVisible();
+ await page.clock.fastForward(20001);await expect(stats.getByRole('alert')).toContainText('took too long');
+ await expect(page.getByText('CHICAGO OHARE INTL AP',{exact:true})).toBeVisible();
 });

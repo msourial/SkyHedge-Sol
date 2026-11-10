@@ -1,0 +1,30 @@
+{
+  "observedAt": "2026-11-10T19:53:03.541Z",
+  "commitment": "finalized",
+  "perMarket": {
+    "CHHaCqtcqe8i6NUM7WZdB2pfxn5fqEUx2b4DTq1RL3hS": {
+      "wallets": [],
+      "trades": 0,
+      "volume": "0",
+      "fee": "0"
+    },
+    "4Ti19PT1V5SVYrKZ4XVtYcBHsPUrtVRrSw7RhLgE5VsV": {
+      "wallets": [],
+      "trades": 0,
+      "volume": "0",
+      "fee": "0"
+    },
+    "FQnafUsLzwYE9u8k681xM8AVwViBxJrBm1EkWVFWZFyp": {
+      "wallets": [],
+      "trades": 0,
+      "volume": "0",
+      "fee": "0"
+    }
+  },
+  "total": {
+    "wallets": [],
+    "trades": 0,
+    "volume": "0",
+    "fee": "0"
+  }
+}

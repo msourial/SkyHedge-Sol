@@ -4,7 +4,7 @@ Branch `pm-amm-web`, draft PR #31 into `web-app-and-landing`. Vercel preview dep
 
 ## Status
 
-M1 shared backend is complete and reviewed. M2 web routes/UI is complete and reviewed. M3 burner onboarding is complete and reviewed. M4 audit and final verification are complete, with the remaining advisories documented below.
+M1 shared backend is complete and reviewed. M2 web routes/UI is complete and reviewed. M3 burner onboarding is complete and reviewed. M4 audit and final verification are complete, with the remaining advisories documented below. M5 public activity is complete and reviewed; M6 mid-December expansion is next.
 
 ## Architecture and operation
 
@@ -74,3 +74,11 @@ Decisions implemented: two upcoming station markets; 400 mUSDC seed each; inclus
 - Browser buy Yes with 5 mUSDC: [transaction](https://explorer.solana.com/tx/26NGdjGNQf1DE2y3epC6GYBiZLVDy7neeLU2yKYA5DkuE4imuup9cpWp6YkMBGbsYXqYqYZDpA1EE2yUSZeXW2bg?cluster=devnet)
 
 Final supported-runtime checks passed on Node v22.23.4: typecheck; line, server, Phantom, spike, shared pm-AMM and all 17 web tests; site build. Root server/site build checks are also recorded in REVIEW.md.
+
+## Public activity (M5)
+
+`/app` independently scans finalized Devnet signatures for each catalog market back to its creation receipt. Successful SDK swaps supply the trader and direction; inner SPL mUSDC transfers supply gross volume and observed DAO/creator fees. Deposits, redemption and failed transactions are excluded. Outcome-to-outcome swaps count with zero mUSDC volume/fees. Unique wallets in totals are deduplicated across markets. Exact integer raw amounts are summed before display.
+
+The committed public-only exclusion list is `shared/pm-amm/controlled-wallets.json`: creator/seeder/resolver, script trader and our verification browser burner. No external web-trader key exists at this check. Future user wallets are not excluded. Figures link to Devnet Explorer market account histories; total sources link every market. Empty filtered activity displays explicit zeros. Missing/pruned history, unsupported attribution, timeouts or RPC errors display a separate stats error with retry and do not block catalog cards. Refresh stats explicitly to rescan; reads time out after 20 seconds and stop scheduling further requests. Unit/browser fixtures never call live RPC.
+
+The separate live read at 2026-11-10T19:53:03.541Z reached all three creation receipts and found zero public wallets, trades, mUSDC volume and fees in every market after exclusions. See [timestamped snapshot](stats.devnet.json). This snapshot documents that check; the panel always reads RPC rather than displaying the snapshot. Historical creator swaps may retain the creator fee share; controlled wallets are filtered before transfer attribution as well as during aggregation.
