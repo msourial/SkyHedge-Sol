@@ -1,0 +1,20 @@
+{
+  "name": "skyhedge-pm-amm-spike",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "run": "node run.cjs",
+    "resolve": "node resolver.cjs",
+    "test": "node --test resolver.test.cjs",
+    "verify": "node verify.cjs"
+  },
+  "dependencies": {
+    "@pm-amm/sdk": "0.2.0",
+    "@anchor-lang/core": "1.0.2",
+    "@solana/web3.js": "1.98.4",
+    "@solana/spl-token": "0.4.14"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.0"
+  }
+}
