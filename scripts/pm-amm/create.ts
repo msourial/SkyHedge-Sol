@@ -8,11 +8,27 @@ import {sameStrike,creationParameters,findStrikeAttempt} from '../../shared/pm-a
 const require=createRequire(import.meta.url);
 const {CU}=require('@pm-amm/sdk') as typeof import('@pm-amm/sdk');
 const demo = process.argv.includes('--demo');
-if(demo&&process.argv.includes('--mid-december'))throw Error('Choose demo or mid-December, not both');
+if(demo&&(process.argv.includes('--mid-december')||process.argv.includes('--canada')))throw Error('Choose one creation set');
+if(process.argv.includes('--mid-december')&&process.argv.includes('--canada'))throw Error('Choose mid-December or Canada, not both');
 const now = Math.floor(Date.now()/1000);
 const midDecember=process.argv.includes('--mid-december');
+const canada=process.argv.includes('--canada');
 const expansion:MarketSpec[]=require('../../shared/pm-amm/markets.mid-december.json');
-const specs: MarketSpec[] = midDecember?expansion:demo ? [{city:'New York',station:'USW00094728',stationName:'NY CITY CNTRL PARK',timeZone:'America/New_York', start:'2026-10-01',end:'2026-10-02',thresholdTenths:10,endTs:now+660,historicalDemo:true}] : [
+const plannedCanada:{specs:MarketSpec[]} = require('../../shared/pm-amm/markets.canada.json');
+const canadaOrder=[
+  {city:'Toronto',thresholdTenths:100},
+  {city:'Montreal',thresholdTenths:100},
+  {city:'Toronto',thresholdTenths:50},
+  {city:'Montreal',thresholdTenths:50},
+  {city:'Toronto',thresholdTenths:250},
+  {city:'Montreal',thresholdTenths:250},
+];
+const canadaSpecs=canadaOrder.map(want=>{
+  const spec=plannedCanada.specs.find(s=>s.city===want.city&&s.thresholdTenths===want.thresholdTenths);
+  if(!spec)throw Error(`Missing planned Canada strike ${want.city} ${want.thresholdTenths}`);
+  return spec;
+});
+const specs: MarketSpec[] = canada?canadaSpecs:midDecember?expansion:demo ? [{city:'New York',station:'USW00094728',stationName:'NY CITY CNTRL PARK',timeZone:'America/New_York', start:'2026-10-01',end:'2026-10-02',thresholdTenths:10,endTs:now+660,historicalDemo:true}] : [
   {city:'New York',station:'USW00094728',stationName:'NY CITY CNTRL PARK',timeZone:'America/New_York',start:'2026-12-08',end:'2026-12-09',thresholdTenths:100,endTs:Date.parse('2026-12-07T00:00:00Z')/1000},
   {city:'Chicago',station:'USW00094846',stationName:'CHICAGO OHARE INTL AP',timeZone:'America/Chicago',start:'2026-12-08',end:'2026-12-09',thresholdTenths:100,endTs:Date.parse('2026-12-07T00:00:00Z')/1000},
 ];
@@ -25,7 +41,7 @@ for (const spec of specs) {
   if (existing) {console.log('Already cataloged',existing[0]);continue;}
   validateSpec(spec,now);
   const name=marketName(spec), label=`create:${name}`;
-  if(!midDecember&&log().attempts[`create:${demo?'demo':spec.station}`])throw Error('Reconcile legacy creation attempt manually');
+  if(!midDecember&&!canada&&log().attempts[`create:${demo?'demo':spec.station}`])throw Error('Reconcile legacy creation attempt manually');
   const priorAttempt=findStrikeAttempt(log().attempts,spec);
   if(priorAttempt||log().attempts[label])throw Error(`Reconcile prior create manually: ${priorAttempt??label}`);
   if (!process.argv.includes('--send')) {console.log('Dry run',name,seed);continue;}

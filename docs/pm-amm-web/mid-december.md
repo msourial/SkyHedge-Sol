@@ -31,3 +31,5 @@ SOL estimates use a conservative 0.036 SOL per further creation, compared with t
 ## Creation and recovery
 
 Run `node --import tsx scripts/pm-amm/create.ts --mid-december` for a dry run; `--send` is the explicit send switch. Already cataloged station/window/threshold/demo combinations are skipped. Different thresholds coexist. The script uses SDK 0.2.0 instruction builders with an absolute endTs, rather than the SDK send wrapper’s wall-clock duration conversion. Initialization and seed deposit share one transaction; market ID/PDA/spec are persisted before broadcast. Never retry ambiguous attempts; inspect the recorded PDA and signature first. Legacy attempt markers are preserved. Only one operator process may run at a time.
+
+Seattle and Miami remain cataloged and on-chain but are flagged `hidden` and omitted from the default `/app` markets list. The mid-December New York 25 mm and Chicago 5 mm markets stay visible.

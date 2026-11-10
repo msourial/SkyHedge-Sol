@@ -10,7 +10,7 @@ export function statsUnits(raw:bigint):string {
   const fraction=(raw%1000000n).toString().padStart(6,'0').replace(/0+$/,'');
   return (raw/1000000n).toLocaleString('en-US')+(fraction?'.'+fraction:'');
 }
-export interface TradeRecord {signature:string; instruction:number; market:string; wallet:string; volume:bigint; fee:bigint}
+export interface TradeRecord {signature:string; instruction:number; market:string; wallet:string; volume:bigint; fee:bigint; direction:number; shares:bigint; slot:number}
 export interface Activity {wallets:string[]; trades:number; volume:bigint; fee:bigint}
 export function aggregateTrades(records:TradeRecord[], excluded:ReadonlySet<string>=excludedWallets):Activity {
   const seen=new Set<string>(), wallets=new Set<string>();let trades=0,volume=0n,fee=0n;
@@ -74,7 +74,22 @@ export function tradesFromTransaction(tx:ParsedTransactionWithMeta, signature:st
     const volume=s.direction<2?debit:s.direction<4?credit+fee:0n;
     if(s.direction<2&&debit!==s.amount)throw Error('Swap input transfer mismatch');
     if(s.direction<4&&volume===0n)throw Error('Swap transfers unavailable');
-    records.push({signature,instruction:index,market,wallet:s.accounts[0],volume,fee});
+    const yesMint=s.accounts[3],noMint=s.accounts[4],userYes=s.accounts[7],userNo=s.accounts[8];
+    const shareCredit=(dest:string,mint:string)=>scoped.reduce((n,ix)=> {
+      if(ix.programId.toBase58()!=='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'||!('parsed' in ix))return n;
+      const {type,info}=ix.parsed as {type:string;info:any};
+      const amount=BigInt(info.amount??info.tokenAmount?.amount??0);
+      if((type==='mintTo'||type==='mintToChecked')&&info.account===dest&&info.mint===mint)return n+amount;
+      if((type==='transfer'||type==='transferChecked')&&info.destination===dest) {
+        const keys=tx.transaction.message.accountKeys;
+        const sourceIndex=keys.findIndex(k=>k.pubkey.toBase58()===info.source);
+        const observed=info.mint??[...(tx.meta!.preTokenBalances??[]),...(tx.meta!.postTokenBalances??[])].find(b=>b.accountIndex===sourceIndex)?.mint;
+        if(observed===mint)return n+amount;
+      }
+      return n;
+    },0n);
+    const shares=s.direction===0?shareCredit(userYes,yesMint):s.direction===1?shareCredit(userNo,noMint):0n;
+    records.push({signature,instruction:index,market,wallet:s.accounts[0],volume,fee,direction:s.direction,shares,slot:tx.slot??0});
   });
   return records;
 }

@@ -6,8 +6,10 @@ import {assertCatalogIdentity, type MarketSpec} from '@shared/pm-amm/spec';
 import catalogJson from '@shared/pm-amm/markets.devnet.json';
 import run from '../../../docs/pm-amm-web/run.devnet.json';
 import type {Evidence} from '@shared/pm-amm/noaa';
-export interface CatalogEntry {spec:MarketSpec;name:string;creator:string;seedMusdc:number;createdTx:string;marketId:number}
+import {visibleCatalog} from '@shared/pm-amm/leaderboard';
+export interface CatalogEntry {spec:MarketSpec;name:string;creator:string;seedMusdc:number;createdTx:string;marketId:number;hidden?:boolean}
 export const catalog = catalogJson as Record<string,CatalogEntry>;
+export const listedMarkets = visibleCatalog(catalog);
 export const connection = new Connection(RPC,{commitment:'confirmed',disableRetryOnRateLimit:true});
 export const readClient = PmAmmClient.readOnly(connection,new PublicKey(PROGRAM),new PublicKey(MINT));
 export const evidence = Object.values(import.meta.glob('../../../shared/pm-amm/evidence/*.json',{eager:true,import:'default'})) as Evidence[];

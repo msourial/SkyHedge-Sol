@@ -1,21 +1,13 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {PublicKey,type ParsedTransactionWithMeta} from '@solana/web3.js';
+import {PublicKey} from '@solana/web3.js';
 import bs58 from 'bs58';
 import {aggregateTrades,statsUnits,excludedWallets,explorerAccount,explorerTransaction,tradesFromTransaction,loadMarketTrades,type HistoryRpc} from './stats';
-import {MINT,PROGRAM} from './trading';
-const market='CHHaCqtcqe8i6NUM7WZdB2pfxn5fqEUx2b4DTq1RL3hS';
-const publicWallet='11111111111111111111111111111111';
-export function fixtureSwap(direction=0) {
- const a=[publicWallet,market,MINT,...Array.from({length:9},(_,i)=>new PublicKey(new Uint8Array(32).fill(i+1)).toBase58())];
- const data=new Uint8Array(25);data.set([248,198,158,145,225,117,135,200,direction]);new DataView(data.buffer).setBigUint64(9,5000000n,true);
- const transfer=(source:string,destination:string,amount:string)=>({program:'spl-token',programId:new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),parsed:{type:'transferChecked',info:{source,destination,mint:MINT,tokenAmount:{amount}}}});
- const transfers=direction<2?[transfer(a[6],a[5],'4900000'),transfer(a[6],a[9],'50000'),transfer(a[6],a[10],'50000')]:direction<4?[transfer(a[5],a[6],'4900000'),transfer(a[5],a[9],'50000'),transfer(a[5],a[10],'50000')]:[];
- return {meta:{err:null,innerInstructions:[{index:0,instructions:transfers}]},transaction:{message:{accountKeys:a.map(k=>({pubkey:new PublicKey(k),signer:true,writable:true})),instructions:[{programId:new PublicKey(PROGRAM),accounts:a.map(k=>new PublicKey(k)),data:bs58.encode(data)}]}}} as unknown as ParsedTransactionWithMeta;
-}
+import {PROGRAM} from './trading';
+import {fixtureSwap,fixtureMarket as market,fixtureWallet as publicWallet} from './stats.fixture';
 test('exclusions, unique wallets across markets, exact sums, deduplication and zero',()=>{
  assert.equal(excludedWallets.size,3);
- const r={signature:'a',instruction:0,market,wallet:publicWallet,volume:5000000n,fee:100000n};
+ const r={signature:'a',instruction:0,market,wallet:publicWallet,volume:5000000n,fee:100000n,direction:0,shares:20000000n,slot:1};
  const records=[r,r,{...r,signature:'b',market:'another'},{...r,signature:'c',wallet:[...excludedWallets][0]}];
  assert.deepEqual(aggregateTrades(records),{wallets:[publicWallet],trades:2,volume:10000000n,fee:200000n});
  assert.deepEqual(aggregateTrades([]),{wallets:[],trades:0,volume:0n,fee:0n});

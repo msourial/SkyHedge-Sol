@@ -1,6 +1,6 @@
 {
-  "status": "planned-uncreated",
-  "note": "Six Environment Canada total-precipitation markets for Toronto Intl A (6158731) and Montreal Intl A (7025251). Not on-chain; creator funds were short of a 400 mUSDC seed after the mid-December US creations. See docs/pm-amm-web/eccc.md.",
+  "status": "partial-created",
+  "note": "Five of six strikes are on-chain with 400 mUSDC seeds (Toronto 10/5/25 mm and Montreal 10/5 mm). Montreal 25 mm stays planned until another official faucet claim can fund it without shrinking the seed. See docs/pm-amm-web/canadian-markets.md.",
   "seedMusdc": 400,
   "measuredBalancesAt": "2026-11-10T20:00:40.058Z",
   "creatorMusdc": "189.720997",

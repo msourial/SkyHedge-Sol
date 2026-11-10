@@ -1,8 +1,8 @@
 import {AccountLayout} from '@solana/spl-token';
 import {test,expect,type Page} from '@playwright/test';
 import {owner,rpcAccounts,fundMockWallet,activityTransaction,catalog} from './pm-fixture';
-export async function mockChain(page:Page) {
-  const accounts=await rpcAccounts();
+export async function mockChain(page:Page,opts?:{settled?:Record<string,number>}) {
+  const accounts=await rpcAccounts(undefined,0,opts?.settled);
  await page.routeWebSocket('wss://api.devnet.solana.com/**',ws=>{ws.onMessage(data=>{const req=JSON.parse(String(data));ws.send(JSON.stringify({jsonrpc:'2.0',id:req.id,result:1}));if(req.method==='signatureSubscribe')ws.send(JSON.stringify({jsonrpc:'2.0',method:'signatureNotification',params:{subscription:1,result:{context:{slot:123},value:{err:null}}}}));});});
   await page.clock.install({time:new Date('2026-11-11T00:00:00Z')});
   await page.route('https://pm-amm-devnet.vercel.app/api/faucet',route=>route.fulfill({status:429,json:{error:'Faucet limit reached'}}));
@@ -30,7 +30,8 @@ test('app deep links, real catalog strikes, verification and mobile layout',asyn
  await mockChain(page);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('/app');await expect(page.getByRole('heading',{name:'Trade the weather.'})).toBeVisible();
  await expect(page.getByText('50.00¢').first()).toBeVisible();
- for(const entry of Object.values(catalog)){const s=entry.spec;await expect(page.getByRole('button',{name:`Select ${s.city} ${s.thresholdTenths/10} mm ${s.start} ${s.historicalDemo?'demo':'market'}`,exact:true})).toBeVisible();}
+ for(const entry of Object.values(catalog).filter(e=>!e.hidden)){const s=entry.spec;await expect(page.getByRole('button',{name:`Select ${s.city} ${s.thresholdTenths/10} mm ${s.start} ${s.historicalDemo?'demo':'market'}`,exact:true})).toBeVisible();}
+ for(const city of ['Seattle','Miami'])await expect(page.getByRole('button',{name:new RegExp('Select '+city)})).toHaveCount(0);
  await expect(page.getByText('CHICAGO OHARE INTL AP',{exact:true}).first()).toBeVisible();
  await page.getByText('How to verify',{exact:true}).click();await expect(page.getByRole('link',{name:'Re-check NOAA observations ↗'})).toHaveAttribute('href',/ncei.noaa.gov/);
  await expect(page.getByRole('link',{name:'Resolution transaction ↗'})).toHaveAttribute('href',/cluster=devnet/);
@@ -120,6 +121,9 @@ test('public stats show real zero state from empty fixture history and source li
  await expect(stats.getByText('No public swaps found after excluding SkyHedge wallets. All figures are zero.')).toBeVisible();
  await expect(stats.getByRole('row').filter({hasText:'All markets'}).getByRole('cell')).toHaveText(['0','0','0','0']);
  await expect(stats.getByRole('link').first()).toHaveAttribute('href',/explorer.solana.com\/address\/.*cluster=devnet/);
+ const board=page.getByRole('region',{name:'Will It Rain? leaderboard'});
+ await expect(board.getByText('The leaderboard stays empty until a Montreal or Toronto market settles.')).toBeVisible();
+ await expect(board.getByRole('row')).toHaveCount(0);
  await page.setViewportSize({width:320,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 test('public stats sum observed fixture swaps and remain independent on errors',async({page})=>{
@@ -148,15 +152,35 @@ test('slow history times out without blocking market cards',async({page})=>{
  await expect(page.getByText('CHICAGO OHARE INTL AP',{exact:true}).first()).toBeVisible();
 });
 
-test('Seattle thresholds stay explicit in ticket, review and positions',async({page})=>{
+test('mid-December New York and Chicago thresholds stay explicit in ticket, review and positions',async({page})=>{
  await mockChain(page);await connectPhantom(page);await page.goto('/app');await page.getByRole('button',{name:'Use Phantom',exact:true}).click();await page.getByRole('button',{name:'Connect wallet',exact:true}).click();await page.getByRole('button',{name:/Phantom/}).last().click();await page.locator('.wallet-adapter-button-trigger').click();
  await expect(page.getByText('1,000 mUSDC available')).toBeVisible();
- for(const threshold of [5,25]){
-  await page.getByRole('button',{name:`Select Seattle ${threshold} mm 2026-12-14 market`,exact:true}).click();
-  await expect(page.getByTestId('ticket-strike')).toHaveText(`Rainfall ≥ ${threshold} mm · SEATTLE TACOMA AP`);
+ for(const {city,threshold,station} of [{city:'New York',threshold:25,station:'NY CITY CNTRL PARK'},{city:'Chicago',threshold:5,station:'CHICAGO OHARE INTL AP'}]){
+  await page.getByRole('button',{name:`Select ${city} ${threshold} mm 2026-12-14 market`,exact:true}).click();
+  await expect(page.getByTestId('ticket-strike')).toHaveText(`Rainfall ≥ ${threshold} mm · ${station}`);
   await page.getByLabel('Amount · mUSDC').fill('5');await page.getByRole('button',{name:'Review trade',exact:true}).click();
-  await expect(page.getByRole('region',{name:'Review trade'})).toContainText(`Rainfall ≥ ${threshold} mm · SEATTLE TACOMA AP · 2026-12-14 – 2026-12-16 inclusive`);
+  await expect(page.getByRole('region',{name:'Review trade'})).toContainText(`Rainfall ≥ ${threshold} mm · ${station} · 2026-12-14 – 2026-12-16 inclusive`);
+  await page.getByRole('button',{name:'Back',exact:true}).click();
  }
  await page.getByRole('link',{name:'Positions',exact:true}).click();
- for(const threshold of [5,25])await expect(page.getByRole('region',{name:'Positions'}).getByText(`Rainfall ≥ ${threshold} mm · SEATTLE TACOMA AP`,{exact:true})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Positions'}).getByText('Rainfall ≥ 25 mm · NY CITY CNTRL PARK',{exact:true})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Positions'}).getByText('Rainfall ≥ 5 mm · CHICAGO OHARE INTL AP',{exact:true})).toBeVisible();
+});
+
+test('Will It Rain? leaderboard is public, empty until settlement, then scores first cheap calls',async({page})=>{
+ const toronto=Object.entries(catalog).find(([,e])=>e.spec.city==='Toronto'&&e.spec.thresholdTenths===100)![0];
+ await mockChain(page,{settled:{[toronto]:1}});
+ await page.route('https://api.devnet.solana.com/**',async(route)=>{
+  const {id,method,params}=route.request().postDataJSON();
+  if(!['getSignaturesForAddress','getTransaction'].includes(method))return route.fallback();
+  const result=method==='getTransaction'?activityTransaction(toronto,20000000n):[...(params[0]===toronto?[{signature:'1'.repeat(64),slot:123,err:null,memo:null,blockTime:1794355200}]:[]),{signature:catalog[params[0]].createdTx,slot:122,err:null,memo:null,blockTime:1794355200}];
+  return route.fulfill({json:{jsonrpc:'2.0',id,result}});
+ });
+ await page.goto('/app');
+ const board=page.getByRole('region',{name:'Will It Rain? leaderboard'});
+ await expect(board.getByRole('heading',{name:'Will It Rain?'})).toBeVisible();
+ const row=board.getByRole('row').filter({hasText:'1111…1111'});
+ await expect(row.getByRole('rowheader')).toHaveText('1');
+ await expect(row.getByRole('cell')).toHaveText(['1111…1111','15','1']);
+ await expect(board.getByRole('link',{name:'1111…1111'})).toHaveAttribute('href','https://explorer.solana.com/address/11111111111111111111111111111111?cluster=devnet');
 });

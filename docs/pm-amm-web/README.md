@@ -90,3 +90,15 @@ Five additional 400 mUSDC markets span Seattle (5/25 mm), Miami (10 mm), New Yor
 The optional live `node --import tsx scripts/pm-amm/verify-expansion.ts` reads only the expansion receipts with pacing, verifies finalized 400 mUSDC seed debits/vault credits and exact market identities, and saves public evidence. The initial bulk verifier hit RPC 429; the paced expansion verification subsequently succeeded without repeat sends or automatic retries.
 
 Final M6 live stats scan at 2026-11-10T20:03:45.774Z reached every creation receipt for all eight catalog markets. Every per-market row and the total measured 0 public trader wallets, 0 swaps, 0 mUSDC volume and 0 mUSDC fees after operator exclusions. The updated snapshot includes each Devnet Explorer source. Final validation passes typecheck, 18 pm-AMM tests, 21 web tests, 80 line tests, 328 server tests, 3 Phantom tests and the static site build. No deployment or push was performed.
+
+## Hidden mid-December markets
+
+Seattle (5 mm and 25 mm) and Miami (10 mm) remain on-chain and in the catalog, flagged `hidden`, after the plan shifted to Montreal and Toronto first. They are omitted from the default `/app` markets list. The mid-December New York 25 mm and Chicago 5 mm markets stay visible.
+
+## Will It Rain? leaderboard
+
+`/app` shows a public "Will It Rain?" leaderboard with no login. Scores are computed in the browser from finalized Devnet swaps and on-chain settlements for Montreal and Toronto markets only, reusing the public activity history reader, with no database. Operator and test wallets in `controlled-wallets.json` are excluded. The first Yes or No buy per wallet per market scores 10 points if that side wins, plus 5 if that buy was priced under 0.30. The board stays empty until a Montreal or Toronto market settles. Rank, shortened wallet (Explorer link), points, and correct calls are shown after settlement.
+
+## Canadian mid-December markets
+
+`create.ts --canada` creates the Environment Canada strikes in this order when funds allow: Toronto 10 mm, Montreal 10 mm, then the 5 mm strikes, then the 25 mm strikes, each seeded with 400 mUSDC. See [canadian-markets.md](canadian-markets.md).

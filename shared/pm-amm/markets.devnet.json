@@ -66,7 +66,8 @@
     "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
     "seedMusdc": 400,
     "createdTx": "5314oh7gB6yMo1vB5xUTcthLecydXZCMvnGzZuMCZJEh7HHB6qdLmtT1YS1CTzUiQKg1YaDrwdKy2cfgJf7SAxRh",
-    "marketId": 16868085169749
+    "marketId": 16868085169749,
+    "hidden": true
   },
   "DWo9mtQHRRKhWvhPv9Z5ExDHbBcWHbaCHynN9oXKnxeF": {
     "spec": {
@@ -83,7 +84,8 @@
     "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
     "seedMusdc": 400,
     "createdTx": "5iU8PE1BVYGjS78VtSHWeRUSTq3mTHjYdHdzCH3bK7rAeM1ZBiMjWJ4NK9SfYhdVitUT32XnkLUbDk4QEnpqzbw3",
-    "marketId": 128963182366462
+    "marketId": 128963182366462,
+    "hidden": true
   },
   "isZb8kZ7LCrXj5sLgZwhGLFN3iSDrxD81xrTHp7ZnNs": {
     "spec": {
@@ -134,6 +136,97 @@
     "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
     "seedMusdc": 400,
     "createdTx": "3721yDTbVPdSZ49k6ELgLcDKZaJDPCdQU8yXGCRLUqKKDMb5PF5NVzsj8PAVYk5iPVzxMs4daYULxMWauB995uPN",
-    "marketId": 228078266373555
+    "marketId": 228078266373555,
+    "hidden": true
+  },
+  "6VhJRjXtLVwPL5L2zMbsSPTsbvzYzekfcHNEdZgsNWA2": {
+    "spec": {
+      "city": "Toronto",
+      "station": "6158731",
+      "stationName": "TORONTO INTL A",
+      "timeZone": "America/Toronto",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 100,
+      "endTs": 1797224399,
+      "source": "eccc"
+    },
+    "name": "PREC:6158731:20261214-20261216:GE100:T1797224399",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "5ko9akXh4gmZzXUbMF87krpdA3T3MRZUX9pcePaof9pvwkyT3qEqjX34LwzyCfNADWEqyeYRPGv8mL9mfAQia97v",
+    "marketId": 93632375986149
+  },
+  "HMN86GTepwSTUdLfKTUvk93V9hpph562EXHeoo6vPYqu": {
+    "spec": {
+      "city": "Montreal",
+      "station": "7025251",
+      "stationName": "MONTREAL INTL A",
+      "timeZone": "America/Toronto",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 100,
+      "endTs": 1797224399,
+      "source": "eccc"
+    },
+    "name": "PREC:7025251:20261214-20261216:GE100:T1797224399",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "2gm2NVAK1sjfbM191Qj1xwtjbXwJHuwpKpvKzz2GpGG39TFxccetQc91RLqD24GgrkM3Ux2yRoahcjNjH81dAF42",
+    "marketId": 157548488942231
+  },
+  "4WyAAMzRd1JttRPRg3B3ANA3eBitHrQ7GLBecLfTRZZ2": {
+    "spec": {
+      "city": "Toronto",
+      "station": "6158731",
+      "stationName": "TORONTO INTL A",
+      "timeZone": "America/Toronto",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 50,
+      "endTs": 1797224399,
+      "source": "eccc"
+    },
+    "name": "PREC:6158731:20261214-20261216:GE50:T1797224399",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "65Ec4mhSBTTR9AFhs92oZX9zW74cwEpQYbeJRhEAzkrKGRdcGSXS9up6tg2sjFbMaqCSFSLHTMsa6TjHbLQAUGTc",
+    "marketId": 41494029544806
+  },
+  "6K2UfcZgq939GAx38ipW32CHMnxgrUMU8LC1j9bTM9GB": {
+    "spec": {
+      "city": "Montreal",
+      "station": "7025251",
+      "stationName": "MONTREAL INTL A",
+      "timeZone": "America/Toronto",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 50,
+      "endTs": 1797224399,
+      "source": "eccc"
+    },
+    "name": "PREC:7025251:20261214-20261216:GE50:T1797224399",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "32AruH5rRqGx9ojw9UrysuRS4JhEaVBWMhYG2DidyAhrzKjJWWNDBzSQymEsK3YEwZ7sQh4QUoRMYnEH1FS2JWmZ",
+    "marketId": 152317046536404
+  },
+  "8tP3cu181Sn8kkTEXhv4jkXMqYkhnrTGaqHVX4rqzyY7": {
+    "spec": {
+      "city": "Toronto",
+      "station": "6158731",
+      "stationName": "TORONTO INTL A",
+      "timeZone": "America/Toronto",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 250,
+      "endTs": 1797224399,
+      "source": "eccc"
+    },
+    "name": "PREC:6158731:20261214-20261216:GE250:T1797224399",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "4PVxhXmVwfZb4QKdyuDRGEjzXyN13QguQcWh1NrjyKnSwgzBH93dHj3fZYzQjXCW7gET3riYpze9iu14Ge9rX3Yt",
+    "marketId": 58586403751464
   }
 }

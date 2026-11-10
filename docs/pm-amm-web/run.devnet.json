@@ -155,6 +155,119 @@
         "marketPda": "27T56fUXH7eNmsHog78B4aTmjufYxyPWRfmuczQHa2E3",
         "signature": "3721yDTbVPdSZ49k6ELgLcDKZaJDPCdQU8yXGCRLUqKKDMb5PF5NVzsj8PAVYk5iPVzxMs4daYULxMWauB995uPN"
       }
+    },
+    "fund:canada:script-trader-transfer": {
+      "at": "2026-11-10T20:17:00.116Z"
+    },
+    "create:PREC:6158731:20261214-20261216:GE100:T1797224399": {
+      "at": "2026-11-10T20:17:39.449Z",
+      "marketId": 93632375986149,
+      "marketPda": "6VhJRjXtLVwPL5L2zMbsSPTsbvzYzekfcHNEdZgsNWA2",
+      "spec": {
+        "city": "Toronto",
+        "station": "6158731",
+        "stationName": "TORONTO INTL A",
+        "timeZone": "America/Toronto",
+        "start": "2026-12-14",
+        "end": "2026-12-16",
+        "thresholdTenths": 100,
+        "endTs": 1797224399,
+        "source": "eccc"
+      },
+      "seedMusdc": 400,
+      "result": {
+        "marketId": 93632375986149,
+        "marketPda": "6VhJRjXtLVwPL5L2zMbsSPTsbvzYzekfcHNEdZgsNWA2",
+        "signature": "5ko9akXh4gmZzXUbMF87krpdA3T3MRZUX9pcePaof9pvwkyT3qEqjX34LwzyCfNADWEqyeYRPGv8mL9mfAQia97v"
+      }
+    },
+    "create:PREC:7025251:20261214-20261216:GE100:T1797224399": {
+      "at": "2026-11-10T20:17:40.758Z",
+      "marketId": 157548488942231,
+      "marketPda": "HMN86GTepwSTUdLfKTUvk93V9hpph562EXHeoo6vPYqu",
+      "spec": {
+        "city": "Montreal",
+        "station": "7025251",
+        "stationName": "MONTREAL INTL A",
+        "timeZone": "America/Toronto",
+        "start": "2026-12-14",
+        "end": "2026-12-16",
+        "thresholdTenths": 100,
+        "endTs": 1797224399,
+        "source": "eccc"
+      },
+      "seedMusdc": 400,
+      "result": {
+        "marketId": 157548488942231,
+        "marketPda": "HMN86GTepwSTUdLfKTUvk93V9hpph562EXHeoo6vPYqu",
+        "signature": "2gm2NVAK1sjfbM191Qj1xwtjbXwJHuwpKpvKzz2GpGG39TFxccetQc91RLqD24GgrkM3Ux2yRoahcjNjH81dAF42"
+      }
+    },
+    "create:PREC:6158731:20261214-20261216:GE50:T1797224399": {
+      "at": "2026-11-10T21:00:44.522Z",
+      "marketId": 41494029544806,
+      "marketPda": "4WyAAMzRd1JttRPRg3B3ANA3eBitHrQ7GLBecLfTRZZ2",
+      "spec": {
+        "city": "Toronto",
+        "station": "6158731",
+        "stationName": "TORONTO INTL A",
+        "timeZone": "America/Toronto",
+        "start": "2026-12-14",
+        "end": "2026-12-16",
+        "thresholdTenths": 50,
+        "endTs": 1797224399,
+        "source": "eccc"
+      },
+      "seedMusdc": 400,
+      "result": {
+        "marketId": 41494029544806,
+        "marketPda": "4WyAAMzRd1JttRPRg3B3ANA3eBitHrQ7GLBecLfTRZZ2",
+        "signature": "65Ec4mhSBTTR9AFhs92oZX9zW74cwEpQYbeJRhEAzkrKGRdcGSXS9up6tg2sjFbMaqCSFSLHTMsa6TjHbLQAUGTc"
+      }
+    },
+    "create:PREC:7025251:20261214-20261216:GE50:T1797224399": {
+      "at": "2026-11-10T21:00:45.796Z",
+      "marketId": 152317046536404,
+      "marketPda": "6K2UfcZgq939GAx38ipW32CHMnxgrUMU8LC1j9bTM9GB",
+      "spec": {
+        "city": "Montreal",
+        "station": "7025251",
+        "stationName": "MONTREAL INTL A",
+        "timeZone": "America/Toronto",
+        "start": "2026-12-14",
+        "end": "2026-12-16",
+        "thresholdTenths": 50,
+        "endTs": 1797224399,
+        "source": "eccc"
+      },
+      "seedMusdc": 400,
+      "result": {
+        "marketId": 152317046536404,
+        "marketPda": "6K2UfcZgq939GAx38ipW32CHMnxgrUMU8LC1j9bTM9GB",
+        "signature": "32AruH5rRqGx9ojw9UrysuRS4JhEaVBWMhYG2DidyAhrzKjJWWNDBzSQymEsK3YEwZ7sQh4QUoRMYnEH1FS2JWmZ"
+      }
+    },
+    "create:PREC:6158731:20261214-20261216:GE250:T1797224399": {
+      "at": "2026-11-10T21:00:46.796Z",
+      "marketId": 58586403751464,
+      "marketPda": "8tP3cu181Sn8kkTEXhv4jkXMqYkhnrTGaqHVX4rqzyY7",
+      "spec": {
+        "city": "Toronto",
+        "station": "6158731",
+        "stationName": "TORONTO INTL A",
+        "timeZone": "America/Toronto",
+        "start": "2026-12-14",
+        "end": "2026-12-16",
+        "thresholdTenths": 250,
+        "endTs": 1797224399,
+        "source": "eccc"
+      },
+      "seedMusdc": 400,
+      "result": {
+        "marketId": 58586403751464,
+        "marketPda": "8tP3cu181Sn8kkTEXhv4jkXMqYkhnrTGaqHVX4rqzyY7",
+        "signature": "4PVxhXmVwfZb4QKdyuDRGEjzXyN13QguQcWh1NrjyKnSwgzBH93dHj3fZYzQjXCW7gET3riYpze9iu14Ge9rX3Yt"
+      }
     }
   },
   "transactions": [
@@ -279,6 +392,46 @@
       "signature": "3721yDTbVPdSZ49k6ELgLcDKZaJDPCdQU8yXGCRLUqKKDMb5PF5NVzsj8PAVYk5iPVzxMs4daYULxMWauB995uPN",
       "explorer": "https://explorer.solana.com/tx/3721yDTbVPdSZ49k6ELgLcDKZaJDPCdQU8yXGCRLUqKKDMb5PF5NVzsj8PAVYk5iPVzxMs4daYULxMWauB995uPN?cluster=devnet",
       "verifiedSeedRaw": "400000000"
+    },
+    {
+      "label": "fund:canada:script-trader-faucet",
+      "signature": "3XUFxcZrYNikyp8D8g55emFgNBfjpemX94DRfzwENBVhSY4dLeavjs86HwDys1VfvBctFXetwryPwm88hewefdMq",
+      "explorer": "https://explorer.solana.com/tx/3XUFxcZrYNikyp8D8g55emFgNBfjpemX94DRfzwENBVhSY4dLeavjs86HwDys1VfvBctFXetwryPwm88hewefdMq?cluster=devnet"
+    },
+    {
+      "label": "fund:canada:script-trader-transfer",
+      "signature": "4AGMVYfKQk4TcmxQHh8iXu9r3Uz4GXxRsxJKAnmpvkMy5yVTcEX4sQcfW3u16CH1dSoRFJqhF2NNvvWLio1uiuvD",
+      "explorer": "https://explorer.solana.com/tx/4AGMVYfKQk4TcmxQHh8iXu9r3Uz4GXxRsxJKAnmpvkMy5yVTcEX4sQcfW3u16CH1dSoRFJqhF2NNvvWLio1uiuvD?cluster=devnet"
+    },
+    {
+      "label": "create:PREC:6158731:20261214-20261216:GE100:T1797224399",
+      "signature": "5ko9akXh4gmZzXUbMF87krpdA3T3MRZUX9pcePaof9pvwkyT3qEqjX34LwzyCfNADWEqyeYRPGv8mL9mfAQia97v",
+      "explorer": "https://explorer.solana.com/tx/5ko9akXh4gmZzXUbMF87krpdA3T3MRZUX9pcePaof9pvwkyT3qEqjX34LwzyCfNADWEqyeYRPGv8mL9mfAQia97v?cluster=devnet"
+    },
+    {
+      "label": "create:PREC:7025251:20261214-20261216:GE100:T1797224399",
+      "signature": "2gm2NVAK1sjfbM191Qj1xwtjbXwJHuwpKpvKzz2GpGG39TFxccetQc91RLqD24GgrkM3Ux2yRoahcjNjH81dAF42",
+      "explorer": "https://explorer.solana.com/tx/2gm2NVAK1sjfbM191Qj1xwtjbXwJHuwpKpvKzz2GpGG39TFxccetQc91RLqD24GgrkM3Ux2yRoahcjNjH81dAF42?cluster=devnet"
+    },
+    {
+      "label": "fund:canada:creator-faucet",
+      "signature": "4Z1M5w9Q9J1L8cwibxXs32mywq1qMBtVQoK6fxnTVDWzK7C6khXBpdSHsA8Gent5tQWuah6RrnZg5tcw1vxXGcnE",
+      "explorer": "https://explorer.solana.com/tx/4Z1M5w9Q9J1L8cwibxXs32mywq1qMBtVQoK6fxnTVDWzK7C6khXBpdSHsA8Gent5tQWuah6RrnZg5tcw1vxXGcnE?cluster=devnet"
+    },
+    {
+      "label": "create:PREC:6158731:20261214-20261216:GE50:T1797224399",
+      "signature": "65Ec4mhSBTTR9AFhs92oZX9zW74cwEpQYbeJRhEAzkrKGRdcGSXS9up6tg2sjFbMaqCSFSLHTMsa6TjHbLQAUGTc",
+      "explorer": "https://explorer.solana.com/tx/65Ec4mhSBTTR9AFhs92oZX9zW74cwEpQYbeJRhEAzkrKGRdcGSXS9up6tg2sjFbMaqCSFSLHTMsa6TjHbLQAUGTc?cluster=devnet"
+    },
+    {
+      "label": "create:PREC:7025251:20261214-20261216:GE50:T1797224399",
+      "signature": "32AruH5rRqGx9ojw9UrysuRS4JhEaVBWMhYG2DidyAhrzKjJWWNDBzSQymEsK3YEwZ7sQh4QUoRMYnEH1FS2JWmZ",
+      "explorer": "https://explorer.solana.com/tx/32AruH5rRqGx9ojw9UrysuRS4JhEaVBWMhYG2DidyAhrzKjJWWNDBzSQymEsK3YEwZ7sQh4QUoRMYnEH1FS2JWmZ?cluster=devnet"
+    },
+    {
+      "label": "create:PREC:6158731:20261214-20261216:GE250:T1797224399",
+      "signature": "4PVxhXmVwfZb4QKdyuDRGEjzXyN13QguQcWh1NrjyKnSwgzBH93dHj3fZYzQjXCW7gET3riYpze9iu14Ge9rX3Yt",
+      "explorer": "https://explorer.solana.com/tx/4PVxhXmVwfZb4QKdyuDRGEjzXyN13QguQcWh1NrjyKnSwgzBH93dHj3fZYzQjXCW7gET3riYpze9iu14Ge9rX3Yt?cluster=devnet"
     }
   ],
   "receipts": [
