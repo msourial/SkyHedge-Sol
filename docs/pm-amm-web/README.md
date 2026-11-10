@@ -4,7 +4,7 @@ Branch `pm-amm-web`, draft PR #31 into `web-app-and-landing`. Vercel preview dep
 
 ## Status
 
-M1 shared backend is complete and reviewed. M2 web routes/UI is complete and reviewed. M3 burner onboarding is complete and reviewed. M4 audit and final verification are complete, with the remaining advisories documented below. M5 public activity is complete and reviewed; M6 created five mid-December markets within available funds and completed fresh-context review.
+M1 shared backend is complete and reviewed. M2 web routes/UI is complete and reviewed. M3 burner onboarding is complete and reviewed. M4 audit and final verification are complete, with the remaining advisories documented below. M5 public activity is complete and reviewed; M6 created five mid-December US markets within available funds and completed fresh-context review. M7 adds the Environment Canada resolver, tests and verification copy for planned Montreal and Toronto markets; those six 400 mUSDC markets are not on-chain yet because seed funds were short.
 
 ## Architecture and operation
 
@@ -20,7 +20,7 @@ Two upcoming markets use Central Park and O'Hare, trading until December 7, 2026
 
 The chosen seed is 400 mUSDC per upcoming market, within measured creator funds. See [computed liquidity table](liquidity.md). A 10 mUSDC typical trade is an assumption for sizing. The 50 mUSDC historical demo trades already-known weather solely to test mechanics.
 
-A single creator key resolves using NOAA. NOAA may revise data; there is no dispute window or on-chain verification of weather. Complete unflagged daily records are required, with precipitation summed in integer tenths of mm and an inclusive threshold. See [missing-data behavior](no-data-plan.md): these binary markets do not offer a void/refund path. Funds may remain waiting indefinitely. Prices move with trades and time; seed prices are not weather forecasts. Position mark values are estimates, not guaranteed sale proceeds.
+A single creator key resolves using NOAA for United States markets and Environment Canada daily climate data (total precipitation, rain plus melted snow) for planned Montreal and Toronto markets. See [Environment Canada settlement](eccc.md). NOAA markets are unchanged. NOAA may revise data; there is no dispute window or on-chain verification of weather. Complete unflagged daily records are required, with precipitation summed in integer tenths of mm and an inclusive threshold. See [missing-data behavior](no-data-plan.md): these binary markets do not offer a void/refund path. Funds may remain waiting indefinitely. Prices move with trades and time; seed prices are not weather forecasts. Position mark values are estimates, not guaranteed sale proceeds.
 
 All transaction signatures and devnet Explorer URLs are recorded in [run log](run.devnet.json); the catalog records each creation signature. Finalized token receipts are added by `verify.ts`.
 

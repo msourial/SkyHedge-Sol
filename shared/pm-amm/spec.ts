@@ -8,6 +8,8 @@ export interface MarketSpec {
   thresholdTenths: number;
   endTs: number;
   historicalDemo?: boolean;
+  /** Defaults to NOAA GHCND daily precipitation when omitted. */
+  source?: 'noaa' | 'eccc';
 }
 export function dateMs(date: string): number {
   const ms = Date.parse(`${date}T00:00:00Z`);
@@ -33,7 +35,14 @@ export function localMidnight(date: string, timeZone: string): number {
 }
 export function validateSpec(spec: MarketSpec, now?: number): void {
   days(spec);
-  if (!spec.city.trim() || !spec.stationName.trim() || !/^[A-Z0-9]{11}$/.test(spec.station)) throw Error('Invalid station');
+  if (!spec.city.trim() || !spec.stationName.trim()) throw Error('Invalid station');
+  if (spec.source === 'eccc') {
+    if (!/^[A-Z0-9]{7,11}$/.test(spec.station)) throw Error('Invalid station');
+  } else if (spec.source !== undefined && spec.source !== 'noaa') {
+    throw Error('Invalid settlement source');
+  } else if (!/^[A-Z0-9]{11}$/.test(spec.station)) {
+    throw Error('Invalid station');
+  }
   if (!Number.isSafeInteger(spec.thresholdTenths) || spec.thresholdTenths < 0) throw Error('Invalid threshold');
   if (!Number.isSafeInteger(spec.endTs)) throw Error('Invalid trading end');
   const start = localMidnight(spec.start, spec.timeZone);
@@ -44,7 +53,8 @@ export function validateSpec(spec: MarketSpec, now?: number): void {
 /** Compact, reversible strike identity; human labels live in the catalog. */
 export function marketName(spec: MarketSpec): string {
   days(spec);
-  const name = `${spec.historicalDemo ? 'DEMO' : 'RAIN'}:${spec.station}:${spec.start.replaceAll('-', '')}-${spec.end.replaceAll('-', '')}:GE${spec.thresholdTenths}:T${spec.endTs}`;
+  const kind = spec.historicalDemo ? 'DEMO' : spec.source === 'eccc' ? 'PREC' : 'RAIN';
+  const name = `${kind}:${spec.station}:${spec.start.replaceAll('-', '')}-${spec.end.replaceAll('-', '')}:GE${spec.thresholdTenths}:T${spec.endTs}`;
   if (new TextEncoder().encode(name).length > 64) throw Error('Market name exceeds 64 bytes');
   return name;
 }

@@ -86,3 +86,13 @@ Reviewer: `m6_review`, fresh-context read-only EGM implementation-readiness/code
 Creation sends all succeeded without endTs drift or ambiguous attempts. The explicit SDK initialization endTs matches each named strike exactly. The creator's single 1 SOL CLI airdrop was refused and not repeated; one official faucet request provided 1000 mUSDC/0 SOL. A single combined script-trader transfer supplied 1000 existing mUSDC and 0.13 SOL. No new funding wallet or repeat faucet request was used. Five 400 mUSDC markets were created and the script stopped before a sixth send for insufficient mUSDC. Exact balances and labeled SOL budget estimates are in mid-december.md. Original three catalog entries are unchanged.
 
 M6 final validation: `npm run check`, 18 pm-AMM unit tests, 21 web tests (rebuilt static site), 80 line tests, 328 server tests and 3 Phantom tests pass. Site build, original-catalog equality and whitespace checks pass. Final paced finalized-history scan at 2026-11-10T20:03:45.774Z reaches all eight creation receipts and measures zero public traders/trades/volume/fees per market and in total. No mobile/Anchor/API/server source change, private-key output, extra funding wallet, deployment, push or PR action. M6 complete within documented funds limitation.
+
+
+## M7 Environment Canada path (November 10, 2026)
+
+Owner decided Montreal and Toronto settle on Environment Canada daily total precipitation, not NOAA. Codex had already committed the mid-December US markets and then hit a usage limit, so this milestone was implemented against the existing NOAA evaluator and evidence shape, then checked with `npm run check`, `npm run test:pmamm` and `npm run test:web`.
+
+- Stations measured from the official climate-stations and climate-daily collections: Toronto Intl A `6158731` and Montreal Intl A `7025251` (YUL successor to retired `7025250`). Freshness at 2026-11-10T20:08:06Z was complete through 2026-11-09 for both.
+- Evaluator is strict: one record per day, inclusive tenths, refuse missing/flagged/foreign/incomplete values. Trace (`T`) counts as 0 mm only when the amount is zero or empty.
+- UI How to verify and trust copy name Environment Canada only when `spec.source === "eccc"`. NOAA markets keep NOAA copy and links.
+- Markets were not created: remaining creator funds were 189.720997 mUSDC, below a 400 mUSDC seed. Planned specs are in `shared/pm-amm/markets.canada.json`.

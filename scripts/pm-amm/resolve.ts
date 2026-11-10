@@ -2,6 +2,8 @@ import {createHash} from 'node:crypto';
 import fs from 'node:fs';
 import {observationEnd, days, noaaUrl, type MarketSpec} from '../../shared/pm-amm/spec';
 import {evaluate, type Evidence} from '../../shared/pm-amm/noaa';
+import {ecccUrl, evaluateEccc} from '../../shared/pm-amm/eccc';
+import {settlementSource} from '../../shared/pm-amm/copy';
 import {checkedMarket, connection, marketArg, sendOnce, saveJson, readJson, log} from './operator';
 const address = marketArg();
 const {entry, sdk, market, state} = await checkedMarket(address);
@@ -23,11 +25,13 @@ if (recorded) {
 } else if (state.resolved) {
   throw Error('Already resolved without local signature; reconcile manually');
 } else {
-  const url = noaaUrl(spec);
+  const eccc = settlementSource(spec) === 'eccc';
+  const url = eccc ? ecccUrl(spec) : noaaUrl(spec);
   const response = await fetch(url, {signal:AbortSignal.timeout(30000)});
-  if (!response.ok) throw Error(`NOAA HTTP ${response.status}`);
+  if (!response.ok) throw Error(`${eccc ? 'Environment Canada' : 'NOAA'} HTTP ${response.status}`);
   const raw = await response.text();
-  const evidence: Evidence = {market:address, spec, url, raw, fetchedAt:new Date().toISOString(), sha256:createHash('sha256').update(raw).digest('hex'), evaluation:evaluate(spec, JSON.parse(raw)), resolveTx:null};
+  const evaluation = eccc ? evaluateEccc(spec, JSON.parse(raw)) : evaluate(spec, JSON.parse(raw));
+  const evidence: Evidence = {market:address, spec, url, raw, fetchedAt:new Date().toISOString(), sha256:createHash('sha256').update(raw).digest('hex'), evaluation, resolveTx:null};
   console.log(JSON.stringify(evidence.evaluation));
   if (process.argv.includes('--send')) {
     // Snapshot is written once before the attempt marker/send. Reruns with a marker never replace it.

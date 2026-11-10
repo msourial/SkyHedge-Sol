@@ -1,0 +1,16 @@
+{
+  "status": "planned-uncreated",
+  "note": "Six Environment Canada total-precipitation markets for Toronto Intl A (6158731) and Montreal Intl A (7025251). Not on-chain; creator funds were short of a 400 mUSDC seed after the mid-December US creations. See docs/pm-amm-web/eccc.md.",
+  "seedMusdc": 400,
+  "measuredBalancesAt": "2026-11-10T20:00:40.058Z",
+  "creatorMusdc": "189.720997",
+  "creatorSol": "0.01151556",
+  "specs": [
+    {"city":"Toronto","station":"6158731","stationName":"TORONTO INTL A","timeZone":"America/Toronto","start":"2026-12-14","end":"2026-12-16","thresholdTenths":50,"endTs":1797224399,"source":"eccc"},
+    {"city":"Toronto","station":"6158731","stationName":"TORONTO INTL A","timeZone":"America/Toronto","start":"2026-12-14","end":"2026-12-16","thresholdTenths":100,"endTs":1797224399,"source":"eccc"},
+    {"city":"Toronto","station":"6158731","stationName":"TORONTO INTL A","timeZone":"America/Toronto","start":"2026-12-14","end":"2026-12-16","thresholdTenths":250,"endTs":1797224399,"source":"eccc"},
+    {"city":"Montreal","station":"7025251","stationName":"MONTREAL INTL A","timeZone":"America/Toronto","start":"2026-12-14","end":"2026-12-16","thresholdTenths":50,"endTs":1797224399,"source":"eccc"},
+    {"city":"Montreal","station":"7025251","stationName":"MONTREAL INTL A","timeZone":"America/Toronto","start":"2026-12-14","end":"2026-12-16","thresholdTenths":100,"endTs":1797224399,"source":"eccc"},
+    {"city":"Montreal","station":"7025251","stationName":"MONTREAL INTL A","timeZone":"America/Toronto","start":"2026-12-14","end":"2026-12-16","thresholdTenths":250,"endTs":1797224399,"source":"eccc"}
+  ]
+}
