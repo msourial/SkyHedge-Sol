@@ -32,3 +32,15 @@ Reviewer: `m2_review`, isolated conversation, read-only EGM implementation-readi
 Author routing check also found Express development/production fallbacks still targeting Expo; both now use the Vite client. Existing API registration remains ahead of static fallbacks. No native/Anchor/API files changed.
 
 M2 validation: typecheck and Vite site build pass; all 13 Playwright web tests pass. RPC fixtures encode valid SDK account bytes; test numbers remain test-only. The suite exercises YES/NO review, changed-reserve rereview, Phantom signing rejection, successful mocked buy/Collect and devnet receipt links, pending-action persistence through polling, wallet disconnect balance clearing, catalog/evidence/deep links and narrow layout. Mocked success does not establish real extension signing; M1 separately proves shared-code live devnet execution.
+
+## M3 fresh-context review
+
+Reviewer: `m3_review`, isolated read-only EGM implementation-readiness/code pass. Read all wallet/UI/fixture/dependency changes and plan/guide. Confirmed both official kit bodies exactly match fetched originals after attribution headers.
+
+- Major: storage access outside initial wallet setup could throw, including Phantom pending-marker reads, export and replacement. Guarded each path. If persistence is unavailable Phantom can still connect/read; sends require a persisted marker and refuse safely. Replacement now saves an imported fresh key atomically before updating the active signer, preserving the old stored key when saving fails.
+- Major: missing replacement/storage/positive-balance/signer-switch tests. Added explicit replacement and cancellation, denied-storage plus Phantom reads, positive balance after refused top-up, and review/balance clearing on signer switch.
+- Nit: guide status still said M3 pending. Updated at completion.
+
+Author testing found newly funded balances could wait for the next polling interval. Funding readiness now triggers an immediate shared balance refresh. The wrapper reads actual ATA bytes and SOL balances without treating RPC failures as an absent account. Faucet attempts are persisted before requests; rerender/reload does not repeat refusals.
+
+M3 validation: typecheck and site build pass; all 17 web tests pass in an isolated run. Both official source bodies compare exactly with retrieved originals. No creator key enters browser code, and no secret material is logged or committed.

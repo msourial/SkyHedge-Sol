@@ -4,7 +4,7 @@ Work is local on `pm-amm-web`. No deployment or push is authorized. Native code 
 
 ## Status
 
-M1 shared backend is complete and reviewed. M2 web routes/UI is complete and reviewed. M3 burner onboarding and M4 audit/final verification remain pending.
+M1 shared backend is complete and reviewed. M2 web routes/UI is complete and reviewed. M3 burner onboarding is complete and reviewed. M4 audit/final verification remains pending.
 
 ## Architecture and operation
 
@@ -31,3 +31,9 @@ Measured demo: October 1–2 NOAA total 0.0 mm against ≥ 1.0 mm, resolved NO. 
 `npm run build:site` builds only the Vite React client into `dist`; `node --import tsx scripts/web-preview.ts` serves it locally on port 5002. `/app` and all subroutes use that client, including refresh/deep links. `/preview` redirects to `/app`. Landing `/` stays in Vite. `npm run build` builds the same React app into `dist/public` plus the Express server; development and production Express fallbacks also use the React index. Expo exports are excluded from both builds and Vercel installation. Android remains on its existing code and server APIs.
 
 Connect Phantom on devnet, select a market, choose Yes or No and enter mUSDC. Review shows fee, estimated shares and minimum output. Before sending, the app re-fetches state; changed reserves or a quote below the reviewed minimum require another review. Signing broadcasts through a hardcoded devnet connection. Market and token balances poll every 15 seconds while the tab is visible and refresh after confirmed sends. Positions show associated token balances and estimated marks; settled winners can Collect. Settlement details link the exact NOAA query, daily values, total, threshold, outcome and devnet resolution/Collect receipts.
+
+## Demo wallet
+
+The official PREDICT `burner.ts` and `useBurnerWallet.ts` are preserved verbatim after source attribution headers under `client/src/lib/pm-burner/`. The app uses the kit's wallet, funding, export/reset and signing functions through `session.ts`. This guarded React wrapper replaces the upstream hook lifecycle so initial RPC/storage failures are handled and funding attempts persist before requests; the upstream hook remains available unchanged for comparison. Vite supplies Buffer. `bs58` is pinned at root.
+
+A disposable browser wallet loads automatically and requests devnet funds when low. One attempt per wallet per hour is enforced locally as well as by the faucet; reloads cannot loop on refusals. RPC failure is reported, rather than treated as an unfunded wallet. Existing positive balances can still trade after a refused top-up. Use Export key explicitly to save access, and Hide key afterward. New wallet requires a separate loss warning and confirmation; do not use it to bypass limits. Browser storage is for devnet play money only. Phantom remains selectable; switching signers clears trade review and wallet-specific balances. Creator/resolver keys never enter this flow.

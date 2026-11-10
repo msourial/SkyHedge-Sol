@@ -1,8 +1,11 @@
+import {AccountLayout} from '@solana/spl-token';
 import {test,expect,type Page} from '@playwright/test';
-import {owner,rpcAccounts} from './pm-fixture';
+import {owner,rpcAccounts,fundMockWallet} from './pm-fixture';
 export async function mockChain(page:Page) {
   const accounts=await rpcAccounts();
+ await page.routeWebSocket('wss://api.devnet.solana.com/**',ws=>{ws.onMessage(data=>{const req=JSON.parse(String(data));ws.send(JSON.stringify({jsonrpc:'2.0',id:req.id,result:1}));if(req.method==='signatureSubscribe')ws.send(JSON.stringify({jsonrpc:'2.0',method:'signatureNotification',params:{subscription:1,result:{context:{slot:123},value:{err:null}}}}));});});
   await page.clock.install({time:new Date('2026-11-11T00:00:00Z')});
+  await page.route('https://pm-amm-devnet.vercel.app/api/faucet',route=>route.fulfill({status:429,json:{error:'Faucet limit reached'}}));
   await page.route('https://api.devnet.solana.com/**',async route=> {
     const {id,method,params}=route.request().postDataJSON();
     let result:any;
@@ -12,11 +15,12 @@ export async function mockChain(page:Page) {
     else if(method==='getMultipleAccounts')result={context:{slot:123},value:params[0].map((a:string)=>accounts[a]??null)};
     else if(method==='getAccountInfo')result={context:{slot:123},value:accounts[params[0]]??null};
     else if(method==='getBalance')result={context:{slot:123},value:100000000};
-    else if(method==='getTokenAccountBalance')result={context:{slot:123},value:{amount:'1000000000',decimals:6,uiAmount:1000,uiAmountString:'1000'}};
+    else if(method==='getTokenAccountBalance'&&!accounts[params[0]])return route.fulfill({json:{jsonrpc:'2.0',id,error:{code:-32602,message:'No token account'}}});
+    else if(method==='getTokenAccountBalance'){const raw=AccountLayout.decode(Buffer.from(accounts[params[0]].data[0],'base64')).amount;result={context:{slot:123},value:{amount:raw.toString(),decimals:6,uiAmount:Number(raw)/1e6,uiAmountString:String(Number(raw)/1e6)}};}
     else return route.fulfill({json:{jsonrpc:'2.0',id,error:{code:-32000,message:'Mock RPC unavailable'}}});
     return route.fulfill({json:{jsonrpc:'2.0',id,result}});
   });
-  return {change:async()=>Object.assign(accounts,await rpcAccounts(undefined,5))};
+  return {accounts,change:async()=>Object.assign(accounts,await rpcAccounts(undefined,5))};
 }
 test('landing keeps app and native download links',async({page})=>{
  await page.goto('/');await expect(page.getByRole('link',{name:'Open app'})).toHaveAttribute('href','/app');await expect(page.getByRole('link',{name:'Download APK'})).toHaveAttribute('href','https://github.com/msourial/SkyHedge-Sol/releases');
@@ -33,8 +37,9 @@ test('app deep links, real catalog strikes, verification and mobile layout',asyn
  expect(errors).toEqual([]);
 });
 test('unavailable chain does not invent a price or allow a quote',async({page})=>{
- await page.route('https://api.devnet.solana.com/**',route=>route.fulfill({status:503,body:'Unavailable'}));await page.goto('/app/protect');
- await expect(page.getByRole('heading',{name:'Trade the weather.'})).toBeVisible();await expect(page.getByRole('alert')).toBeVisible();await expect(page.getByRole('button',{name:'Review trade'})).toBeDisabled();
+ await page.route('https://pm-amm-devnet.vercel.app/api/faucet',route=>route.fulfill({status:429,json:{error:'Faucet limit reached'}}));
+  await page.route('https://api.devnet.solana.com/**',route=>route.fulfill({status:503,body:'Unavailable'}));await page.goto('/app/protect');
+ await expect(page.getByRole('heading',{name:'Trade the weather.'})).toBeVisible();await expect(page.getByRole('alert').filter({hasText:'503'}).first()).toBeVisible();await expect(page.getByRole('button',{name:'Review trade'})).toBeDisabled();
 });
 
 async function connectPhantom(page:Page) {
@@ -45,7 +50,7 @@ async function connectPhantom(page:Page) {
  },{address:owner.toBase58(),bytes:Array.from(owner.toBytes())});
 }
 test('Phantom review shows fee/minimum, rejection and token positions',async({page})=> {
- const chain=await mockChain(page);await connectPhantom(page);await page.goto('/app');
+ const chain=await mockChain(page);await connectPhantom(page);await page.goto('/app');await page.getByRole('button',{name:'Use Phantom',exact:true}).click();
  await page.getByRole('button',{name:'Connect wallet',exact:true}).click();
  await page.getByRole('button',{name:/Phantom/}).last().click();
  await page.locator('.wallet-adapter-button-trigger').click();
@@ -60,7 +65,7 @@ test('Phantom review shows fee/minimum, rejection and token positions',async({pa
 });
 
 test('uncertain action survives polling and reload until acknowledged',async({page})=> {
- await mockChain(page);await connectPhantom(page);await page.goto('/app');await page.getByRole('button',{name:'Connect wallet',exact:true}).click();await page.getByRole('button',{name:/Phantom/}).last().click();await page.locator('.wallet-adapter-button-trigger').click();await expect(page.getByText('1,000 mUSDC available')).toBeVisible();
+ await mockChain(page);await connectPhantom(page);await page.goto('/app');await page.getByRole('button',{name:'Use Phantom',exact:true}).click();await page.getByRole('button',{name:'Connect wallet',exact:true}).click();await page.getByRole('button',{name:/Phantom/}).last().click();await page.locator('.wallet-adapter-button-trigger').click();await expect(page.getByText('1,000 mUSDC available')).toBeVisible();
  await page.evaluate(()=>{(window as any).signMode='uncertain';});await page.getByLabel('Amount · mUSDC').fill('5');await page.getByRole('button',{name:'Review trade',exact:true}).click();await page.getByRole('button',{name:'Confirm trade',exact:true}).click();
  await expect(page.getByText(/A previous wallet action needs checking/)).toBeVisible();await page.getByRole('button',{name:'Refresh markets'}).click();await expect(page.getByText(/A previous wallet action needs checking/)).toBeVisible();
  expect(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('skyhedge-pm-pending:')))).toBe(true);
@@ -68,9 +73,41 @@ test('uncertain action survives polling and reload until acknowledged',async({pa
 });
 test('successful SDK buy and Collect show devnet receipts and refresh',async({page})=> {
  await mockChain(page);await connectPhantom(page);
- await page.routeWebSocket('wss://api.devnet.solana.com/**',ws=>{ws.onMessage(data=>{const req=JSON.parse(String(data));ws.send(JSON.stringify({jsonrpc:'2.0',id:req.id,result:1}));if(req.method==='signatureSubscribe')ws.send(JSON.stringify({jsonrpc:'2.0',method:'signatureNotification',params:{subscription:1,result:{context:{slot:123},value:{err:null}}}}));});});
- await page.goto('/app');await page.getByRole('button',{name:'Connect wallet',exact:true}).click();await page.getByRole('button',{name:/Phantom/}).last().click();await page.locator('.wallet-adapter-button-trigger').click();await expect(page.getByText('1,000 mUSDC available')).toBeVisible();await page.evaluate(()=>{(window as any).signMode='success';});
+
+ await page.goto('/app');await page.getByRole('button',{name:'Use Phantom',exact:true}).click();await page.getByRole('button',{name:'Connect wallet',exact:true}).click();await page.getByRole('button',{name:/Phantom/}).last().click();await page.locator('.wallet-adapter-button-trigger').click();await expect(page.getByText('1,000 mUSDC available')).toBeVisible();await page.evaluate(()=>{(window as any).signMode='success';});
  await page.getByLabel('Amount · mUSDC').fill('5');await page.getByRole('button',{name:'Review trade',exact:true}).click();await page.getByRole('button',{name:'Confirm trade',exact:true}).click();await expect(page.getByRole('status')).toContainText('Trade confirmed');
  await expect(page.getByRole('link',{name:'View transaction ↗'})).toHaveAttribute('href',/cluster=devnet/);
  await page.getByRole('link',{name:'Positions',exact:true}).click();await page.getByRole('button',{name:'Collect 5 mUSDC'}).click();await expect(page.getByRole('status')).toContainText('Collected');
+});
+
+test('burner rate limit is readable, requested once, and wallet export/reset is explicit',async({page})=> {
+ await mockChain(page);let requests=0;
+ await page.route('https://pm-amm-devnet.vercel.app/api/faucet',route=>{requests++;return route.fulfill({status:429,headers:{'Retry-After':'3600'},json:{error:'Faucet limit reached'}});});
+ await page.goto('/app');await expect(page.getByRole('alert').filter({hasText:'Faucet limit reached'})).toBeVisible();expect(requests).toBe(1);
+ await page.getByRole('button',{name:'Refresh markets'}).click();expect(requests).toBe(1);
+ await page.reload();await expect(page.getByRole('alert').filter({hasText:'already requested'})).toBeVisible();expect(requests).toBe(1);
+ await expect(page.getByLabel('Secret devnet key', {exact:false})).toHaveCount(0);
+ await page.getByRole('button',{name:'Export key',exact:true}).click();await expect(page.getByLabel('Secret devnet key', {exact:false})).toBeVisible();await page.getByRole('button',{name:'Hide key'}).click();
+ await page.getByRole('button',{name:'New wallet',exact:true}).click();await expect(page.getByText(/Replacing this wallet removes/)).toBeVisible();await page.getByRole('button',{name:'Keep wallet'}).click();expect(requests).toBe(1);
+ await page.getByRole('button',{name:'New wallet',exact:true}).click();await page.getByRole('button',{name:'Replace wallet',exact:true}).click();await expect.poll(()=>requests).toBe(2);
+});
+
+test('official burner faucet funds once and enables shared-code quote review',async({page})=> {
+ const chain=await mockChain(page);let requests=0;
+ await page.route('https://pm-amm-devnet.vercel.app/api/faucet',route=>{requests++;fundMockWallet(chain.accounts,route.request().postDataJSON().wallet);return route.fulfill({json:{ok:true,signature:'1'.repeat(64),amount:1000,sol:0.02}});});
+ await page.goto('/app');await expect(page.getByText('1,000 mUSDC available')).toBeVisible();expect(requests).toBe(1);
+ await page.getByLabel('Amount · mUSDC').fill('5');await page.getByRole('button',{name:'Review trade',exact:true}).click();await expect(page.getByRole('heading',{name:'Review your trade'})).toBeVisible();
+});
+
+test('storage denial leaves markets and Phantom readable without exposing a key',async({page})=> {
+ await mockChain(page);await connectPhantom(page);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>{Storage.prototype.getItem=()=>{throw Error('Storage denied');};Storage.prototype.setItem=()=>{throw Error('Storage denied');};});
+ await page.goto('/app');await expect(page.getByRole('alert').filter({hasText:'Browser storage is unavailable'}).first()).toBeVisible();await page.getByRole('button',{name:'Use Phantom',exact:true}).click();
+ await page.getByRole('button',{name:'Connect wallet',exact:true}).click();await page.getByRole('button',{name:/Phantom/}).last().click();await page.locator('.wallet-adapter-button-trigger').click();await expect(page.getByText('1,000 mUSDC available')).toBeVisible();expect(errors).toEqual([]);
+});
+test('positive burner funds survive a refused top-up; signer switch clears review and positions',async({page})=> {
+ const chain=await mockChain(page);await connectPhantom(page);
+ await page.route('https://pm-amm-devnet.vercel.app/api/faucet',route=>{fundMockWallet(chain.accounts,route.request().postDataJSON().wallet,5000000n);return route.fulfill({status:429,json:{error:'Wait for faucet'}});});
+ await page.goto('/app');await expect(page.getByText('5 mUSDC available')).toBeVisible();await expect(page.getByRole('alert').filter({hasText:'Wait for faucet'})).toBeVisible();
+ await page.getByLabel('Amount · mUSDC').fill('1');await page.getByRole('button',{name:'Review trade',exact:true}).click();await expect(page.getByRole('heading',{name:'Review your trade'})).toBeVisible();await page.getByRole('button',{name:'Use Phantom',exact:true}).click();await expect(page.getByRole('heading',{name:'Review your trade'})).toHaveCount(0);await expect(page.getByText('5 mUSDC available')).toHaveCount(0);
 });

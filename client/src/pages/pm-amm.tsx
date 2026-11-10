@@ -7,6 +7,7 @@ import {AnchorProvider} from '@anchor-lang/core';
 import {PmAmmClient, type MarketAccount, type SwapDirection} from '@pm-amm/sdk';
 import {PublicKey} from '@solana/web3.js';
 import {CloudRain, ArrowUpRight, CheckCircle2, RefreshCw, Wallet, ChevronRight} from 'lucide-react';
+import {useBurnerSession} from '@/lib/pm-burner/session';
 import {WalletButton, WalletStatusProvider, useWalletStatus} from '@/components/wallet-button';
 import {catalog, connection, evidence, explorer, loadBalances, loadMarkets, units, settledRedemptions} from '@/lib/pm-amm';
 import {quote, rawAmount, marketState, positionValue, payout, quoteStateKey, RPC, PROGRAM, MINT} from '@shared/pm-amm/trading';
@@ -24,14 +25,20 @@ export default function PmAmm() {
 type Review={address:string;direction:SwapDirection;amount:number;q:ReturnType<typeof quote>;owner:string;stateKey:string};
 function Trading() {
   const wallet=useWallet();
-  const sdk=useMemo(()=>wallet.publicKey && wallet.signTransaction && wallet.signAllTransactions ? PmAmmClient.fromProvider(new AnchorProvider(connection,{publicKey:wallet.publicKey,signTransaction:wallet.signTransaction,signAllTransactions:wallet.signAllTransactions},{commitment:'confirmed'}),new PublicKey(PROGRAM),new PublicKey(MINT)):null,[wallet.publicKey,wallet.signTransaction,wallet.signAllTransactions]);
-  const owner=wallet.publicKey;
+  const burner=useBurnerSession();
+  const [walletMode,setWalletMode]=useState<'burner'|'phantom'>('burner');
+  const [exported,setExported]=useState<string|null>(null),[resetReview,setResetReview]=useState(false);
+  const burnerActive=walletMode==='burner';
+  const phantomSdk=useMemo(()=>wallet.publicKey && wallet.signTransaction && wallet.signAllTransactions ? PmAmmClient.fromProvider(new AnchorProvider(connection,{publicKey:wallet.publicKey,signTransaction:wallet.signTransaction,signAllTransactions:wallet.signAllTransactions},{commitment:'confirmed'}),new PublicKey(PROGRAM),new PublicKey(MINT)):null,[wallet.publicKey,wallet.signTransaction,wallet.signAllTransactions]);
+  const sdk=burnerActive&&burner.status==='ready'?burner.client:!burnerActive?phantomSdk:null;
+  const owner=burnerActive?burner.publicKey:wallet.publicKey;
   const [markets,setMarkets]=useState<Record<string,MarketAccount>>({});
   const [balances,setBalances]=useState<Awaited<ReturnType<typeof loadBalances>>|null>(null);
   const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[review,setReview]=useState<Review|null>(null);
   const [amount,setAmount]=useState(''),[selected,setSelected]=useState(Object.keys(catalog)[0]),[side,setSide]=useState<SwapDirection>('usdcToYes');
   const actionInFlight=useRef(false);
   const [pending,setPending]=useState<string|null>(null);
+  const [storageError,setStorageError]=useState('');
   const [lastTx,setLastTx]=useState<Record<string,string>>({});
   const location=useLocation(), positions=location.pathname.endsWith('/positions');
   const activeOwner=useRef(owner?.toBase58()); activeOwner.current=owner?.toBase58();
@@ -45,7 +52,8 @@ function Trading() {
       setMarkets(next);setBalances(b);setError('');
     } catch(e) {if(id===request.current) {setMarkets({});setBalances(null);setError(message(e));}}
   },[owner]);
-  useEffect(()=> {setReview(null);setBalances(null);setLastTx({});setPending(owner?localStorage.getItem('skyhedge-pm-pending:'+owner.toBase58()):null);void refresh();},[refresh]);
+  useEffect(()=> {setReview(null);setBalances(null);setLastTx({});try{setPending(owner?localStorage.getItem('skyhedge-pm-pending:'+owner.toBase58()):null);setStorageError('');}catch{setPending(null);setStorageError('Browser storage is unavailable. Enable it to trade safely; wallet balance reads still work.');}void refresh();},[refresh]);
+  useEffect(()=>{if(burnerActive&&burner.status==='ready')void refresh();},[burnerActive,burner.status,refresh]);
   useEffect(()=> {const timer=setInterval(()=>{if(!document.hidden)void refresh();},15000);return()=>clearInterval(timer);},[refresh]);
   const m=markets[selected];
   async function perform(action:()=>Promise<string>,address:string) {
@@ -59,7 +67,7 @@ function Trading() {
     }catch(e){if(/user rejected|user declined|approval.*rejected/i.test(message(e))){localStorage.removeItem(key);if(activeOwner.current===ownerAddress)setPending(null);}throw e;}finally{actionInFlight.current=false;}
   }
   const reviewTrade=()=> {
-    try {if(!m)throw Error('Live market state unavailable');const raw=rawAmount(amount);if(!owner)throw Error('Connect a wallet to trade');setReview({address:selected,direction:side,amount:raw,q:quote(m,side,raw),owner:owner.toBase58(),stateKey:quoteStateKey(m)});setError('');setNotice('');}catch(e){setError(message(e));}
+    try {if(!m)throw Error('Live market state unavailable');const raw=rawAmount(amount);if(!owner||!sdk)throw Error('Wait for demo wallet funding or connect Phantom to trade');setReview({address:selected,direction:side,amount:raw,q:quote(m,side,raw),owner:owner.toBase58(),stateKey:quoteStateKey(m)});setError('');setNotice('');}catch(e){setError(message(e));}
   };
   async function send() {
     if(!review||!sdk||!owner||busy||actionInFlight.current)return;
@@ -76,18 +84,19 @@ function Trading() {
       if(activeOwner.current!==review.owner)throw Error('Wallet changed. Review again.');
       const signature=await perform(()=>sdk.send.swap(new PublicKey(review.address),review.direction,review.amount,review.q.minimum),review.address);
       if(activeOwner.current!==review.owner)return;
-      setLastTx(t=>({...t,[review.address]:signature}));setReview(null);setNotice('Trade confirmed on devnet.');await refresh();
+      setLastTx(t=>({...t,[review.address]:signature}));setReview(null);setNotice('Trade confirmed on devnet.');await refresh();if(burnerActive)await burner.refresh();
     }catch(e){setError(`${message(e)} If a transaction was sent, check your wallet history before trying again.`);setReview(null);}finally{setBusy(false);}
   }
   async function collect(address:string) {
     if(!sdk||!owner||busy||actionInFlight.current)return;setBusy(true);setError('');
-    try {const ownerAtSend=owner.toBase58();const signature=await perform(()=>sdk.send.claimWinnings(new PublicKey(address)),address);if(activeOwner.current!==ownerAtSend)return;setLastTx(t=>({...t,[address]:signature}));setNotice('Collected on devnet.');await refresh();}catch(e){setError(`${message(e)} Check your wallet history before trying again.`);}finally{setBusy(false);}
+    try {const ownerAtSend=owner.toBase58();const signature=await perform(()=>sdk.send.claimWinnings(new PublicKey(address)),address);if(activeOwner.current!==ownerAtSend)return;setLastTx(t=>({...t,[address]:signature}));setNotice('Collected on devnet.');await refresh();if(burnerActive)await burner.refresh();}catch(e){setError(`${message(e)} Check your wallet history before trying again.`);}finally{setBusy(false);}
   }
-  return <div className="pm-app"><header className="pm-header"><Link to="/" className="pm-brand"><CloudRain aria-hidden="true"/>SkyHedge</Link><span className="pm-devnet">Devnet · play money</span><WalletButton/></header>
+  return <div className="pm-app"><header className="pm-header"><Link to="/" className="pm-brand"><CloudRain aria-hidden="true"/>SkyHedge</Link><span className="pm-devnet">Devnet · play money</span>{!burnerActive&&<WalletButton/>}</header>
     <main className="pm-main"><nav className="pm-nav" aria-label="Trading"><Link aria-current={!positions?'page':undefined} to="/app">Markets</Link><Link aria-current={positions?'page':undefined} to="/app/positions">Positions</Link><button onClick={()=>void refresh()} aria-label="Refresh markets"><RefreshCw size={16}/></button></nav>
+    <section className="pm-wallet-panel" aria-label="Wallet options"><div className="pm-wallet-tabs"><button aria-pressed={burnerActive} disabled={busy} onClick={()=>{setWalletMode('burner');setReview(null);}}>Demo wallet</button><button aria-pressed={!burnerActive} disabled={busy} onClick={()=>{setWalletMode('phantom');setReview(null);setExported(null);}}>Use Phantom</button></div>{burnerActive&&<><p>Devnet play money only. This wallet is saved in this browser. Clearing browser storage loses access; export your key to keep it.</p>{burner.status==='funding'||burner.status==='loading'?<p role="status">Setting up your devnet wallet…</p>:null}{burner.error&&<p role="alert">{burner.error}</p>}{burner.balances&&burner.status==='ready'&&<p>{burner.balances.usdc.toLocaleString()} mUSDC · {burner.balances.sol.toLocaleString(undefined,{maximumFractionDigits:9})} devnet SOL</p>}<div className="pm-wallet-actions"><button disabled={busy||!burner.publicKey} onClick={()=>setExported(burner.exportKey())}>Export key</button><button disabled={busy||burner.status==='funding'} onClick={()=>setResetReview(true)}>New wallet</button></div>{exported&&<div><label htmlFor="burner-secret">Secret devnet key — anyone with this key can use this wallet</label><textarea id="burner-secret" readOnly value={exported}/><button onClick={()=>setExported(null)}>Hide key</button></div>}{resetReview&&<div role="alert"><p>Export first. Replacing this wallet removes this browser's access to its positions. A new wallet does not bypass faucet limits.</p><button disabled={busy} onClick={()=>{setExported(null);if(burner.reset())setResetReview(false);}}>Replace wallet</button><button onClick={()=>setResetReview(false)}>Keep wallet</button></div>}</>}</section>
     <div className="pm-title"><p className="pm-eyebrow">WEATHER MARKETS / SOLANA</p><h1>{positions?'Your weather positions':'Trade the weather.'}</h1><p>Rainfall markets for individuals and businesses. Choose Yes or No, trade in mUSDC, and collect if your side wins.</p></div>
     {balances&&<div className="pm-balance"><Wallet size={18}/><span>{units(balances.musdc)} mUSDC available</span><small>{owner?.toBase58()}</small></div>}
-    {pending&&owner&&<div className="pm-error"><p>A previous wallet action needs checking. Open your <a href={`https://explorer.solana.com/address/${owner.toBase58()}?cluster=devnet`} target="_blank" rel="noreferrer">devnet wallet activity</a> before trying again. Repeating an uncertain send can duplicate a trade.</p><button disabled={busy} onClick={()=>{localStorage.removeItem('skyhedge-pm-pending:'+owner.toBase58());setPending(null);}}>I checked activity; allow another action</button></div>}
+    {storageError&&<p role="alert" className="pm-error">{storageError}</p>}{pending&&owner&&<div className="pm-error"><p>A previous wallet action needs checking. Open your <a href={`https://explorer.solana.com/address/${owner.toBase58()}?cluster=devnet`} target="_blank" rel="noreferrer">devnet wallet activity</a> before trying again. Repeating an uncertain send can duplicate a trade.</p><button disabled={busy} onClick={()=>{try{localStorage.removeItem('skyhedge-pm-pending:'+owner.toBase58());setPending(null);}catch{setStorageError('Browser storage is unavailable; previous action still needs checking.');}}}>I checked activity; allow another action</button></div>}
     {error&&<p role="alert" className="pm-error">{error}</p>}{notice&&<p role="status" className="pm-notice">{notice}</p>}
     {positions ? <section aria-label="Positions" className="pm-grid">{!owner?<p>Connect a wallet to see your positions.</p>:!balances?<p>Position balances unavailable. Refresh to try again.</p>:Object.entries(catalog).map(([address,entry])=> {
       const state=markets[address],b=balances.positions[address];if(!state||!b||b.yes+b.no===0n)return null;

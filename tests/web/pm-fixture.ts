@@ -29,3 +29,11 @@ export async function rpcAccounts(now=Date.parse('2026-11-11T00:00:00Z')/1000,pr
  accounts[mint.toBase58()]={data:[mintData.toString('base64'),'base64'],executable:false,lamports:1461600,owner:TOKEN_PROGRAM_ID.toBase58(),rentEpoch:0};
  return accounts;
 }
+
+export function fundMockWallet(accounts:Record<string,any>,address:string,amount=1000000000n) {
+ const tokenOwner=new PublicKey(address),ata=getAssociatedTokenAddressSync(mint,tokenOwner);
+ const existing=accounts[getAssociatedTokenAddressSync(mint,owner).toBase58()];
+ const data=Buffer.from(existing.data[0],'base64');const decoded=AccountLayout.decode(data);
+ AccountLayout.encode({...decoded,owner:tokenOwner,amount},data);
+ accounts[ata.toBase58()]={...existing,data:[data.toString('base64'),'base64']};
+}

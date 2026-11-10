@@ -52,7 +52,8 @@
     "scripts/x402-agent-demo.ts",
     "scripts/demo-replay-localnet.ts",
     "shared/pm-amm/**/*.ts",
-    "scripts/pm-amm/**/*.ts"
+    "scripts/pm-amm/**/*.ts",
+    "client/src/lib/pm-burner/*.ts"
   ],
   "exclude": [
     "node_modules",
