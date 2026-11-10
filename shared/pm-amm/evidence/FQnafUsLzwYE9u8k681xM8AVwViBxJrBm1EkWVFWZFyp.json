@@ -1,0 +1,34 @@
+{
+  "market": "FQnafUsLzwYE9u8k681xM8AVwViBxJrBm1EkWVFWZFyp",
+  "spec": {
+    "city": "New York",
+    "station": "USW00094728",
+    "stationName": "NY CITY CNTRL PARK",
+    "timeZone": "America/New_York",
+    "start": "2026-10-01",
+    "end": "2026-10-02",
+    "thresholdTenths": 10,
+    "endTs": 1794333510,
+    "historicalDemo": true
+  },
+  "url": "https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations=USW00094728&startDate=2026-10-01&endDate=2026-10-02&dataTypes=PRCP&units=metric&format=json&includeAttributes=true",
+  "raw": "[\n{\"DATE\":\"2026-10-01\",\"STATION\":\"USW00094728\",\"PRCP_ATTRIBUTES\":\",,1,2400\",\"PRCP\":\"0.0\"}\n,{\"DATE\":\"2026-10-02\",\"STATION\":\"USW00094728\",\"PRCP_ATTRIBUTES\":\"T,,1,2400\",\"PRCP\":\"0.0\"}\n]\n",
+  "fetchedAt": "2026-11-10T18:01:49.197Z",
+  "sha256": "19d50ace81b119d285f72f28bdbe476405a8535c48092c92ceb3df5b8b727f5d",
+  "evaluation": {
+    "perDay": [
+      {
+        "date": "2026-10-01",
+        "tenths": 0
+      },
+      {
+        "date": "2026-10-02",
+        "tenths": 0
+      }
+    ],
+    "totalTenths": 0,
+    "thresholdTenths": 10,
+    "outcome": "no"
+  },
+  "resolveTx": "2gnH6ABygsdrN2RiNyWvPEzFc2hsTPRjie5xvh5LuJdb7AkE3cLrmfp9CLDa811nP4TULYAD6T596HvMmEk5Qmyi"
+}

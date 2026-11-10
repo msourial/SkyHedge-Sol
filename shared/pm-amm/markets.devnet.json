@@ -1,0 +1,54 @@
+{
+  "CHHaCqtcqe8i6NUM7WZdB2pfxn5fqEUx2b4DTq1RL3hS": {
+    "spec": {
+      "city": "New York",
+      "station": "USW00094728",
+      "stationName": "NY CITY CNTRL PARK",
+      "timeZone": "America/New_York",
+      "start": "2026-12-08",
+      "end": "2026-12-09",
+      "thresholdTenths": 100,
+      "endTs": 1796601600
+    },
+    "name": "RAIN:USW00094728:20261208-20261209:GE100:T1796601600",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "5sCkekaRALVG2xxnJvYQAi8fPWvTupjDbG55KVrHL3uqU35TS89Nyf7t8CyAK6rBdtzvGM3pCF2q7Kku89up4GoU",
+    "marketId": 99143180654174
+  },
+  "4Ti19PT1V5SVYrKZ4XVtYcBHsPUrtVRrSw7RhLgE5VsV": {
+    "spec": {
+      "city": "Chicago",
+      "station": "USW00094846",
+      "stationName": "CHICAGO OHARE INTL AP",
+      "timeZone": "America/Chicago",
+      "start": "2026-12-08",
+      "end": "2026-12-09",
+      "thresholdTenths": 100,
+      "endTs": 1796601600
+    },
+    "name": "RAIN:USW00094846:20261208-20261209:GE100:T1796601600",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "GPH96c3iZqErYU3E8vUtNwA5so67NApjwMPJojtnPbst2USx552NJKezFaiAsFg4WFY7mQFTLmhuYbVpLBREhsB",
+    "marketId": 253817229003219
+  },
+  "FQnafUsLzwYE9u8k681xM8AVwViBxJrBm1EkWVFWZFyp": {
+    "spec": {
+      "city": "New York",
+      "station": "USW00094728",
+      "stationName": "NY CITY CNTRL PARK",
+      "timeZone": "America/New_York",
+      "start": "2026-10-01",
+      "end": "2026-10-02",
+      "thresholdTenths": 10,
+      "endTs": 1794333510,
+      "historicalDemo": true
+    },
+    "name": "DEMO:USW00094728:20261001-20261002:GE10:T1794333510",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 50,
+    "createdTx": "5YBbP5pWP7eg8TP9fLyx3hNYNvgAe8duz2FtwKrgBL7TR5aiA9YVroU1jQqog2d8pv9HD1kWX4ZSzH1pXR4YbKnn",
+    "marketId": 73604318469457
+  }
+}

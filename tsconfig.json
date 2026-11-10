@@ -50,7 +50,9 @@
     "shared/ui-quote-types.ts",
     "scripts/demo-localnet.ts",
     "scripts/x402-agent-demo.ts",
-    "scripts/demo-replay-localnet.ts"
+    "scripts/demo-replay-localnet.ts",
+    "shared/pm-amm/**/*.ts",
+    "scripts/pm-amm/**/*.ts"
   ],
   "exclude": [
     "node_modules",
