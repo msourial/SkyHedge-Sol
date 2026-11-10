@@ -1,6 +1,6 @@
 # pm-AMM web migration
 
-Work is local on `pm-amm-web`. No deployment or push is authorized. Native code and server routes remain unchanged.
+Branch `pm-amm-web`, draft PR #31 into `web-app-and-landing`. Vercel preview deployments only; never production. Native code and server routes remain unchanged.
 
 ## Status
 
