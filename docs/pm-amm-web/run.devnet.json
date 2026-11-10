@@ -47,6 +47,114 @@
     },
     "buy:CHHaCqtcqe8i6NUM7WZdB2pfxn5fqEUx2b4DTq1RL3hS:usdcToNo": {
       "at": "2026-11-10T18:31:33.550Z"
+    },
+    "fund:mid-december:script-trader-transfer": {
+      "at": "2026-11-10T19:59:50.204Z"
+    },
+    "create:RAIN:USW00024233:20261214-20261216:GE50:T1797235199": {
+      "at": "2026-11-10T20:00:09.148Z",
+      "marketId": 16868085169749,
+      "marketPda": "ECYUcvTjDX3AsMr7UBgXDBPyekRLdb2hMpZ9VP995uEW",
+      "spec": {
+        "city": "Seattle",
+        "station": "USW00024233",
+        "stationName": "SEATTLE TACOMA AP",
+        "timeZone": "America/Los_Angeles",
+        "start": "2026-12-14",
+        "end": "2026-12-16",
+        "thresholdTenths": 50,
+        "endTs": 1797235199
+      },
+      "seedMusdc": 400,
+      "result": {
+        "marketId": 16868085169749,
+        "marketPda": "ECYUcvTjDX3AsMr7UBgXDBPyekRLdb2hMpZ9VP995uEW",
+        "signature": "5314oh7gB6yMo1vB5xUTcthLecydXZCMvnGzZuMCZJEh7HHB6qdLmtT1YS1CTzUiQKg1YaDrwdKy2cfgJf7SAxRh"
+      }
+    },
+    "create:RAIN:USW00012839:20261214-20261216:GE100:T1797224399": {
+      "at": "2026-11-10T20:00:10.208Z",
+      "marketId": 128963182366462,
+      "marketPda": "DWo9mtQHRRKhWvhPv9Z5ExDHbBcWHbaCHynN9oXKnxeF",
+      "spec": {
+        "city": "Miami",
+        "station": "USW00012839",
+        "stationName": "MIAMI INTL AP",
+        "timeZone": "America/New_York",
+        "start": "2026-12-14",
+        "end": "2026-12-16",
+        "thresholdTenths": 100,
+        "endTs": 1797224399
+      },
+      "seedMusdc": 400,
+      "result": {
+        "marketId": 128963182366462,
+        "marketPda": "DWo9mtQHRRKhWvhPv9Z5ExDHbBcWHbaCHynN9oXKnxeF",
+        "signature": "5iU8PE1BVYGjS78VtSHWeRUSTq3mTHjYdHdzCH3bK7rAeM1ZBiMjWJ4NK9SfYhdVitUT32XnkLUbDk4QEnpqzbw3"
+      }
+    },
+    "create:RAIN:USW00094728:20261214-20261216:GE250:T1797224399": {
+      "at": "2026-11-10T20:00:11.129Z",
+      "marketId": 246628769784080,
+      "marketPda": "isZb8kZ7LCrXj5sLgZwhGLFN3iSDrxD81xrTHp7ZnNs",
+      "spec": {
+        "city": "New York",
+        "station": "USW00094728",
+        "stationName": "NY CITY CNTRL PARK",
+        "timeZone": "America/New_York",
+        "start": "2026-12-14",
+        "end": "2026-12-16",
+        "thresholdTenths": 250,
+        "endTs": 1797224399
+      },
+      "seedMusdc": 400,
+      "result": {
+        "marketId": 246628769784080,
+        "marketPda": "isZb8kZ7LCrXj5sLgZwhGLFN3iSDrxD81xrTHp7ZnNs",
+        "signature": "dfX37v8LPhJhVFkKYrPbjT5mvutwQKYJYcyZ38PCqXxooA5eDDQzfSo772p5ENGNyodZUcuZa1aiPJno81bwBru"
+      }
+    },
+    "create:RAIN:USW00094846:20261214-20261216:GE50:T1797227999": {
+      "at": "2026-11-10T20:00:12.116Z",
+      "marketId": 224177206805228,
+      "marketPda": "FjESYK8x4w8B3TE75ojEFv5Rmhme2RXsF8WsHew3pZFj",
+      "spec": {
+        "city": "Chicago",
+        "station": "USW00094846",
+        "stationName": "CHICAGO OHARE INTL AP",
+        "timeZone": "America/Chicago",
+        "start": "2026-12-14",
+        "end": "2026-12-16",
+        "thresholdTenths": 50,
+        "endTs": 1797227999
+      },
+      "seedMusdc": 400,
+      "result": {
+        "marketId": 224177206805228,
+        "marketPda": "FjESYK8x4w8B3TE75ojEFv5Rmhme2RXsF8WsHew3pZFj",
+        "signature": "4M3KGAbP8hrTBUrAu5JbVQoezWunYTE3DPPUq6oXm3atV4uaZLmphawr4e3csN5pFdw6PkN5zwg6HcwRpDpJjJU3"
+      }
+    },
+    "create:RAIN:USW00024233:20261214-20261216:GE250:T1797235199": {
+      "at": "2026-11-10T20:00:13.087Z",
+      "marketId": 228078266373555,
+      "marketPda": "27T56fUXH7eNmsHog78B4aTmjufYxyPWRfmuczQHa2E3",
+      "spec": {
+        "city": "Seattle",
+        "station": "USW00024233",
+        "stationName": "SEATTLE TACOMA AP",
+        "timeZone": "America/Los_Angeles",
+        "start": "2026-12-14",
+        "end": "2026-12-16",
+        "thresholdTenths": 250,
+        "endTs": 1797235199
+      },
+      "seedMusdc": 400,
+      "result": {
+        "marketId": 228078266373555,
+        "marketPda": "27T56fUXH7eNmsHog78B4aTmjufYxyPWRfmuczQHa2E3",
+        "signature": "3721yDTbVPdSZ49k6ELgLcDKZaJDPCdQU8yXGCRLUqKKDMb5PF5NVzsj8PAVYk5iPVzxMs4daYULxMWauB995uPN"
+      }
     }
   },
   "transactions": [
@@ -131,6 +239,46 @@
       },
       "wallet": "DduTTfJeq6HZvua6bx5n2pMNcTjh7pr63V9uKDe37VC1",
       "priceBefore": 0.5000000010000096
+    },
+    {
+      "label": "fund:mid-december:creator-faucet",
+      "signature": "5PbeRsPh76HgvqBUwJ2zZvXBa7F8bCTUFdLV1xfDLKeWhunVktvWMzs8ZjSM87MVYFza9fwdp4zTJDQrUbQdsLDs",
+      "explorer": "https://explorer.solana.com/tx/5PbeRsPh76HgvqBUwJ2zZvXBa7F8bCTUFdLV1xfDLKeWhunVktvWMzs8ZjSM87MVYFza9fwdp4zTJDQrUbQdsLDs?cluster=devnet"
+    },
+    {
+      "label": "fund:mid-december:script-trader-transfer",
+      "signature": "3QxuwszCnoZxZMRhWDwU8HjEbxPPfVv6J717AVcrSoPdruTMQyB6SbBs1sv7ariR8vpyj6gNqTJp26q2Sjiigrkb",
+      "explorer": "https://explorer.solana.com/tx/3QxuwszCnoZxZMRhWDwU8HjEbxPPfVv6J717AVcrSoPdruTMQyB6SbBs1sv7ariR8vpyj6gNqTJp26q2Sjiigrkb?cluster=devnet"
+    },
+    {
+      "label": "create:RAIN:USW00024233:20261214-20261216:GE50:T1797235199",
+      "signature": "5314oh7gB6yMo1vB5xUTcthLecydXZCMvnGzZuMCZJEh7HHB6qdLmtT1YS1CTzUiQKg1YaDrwdKy2cfgJf7SAxRh",
+      "explorer": "https://explorer.solana.com/tx/5314oh7gB6yMo1vB5xUTcthLecydXZCMvnGzZuMCZJEh7HHB6qdLmtT1YS1CTzUiQKg1YaDrwdKy2cfgJf7SAxRh?cluster=devnet",
+      "verifiedSeedRaw": "400000000"
+    },
+    {
+      "label": "create:RAIN:USW00012839:20261214-20261216:GE100:T1797224399",
+      "signature": "5iU8PE1BVYGjS78VtSHWeRUSTq3mTHjYdHdzCH3bK7rAeM1ZBiMjWJ4NK9SfYhdVitUT32XnkLUbDk4QEnpqzbw3",
+      "explorer": "https://explorer.solana.com/tx/5iU8PE1BVYGjS78VtSHWeRUSTq3mTHjYdHdzCH3bK7rAeM1ZBiMjWJ4NK9SfYhdVitUT32XnkLUbDk4QEnpqzbw3?cluster=devnet",
+      "verifiedSeedRaw": "400000000"
+    },
+    {
+      "label": "create:RAIN:USW00094728:20261214-20261216:GE250:T1797224399",
+      "signature": "dfX37v8LPhJhVFkKYrPbjT5mvutwQKYJYcyZ38PCqXxooA5eDDQzfSo772p5ENGNyodZUcuZa1aiPJno81bwBru",
+      "explorer": "https://explorer.solana.com/tx/dfX37v8LPhJhVFkKYrPbjT5mvutwQKYJYcyZ38PCqXxooA5eDDQzfSo772p5ENGNyodZUcuZa1aiPJno81bwBru?cluster=devnet",
+      "verifiedSeedRaw": "400000000"
+    },
+    {
+      "label": "create:RAIN:USW00094846:20261214-20261216:GE50:T1797227999",
+      "signature": "4M3KGAbP8hrTBUrAu5JbVQoezWunYTE3DPPUq6oXm3atV4uaZLmphawr4e3csN5pFdw6PkN5zwg6HcwRpDpJjJU3",
+      "explorer": "https://explorer.solana.com/tx/4M3KGAbP8hrTBUrAu5JbVQoezWunYTE3DPPUq6oXm3atV4uaZLmphawr4e3csN5pFdw6PkN5zwg6HcwRpDpJjJU3?cluster=devnet",
+      "verifiedSeedRaw": "400000000"
+    },
+    {
+      "label": "create:RAIN:USW00024233:20261214-20261216:GE250:T1797235199",
+      "signature": "3721yDTbVPdSZ49k6ELgLcDKZaJDPCdQU8yXGCRLUqKKDMb5PF5NVzsj8PAVYk5iPVzxMs4daYULxMWauB995uPN",
+      "explorer": "https://explorer.solana.com/tx/3721yDTbVPdSZ49k6ELgLcDKZaJDPCdQU8yXGCRLUqKKDMb5PF5NVzsj8PAVYk5iPVzxMs4daYULxMWauB995uPN?cluster=devnet",
+      "verifiedSeedRaw": "400000000"
     }
   ],
   "receipts": [
@@ -877,6 +1025,342 @@
           }
         }
       ]
+    },
+    {
+      "label": "fund:mid-december:creator-faucet",
+      "signature": "5PbeRsPh76HgvqBUwJ2zZvXBa7F8bCTUFdLV1xfDLKeWhunVktvWMzs8ZjSM87MVYFza9fwdp4zTJDQrUbQdsLDs",
+      "slot": 520855317,
+      "blockTime": 1794340700,
+      "feeLamports": 5000,
+      "preTokenBalances": [
+        {
+          "accountIndex": 1,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "189720997",
+            "decimals": 6,
+            "uiAmount": 189.720997,
+            "uiAmountString": "189.720997"
+          }
+        }
+      ],
+      "postTokenBalances": [
+        {
+          "accountIndex": 1,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "1189720997",
+            "decimals": 6,
+            "uiAmount": 1189.720997,
+            "uiAmountString": "1189.720997"
+          }
+        }
+      ],
+      "creatorMusdcDeltaRaw": "1000000000"
+    },
+    {
+      "label": "fund:mid-december:script-trader-transfer",
+      "signature": "3QxuwszCnoZxZMRhWDwU8HjEbxPPfVv6J717AVcrSoPdruTMQyB6SbBs1sv7ariR8vpyj6gNqTJp26q2Sjiigrkb",
+      "slot": 520855694,
+      "blockTime": 1794340790,
+      "feeLamports": 5000,
+      "preTokenBalances": [
+        {
+          "accountIndex": 1,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "1189720997",
+            "decimals": 6,
+            "uiAmount": 1189.720997,
+            "uiAmountString": "1189.720997"
+          }
+        },
+        {
+          "accountIndex": 3,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "DduTTfJeq6HZvua6bx5n2pMNcTjh7pr63V9uKDe37VC1",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "1005179001",
+            "decimals": 6,
+            "uiAmount": 1005.179001,
+            "uiAmountString": "1005.179001"
+          }
+        }
+      ],
+      "postTokenBalances": [
+        {
+          "accountIndex": 1,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "2189720997",
+            "decimals": 6,
+            "uiAmount": 2189.720997,
+            "uiAmountString": "2189.720997"
+          }
+        },
+        {
+          "accountIndex": 3,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "DduTTfJeq6HZvua6bx5n2pMNcTjh7pr63V9uKDe37VC1",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "5179001",
+            "decimals": 6,
+            "uiAmount": 5.179001,
+            "uiAmountString": "5.179001"
+          }
+        }
+      ],
+      "creatorMusdcDeltaRaw": "1000000000"
+    },
+    {
+      "label": "create:RAIN:USW00024233:20261214-20261216:GE50:T1797235199",
+      "signature": "5314oh7gB6yMo1vB5xUTcthLecydXZCMvnGzZuMCZJEh7HHB6qdLmtT1YS1CTzUiQKg1YaDrwdKy2cfgJf7SAxRh",
+      "slot": 520855775,
+      "blockTime": 1794340809,
+      "feeLamports": 5000,
+      "preTokenBalances": [
+        {
+          "accountIndex": 2,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "2189720997",
+            "decimals": 6,
+            "uiAmount": 2189.720997,
+            "uiAmountString": "2189.720997"
+          }
+        }
+      ],
+      "postTokenBalances": [
+        {
+          "accountIndex": 2,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "1789720997",
+            "decimals": 6,
+            "uiAmount": 1789.720997,
+            "uiAmountString": "1789.720997"
+          }
+        },
+        {
+          "accountIndex": 7,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "ECYUcvTjDX3AsMr7UBgXDBPyekRLdb2hMpZ9VP995uEW",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "400000000",
+            "decimals": 6,
+            "uiAmount": 400,
+            "uiAmountString": "400"
+          }
+        }
+      ],
+      "creatorMusdcDeltaRaw": "-400000000"
+    },
+    {
+      "label": "create:RAIN:USW00012839:20261214-20261216:GE100:T1797224399",
+      "signature": "5iU8PE1BVYGjS78VtSHWeRUSTq3mTHjYdHdzCH3bK7rAeM1ZBiMjWJ4NK9SfYhdVitUT32XnkLUbDk4QEnpqzbw3",
+      "slot": 520855779,
+      "blockTime": 1794340810,
+      "feeLamports": 5000,
+      "preTokenBalances": [
+        {
+          "accountIndex": 1,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "1789720997",
+            "decimals": 6,
+            "uiAmount": 1789.720997,
+            "uiAmountString": "1789.720997"
+          }
+        }
+      ],
+      "postTokenBalances": [
+        {
+          "accountIndex": 1,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "1389720997",
+            "decimals": 6,
+            "uiAmount": 1389.720997,
+            "uiAmountString": "1389.720997"
+          }
+        },
+        {
+          "accountIndex": 7,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "DWo9mtQHRRKhWvhPv9Z5ExDHbBcWHbaCHynN9oXKnxeF",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "400000000",
+            "decimals": 6,
+            "uiAmount": 400,
+            "uiAmountString": "400"
+          }
+        }
+      ],
+      "creatorMusdcDeltaRaw": "-400000000"
+    },
+    {
+      "label": "create:RAIN:USW00094728:20261214-20261216:GE250:T1797224399",
+      "signature": "dfX37v8LPhJhVFkKYrPbjT5mvutwQKYJYcyZ38PCqXxooA5eDDQzfSo772p5ENGNyodZUcuZa1aiPJno81bwBru",
+      "slot": 520855783,
+      "blockTime": 1794340811,
+      "feeLamports": 5000,
+      "preTokenBalances": [
+        {
+          "accountIndex": 1,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "1389720997",
+            "decimals": 6,
+            "uiAmount": 1389.720997,
+            "uiAmountString": "1389.720997"
+          }
+        }
+      ],
+      "postTokenBalances": [
+        {
+          "accountIndex": 1,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "989720997",
+            "decimals": 6,
+            "uiAmount": 989.720997,
+            "uiAmountString": "989.720997"
+          }
+        },
+        {
+          "accountIndex": 5,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "isZb8kZ7LCrXj5sLgZwhGLFN3iSDrxD81xrTHp7ZnNs",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "400000000",
+            "decimals": 6,
+            "uiAmount": 400,
+            "uiAmountString": "400"
+          }
+        }
+      ],
+      "creatorMusdcDeltaRaw": "-400000000"
+    },
+    {
+      "label": "create:RAIN:USW00094846:20261214-20261216:GE50:T1797227999",
+      "signature": "4M3KGAbP8hrTBUrAu5JbVQoezWunYTE3DPPUq6oXm3atV4uaZLmphawr4e3csN5pFdw6PkN5zwg6HcwRpDpJjJU3",
+      "slot": 520855787,
+      "blockTime": 1794340812,
+      "feeLamports": 5000,
+      "preTokenBalances": [
+        {
+          "accountIndex": 2,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "989720997",
+            "decimals": 6,
+            "uiAmount": 989.720997,
+            "uiAmountString": "989.720997"
+          }
+        }
+      ],
+      "postTokenBalances": [
+        {
+          "accountIndex": 2,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "589720997",
+            "decimals": 6,
+            "uiAmount": 589.720997,
+            "uiAmountString": "589.720997"
+          }
+        },
+        {
+          "accountIndex": 3,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "FjESYK8x4w8B3TE75ojEFv5Rmhme2RXsF8WsHew3pZFj",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "400000000",
+            "decimals": 6,
+            "uiAmount": 400,
+            "uiAmountString": "400"
+          }
+        }
+      ],
+      "creatorMusdcDeltaRaw": "-400000000"
+    },
+    {
+      "label": "create:RAIN:USW00024233:20261214-20261216:GE250:T1797235199",
+      "signature": "3721yDTbVPdSZ49k6ELgLcDKZaJDPCdQU8yXGCRLUqKKDMb5PF5NVzsj8PAVYk5iPVzxMs4daYULxMWauB995uPN",
+      "slot": 520855791,
+      "blockTime": 1794340813,
+      "feeLamports": 5000,
+      "preTokenBalances": [
+        {
+          "accountIndex": 2,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "589720997",
+            "decimals": 6,
+            "uiAmount": 589.720997,
+            "uiAmountString": "589.720997"
+          }
+        }
+      ],
+      "postTokenBalances": [
+        {
+          "accountIndex": 2,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "189720997",
+            "decimals": 6,
+            "uiAmount": 189.720997,
+            "uiAmountString": "189.720997"
+          }
+        },
+        {
+          "accountIndex": 3,
+          "mint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+          "owner": "27T56fUXH7eNmsHog78B4aTmjufYxyPWRfmuczQHa2E3",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "400000000",
+            "decimals": 6,
+            "uiAmount": 400,
+            "uiAmountString": "400"
+          }
+        }
+      ],
+      "creatorMusdcDeltaRaw": "-400000000"
     }
   ],
   "markets": {
@@ -900,7 +1384,120 @@
       "endTs": 1794333510,
       "resolved": true,
       "winningSide": 2
+    },
+    "ECYUcvTjDX3AsMr7UBgXDBPyekRLdb2hMpZ9VP995uEW": {
+      "authority": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+      "collateralMint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+      "endTs": 1797235199,
+      "resolved": false,
+      "winningSide": 0
+    },
+    "DWo9mtQHRRKhWvhPv9Z5ExDHbBcWHbaCHynN9oXKnxeF": {
+      "authority": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+      "collateralMint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+      "endTs": 1797224399,
+      "resolved": false,
+      "winningSide": 0
+    },
+    "isZb8kZ7LCrXj5sLgZwhGLFN3iSDrxD81xrTHp7ZnNs": {
+      "authority": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+      "collateralMint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+      "endTs": 1797224399,
+      "resolved": false,
+      "winningSide": 0
+    },
+    "FjESYK8x4w8B3TE75ojEFv5Rmhme2RXsF8WsHew3pZFj": {
+      "authority": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+      "collateralMint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+      "endTs": 1797227999,
+      "resolved": false,
+      "winningSide": 0
+    },
+    "27T56fUXH7eNmsHog78B4aTmjufYxyPWRfmuczQHa2E3": {
+      "authority": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+      "collateralMint": "3WQ8hCqTNwjrh8WzE2XyoZoUrd1miPcwWfMkmFPUMEWZ",
+      "endTs": 1797235199,
+      "resolved": false,
+      "winningSide": 0
     }
   },
-  "verifiedAt": "2026-11-10T18:32:37.134Z"
+  "verifiedAt": "2026-11-10T18:32:37.134Z",
+  "expansion": {
+    "beforeFunding": {
+      "at": "2026-11-10T19:58:17.705Z",
+      "creator": {
+        "publicKey": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+        "lamports": 58426360,
+        "musdcRaw": "189720997"
+      },
+      "no-trader": {
+        "publicKey": "DduTTfJeq6HZvua6bx5n2pMNcTjh7pr63V9uKDe37VC1",
+        "lamports": 196998120,
+        "musdcRaw": "1005179001"
+      }
+    },
+    "airdrop": {
+      "attemptedAt": "2026-11-10T19:58:18.122Z",
+      "error": "Error: airdrop request failed. This can happen when the rate limit is reached.\n"
+    },
+    "faucet": {
+      "attemptedAt": "2026-11-10T19:58:18.543Z",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "signature": "5PbeRsPh76HgvqBUwJ2zZvXBa7F8bCTUFdLV1xfDLKeWhunVktvWMzs8ZjSM87MVYFza9fwdp4zTJDQrUbQdsLDs",
+        "amount": 1000,
+        "sol": 0
+      }
+    },
+    "afterFaucet": {
+      "at": "2026-11-10T19:58:20.756Z",
+      "creator": {
+        "publicKey": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+        "lamports": 58426360,
+        "musdcRaw": "1189720997"
+      },
+      "no-trader": {
+        "publicKey": "DduTTfJeq6HZvua6bx5n2pMNcTjh7pr63V9uKDe37VC1",
+        "lamports": 196998120,
+        "musdcRaw": "1005179001"
+      }
+    },
+    "transferPlan": {
+      "from": "DduTTfJeq6HZvua6bx5n2pMNcTjh7pr63V9uKDe37VC1",
+      "to": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+      "musdcRaw": "1000000000",
+      "lamports": 130000000,
+      "remainingTraderSolEstimate": 0.06699312,
+      "priorCreationCostLamports": 35382160
+    },
+    "afterTransfer": {
+      "at": "2026-11-10T19:59:51.155Z",
+      "creator": {
+        "publicKey": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+        "lamports": 188426360,
+        "musdcRaw": "2189720997"
+      },
+      "no-trader": {
+        "publicKey": "DduTTfJeq6HZvua6bx5n2pMNcTjh7pr63V9uKDe37VC1",
+        "lamports": 66993120,
+        "musdcRaw": "5179001"
+      }
+    },
+    "afterCreation": {
+      "at": "2026-11-10T20:00:40.058Z",
+      "creator": {
+        "publicKey": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+        "lamports": 11515560,
+        "musdcRaw": "189720997"
+      },
+      "no-trader": {
+        "publicKey": "DduTTfJeq6HZvua6bx5n2pMNcTjh7pr63V9uKDe37VC1",
+        "lamports": 66993120,
+        "musdcRaw": "5179001"
+      }
+    },
+    "stopReason": "Insufficient mUSDC for a sixth 400 mUSDC seed. No further faucet or airdrop attempts.",
+    "verifiedAt": "2026-11-10T20:02:39.228Z"
+  }
 }

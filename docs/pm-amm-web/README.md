@@ -4,7 +4,7 @@ Branch `pm-amm-web`, draft PR #31 into `web-app-and-landing`. Vercel preview dep
 
 ## Status
 
-M1 shared backend is complete and reviewed. M2 web routes/UI is complete and reviewed. M3 burner onboarding is complete and reviewed. M4 audit and final verification are complete, with the remaining advisories documented below. M5 public activity is complete and reviewed; M6 mid-December expansion is next.
+M1 shared backend is complete and reviewed. M2 web routes/UI is complete and reviewed. M3 burner onboarding is complete and reviewed. M4 audit and final verification are complete, with the remaining advisories documented below. M5 public activity is complete and reviewed; M6 created five mid-December markets within available funds and completed fresh-context review.
 
 ## Architecture and operation
 
@@ -82,3 +82,11 @@ Final supported-runtime checks passed on Node v22.23.4: typecheck; line, server,
 The committed public-only exclusion list is `shared/pm-amm/controlled-wallets.json`: creator/seeder/resolver, script trader and our verification browser burner. No external web-trader key exists at this check. Future user wallets are not excluded. Figures link to Devnet Explorer market account histories; total sources link every market. Empty filtered activity displays explicit zeros. Missing/pruned history, unsupported attribution, timeouts or RPC errors display a separate stats error with retry and do not block catalog cards. Refresh stats explicitly to rescan; reads time out after 20 seconds and stop scheduling further requests. Unit/browser fixtures never call live RPC.
 
 The separate live read at 2026-11-10T19:53:03.541Z reached all three creation receipts and found zero public wallets, trades, mUSDC volume and fees in every market after exclusions. See [timestamped snapshot](stats.devnet.json). This snapshot documents that check; the panel always reads RPC rather than displaying the snapshot. Historical creator swaps may retain the creator fee share; controlled wallets are filtered before transfer attribution as well as during aggregation.
+
+## Mid-December expansion (M6)
+
+Five additional 400 mUSDC markets span Seattle (5/25 mm), Miami (10 mm), New York (25 mm) and Chicago (5 mm), observing December 14–16, 2026. See [station details, local/UTC closes, market addresses, funding and exact shortfalls](mid-december.md). The catalog keeps the original three markets. The one airdrop refusal was not retried; one creator faucet request succeeded. Funding limited the batch to five. `create.ts --mid-december` previews the remaining plan and skips existing thresholds; ambiguous attempts always require reconciliation.
+
+The optional live `node --import tsx scripts/pm-amm/verify-expansion.ts` reads only the expansion receipts with pacing, verifies finalized 400 mUSDC seed debits/vault credits and exact market identities, and saves public evidence. The initial bulk verifier hit RPC 429; the paced expansion verification subsequently succeeded without repeat sends or automatic retries.
+
+Final M6 live stats scan at 2026-11-10T20:03:45.774Z reached every creation receipt for all eight catalog markets. Every per-market row and the total measured 0 public trader wallets, 0 swaps, 0 mUSDC volume and 0 mUSDC fees after operator exclusions. The updated snapshot includes each Devnet Explorer source. Final validation passes typecheck, 18 pm-AMM tests, 21 web tests, 80 line tests, 328 server tests, 3 Phantom tests and the static site build. No deployment or push was performed.

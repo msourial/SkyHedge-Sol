@@ -30,7 +30,8 @@ test('app deep links, real catalog strikes, verification and mobile layout',asyn
  await mockChain(page);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('/app');await expect(page.getByRole('heading',{name:'Trade the weather.'})).toBeVisible();
  await expect(page.getByText('50.00¢').first()).toBeVisible();
- await expect(page.getByText('CHICAGO OHARE INTL AP',{exact:true})).toBeVisible();
+ for(const entry of Object.values(catalog)){const s=entry.spec;await expect(page.getByRole('button',{name:`Select ${s.city} ${s.thresholdTenths/10} mm ${s.start} ${s.historicalDemo?'demo':'market'}`,exact:true})).toBeVisible();}
+ await expect(page.getByText('CHICAGO OHARE INTL AP',{exact:true}).first()).toBeVisible();
  await page.getByText('How to verify',{exact:true}).click();await expect(page.getByRole('link',{name:'Re-check NOAA observations ↗'})).toHaveAttribute('href',/ncei.noaa.gov/);
  await expect(page.getByRole('link',{name:'Resolution transaction ↗'})).toHaveAttribute('href',/cluster=devnet/);
  await page.getByRole('link',{name:'Positions',exact:true}).click();await expect(page).toHaveURL(/\/app\/positions$/);await page.reload();await expect(page.getByRole('heading',{name:'Your weather positions'})).toBeVisible();
@@ -134,7 +135,7 @@ test('public stats sum observed fixture swaps and remain independent on errors',
  await page.goto('/app');const stats=page.getByRole('region',{name:'Public market activity'});
  await expect(stats.getByRole('row').filter({hasText:'All markets'}).getByRole('cell')).toHaveText(['1','1','5','0.1']);
  broken=true;await stats.getByRole('button',{name:'Refresh stats'}).click();await expect(stats.getByRole('alert')).toContainText('Stats unavailable');
- await expect(page.getByText('CHICAGO OHARE INTL AP',{exact:true})).toBeVisible();
+ await expect(page.getByText('CHICAGO OHARE INTL AP',{exact:true}).first()).toBeVisible();
  broken=false;await stats.getByRole('button',{name:'Retry stats'}).click();await expect(stats.getByRole('row').filter({hasText:'All markets'}).getByRole('cell')).toHaveText(['1','1','5','0.1']);
 });
 
@@ -144,5 +145,18 @@ test('slow history times out without blocking market cards',async({page})=>{
  await page.goto('/app');const stats=page.getByRole('region',{name:'Public market activity'});
  await expect(stats.getByText('Reading on-chain trade history…')).toBeVisible();
  await page.clock.fastForward(20001);await expect(stats.getByRole('alert')).toContainText('took too long');
- await expect(page.getByText('CHICAGO OHARE INTL AP',{exact:true})).toBeVisible();
+ await expect(page.getByText('CHICAGO OHARE INTL AP',{exact:true}).first()).toBeVisible();
+});
+
+test('Seattle thresholds stay explicit in ticket, review and positions',async({page})=>{
+ await mockChain(page);await connectPhantom(page);await page.goto('/app');await page.getByRole('button',{name:'Use Phantom',exact:true}).click();await page.getByRole('button',{name:'Connect wallet',exact:true}).click();await page.getByRole('button',{name:/Phantom/}).last().click();await page.locator('.wallet-adapter-button-trigger').click();
+ await expect(page.getByText('1,000 mUSDC available')).toBeVisible();
+ for(const threshold of [5,25]){
+  await page.getByRole('button',{name:`Select Seattle ${threshold} mm 2026-12-14 market`,exact:true}).click();
+  await expect(page.getByTestId('ticket-strike')).toHaveText(`Rainfall ≥ ${threshold} mm · SEATTLE TACOMA AP`);
+  await page.getByLabel('Amount · mUSDC').fill('5');await page.getByRole('button',{name:'Review trade',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Review trade'})).toContainText(`Rainfall ≥ ${threshold} mm · SEATTLE TACOMA AP · 2026-12-14 – 2026-12-16 inclusive`);
+ }
+ await page.getByRole('link',{name:'Positions',exact:true}).click();
+ for(const threshold of [5,25])await expect(page.getByRole('region',{name:'Positions'}).getByText(`Rainfall ≥ ${threshold} mm · SEATTLE TACOMA AP`,{exact:true})).toBeVisible();
 });
