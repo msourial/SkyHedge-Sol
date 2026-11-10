@@ -7,7 +7,7 @@ export type BuyDirection = 'usdcToYes' | 'usdcToNo';
 /** Explicit risk metadata wins; legacy RAIN/DEMO names describe rain only. */
 export interface HedgeMarket {
   name: string;
-  spec: Pick<MarketSpec, 'city' | 'start' | 'end' | 'thresholdTenths' | 'endTs' | 'historicalDemo'> & {riskType?: RiskType};
+  spec: Pick<MarketSpec, 'city' | 'start' | 'end' | 'thresholdTenths' | 'endTs' | 'historicalDemo' | 'source'> & {riskType?: RiskType};
 }
 export type HedgeCatalog = Record<string, HedgeMarket>;
 export interface HedgeRequest {
@@ -92,7 +92,9 @@ export function parseHedgeRequest(input: string, catalog: HedgeCatalog, now = ne
 }
 
 export function marketRisk(entry: HedgeMarket): RiskType | undefined {
-  return entry.spec.riskType ?? (/^(RAIN|DEMO):/.test(entry.name) ? 'rain' : undefined);
+  if (entry.spec.riskType) return entry.spec.riskType;
+  if (entry.spec.source === 'eccc' || /^PREC:/.test(entry.name)) return 'total precipitation';
+  if (/^(RAIN|DEMO):/.test(entry.name)) return 'rain';
 }
 export const riskLabel = (risk?: RiskType) => risk === 'total precipitation' ? 'total precipitation (rain plus melted snow)' : risk ?? 'unspecified weather risk';
 const compatible = (wanted: RiskType, actual?: RiskType) => wanted === actual || actual === 'total precipitation' || wanted === 'total precipitation' && actual === 'snow';

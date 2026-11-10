@@ -26,4 +26,5 @@ const root = path.resolve("dist");
 app.use(express.static(root, { redirect: false }));
 app.get(["/app", "/app/*"], (_req, res) => res.sendFile(path.join(root, "index.html")));
 app.get("*", (_req, res) => res.sendFile(path.join(root, "index.html")));
-app.listen(5002, "127.0.0.1", () => console.log("Local web preview ready at http://127.0.0.1:5002"));
+const port = Number(process.env.WEB_PREVIEW_PORT || 5002);
+app.listen(port, "127.0.0.1", () => console.log(`Local web preview ready at http://127.0.0.1:${port}`));

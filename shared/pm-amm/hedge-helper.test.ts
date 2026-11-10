@@ -35,7 +35,10 @@ test('current catalog returns closest real entries and explains rain-only mismat
     assert.match(entry.differences.join(' '),/Different city/);
     assert.match(entry.differences.join(' '),/Measures rain, not snow/);
   }
-  assert.match(result.closest.find(e => e.market.spec.historicalDemo)!.status,/Not tradeable/);
+  const demo = Object.fromEntries(Object.entries(catalog).filter(([,e])=>'historicalDemo' in e.spec && e.spec.historicalDemo));
+  const demoResult = suggestHedge(prompt,demo,{},now);
+  assert.equal(demoResult.suggestion,undefined);
+  assert.match(demoResult.closest[0].status,/Not tradeable/);
 });
 
 test('location, risk, named/ISO dates and budget wording variants', () => {
@@ -118,4 +121,11 @@ test('sizing reduces unsafe output to the largest successful raw amount', () => 
   assert.ok(q.amount > 0 && q.amount < limit);
   assert.deepEqual(q,quote(large,'usdcToYes',q.amount,seconds));
   assert.throws(() => quote(large,'usdcToYes',q.amount+1,seconds));
+});
+
+test('PREC names and ECCC source count as total precipitation for snow requests', () => {
+  const prec: HedgeCatalog = {prec:{name:'PREC:7025251:20261214-20261216:GE100:T1797120000',spec:{city:'Montreal',source:'eccc',start:'2026-12-14',end:'2026-12-16',thresholdTenths:100,endTs}}};
+  const result = suggestHedge(prompt,prec,{prec:state},now);
+  assert.equal(result.suggestion?.address,'prec');
+  assert.match(result.suggestion!.reason,/rain plus melted snow/);
 });

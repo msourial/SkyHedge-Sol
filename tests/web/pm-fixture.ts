@@ -46,3 +46,10 @@ export function activityTransaction(market:string) {
  const transfer=(destination:string,amount:string)=>({program:'spl-token',programId:TOKEN_PROGRAM_ID.toBase58(),parsed:{type:'transferChecked',info:{source:a[6],destination,mint:mint.toBase58(),tokenAmount:{amount,decimals:6,uiAmount:Number(amount)/1e6,uiAmountString:String(Number(amount)/1e6)}}}});
  return {slot:123,blockTime:1794355200,version:'legacy',meta:{err:null,fee:5000,preBalances:a.map(()=>1),postBalances:a.map(()=>1),preTokenBalances:[],postTokenBalances:[],innerInstructions:[{index:0,instructions:[transfer(a[5],'4900000'),transfer(a[9],'50000'),transfer(a[10],'50000')]}]},transaction:{signatures:['1'.repeat(64)],message:{accountKeys:a.map(pubkey=>({pubkey,signer:true,writable:true})),recentBlockhash:'11111111111111111111111111111111',instructions:[{programId:program.toBase58(),accounts:a,data:bs58.encode(data)}]}}};
 }
+
+/** Decode the same synthetic account the browser receives; quote without RPC. */
+export async function fixtureQuote(accounts:Record<string,any>,address:string,direction:import('@pm-amm/sdk').SwapDirection,amount:number) {
+ const {quote}=await import('../../shared/pm-amm/trading');
+ const state=sdk.program.coder.accounts.decode('market',Buffer.from(accounts[address].data[0],'base64'));
+ return quote(state,direction,amount,Date.parse('2026-11-11T00:00:00Z')/1000);
+}
