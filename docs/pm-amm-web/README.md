@@ -4,7 +4,7 @@ Work is local on `pm-amm-web`. No deployment or push is authorized. Native code 
 
 ## Status
 
-M1 shared backend is complete and reviewed. M2 web routes/UI, M3 wallets and M4 audit/final browser verification remain pending. The current site still serves its previous web app until M2.
+M1 shared backend is complete and reviewed. M2 web routes/UI is complete and reviewed. M3 burner onboarding and M4 audit/final verification remain pending.
 
 ## Architecture and operation
 
@@ -25,3 +25,9 @@ A single creator key resolves using NOAA. NOAA may revise data; there is no disp
 All transaction signatures and devnet Explorer URLs are recorded in [run log](run.devnet.json); the catalog records each creation signature. Finalized token receipts are added by `verify.ts`.
 
 Measured demo: October 1–2 NOAA total 0.0 mm against ≥ 1.0 mm, resolved NO. Trader collected 10.089787 mUSDC. Creator residual redemption was followed by 49.710212 mUSDC winning-token redemption. Finalized receipts assert that each winning-token burn equals the mUSDC increase. A second creator script run sends nothing.
+
+## Web routing and use
+
+`npm run build:site` builds only the Vite React client into `dist`; `node --import tsx scripts/web-preview.ts` serves it locally on port 5002. `/app` and all subroutes use that client, including refresh/deep links. `/preview` redirects to `/app`. Landing `/` stays in Vite. `npm run build` builds the same React app into `dist/public` plus the Express server; development and production Express fallbacks also use the React index. Expo exports are excluded from both builds and Vercel installation. Android remains on its existing code and server APIs.
+
+Connect Phantom on devnet, select a market, choose Yes or No and enter mUSDC. Review shows fee, estimated shares and minimum output. Before sending, the app re-fetches state; changed reserves or a quote below the reviewed minimum require another review. Signing broadcasts through a hardcoded devnet connection. Market and token balances poll every 15 seconds while the tab is visible and refresh after confirmed sends. Positions show associated token balances and estimated marks; settled winners can Collect. Settlement details link the exact NOAA query, daily values, total, threshold, outcome and devnet resolution/Collect receipts.

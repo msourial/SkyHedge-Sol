@@ -24,6 +24,6 @@ app.all("/api/transactions/unsigned", unsigned);
 app.use("/api", (_req, res) => { res.status(404).json({ error: "NOT_FOUND" }); });
 const root = path.resolve("dist");
 app.use(express.static(root, { redirect: false }));
-app.get(["/app", "/app/*"], (_req, res) => res.sendFile(path.join(root, "app/index.html")));
+app.get(["/app", "/app/*"], (_req, res) => res.sendFile(path.join(root, "index.html")));
 app.get("*", (_req, res) => res.sendFile(path.join(root, "index.html")));
 app.listen(5002, "127.0.0.1", () => console.log("Local web preview ready at http://127.0.0.1:5002"));

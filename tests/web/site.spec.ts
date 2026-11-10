@@ -1,143 +1,76 @@
-import { test, expect, type Page } from "@playwright/test";
-import { DISCOVERY_QUOTES } from "../../shared/ui-discovery-fixtures";
-const address = "11111111111111111111111111111112";
-const market = "11111111111111111111111111111113";
-
-async function mockData(page: Page) {
-  page.on("pageerror", e => console.log("App page error:", e.message));
-  await page.clock.install({ time: new Date("2026-10-25T12:00:00Z") });
-  await page.route("**/api/**", async route => {
-    const url = new URL(route.request().url());
-    const resource = url.searchParams.get("resource");
-    if (url.pathname === "/api/devnet/status") return route.fulfill({ json: { network: "devnet", program: { executable: true }, idl: { status: "ready" }, protocol: { initialized: true }, feeVault: { exists: true }, skytMint: { exists: true, decimals: 6 }, noaaEvidence: { status: "unavailable", package: null }, cityWindows: [], desMoinesMarket: { status: "pending" } } });
-    if (resource === "window-quote") {
-      const quote = DISCOVERY_QUOTES.find(q => q.cityId === url.searchParams.get("city") && q.peril === url.searchParams.get("peril"));
-      if (!quote) return route.fulfill({ status: 409, json: { error: "PERIL_NOT_OPEN" } });
-      return route.fulfill({ json: { ...quote, windowStart: url.searchParams.get("windowStart"), windowEnd: url.searchParams.get("windowEnd"), salesCloseAt: url.searchParams.get("windowStart"), rungs: quote.rungs.map(r => ({ ...r, marketAddress: r.marketAddress ? market : null })) } });
-    }
-    if (resource === "cities") return route.fulfill({ json: { cities: [] } });
-    if (resource === "agricultural-markets") return route.fulfill({ json: { markets: [] } });
-    if (resource === "wallet-balances") return route.fulfill({ json: { sol: 1, skytBaseUnits: "1000000000", skytDecimals: 6, slot: 123 } });
-    if (resource === "portfolio") return route.fulfill({ json: { wallet: address, indexed: true, protections: [], liquidity: [] } });
-    return route.fulfill({ status: 503, json: { error: "DATA_UNAVAILABLE" } });
+import {test,expect,type Page} from '@playwright/test';
+import {owner,rpcAccounts} from './pm-fixture';
+export async function mockChain(page:Page) {
+  const accounts=await rpcAccounts();
+  await page.clock.install({time:new Date('2026-11-11T00:00:00Z')});
+  await page.route('https://api.devnet.solana.com/**',async route=> {
+    const {id,method,params}=route.request().postDataJSON();
+    let result:any;
+    if(method==='getLatestBlockhash')result={context:{slot:123},value:{blockhash:'11111111111111111111111111111111',lastValidBlockHeight:1000}};
+    else if(method==='sendTransaction')result='1'.repeat(64);
+    else if(method==='getSignatureStatuses')result={context:{slot:123},value:[{slot:123,confirmations:1,err:null,confirmationStatus:'confirmed'}]};
+    else if(method==='getMultipleAccounts')result={context:{slot:123},value:params[0].map((a:string)=>accounts[a]??null)};
+    else if(method==='getAccountInfo')result={context:{slot:123},value:accounts[params[0]]??null};
+    else if(method==='getBalance')result={context:{slot:123},value:100000000};
+    else if(method==='getTokenAccountBalance')result={context:{slot:123},value:{amount:'1000000000',decimals:6,uiAmount:1000,uiAmountString:'1000'}};
+    else return route.fulfill({json:{jsonrpc:'2.0',id,error:{code:-32000,message:'Mock RPC unavailable'}}});
+    return route.fulfill({json:{jsonrpc:'2.0',id,result}});
   });
-  await page.route(/https:\/\/(api\.devnet\.solana\.com|solana-devnet\.api\.onfinality\.io)/, async route => {
-    const { id, method } = route.request().postDataJSON();
-    if (method === "getLatestBlockhash") return route.fulfill({ json: { jsonrpc: "2.0", id, result: { context: { slot: 123 }, value: { blockhash: "11111111111111111111111111111111", lastValidBlockHeight: 1000 } } } });
-    if (method === "getProgramAccounts") return route.fulfill({ json: { jsonrpc: "2.0", id, result: [] } });
-    return route.fulfill({ json: { jsonrpc: "2.0", id, error: { code: -32000, message: "Mock RPC unavailable; use server fallback" } } });
-  });
+  return {change:async()=>Object.assign(accounts,await rpcAccounts(undefined,5))};
 }
-
-test("landing has the requested copy, actions and no horizontal overflow", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Weather on your plans?Get paid.");
-  await expect(page.getByRole("link", { name: "Open app" })).toHaveAttribute("href", "/app");
-  await expect(page.getByRole("link", { name: "Watch demo" })).toHaveAttribute("href", "#demo");
-  await expect(page.getByRole("link", { name: "Download APK" })).toHaveAttribute("href", "https://github.com/msourial/SkyHedge-Sol/releases");
-  await expect(page.locator(".money-flow li")).toHaveCount(3);
-  await expect(page.locator(".money")).toContainText("1–4%");
-  for (const width of [390, 1280]) {
-    await page.setViewportSize({ width, height: 844 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  }
+test('landing keeps app and native download links',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('link',{name:'Open app'})).toHaveAttribute('href','/app');await expect(page.getByRole('link',{name:'Download APK'})).toHaveAttribute('href','https://github.com/msourial/SkyHedge-Sol/releases');
+});
+test('app deep links, real catalog strikes, verification and mobile layout',async({page})=>{
+ await mockChain(page);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/app');await expect(page.getByRole('heading',{name:'Trade the weather.'})).toBeVisible();
+ await expect(page.getByText('50.00¢').first()).toBeVisible();
+ await expect(page.getByText('CHICAGO OHARE INTL AP',{exact:true})).toBeVisible();
+ await page.getByText('How to verify',{exact:true}).click();await expect(page.getByRole('link',{name:'Re-check NOAA observations ↗'})).toHaveAttribute('href',/ncei.noaa.gov/);
+ await expect(page.getByRole('link',{name:'Resolution transaction ↗'})).toHaveAttribute('href',/cluster=devnet/);
+ await page.getByRole('link',{name:'Positions',exact:true}).click();await expect(page).toHaveURL(/\/app\/positions$/);await page.reload();await expect(page.getByRole('heading',{name:'Your weather positions'})).toBeVisible();
+ for(const width of [320,390,1280]){await page.setViewportSize({width,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
+ expect(errors).toEqual([]);
+});
+test('unavailable chain does not invent a price or allow a quote',async({page})=>{
+ await page.route('https://api.devnet.solana.com/**',route=>route.fulfill({status:503,body:'Unavailable'}));await page.goto('/app/protect');
+ await expect(page.getByRole('heading',{name:'Trade the weather.'})).toBeVisible();await expect(page.getByRole('alert')).toBeVisible();await expect(page.getByRole('button',{name:'Review trade'})).toBeDisabled();
 });
 
-test("exports native Markets, Protect and Wallet with refreshable deep links and history", async ({ page }) => {
-  await mockData(page);
-  const errors: string[] = [];
-  page.on("pageerror", e => { errors.push(e.message); console.log("Page error:", e.message); });
-  await page.goto("/app");
-  await expect(page.getByRole("tab", { name: "Markets tab", exact: true })).toBeVisible();
-  await expect(page.getByText("Rain in Central Park", { exact: true })).toBeVisible();
-  await page.getByRole("tab", { name: "Protect tab", exact: true }).click();
-  await expect(page).toHaveURL(/\/app\/protect$/);
-  await page.getByRole("tab", { name: "Wallet tab", exact: true }).click();
-  await expect(page).toHaveURL(/\/app\/wallet$/);
-  await page.reload();
-  await expect(page.getByText("Phantom · Solana Devnet", { exact: true })).toBeVisible();
-  await page.getByRole("tab", { name: "Markets tab", exact: true }).click();
-  await page.goBack();
-  await expect(page.getByText("Phantom · Solana Devnet", { exact: true })).toBeVisible();
-  expect(errors).toEqual([]);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+async function connectPhantom(page:Page) {
+ await page.addInitScript(({address,bytes})=> {
+  const handlers:Record<string,Function[]>={};const publicKey={toBase58:()=>address,toString:()=>address,toBytes:()=>new Uint8Array(bytes)};
+  const provider={isPhantom:true,publicKey:null as any,isConnected:false,on:(event:string,cb:Function)=>{(handlers[event]??=[]).push(cb);},removeListener:()=>{},off:()=>{},connect:async()=>{provider.publicKey=publicKey;provider.isConnected=true;return {publicKey};},disconnect:async()=>{provider.publicKey=null;provider.isConnected=false;handlers.disconnect?.forEach(cb=>cb());},signTransaction:async()=>{(window as any).signRequests=((window as any).signRequests??0)+1;if((window as any).signMode==='success')return {serialize:()=>new Uint8Array(64)};if((window as any).signMode==='uncertain')throw Error('RPC confirmation unknown');throw Error('User rejected the request');},signAllTransactions:async()=>{throw Error('User rejected the request');}};
+  (window as any).isPhantomInstalled=true;(window as any).disconnectTest=()=>provider.disconnect();(window as any).solana=provider;(window as any).phantom={solana:provider};
+ },{address:owner.toBase58(),bytes:Array.from(owner.toBytes())});
+}
+test('Phantom review shows fee/minimum, rejection and token positions',async({page})=> {
+ const chain=await mockChain(page);await connectPhantom(page);await page.goto('/app');
+ await page.getByRole('button',{name:'Connect wallet',exact:true}).click();
+ await page.getByRole('button',{name:/Phantom/}).last().click();
+ await page.locator('.wallet-adapter-button-trigger').click();
+
+ await expect(page.getByText('1,000 mUSDC available')).toBeVisible();
+ await page.getByLabel('Amount · mUSDC').fill('10');await page.getByRole('button',{name:'Review trade',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Review your trade'})).toBeVisible();await expect(page.getByText('0.2 mUSDC',{exact:true})).toBeVisible();await expect(page.getByText('Minimum received',{exact:true})).toBeVisible();
+ await chain.change();await page.getByRole('button',{name:'Confirm trade',exact:true}).click();await expect(page.getByRole('status')).toContainText('The quote changed');
+ await page.getByRole('button',{name:'Confirm trade',exact:true}).click();await expect(page.getByRole('alert').filter({hasText:'User rejected'})).toBeVisible();
+ await page.getByRole('link',{name:'Positions',exact:true}).click();await expect(page.getByText('Yes shares').first()).toBeVisible();await expect(page.getByRole('button',{name:'Collect 5 mUSDC'})).toBeVisible();await page.getByRole('button',{name:'Collect 5 mUSDC'}).click();await expect(page.getByRole('alert').filter({hasText:'User rejected'})).toBeVisible();
+ await page.getByRole('link',{name:'Markets',exact:true}).click();await page.getByRole('button',{name:'No',exact:true}).click();await page.getByRole('button',{name:'Review trade',exact:true}).click();await expect(page.getByText(/No shares$/)).toBeVisible();
 });
 
-test("explains missing Phantom and connects, displays address and SKYT, and resets on account change", async ({ page }) => {
-  await mockData(page);
-  await page.goto("/app/wallet");
-  await page.getByText("Connect wallet", { exact: true }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "Install the Phantom" })).toContainText("Install the Phantom browser extension");
-  await page.addInitScript(({ address }) => {
-    const listeners: Record<string, Function[]> = {};
-    const key = { toBase58: () => address };
-    const provider = { isPhantom: true, publicKey: null as any,
-      connect: async (options?: { onlyIfTrusted?: boolean }) => { if (options?.onlyIfTrusted) throw new Error("Not trusted"); provider.publicKey = key; return { publicKey: key }; },
-      on: (event: string, cb: Function) => { (listeners[event] ??= []).push(cb); },
-      removeListener: (event: string, cb: Function) => { listeners[event] = (listeners[event] ?? []).filter(item => item !== cb); },
-      disconnect: async () => { provider.publicKey = null; listeners.disconnect?.forEach(cb => cb()); },
-      signTransaction: async (tx: any) => { (window as any).signedPayer = tx.message.staticAccountKeys[0].toBase58(); (window as any).signRequests = ((window as any).signRequests ?? 0) + 1; throw new Error("User rejected the request"); },
-    };
-    (window as any).phantom = { solana: provider };
-    (window as any).changeAccount = () => { provider.publicKey = null; listeners.accountChanged?.forEach(cb => cb(null)); };
-  }, { address });
-  await page.reload();
-  await page.getByText("Connect wallet", { exact: true }).click();
-  await expect(page).toHaveURL(/\/app\/protect$/);
-  await page.getByRole("tab", { name: "Wallet tab", exact: true }).click();
-  await expect(page.getByText(address, { exact: true })).toBeVisible();
-  await expect(page.getByText("1,000.00 SKYT", { exact: true })).toBeVisible();
-  await page.getByRole("tab", { name: "Protect tab", exact: true }).click();
-  await page.getByRole("button", { name: /Protect for .* SKYT/ }).click();
-  await page.getByRole("button", { name: "Approve in wallet", exact: true }).click();
-  await expect.poll(() => page.evaluate(() => (window as any).signRequests)).toBe(1);
-  expect(await page.evaluate(() => (window as any).signedPayer)).toBe(address);
-  await expect(page.getByRole("heading", { name: /^Cancelled in Phantom/ })).toBeVisible();
-  await page.getByRole("button", { name: "Back to Protect", exact: true }).click();
-  await page.evaluate(() => (window as any).changeAccount());
-  await page.getByRole("tab", { name: "Wallet tab", exact: true }).click();
-  await expect(page.getByText(address, { exact: true })).toHaveCount(0);
+test('uncertain action survives polling and reload until acknowledged',async({page})=> {
+ await mockChain(page);await connectPhantom(page);await page.goto('/app');await page.getByRole('button',{name:'Connect wallet',exact:true}).click();await page.getByRole('button',{name:/Phantom/}).last().click();await page.locator('.wallet-adapter-button-trigger').click();await expect(page.getByText('1,000 mUSDC available')).toBeVisible();
+ await page.evaluate(()=>{(window as any).signMode='uncertain';});await page.getByLabel('Amount · mUSDC').fill('5');await page.getByRole('button',{name:'Review trade',exact:true}).click();await page.getByRole('button',{name:'Confirm trade',exact:true}).click();
+ await expect(page.getByText(/A previous wallet action needs checking/)).toBeVisible();await page.getByRole('button',{name:'Refresh markets'}).click();await expect(page.getByText(/A previous wallet action needs checking/)).toBeVisible();
+ expect(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('skyhedge-pm-pending:')))).toBe(true);
+ await page.evaluate(()=>{(window as any).isPhantomInstalled=true;(window as any).disconnectTest();});await expect(page.getByText('1,000 mUSDC available')).toHaveCount(0);await expect(page.getByRole('heading',{name:'Review your trade'})).toHaveCount(0);
 });
-
-test("trusted Phantom restoration preserves a Wallet deep link", async ({ page }) => {
-  await mockData(page);
-  await page.addInitScript(({ address }) => {
-    const key = { toBase58: () => address };
-    (window as any).phantom = { solana: { isPhantom: true, publicKey: key,
-      connect: async () => ({ publicKey: key }), on: () => {}, removeListener: () => {},
-    } };
-  }, { address });
-  await page.goto("/app/wallet");
-  await expect(page.getByText(address, { exact: true })).toBeVisible();
-  await expect(page.getByText("1,000.00 SKYT", { exact: true })).toBeVisible();
-  await expect(page).toHaveURL(/\/app\/wallet$/);
-});
-
-test("first-time users can read settlement trust before buying and find funding guidance", async ({ page }) => {
-  await mockData(page);
-  await page.goto("/app/protect");
-  await page.getByRole("button", { name: "How payout works", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "How payout works" })).toBeVisible();
-  await expect(page.getByText(/Settled from NOAA data after/)).toBeVisible();
-  const trust = page.getByText("Why you can trust the result", { exact: true });
-  await trust.scrollIntoViewIfNeeded();
-  await expect(trust).toBeVisible();
-  await expect(page.getByText(/Today you trust SkyHedge’s settlement authority/)).toContainText("oracle is on the roadmap, not live");
-  const pricing = page.getByText(/Rainfall pricing can combine NOAA history/);
-  await pricing.scrollIntoViewIfNeeded();
-  await expect(pricing).toBeVisible();
-  for (const width of [320, 390]) {
-    await page.setViewportSize({ width, height: 700 });
-    await pricing.scrollIntoViewIfNeeded();
-    const footer = await pricing.boundingBox();
-    const close = await page.getByRole("button", { name: "Got it", exact: true }).boundingBox();
-    expect(footer).not.toBeNull(); expect(close).not.toBeNull();
-    expect(footer!.y + footer!.height).toBeLessThanOrEqual(close!.y);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  }
-  await page.getByRole("button", { name: "Got it", exact: true }).click();
-  await page.getByRole("tab", { name: "Wallet tab", exact: true }).click();
-  await expect(page.getByText(/there is no in-app SKYT faucet/)).toBeVisible();
-  await expect(page.getByRole("link", { name: "Get Devnet SOL", exact: true })).toBeVisible();
-  await expect(page.getByText(/After settlement, return to Wallet/)).toBeVisible();
+test('successful SDK buy and Collect show devnet receipts and refresh',async({page})=> {
+ await mockChain(page);await connectPhantom(page);
+ await page.routeWebSocket('wss://api.devnet.solana.com/**',ws=>{ws.onMessage(data=>{const req=JSON.parse(String(data));ws.send(JSON.stringify({jsonrpc:'2.0',id:req.id,result:1}));if(req.method==='signatureSubscribe')ws.send(JSON.stringify({jsonrpc:'2.0',method:'signatureNotification',params:{subscription:1,result:{context:{slot:123},value:{err:null}}}}));});});
+ await page.goto('/app');await page.getByRole('button',{name:'Connect wallet',exact:true}).click();await page.getByRole('button',{name:/Phantom/}).last().click();await page.locator('.wallet-adapter-button-trigger').click();await expect(page.getByText('1,000 mUSDC available')).toBeVisible();await page.evaluate(()=>{(window as any).signMode='success';});
+ await page.getByLabel('Amount · mUSDC').fill('5');await page.getByRole('button',{name:'Review trade',exact:true}).click();await page.getByRole('button',{name:'Confirm trade',exact:true}).click();await expect(page.getByRole('status')).toContainText('Trade confirmed');
+ await expect(page.getByRole('link',{name:'View transaction ↗'})).toHaveAttribute('href',/cluster=devnet/);
+ await page.getByRole('link',{name:'Positions',exact:true}).click();await page.getByRole('button',{name:'Collect 5 mUSDC'}).click();await expect(page.getByRole('status')).toContainText('Collected');
 });
