@@ -1,0 +1,53 @@
+{
+  "startedAt": "2026-11-10T18:33:22.280Z",
+  "mode": "real devnet browser; no RPC mocks",
+  "funding": [
+    {
+      "status": 200,
+      "ok": true,
+      "signature": "jwUDJ1NLEph9mWmWGa7bgQ5n3aQSQ8G8Str1gC2LJQ4tHNqFRH6psYWS2usckJh2d2EAxQRQMuGcopbXpZo1vJa",
+      "amount": 1000,
+      "sol": 0.02
+    }
+  ],
+  "transactions": [
+    {
+      "action": "buy Yes with 5 mUSDC",
+      "explorer": "https://explorer.solana.com/tx/26NGdjGNQf1DE2y3epC6GYBiZLVDy7neeLU2yKYA5DkuE4imuup9cpWp6YkMBGbsYXqYqYZDpA1EE2yUSZeXW2bg?cluster=devnet",
+      "market": "CHHaCqtcqe8i6NUM7WZdB2pfxn5fqEUx2b4DTq1RL3hS",
+      "direction": "usdcToYes",
+      "inputRaw": 5000000,
+      "review": "Review your trade\nYou pay\n5 mUSDC\nYou get (estimate)\n9.837939 Yes shares\nMinimum received\n9.739559 shares\nFee (included)\n0.1 mUSDC\n\nEach winning share pays 1 mUSDC. Minimum received allows 1% slippage. Solana network fees are additional.\n\nConfirm tradeBack"
+    }
+  ],
+  "errors": [],
+  "wallet": "2m3wtQLnTrg2BLw9XAq9xmJNYJtvYHQYzhMmyQ36f8g5",
+  "balance": "1,000 mUSDC available",
+  "review": "Review your trade\nYou pay\n5 mUSDC\nYou get (estimate)\n9.837939 Yes shares\nMinimum received\n9.739559 shares\nFee (included)\n0.1 mUSDC\n\nEach winning share pays 1 mUSDC. Minimum received allows 1% slippage. Solana network fees are additional.\n\nConfirm tradeBack",
+  "completedAt": "2026-11-10T18:33:26.175Z",
+  "receipts": [
+    {
+      "signature": "26NGdjGNQf1DE2y3epC6GYBiZLVDy7neeLU2yKYA5DkuE4imuup9cpWp6YkMBGbsYXqYqYZDpA1EE2yUSZeXW2bg",
+      "slot": 520834101,
+      "feeLamports": 5000,
+      "musdcSpentRaw": "5000000",
+      "market": "CHHaCqtcqe8i6NUM7WZdB2pfxn5fqEUx2b4DTq1RL3hS",
+      "direction": "usdcToYes",
+      "received": [
+        {
+          "mint": "DfyKRUgrtWZ4AzMPyRwTvaoC1JK4MRvwbSMKPCp3HgD7",
+          "raw": "9837940"
+        }
+      ],
+      "minimumRaw": "9739559"
+    }
+  ],
+  "verifiedAt": "2026-11-10T18:38:54.024Z",
+  "fundingReceipts": [
+    {
+      "signature": "jwUDJ1NLEph9mWmWGa7bgQ5n3aQSQ8G8Str1gC2LJQ4tHNqFRH6psYWS2usckJh2d2EAxQRQMuGcopbXpZo1vJa",
+      "slot": 520833917,
+      "feeLamports": 5000
+    }
+  ]
+}

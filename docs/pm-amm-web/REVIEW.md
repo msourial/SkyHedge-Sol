@@ -44,3 +44,19 @@ Reviewer: `m3_review`, isolated read-only EGM implementation-readiness/code pass
 Author testing found newly funded balances could wait for the next polling interval. Funding readiness now triggers an immediate shared balance refresh. The wrapper reads actual ATA bytes and SOL balances without treating RPC failures as an absent account. Faucet attempts are persisted before requests; rerender/reload does not repeat refusals.
 
 M3 validation: typecheck and site build pass; all 17 web tests pass in an isolated run. Both official source bodies compare exactly with retrieved originals. No creator key enters browser code, and no secret material is logged or committed.
+
+## M4 fresh-context review
+
+Reviewer: `m4_review`, isolated read-only EGM implementation-readiness/code pass. Read the plan, dependency diff/peers, audit records, screenshot automation, operator/trade/receipt verification and run-log diff. No blocker or major finding. No writes or execution.
+
+- Nit: the environment runs Node 24 while package engines declares Node 22. Added a full supported-runtime validation pass using npm's Node 22 binary; exact version/results are recorded below.
+
+Live validation found screenshot automation could request review before burner funding finished. It now waits for setup to finish and a positive measured balance. The UI disables review until a signing client is ready. No trade was sent in the premature attempt. One subsequent browser purchase completed, and finalized receipts verify its input/output/minimum. The browser profile stays outside the repo; captures never export/read its key. Screenshots were inspected for actual positions, complete verification and phone layout.
+
+Real operator check: a disposable external no-trader key quoted and bought NO through the shared code; finalized receipt paid 5 mUSDC and received 9.762056 shares. Real browser check: automatically funded burner bought YES for 5 mUSDC, received 9.837940 shares, minimum 9.739559. Demo settlement and two-step creator redemption remain verified. No extra faucet wallets or retry loops were used.
+
+M4 completion follow-up found a major verification gap: browser receipts accepted any catalog outcome mint rather than the selected market/side. Each trade now records market, direction, raw input and its own confirmed review text; verification validates canonical market identity and the exact expected mint. The current receipt's mint independently matches New York YES. A nit found that a changed quote could leave old review text in the capture log; automation now captures the refreshed review before its second confirmation. The existing real receipt verifies under the tightened checks.
+
+Supported-runtime validation: Node v22.23.4 passed root typecheck, 80 line tests, 328 server tests, 3 Phantom tests, 2 spike tests, 7 shared pm-AMM tests, Vite site build and all 17 mocked web tests. The real browser receipt verifier and read-only external-trader quote also ran under Node 22. Native/Anchor/API source diffs are empty. External creator/no-trader key files remain mode 600; no keypair, profile or environment file is staged. Added lines contain none of the prohibited vocabulary. All work remains local; no deployment, push or PR.
+
+Both root build modes passed on Node 22: `npm run build` produced the React client plus Express bundle, then `npm run build:site` produced the final static site without Expo. The final static build remains in dist for operator preview. Diff and vocabulary checks passed; no mobile, Anchor or API source changed.
