@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {catalog,connection} from '@/lib/pm-amm';
 import {loadActivity,explorerAccount,statsUnits,type Activity} from '@shared/pm-amm/stats';
+import {publicHistoryError} from '@shared/pm-amm/history-error';
 
 export function PmActivity() {
   const [data,setData]=useState<Awaited<ReturnType<typeof loadActivity>>|null>(null);
@@ -9,7 +10,7 @@ export function PmActivity() {
     let active=true;const controller=new AbortController();
     setData(null);setError('');
     const timer=setTimeout(()=>{active=false;controller.abort();setError('Stats history took too long. Retry to read devnet activity.');},20000);
-    void loadActivity(connection,catalog,controller.signal).then(result=>{if(active)setData(result);}).catch(e=>{if(active)setError(e instanceof Error?e.message:String(e));}).finally(()=>clearTimeout(timer));
+    void loadActivity(connection,catalog,controller.signal).then(result=>{if(active)setData(result);}).catch(e=>{if(active)setError(publicHistoryError(e));}).finally(()=>clearTimeout(timer));
     return ()=>{active=false;controller.abort();clearTimeout(timer);};
   },[attempt]);
   function row(label:string,a:Activity,addresses:string[]) {

@@ -33,7 +33,10 @@ test('app deep links, real catalog strikes, verification and mobile layout',asyn
  for(const entry of Object.values(catalog).filter(e=>!e.hidden)){const s=entry.spec;await expect(page.getByRole('button',{name:`Select ${s.city} ${s.thresholdTenths/10} mm ${s.start} ${s.historicalDemo?'demo':'market'}`,exact:true})).toBeVisible();}
  for(const city of ['Seattle','Miami'])await expect(page.getByRole('button',{name:new RegExp('Select '+city)})).toHaveCount(0);
  await expect(page.getByText('CHICAGO OHARE INTL AP',{exact:true}).first()).toBeVisible();
- await page.getByText('How to verify',{exact:true}).click();await expect(page.getByRole('link',{name:'Re-check NOAA observations ↗'})).toHaveAttribute('href',/ncei.noaa.gov/);
+ await page.getByRole('article').filter({hasText:'KNOWN-OUTCOME MECHANICS DEMO'}).getByText('How to verify',{exact:true}).click();await expect(page.getByRole('link',{name:'Re-check NOAA observations ↗'})).toHaveAttribute('href',/ncei.noaa.gov/);
+ await page.getByRole('article').filter({hasText:'TORONTO INTL A'}).filter({hasText:'10 mm'}).first().getByText('How to verify',{exact:true}).click();
+ await expect(page.getByRole('link',{name:'Re-check Environment Canada observations ↗'}).first()).toHaveAttribute('href',/weather\.gc\.ca/);
+
  await expect(page.getByRole('link',{name:'Resolution transaction ↗'})).toHaveAttribute('href',/cluster=devnet/);
  await page.getByRole('link',{name:'Positions',exact:true}).click();await expect(page).toHaveURL(/\/app\/positions$/);await page.reload();await expect(page.getByRole('heading',{name:'Your weather positions'})).toBeVisible();
  for(const width of [320,390,1280]){await page.setViewportSize({width,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}

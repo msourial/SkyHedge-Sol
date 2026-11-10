@@ -102,3 +102,7 @@ Seattle (5 mm and 25 mm) and Miami (10 mm) remain on-chain and in the catalog, f
 ## Canadian mid-December markets
 
 `create.ts --canada` creates the Environment Canada strikes in this order when funds allow: Toronto 10 mm, Montreal 10 mm, then the 5 mm strikes, then the 25 mm strikes, each seeded with 400 mUSDC. See [canadian-markets.md](canadian-markets.md).
+
+## How it works clip
+
+The landing page section `#how-it-works` embeds a muted, looping, lazy-loaded recording of a real Devnet pass through `/app` at a 390×844 viewport: a demo wallet being funded, a Yes buy on the Toronto 10 mm total-precipitation market, the Environment Canada "How to verify" panel, and the earlier settled New York mechanics demo's NOAA record. Sources are H.264 MP4 and WebM with a poster image. The recording wallets are listed in `controlled-wallets.json` so they are excluded from public activity and the leaderboard.

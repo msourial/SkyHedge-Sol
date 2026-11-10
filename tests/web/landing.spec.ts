@@ -181,3 +181,19 @@ test("layout and real screen assets work across phone, tablet and desktop sizes"
   }
   expect(errors).toEqual([]);
 });
+
+test('how it works clip is muted, looping, lazy-loaded and free of prohibited wording',async({page})=>{
+  await page.goto('/');
+  const section=page.locator('#how-it-works');
+  await expect(section.getByRole('heading',{name:'See a real pass through the app.'})).toBeVisible();
+  expect((await section.innerText()).toLowerCase()).not.toContain('insurance');
+  const video=section.locator('video');
+  await expect(video).toHaveAttribute('poster','/how-it-works.jpg');
+  expect(await video.evaluate((el:HTMLVideoElement)=>el.muted&&el.loop&&el.playsInline&&el.preload==='none')).toBe(true);
+  await expect(video.locator('source[type="video/webm"]')).toHaveAttribute('data-src','/how-it-works.webm');
+  await expect(video.locator('source[type="video/mp4"]')).toHaveAttribute('data-src','/how-it-works.mp4');
+  await video.scrollIntoViewIfNeeded();
+  await expect(video.locator('source[type="video/mp4"]')).toHaveAttribute('src','/how-it-works.mp4');
+  await page.setViewportSize({width:320,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});

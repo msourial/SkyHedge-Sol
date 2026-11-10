@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {days, validateSpec, marketName, type MarketSpec} from './spec';
 import {ecccUrl, evaluateEccc, millimetresToTenths, precipitationTenths} from './eccc';
-import {settlementSource, sourceLabel, strikeSentence, verifyLinkLabel} from './copy';
+import {settlementSource, sourceLabel, sourceQueryUrl, strikeSentence, verifyLinkLabel} from './copy';
 
 const spec: MarketSpec = {
   city: 'Toronto',
@@ -97,4 +97,9 @@ test('NOAA markets keep rainfall copy and names', () => {
   assert.equal(marketName(noaa), 'RAIN:USW00094728:20261208-20261209:GE100:T1796601600');
   assert.match(strikeSentence(noaa), /Pays if it rains at least 10 mm/);
   assert.equal(verifyLinkLabel(noaa), 'Re-check NOAA observations ↗');
+});
+
+test('pre-settlement verify links use the named source query',()=>{
+  assert.match(sourceQueryUrl(spec),/api\.weather\.gc\.ca\/collections\/climate-daily/);
+  assert.match(verifyLinkLabel(spec),/Environment Canada/);
 });

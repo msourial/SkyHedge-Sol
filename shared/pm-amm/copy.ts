@@ -1,4 +1,5 @@
-import type {MarketSpec} from './spec';
+import {noaaUrl, type MarketSpec} from './spec';
+import {ecccUrl} from './eccc';
 
 export function settlementSource(spec: Pick<MarketSpec, 'source'>): 'noaa' | 'eccc' {
   return spec.source === 'eccc' ? 'eccc' : 'noaa';
@@ -48,4 +49,8 @@ export function missingDataNote(spec: MarketSpec): string {
 
 export function verifyLinkLabel(spec: MarketSpec): string {
   return settlementSource(spec) === 'eccc' ? 'Re-check Environment Canada observations ↗' : 'Re-check NOAA observations ↗';
+}
+
+export function sourceQueryUrl(spec: MarketSpec): string {
+  return settlementSource(spec)==='eccc' ? ecccUrl(spec) : noaaUrl(spec);
 }

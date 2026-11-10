@@ -6,7 +6,7 @@ import {aggregateTrades,statsUnits,excludedWallets,explorerAccount,explorerTrans
 import {PROGRAM} from './trading';
 import {fixtureSwap,fixtureMarket as market,fixtureWallet as publicWallet} from './stats.fixture';
 test('exclusions, unique wallets across markets, exact sums, deduplication and zero',()=>{
- assert.equal(excludedWallets.size,3);
+ assert.equal(excludedWallets.size,5);
  const r={signature:'a',instruction:0,market,wallet:publicWallet,volume:5000000n,fee:100000n,direction:0,shares:20000000n,slot:1};
  const records=[r,r,{...r,signature:'b',market:'another'},{...r,signature:'c',wallet:[...excludedWallets][0]}];
  assert.deepEqual(aggregateTrades(records),{wallets:[publicWallet],trades:2,volume:10000000n,fee:200000n});

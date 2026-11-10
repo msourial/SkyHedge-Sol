@@ -1542,3 +1542,55 @@ h3 {
 .footer-social a:hover {
   color: var(--ink, #fff);
 }
+
+.how-it-works {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 72px;
+  align-items: center;
+  border-top: 1px solid var(--border);
+}
+.how-it-works-copy {
+  max-width: 480px;
+}
+.how-it-works-copy h2 {
+  margin: 12px 0 16px;
+}
+.how-it-works-note {
+  color: var(--body);
+  font-size: 12px;
+  margin: 16px 0 20px;
+}
+.how-it-works-stage {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+  min-width: 0;
+}
+.how-it-works-video {
+  width: min(100%, 320px);
+  height: auto;
+  aspect-ratio: 390 / 844;
+  border-radius: 22px;
+  background: #0b1220;
+  display: block;
+}
+@media (max-width: 900px) {
+  .how-it-works {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+  .how-it-works-stage {
+    justify-self: center;
+    width: min(100%, 360px);
+    padding: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .how-it-works-video {
+    /* Autoplay is paused in the component; keep the poster visible. */
+  }
+}

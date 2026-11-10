@@ -11,7 +11,7 @@ import {useBurnerSession} from '@/lib/pm-burner/session';
 import {WalletButton, WalletStatusProvider, useWalletStatus} from '@/components/wallet-button';
 import {catalog, listedMarkets, connection, evidence, explorer, loadBalances, loadMarkets, units, settledRedemptions} from '@/lib/pm-amm';
 import {quote, rawAmount, marketState, positionValue, payout, quoteStateKey, RPC, PROGRAM, MINT} from '@shared/pm-amm/trading';
-import {marketEyebrow, positionEyebrow, strikeShort, awaitingLabel, trustParagraph, missingDataNote, verifyLinkLabel, settlementSource} from '@shared/pm-amm/copy';
+import {marketEyebrow, positionEyebrow, strikeShort, awaitingLabel, trustParagraph, missingDataNote, verifyLinkLabel, settlementSource, sourceQueryUrl} from '@shared/pm-amm/copy';
 import '@solana/wallet-adapter-react-ui/styles.css';
 import './pm-amm.css';
 import {PmActivity} from '@/components/pm-activity';
@@ -120,7 +120,7 @@ function Strike({spec}:{spec:import('@shared/pm-amm/spec').MarketSpec}) {
 }
 
 function Verification({address}:{address:string}) {
-  const e=evidence.find(e=>e.market===address);if(!e)return null;
-  return <details className="pm-verify"><summary>How to verify</summary><p>Station {e.spec.station} · {e.spec.stationName}</p><ul>{e.evaluation.perDay.map(d=><li key={d.date}>{d.date}: {d.tenths/10} mm</li>)}</ul><p>Total {e.evaluation.totalTenths/10} mm · threshold ≥ {e.evaluation.thresholdTenths/10} mm · outcome {e.evaluation.outcome.toUpperCase()}</p><a href={e.url} target="_blank" rel="noreferrer">{verifyLinkLabel(e.spec)}</a>{e.resolveTx&&<a href={explorer(e.resolveTx)} target="_blank" rel="noreferrer">Resolution transaction ↗</a>}{settledRedemptions.filter(t=>t.label.includes(address)).map(t=><a key={t.signature} href={explorer(t.signature)} target="_blank" rel="noreferrer">{t.label.startsWith('creator-')?'Creator redemption':'Demo trader Collect'} transaction ↗</a>)}<p>Fetched {e.fetchedAt}</p><p className="pm-hash">SHA-256 {e.sha256}</p><p>{trustParagraph(e.spec)}</p></details>;
+  const entry=catalog[address], e=evidence.find(ev=>ev.market===address);
+  return <details className="pm-verify"><summary>How to verify</summary>{e?<><p>Station {e.spec.station} · {e.spec.stationName}</p><ul>{e.evaluation.perDay.map(d=><li key={d.date}>{d.date}: {d.tenths/10} mm</li>)}</ul><p>Total {e.evaluation.totalTenths/10} mm · threshold ≥ {e.evaluation.thresholdTenths/10} mm · outcome {e.evaluation.outcome.toUpperCase()}</p><a href={e.url} target="_blank" rel="noreferrer">{verifyLinkLabel(e.spec)}</a>{e.resolveTx&&<a href={explorer(e.resolveTx)} target="_blank" rel="noreferrer">Resolution transaction ↗</a>}{settledRedemptions.filter(t=>t.label.includes(address)).map(t=><a key={t.signature} href={explorer(t.signature)} target="_blank" rel="noreferrer">{t.label.startsWith('creator-')?'Creator redemption':'Demo trader Collect'} transaction ↗</a>)}<p>Fetched {e.fetchedAt}</p><p className="pm-hash">SHA-256 {e.sha256}</p></>:<><p>Station {entry.spec.station} · {entry.spec.stationName}</p><p>{entry.spec.start} – {entry.spec.end}, inclusive.</p><p>Daily values, the outcome, and the resolution transaction appear here after settlement.</p><a href={sourceQueryUrl(entry.spec)} target="_blank" rel="noreferrer">{verifyLinkLabel(entry.spec)}</a></>}<p>{trustParagraph(e?.spec??entry.spec)}</p></details>;
 }
 function message(e:unknown) {return e instanceof Error?e.message:String(e);}
