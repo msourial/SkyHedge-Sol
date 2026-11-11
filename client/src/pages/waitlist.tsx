@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { WaitlistForm } from "@/components/waitlist-form";
-import { HowItWorksSection } from "@/components/how-it-works-video";
 
 const steps = [
   {
@@ -319,14 +318,10 @@ export default function LandingPage() {
               </p>
             </div>
             <div className="hero-links hero-enter">
-              <a className="text-action" href="#how-it-works">
+              <a className="text-action" href="#demo">
                 <span className="play-icon">
                   <Play aria-hidden="true" size={12} fill="currentColor" />
                 </span>
-                How it works
-              </a>
-              <span className="link-divider" />
-              <a className="text-action" href="#demo">
                 Watch demo
               </a>
               <span className="link-divider" />
@@ -356,7 +351,6 @@ export default function LandingPage() {
             </span>
           </div>
         </section>
-        <HowItWorksSection />
         <section className="audiences reveal" aria-labelledby="audience-title">
           <div className="audiences-intro">
             <span className="eyebrow">Life happens outdoors.</span>
