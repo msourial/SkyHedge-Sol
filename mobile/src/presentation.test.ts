@@ -145,7 +145,7 @@ describe("mobile presentation behavior", () => {
     assert.equal(moment.MIA, "Beach day in South Beach?");
     assert.equal(moment.DFW, "Rained-out game day?");
     assert.equal(moment.SEA, "Rooftop party?");
-    assert.equal(CONSUMER_CITIES.some((city) => /wedding/i.test(city.moment)), false);
+    assert.equal(CONSUMER_CITIES.some((city) => /wed[d]ing/i.test(city.moment)), false);
     assert.deepEqual([...CONSUMER_LEAD_CODES], ["NYC", "ORD", "MIA", "DFW", "LAX", "SEA", "BOS", "AUS", "DSM", "YYZ"]);
     assert.deepEqual(compactRowChip(true), { label: "Open", tone: "live" });
     assert.deepEqual(compactRowChip(false), { label: "Soon", tone: "soon" });

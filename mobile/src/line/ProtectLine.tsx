@@ -108,7 +108,7 @@ export function MoneyCells({ ticket }: { ticket: Pick<TicketModel, "loss" | "gai
 export function TicketRow({ label, value, divider = false }: { label: string; value: string; payout?: boolean; divider?: boolean }) { return <Row divider={divider}><Text style={[ui.body, { flex: 1 }]}>{label}</Text><Text style={[ui.figure, { fontSize: 15 }]}>{value}</Text></Row>; }
 function figure(fig: MoneyFigure) { return `${fig.sign === "-" ? "−" : fig.sign}${fig.whole}.${fig.fraction}`; }
 function column(index: number) { return { flex: [1.25, 1.15, .8, 1][index], minWidth: 0 }; }
-const styles = StyleSheet.create({
+export const styles = StyleSheet.create({
   head: { height: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   sub: { ...ui.label, marginHorizontal: 4, marginTop: -4, height: 16 }, tiles: { marginTop: 10 },
   hero: { marginTop: 10, backgroundColor: C.surface1, borderRadius: 24, paddingTop: 14, paddingHorizontal: 16, paddingBottom: 12 },
@@ -129,3 +129,5 @@ export function LineCollectPayout({ observedMm, triggerMm, source, windowLabel, 
   const max = Math.max(triggerMm ?? 0, observedMm ?? 0) * 1.15 || 1;
   return <View><View style={styles.head}><Text style={[ui.section, { fontFamily: "Inter_750", fontSize: 28 }]}>Collect payout</Text><Pill devnet/></View><LinePressable onPress={onBack} style={styles.textButton}><Text style={styles.link}>Back to markets</Text></LinePressable><Text style={ui.body}>No claims form. Verified station data hit your trigger, so the payout is ready.</Text><View style={styles.hero}><Text style={ui.figure}>Trigger hit · Verified · Collect</Text><View style={{ flexDirection: "row", marginTop: 16 }}><View style={{ flex: 1 }}><Text style={ui.label}>Observed</Text><Text style={[ui.figure, { fontSize: 32, lineHeight: 40 }]}>{observedMm ?? "—"} mm</Text></View><View><Text style={ui.label}>Trigger</Text><Text style={[ui.figure, { fontSize: 32, lineHeight: 40, color: C.slicker }]}>{triggerMm ?? "—"} mm</Text></View></View><View style={{ height: 8, backgroundColor: C.surface2, borderRadius: 4, marginVertical: 16 }}><View style={{ height: 8, borderRadius: 4, width: `${Math.min(1, Math.max(0, (observedMm ?? 0) / max)) * 100}%`, backgroundColor: C.glacier }}/></View><Text style={ui.label}>{source}{windowLabel ? ` · ${windowLabel}` : ""}</Text></View><View style={[styles.hero, { alignItems: "center", paddingVertical: 20 }]}><Text style={ui.label}>Payout</Text><Text style={[ui.figure, { fontFamily: "Inter_750", fontSize: 52, lineHeight: 60 }]}>{amountLabel ? `+${amountLabel}` : "—"}</Text><Text style={ui.label}>SKYT</Text>{walletLabel ? <Text style={[ui.label, { marginTop: 12 }]}>To {walletLabel}</Text> : null}</View><Text style={[ui.label, { marginTop: 16 }]}>One tap · approve once in your wallet via Mobile Wallet Adapter</Text></View>;
 }
+
+export { styles as protectStyles };

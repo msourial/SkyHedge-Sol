@@ -17,6 +17,7 @@
     "build:web": "node tools/build-web.mjs"
   },
   "dependencies": {
+    "@anchor-lang/core": "^1.2.2",
     "@expo-google-fonts/barlow-condensed": "^0.4.1",
     "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
     "@expo-google-fonts/inter": "^0.4.2",
@@ -25,9 +26,12 @@
     "@expo/metro-runtime": "~57.0.17",
     "@expo/vector-icons": "^15.1.1",
     "@maplibre/maplibre-react-native": "^11.5.0",
+    "@pm-amm/sdk": "0.2.0",
     "@solana-mobile/mobile-wallet-adapter-protocol": "2.3.0",
     "@solana-mobile/mobile-wallet-adapter-protocol-web3js": "2.3.0",
+    "@solana/spl-token": "^0.4.15",
     "@solana/web3.js": "^1.98.4",
+    "@ungap/structured-clone": "^1.4.0",
     "buffer": "^6.0.3",
     "expo": "~57.0.7",
     "expo-blur": "~57.0.3",
@@ -36,13 +40,15 @@
     "expo-linear-gradient": "~57.0.2",
     "expo-secure-store": "~57.0.4",
     "phosphor-react-native": "^3.0.6",
+    "process": "^0.11.10",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
     "react-native-get-random-values": "^1.11.0",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-svg": "15.15.4",
-    "react-native-web": "^0.21.2"
+    "react-native-web": "^0.21.2",
+    "text-encoding-utf-8": "^1.0.2"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

@@ -9,6 +9,7 @@ const config = getDefaultConfig(projectRoot);
 // Shared Storm Glass tokens live in ../shared — allow Metro to resolve them.
 config.watchFolders = [...(config.watchFolders ?? []), sharedRoot];
 // Bare imports from ../shared must also resolve against the mobile install.
+config.resolver.unstable_enablePackageExports = true;
 config.resolver.nodeModulesPaths = [path.resolve(projectRoot, "node_modules")];
 config.resolver.extraNodeModules = {
   ...config.resolver.extraNodeModules,
@@ -21,6 +22,11 @@ config.resolver.extraNodeModules = {
 const defaultResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   const resolve = defaultResolveRequest ?? context.resolveRequest;
+  // Anchor's browser build still contains its unused NodeWallet.local() require.
+  // Native signing always uses MWA; never bundle a filesystem wallet implementation.
+  if (moduleName === "fs" && context.originModulePath.includes("@anchor-lang/core")) {
+    return { type: "empty" };
+  }
   if (
     moduleName.startsWith(".") &&
     moduleName.endsWith(".js") &&

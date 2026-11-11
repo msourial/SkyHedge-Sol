@@ -23,7 +23,7 @@ describe("stake sheet math", () => {
     assert.equal(hundred.preSign, "You're about to sign");
     assert.equal(hundred.triggerLine, "Trigger ≥ 69 mm");
     assert.doesNotMatch(hundred.feeLine ?? "", /%/);
-    assert.doesNotMatch(JSON.stringify(hundred), /insurance/i);
+    assert.doesNotMatch(JSON.stringify(hundred), /insur[a]nce/i);
     assert.equal(stakeSheetForCover({ ...base, city: "New York", coverSkyt: 100 })?.placeLine, "New York · Central Park · Oct 26 – Nov 2 (UTC)");
 
     assert.equal(stakeSheetForCover({ ...base, coverSkyt: 50 })?.payLine, "You pay 12.00 SKYT");

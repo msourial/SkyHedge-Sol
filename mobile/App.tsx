@@ -1,4 +1,5 @@
 import "./src/polyfills";
+import { PmAmmLine } from "./src/pm-amm/PmAmmLine.tsx";
 import { watchReadiness } from "./src/readiness-refresh";
 import { fundingReason } from "./src/funding";
 
@@ -88,7 +89,8 @@ const WALLET_NAME = "Your wallet";
 
 const CITY_ORDER = ["new-york", "chicago", "miami", "dallas", "los-angeles", "seattle", "boston", "austin", "des-moines"];
 
-export default function App() {
+/** Legacy controller retained for compatibility; native entry below uses only pm-AMM reads. */
+function LegacyApp() {
   const scrollRef = useRef<ScrollView>(null);
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
@@ -645,6 +647,7 @@ export default function App() {
   };
   if (!welcomeReady || (!fontsLoaded && !fontError)) return <SafeAreaProvider><SafeAreaView style={styles.fontLoading}><StatusBar barStyle="light-content" backgroundColor={C.canvas} /><ActivityIndicator color={C.green} /></SafeAreaView></SafeAreaProvider>;
 
+
   return (
     <SafeAreaProvider>
     <SafeAreaView style={styles.safe}>
@@ -756,6 +759,30 @@ export default function App() {
   );
 }
 
+
+export default function App() {
+  const [fontsLoaded, fontError] = useFonts({
+    Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
+    Inter_650: require("./assets/fonts/Inter-650.ttf"), Inter_750: require("./assets/fonts/Inter-750.ttf"),
+    BarlowCondensed_600SemiBold, BarlowCondensed_700Bold, IBMPlexMono_500Medium,
+  });
+  const [tab, navigate] = useState<Tab>(initialAppTab);
+  useAppNavigation(tab, navigate);
+  const [showLanding, setShowLanding] = useState(initialLandingVisible);
+  const [ready, setReady] = useState(false);
+  const [navigationRevision, setNavigationRevision] = useState(0);
+  const glassTarget = useRef<View>(null);
+  useEffect(() => {
+    let active = true;
+    void welcomeStore.shouldShow().then(show => { if(active) {setShowLanding(show);setReady(true);} }).catch(() => {if(active)setReady(true);});
+    return () => {active = false;};
+  }, []);
+  const selectTab = (next: Tab) => {navigate(next);setNavigationRevision(n => n + 1);};
+  if (!ready || (!fontsLoaded && !fontError)) return <SafeAreaProvider><SafeAreaView style={styles.fontLoading}><StatusBar barStyle="light-content" backgroundColor={C.canvas}/><ActivityIndicator color={C.green}/></SafeAreaView></SafeAreaProvider>;
+  return <SafeAreaProvider><SafeAreaView style={styles.safe}><StatusBar barStyle="light-content" backgroundColor={C.canvas} translucent={false}/><GlassTargetContext.Provider value={glassTarget}><View pointerEvents="none" style={StyleSheet.absoluteFill}><BlurTargetView ref={glassTarget} style={StyleSheet.absoluteFill}><View style={[StyleSheet.absoluteFill,{backgroundColor:C.canvas}]}/></BlurTargetView></View>
+    {showLanding ? <ScrollView contentContainerStyle={[styles.scrollContent,{paddingBottom:24}]}><WelcomeScreen onGetStarted={() => {void welcomeStore.markSeen();setShowLanding(false);selectTab("protect");}}/></ScrollView> : <><PmAmmLine tab={tab} navigationRevision={navigationRevision} onTab={selectTab} onAbout={() => setShowLanding(true)}/><View style={styles.bottomBar} accessibilityRole="tablist" accessibilityLabel="Main navigation"><TabButton label="Markets" glyph="markets" selected={tab === "catalog" || tab === "weather"} onPress={() => selectTab("catalog")}/><TabButton label="Protect" glyph="protect" selected={tab === "protect"} onPress={() => selectTab("protect")}/><TabButton label="Wallet" glyph="wallet" selected={tab === "wallet"} onPress={() => selectTab("wallet")}/></View></>}
+  </GlassTargetContext.Provider></SafeAreaView></SafeAreaProvider>;
+}
 
 function TabButton({ label, glyph, selected, onPress }: { label: string; glyph: "markets" | "protect" | "wallet"; selected: boolean; onPress: () => void }) {
   return (
