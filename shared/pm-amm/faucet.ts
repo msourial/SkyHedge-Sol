@@ -6,9 +6,10 @@
  */
 export const PMAMM_FAUCET_URL = 'https://pm-amm-devnet.vercel.app/api/faucet';
 export type FaucetResult = {funded:true;signature:string;usdc?:number;sol?:number}|{funded:false;reason:string;retryAfterSecs?:number};
-export async function requestDevnetFunds(wallet:string, fetchImpl:typeof fetch=fetch):Promise<FaucetResult> {
+export async function requestDevnetFunds(wallet:string, fetchImpl:typeof fetch=fetch, timeoutMs=20000):Promise<FaucetResult> {
+  const abort=new AbortController(), timer=setTimeout(()=>abort.abort(),timeoutMs);
   try {
-    const res=await fetchImpl(PMAMM_FAUCET_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({wallet,role:'player'})});
+    const res=await fetchImpl(PMAMM_FAUCET_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({wallet,role:'player'}),signal:abort.signal});
     let body:{error?:string;signature?:string;amount?:number;sol?:number}={};
     try {body=await res.json();} catch {/* non-JSON refusal */}
     if (!res.ok || !body.signature) {
@@ -17,6 +18,6 @@ export async function requestDevnetFunds(wallet:string, fetchImpl:typeof fetch=f
     }
     return {funded:true,signature:body.signature,usdc:body.amount,sol:body.sol};
   } catch {
-    return {funded:false,reason:'Faucet unreachable. Check your connection and try again.'};
-  }
+    return {funded:false,reason:abort.signal.aborted?'The faucet did not answer in time. Try again.':'Faucet unreachable. Check your connection and try again.'};
+  } finally {clearTimeout(timer);}
 }

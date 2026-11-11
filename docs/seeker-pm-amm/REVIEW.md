@@ -46,3 +46,13 @@ A pending send without a known signature remains blocked because RPC uncertainty
 The implementation did not access private keys or private configuration, send Devnet transactions, push, deploy or modify other branches. The coordinator harness command and explicit `--send` switch are documented in README.
 
 Commits are blocked by the environment: the worktree's actual Git directory is `/workspace/skyhedge-work/.git/worktrees/skyhedge-seeker-pmamm`, outside writable roots. The attempted first plan commit failed creating `index.lock` with a read-only-filesystem error. All implementation files remain available for review and commit; no permission escalation or metadata relocation was attempted.
+
+## Follow-up fresh-context review (coordinator changes: dates, faucet)
+
+Reviewer: fresh read-only Codex Goldfish pass over `f7ee0be..HEAD`.
+
+- Major: faucet result could land on a later session (wallet switch, or disconnect and reconnect of the same wallet) and leave the button disabled. Fixed with a per-request id that connect/disconnect invalidate, plus a mounted check.
+- Minor: faucet request had no timeout. Added a 20 s abort with a retryable message and a test.
+- Minor: review context still used ISO window dates. Now uses the app date style; station shown in title case.
+
+Validation after fixes: root `npm run check`, `npm run test:pmamm` (41/41), `npm run test:line` (80/80); mobile `npm run check`, `npm run test:mobile` (318/318).

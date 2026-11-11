@@ -13,3 +13,8 @@ test('faucet refusals and network errors never throw', async () => {
   const down=await requestDevnetFunds('W',(async()=>{throw Error('offline');}) as any);
   assert.equal(down.funded,false);
 });
+test('faucet request times out instead of hanging', async () => {
+  const hang=((_u:string,init:any)=>new Promise((_r,reject)=>init.signal.addEventListener('abort',()=>reject(Error('aborted'))))) as any;
+  const r=await requestDevnetFunds('W',hang,20);
+  assert.deepEqual(r,{funded:false,reason:'The faucet did not answer in time. Try again.'});
+});

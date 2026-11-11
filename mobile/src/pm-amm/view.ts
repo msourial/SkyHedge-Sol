@@ -30,9 +30,9 @@ export function pmTicket(input: {owner: string; market: string; spec: MarketSpec
     {label:'You get (estimate)',value:`${units(q.out)} ${side} shares`},
     {label:'Minimum received',value:`${units(q.minimum)} shares`},
     {label:'Fee (included)',value:`${units(q.fee)} mUSDC`},
-    {label:'Station',value:spec.stationName},
+    {label:'Station',value:stationTitle(spec.stationName)},
     {label:'Window',value:pmWindowLabel(spec)},
     {label:'Settlement source',value:sourceLabel(spec)},
   ]};
-  return {wallet:input.owner, target:{market:input.market,amount:String(amountRaw),premiumBase:String(amountRaw),salesCloseAt:new Date(spec.endTs*1000).toISOString()},context:{premiumBase:String(amountRaw),balanceBase:null,cityName:spec.city,peril:'rain',triggerLabel:side === 'Yes' ? `${trigger} mm or more` : `Less than ${trigger} mm`,windowLabel:`${spec.start} – ${spec.end}`},ticket,pmAmm:{side,shares:units(q.out),minimum:units(q.minimum),fee:units(q.fee),token:'mUSDC'}};
+  return {wallet:input.owner, target:{market:input.market,amount:String(amountRaw),premiumBase:String(amountRaw),salesCloseAt:new Date(spec.endTs*1000).toISOString()},context:{premiumBase:String(amountRaw),balanceBase:null,cityName:spec.city,peril:'rain',triggerLabel:side === 'Yes' ? `${trigger} mm or more` : `Less than ${trigger} mm`,windowLabel:pmWindowLabel(spec)},ticket,pmAmm:{side,shares:units(q.out),minimum:units(q.minimum),fee:units(q.fee),token:'mUSDC'}};
 }

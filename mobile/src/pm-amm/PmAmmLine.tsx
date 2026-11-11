@@ -51,6 +51,8 @@ export function PmAmmLine({tab,onTab,onAbout,navigationRevision}: {tab:string;na
   const [loading,setLoading] = useState(true);
   const [busy,setBusy] = useState(false);
   const [funding,setFunding] = useState<string|null>(null);
+  const fundingRequest = useRef(0);
+  const resetFunding = () => {fundingRequest.current++;setFunding(null);};
   const busyRef = useRef(false);
   const [review,setReview] = useState<{sign:SignReview;buy:ReturnType<typeof createBuyReview>}|null>(null);
   const [signature,setSignature] = useState<string|null>(null);
@@ -78,9 +80,9 @@ export function PmAmmLine({tab,onTab,onAbout,navigationRevision}: {tab:string;na
   },[]);
   const connect = async () => {
     if(busyRef.current)return;
-    try {const next=await authorizeDevnetWallet();owner.current=next.address;setSession(next);setBalances(null);setReview(null);await saveWalletSession(next);await refresh();}catch(e){setError(e instanceof Error?e.message:'Wallet connection did not complete.');}
+    try {const next=await authorizeDevnetWallet();resetFunding();owner.current=next.address;setSession(next);setBalances(null);setReview(null);await saveWalletSession(next);await refresh();}catch(e){setError(e instanceof Error?e.message:'Wallet connection did not complete.');}
   };
-  const disconnect = () => {if(busyRef.current)return;owner.current=null;generation.current++;setSession(null);setBalances(null);setPending(null);setPendingStatus(null);setReview(null);void clearWalletSession();};
+  const disconnect = () => {if(busyRef.current)return;resetFunding();owner.current=null;generation.current++;setSession(null);setBalances(null);setPending(null);setPendingStatus(null);setReview(null);void clearWalletSession();};
   const changeMarket = (a:string) => {setSelected(a);setPeril('rain');setReview(null);onTab('protect');};
   let preview:SignReview|null=null,quoteError:string|null=null;
   if(state && amount)try {preview=pmTicket({owner:session?.address??'',market:selected,spec,state,direction:side,amountRaw:rawAmount(amount)});}catch(e){quoteError=e instanceof Error?e.message:'Enter an amount.';}
@@ -165,7 +167,7 @@ export function PmAmmLine({tab,onTab,onAbout,navigationRevision}: {tab:string;na
         })}</Group>
         {session&&balances&&!Object.values(balances.positions).some(p=>p.yes>0n||p.no>0n)?<Text style={[s.note,{marginTop:16}]}>Your shares will appear here after buying.</Text>:null}
         {session?<LinePressable onPress={()=>{void refresh();}} style={s.textButton}><Text style={s.link}>Refresh wallet</Text></LinePressable>:null}
-        <Group style={{marginTop:20}}><View style={{padding:16}}><Text style={ui.figure}>Devnet funding</Text><Text style={[ui.body,{marginTop:8}]}>Use test mUSDC for shares and Devnet SOL for fees. The official PREDICT faucet has limits; wait before retrying a refused request.</Text><LinePressable disabled={funding==='Asking the faucet…'} onPress={()=>{if(!session){void connect();return;}const wallet=session.address;setFunding('Asking the faucet…');void requestDevnetFunds(wallet).then(r=>{if(owner.current!==wallet)return;setFunding(r.funded?`Faucet sent${r.usdc!=null?` ${r.usdc} mUSDC`:' test mUSDC'}${r.sol?` and ${r.sol} Devnet SOL`:''}.`:`${r.reason}${r.retryAfterSecs?` Try again in about ${Math.ceil(r.retryAfterSecs/60)} min.`:''}`);void refresh();});}} style={s.textButton}><Text style={s.link}>{session?'Get Devnet mUSDC':'Connect wallet to get Devnet mUSDC'}</Text></LinePressable>{funding?<Text accessibilityLiveRegion="polite" style={ui.label}>{funding}</Text>:null}<LinePressable onPress={()=>{void Linking.openURL('https://faucet.solana.com/');}} style={s.textButton}><Text style={s.link}>Get Devnet SOL</Text></LinePressable></View></Group>
+        <Group style={{marginTop:20}}><View style={{padding:16}}><Text style={ui.figure}>Devnet funding</Text><Text style={[ui.body,{marginTop:8}]}>Use test mUSDC for shares and Devnet SOL for fees. The official PREDICT faucet has limits; wait before retrying a refused request.</Text><LinePressable disabled={funding==='Asking the faucet…'} onPress={()=>{if(!session){void connect();return;}const wallet=session.address,id=++fundingRequest.current;setFunding('Asking the faucet…');void requestDevnetFunds(wallet).then(r=>{if(!mounted.current||id!==fundingRequest.current||owner.current!==wallet)return;setFunding(r.funded?`Faucet sent${r.usdc!=null?` ${r.usdc} mUSDC`:' test mUSDC'}${r.sol?` and ${r.sol} Devnet SOL`:''}.`:`${r.reason}${r.retryAfterSecs?` Try again in about ${Math.ceil(r.retryAfterSecs/60)} min.`:''}`);void refresh();});}} style={s.textButton}><Text style={s.link}>{session?'Get Devnet mUSDC':'Connect wallet to get Devnet mUSDC'}</Text></LinePressable>{funding?<Text accessibilityLiveRegion="polite" style={ui.label}>{funding}</Text>:null}<LinePressable onPress={()=>{void Linking.openURL('https://faucet.solana.com/');}} style={s.textButton}><Text style={s.link}>Get Devnet SOL</Text></LinePressable></View></Group>
       </>:null}
     </ScreenTransition></ScrollView>
     {tab==='protect'?<View style={s.pay}><View style={s.payFigs}><Text style={ui.label}>Max loss <Text style={ui.figure}>{preview?`−${units(rawAmount(amount))}`:'—'}</Text></Text><Text style={ui.label}>Max gain <Text style={ui.figure}>{preview?`${preview.ticket.gain.sign}${preview.ticket.gain.whole}.${preview.ticket.gain.fraction}`:'—'}</Text> mUSDC</Text></View><LinePressable disabled={!!session&&(!canTrade||!preview)} onPress={openReview} style={[ui.cta,!!session&&(!canTrade||!preview)&&{backgroundColor:C.surface2}]}><Text style={ui.ctaText}>{!session?'Connect wallet':peril!=='rain'?'Not available yet':marketStatus?.resolved?'Settled':marketStatus?.expired?'Trading closed':preview?`Protect for ${units(rawAmount(amount))} mUSDC`:'Enter amount'}</Text></LinePressable></View>:null}
