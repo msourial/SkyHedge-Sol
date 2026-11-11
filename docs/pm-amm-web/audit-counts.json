@@ -1,0 +1,38 @@
+{
+  "measuredAt": "2026-11-10T18:31:30.557Z",
+  "node": "v24.22.1",
+  "counts": {
+    "m4-before": {
+      "info": 0,
+      "low": 6,
+      "moderate": 36,
+      "high": 19,
+      "critical": 0,
+      "total": 61
+    },
+    "m4-prod-before": {
+      "info": 0,
+      "low": 0,
+      "moderate": 27,
+      "high": 17,
+      "critical": 0,
+      "total": 44
+    },
+    "after": {
+      "info": 0,
+      "low": 7,
+      "moderate": 31,
+      "high": 7,
+      "critical": 0,
+      "total": 45
+    },
+    "prod-after": {
+      "info": 0,
+      "low": 0,
+      "moderate": 22,
+      "high": 7,
+      "critical": 0,
+      "total": 29
+    }
+  }
+}

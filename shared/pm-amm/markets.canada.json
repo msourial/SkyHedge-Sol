@@ -1,0 +1,16 @@
+{
+  "status": "partial-created",
+  "note": "Five of six strikes are on-chain with 400 mUSDC seeds (Toronto 10/5/25 mm and Montreal 10/5 mm). Montreal 25 mm stays planned until another official faucet claim can fund it without shrinking the seed. See docs/pm-amm-web/canadian-markets.md.",
+  "seedMusdc": 400,
+  "measuredBalancesAt": "2026-11-10T20:00:40.058Z",
+  "creatorMusdc": "189.720997",
+  "creatorSol": "0.01151556",
+  "specs": [
+    {"city":"Toronto","station":"6158731","stationName":"TORONTO INTL A","timeZone":"America/Toronto","start":"2026-12-14","end":"2026-12-16","thresholdTenths":50,"endTs":1797224399,"source":"eccc"},
+    {"city":"Toronto","station":"6158731","stationName":"TORONTO INTL A","timeZone":"America/Toronto","start":"2026-12-14","end":"2026-12-16","thresholdTenths":100,"endTs":1797224399,"source":"eccc"},
+    {"city":"Toronto","station":"6158731","stationName":"TORONTO INTL A","timeZone":"America/Toronto","start":"2026-12-14","end":"2026-12-16","thresholdTenths":250,"endTs":1797224399,"source":"eccc"},
+    {"city":"Montreal","station":"7025251","stationName":"MONTREAL INTL A","timeZone":"America/Toronto","start":"2026-12-14","end":"2026-12-16","thresholdTenths":50,"endTs":1797224399,"source":"eccc"},
+    {"city":"Montreal","station":"7025251","stationName":"MONTREAL INTL A","timeZone":"America/Toronto","start":"2026-12-14","end":"2026-12-16","thresholdTenths":100,"endTs":1797224399,"source":"eccc"},
+    {"city":"Montreal","station":"7025251","stationName":"MONTREAL INTL A","timeZone":"America/Toronto","start":"2026-12-14","end":"2026-12-16","thresholdTenths":250,"endTs":1797224399,"source":"eccc"}
+  ]
+}

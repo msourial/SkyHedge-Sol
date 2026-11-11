@@ -1,0 +1,232 @@
+{
+  "CHHaCqtcqe8i6NUM7WZdB2pfxn5fqEUx2b4DTq1RL3hS": {
+    "spec": {
+      "city": "New York",
+      "station": "USW00094728",
+      "stationName": "NY CITY CNTRL PARK",
+      "timeZone": "America/New_York",
+      "start": "2026-12-08",
+      "end": "2026-12-09",
+      "thresholdTenths": 100,
+      "endTs": 1796601600
+    },
+    "name": "RAIN:USW00094728:20261208-20261209:GE100:T1796601600",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "5sCkekaRALVG2xxnJvYQAi8fPWvTupjDbG55KVrHL3uqU35TS89Nyf7t8CyAK6rBdtzvGM3pCF2q7Kku89up4GoU",
+    "marketId": 99143180654174
+  },
+  "4Ti19PT1V5SVYrKZ4XVtYcBHsPUrtVRrSw7RhLgE5VsV": {
+    "spec": {
+      "city": "Chicago",
+      "station": "USW00094846",
+      "stationName": "CHICAGO OHARE INTL AP",
+      "timeZone": "America/Chicago",
+      "start": "2026-12-08",
+      "end": "2026-12-09",
+      "thresholdTenths": 100,
+      "endTs": 1796601600
+    },
+    "name": "RAIN:USW00094846:20261208-20261209:GE100:T1796601600",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "GPH96c3iZqErYU3E8vUtNwA5so67NApjwMPJojtnPbst2USx552NJKezFaiAsFg4WFY7mQFTLmhuYbVpLBREhsB",
+    "marketId": 253817229003219
+  },
+  "FQnafUsLzwYE9u8k681xM8AVwViBxJrBm1EkWVFWZFyp": {
+    "spec": {
+      "city": "New York",
+      "station": "USW00094728",
+      "stationName": "NY CITY CNTRL PARK",
+      "timeZone": "America/New_York",
+      "start": "2026-10-01",
+      "end": "2026-10-02",
+      "thresholdTenths": 10,
+      "endTs": 1794333510,
+      "historicalDemo": true
+    },
+    "name": "DEMO:USW00094728:20261001-20261002:GE10:T1794333510",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 50,
+    "createdTx": "5YBbP5pWP7eg8TP9fLyx3hNYNvgAe8duz2FtwKrgBL7TR5aiA9YVroU1jQqog2d8pv9HD1kWX4ZSzH1pXR4YbKnn",
+    "marketId": 73604318469457
+  },
+  "ECYUcvTjDX3AsMr7UBgXDBPyekRLdb2hMpZ9VP995uEW": {
+    "spec": {
+      "city": "Seattle",
+      "station": "USW00024233",
+      "stationName": "SEATTLE TACOMA AP",
+      "timeZone": "America/Los_Angeles",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 50,
+      "endTs": 1797235199
+    },
+    "name": "RAIN:USW00024233:20261214-20261216:GE50:T1797235199",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "5314oh7gB6yMo1vB5xUTcthLecydXZCMvnGzZuMCZJEh7HHB6qdLmtT1YS1CTzUiQKg1YaDrwdKy2cfgJf7SAxRh",
+    "marketId": 16868085169749,
+    "hidden": true
+  },
+  "DWo9mtQHRRKhWvhPv9Z5ExDHbBcWHbaCHynN9oXKnxeF": {
+    "spec": {
+      "city": "Miami",
+      "station": "USW00012839",
+      "stationName": "MIAMI INTL AP",
+      "timeZone": "America/New_York",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 100,
+      "endTs": 1797224399
+    },
+    "name": "RAIN:USW00012839:20261214-20261216:GE100:T1797224399",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "5iU8PE1BVYGjS78VtSHWeRUSTq3mTHjYdHdzCH3bK7rAeM1ZBiMjWJ4NK9SfYhdVitUT32XnkLUbDk4QEnpqzbw3",
+    "marketId": 128963182366462,
+    "hidden": true
+  },
+  "isZb8kZ7LCrXj5sLgZwhGLFN3iSDrxD81xrTHp7ZnNs": {
+    "spec": {
+      "city": "New York",
+      "station": "USW00094728",
+      "stationName": "NY CITY CNTRL PARK",
+      "timeZone": "America/New_York",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 250,
+      "endTs": 1797224399
+    },
+    "name": "RAIN:USW00094728:20261214-20261216:GE250:T1797224399",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "dfX37v8LPhJhVFkKYrPbjT5mvutwQKYJYcyZ38PCqXxooA5eDDQzfSo772p5ENGNyodZUcuZa1aiPJno81bwBru",
+    "marketId": 246628769784080
+  },
+  "FjESYK8x4w8B3TE75ojEFv5Rmhme2RXsF8WsHew3pZFj": {
+    "spec": {
+      "city": "Chicago",
+      "station": "USW00094846",
+      "stationName": "CHICAGO OHARE INTL AP",
+      "timeZone": "America/Chicago",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 50,
+      "endTs": 1797227999
+    },
+    "name": "RAIN:USW00094846:20261214-20261216:GE50:T1797227999",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "4M3KGAbP8hrTBUrAu5JbVQoezWunYTE3DPPUq6oXm3atV4uaZLmphawr4e3csN5pFdw6PkN5zwg6HcwRpDpJjJU3",
+    "marketId": 224177206805228
+  },
+  "27T56fUXH7eNmsHog78B4aTmjufYxyPWRfmuczQHa2E3": {
+    "spec": {
+      "city": "Seattle",
+      "station": "USW00024233",
+      "stationName": "SEATTLE TACOMA AP",
+      "timeZone": "America/Los_Angeles",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 250,
+      "endTs": 1797235199
+    },
+    "name": "RAIN:USW00024233:20261214-20261216:GE250:T1797235199",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "3721yDTbVPdSZ49k6ELgLcDKZaJDPCdQU8yXGCRLUqKKDMb5PF5NVzsj8PAVYk5iPVzxMs4daYULxMWauB995uPN",
+    "marketId": 228078266373555,
+    "hidden": true
+  },
+  "6VhJRjXtLVwPL5L2zMbsSPTsbvzYzekfcHNEdZgsNWA2": {
+    "spec": {
+      "city": "Toronto",
+      "station": "6158731",
+      "stationName": "TORONTO INTL A",
+      "timeZone": "America/Toronto",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 100,
+      "endTs": 1797224399,
+      "source": "eccc"
+    },
+    "name": "PREC:6158731:20261214-20261216:GE100:T1797224399",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "5ko9akXh4gmZzXUbMF87krpdA3T3MRZUX9pcePaof9pvwkyT3qEqjX34LwzyCfNADWEqyeYRPGv8mL9mfAQia97v",
+    "marketId": 93632375986149
+  },
+  "HMN86GTepwSTUdLfKTUvk93V9hpph562EXHeoo6vPYqu": {
+    "spec": {
+      "city": "Montreal",
+      "station": "7025251",
+      "stationName": "MONTREAL INTL A",
+      "timeZone": "America/Toronto",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 100,
+      "endTs": 1797224399,
+      "source": "eccc"
+    },
+    "name": "PREC:7025251:20261214-20261216:GE100:T1797224399",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "2gm2NVAK1sjfbM191Qj1xwtjbXwJHuwpKpvKzz2GpGG39TFxccetQc91RLqD24GgrkM3Ux2yRoahcjNjH81dAF42",
+    "marketId": 157548488942231
+  },
+  "4WyAAMzRd1JttRPRg3B3ANA3eBitHrQ7GLBecLfTRZZ2": {
+    "spec": {
+      "city": "Toronto",
+      "station": "6158731",
+      "stationName": "TORONTO INTL A",
+      "timeZone": "America/Toronto",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 50,
+      "endTs": 1797224399,
+      "source": "eccc"
+    },
+    "name": "PREC:6158731:20261214-20261216:GE50:T1797224399",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "65Ec4mhSBTTR9AFhs92oZX9zW74cwEpQYbeJRhEAzkrKGRdcGSXS9up6tg2sjFbMaqCSFSLHTMsa6TjHbLQAUGTc",
+    "marketId": 41494029544806
+  },
+  "6K2UfcZgq939GAx38ipW32CHMnxgrUMU8LC1j9bTM9GB": {
+    "spec": {
+      "city": "Montreal",
+      "station": "7025251",
+      "stationName": "MONTREAL INTL A",
+      "timeZone": "America/Toronto",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 50,
+      "endTs": 1797224399,
+      "source": "eccc"
+    },
+    "name": "PREC:7025251:20261214-20261216:GE50:T1797224399",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "32AruH5rRqGx9ojw9UrysuRS4JhEaVBWMhYG2DidyAhrzKjJWWNDBzSQymEsK3YEwZ7sQh4QUoRMYnEH1FS2JWmZ",
+    "marketId": 152317046536404
+  },
+  "8tP3cu181Sn8kkTEXhv4jkXMqYkhnrTGaqHVX4rqzyY7": {
+    "spec": {
+      "city": "Toronto",
+      "station": "6158731",
+      "stationName": "TORONTO INTL A",
+      "timeZone": "America/Toronto",
+      "start": "2026-12-14",
+      "end": "2026-12-16",
+      "thresholdTenths": 250,
+      "endTs": 1797224399,
+      "source": "eccc"
+    },
+    "name": "PREC:6158731:20261214-20261216:GE250:T1797224399",
+    "creator": "7HPLfNgikVpUso9ST3KPkorgq1eW8xrhFTLD3fUEunap",
+    "seedMusdc": 400,
+    "createdTx": "4PVxhXmVwfZb4QKdyuDRGEjzXyN13QguQcWh1NrjyKnSwgzBH93dHj3fZYzQjXCW7gET3riYpze9iu14Ge9rX3Yt",
+    "marketId": 58586403751464
+  }
+}

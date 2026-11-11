@@ -1,0 +1,72 @@
+[
+  {
+    "city": "Seattle",
+    "station": "USW00024233",
+    "stationName": "SEATTLE TACOMA AP",
+    "timeZone": "America/Los_Angeles",
+    "start": "2026-12-14",
+    "end": "2026-12-16",
+    "thresholdTenths": 50,
+    "endTs": 1797235199
+  },
+  {
+    "city": "Miami",
+    "station": "USW00012839",
+    "stationName": "MIAMI INTL AP",
+    "timeZone": "America/New_York",
+    "start": "2026-12-14",
+    "end": "2026-12-16",
+    "thresholdTenths": 100,
+    "endTs": 1797224399
+  },
+  {
+    "city": "New York",
+    "station": "USW00094728",
+    "stationName": "NY CITY CNTRL PARK",
+    "timeZone": "America/New_York",
+    "start": "2026-12-14",
+    "end": "2026-12-16",
+    "thresholdTenths": 250,
+    "endTs": 1797224399
+  },
+  {
+    "city": "Chicago",
+    "station": "USW00094846",
+    "stationName": "CHICAGO OHARE INTL AP",
+    "timeZone": "America/Chicago",
+    "start": "2026-12-14",
+    "end": "2026-12-16",
+    "thresholdTenths": 50,
+    "endTs": 1797227999
+  },
+  {
+    "city": "Seattle",
+    "station": "USW00024233",
+    "stationName": "SEATTLE TACOMA AP",
+    "timeZone": "America/Los_Angeles",
+    "start": "2026-12-14",
+    "end": "2026-12-16",
+    "thresholdTenths": 250,
+    "endTs": 1797235199
+  },
+  {
+    "city": "Miami",
+    "station": "USW00012839",
+    "stationName": "MIAMI INTL AP",
+    "timeZone": "America/New_York",
+    "start": "2026-12-14",
+    "end": "2026-12-16",
+    "thresholdTenths": 250,
+    "endTs": 1797224399
+  },
+  {
+    "city": "Seattle",
+    "station": "USW00024233",
+    "stationName": "SEATTLE TACOMA AP",
+    "timeZone": "America/Los_Angeles",
+    "start": "2026-12-14",
+    "end": "2026-12-16",
+    "thresholdTenths": 100,
+    "endTs": 1797235199
+  }
+]

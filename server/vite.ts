@@ -40,13 +40,6 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
-  const appExport = path.resolve(import.meta.dirname, "../dist/app");
-  app.use("/app", express.static(appExport));
-  app.get(["/app", "/app/*"], (_req, res) => {
-    const entry = path.join(appExport, "index.html");
-    if (!fs.existsSync(entry)) return res.status(503).send("Run npm run build:app to export the web app first.");
-    res.sendFile(entry);
-  });
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
@@ -85,7 +78,7 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  app.get(["/app", "/app/*"], (_req, res) => res.sendFile(path.join(distPath, "app/index.html")));
+  app.get(["/app", "/app/*"], (_req, res) => res.sendFile(path.join(distPath, "index.html")));
   // Fall through to the landing shell for other browser routes.
   app.use("*", (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));

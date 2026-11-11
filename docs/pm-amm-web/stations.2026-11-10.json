@@ -1,0 +1,11 @@
+{
+  "source": "https://www.ncei.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt",
+  "retrievedAt": "2026-11-10T19:58:48.953901+00:00",
+  "sha256": "437ee87f0343bcad408a492cf7a02163fb69255364c541b4006d5d76055d0dc3",
+  "records": [
+    "USW00012839  25.7881  -80.3169    1.5 FL MIAMI INTL AP                          72202",
+    "USW00024233  47.4447 -122.3144  112.5 WA SEATTLE TACOMA AP                      72793",
+    "USW00094728  40.7789  -73.9692   42.7 NY NY CITY CNTRL PARK                 HCN 72506",
+    "USW00094846  41.9603  -87.9317  204.8 IL CHICAGO OHARE INTL AP                  72530"
+  ]
+}
