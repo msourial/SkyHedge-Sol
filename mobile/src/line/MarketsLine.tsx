@@ -70,10 +70,10 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
     </Animated.View></View>
   </Modal>;
 }
-function Section({ title, count, children, index, enter }: { title: string; count?: string; children: ReactNode; index: number; enter: boolean }) {
+export function Section({ title, count, children, index, enter }: { title: string; count?: string; children: ReactNode; index: number; enter: boolean }) {
   return <Reveal rise={8} delay={index * M.stagger} enabled={enter}><View style={s.sectionHead}><Text accessibilityRole="header" style={s.sectionTitle}>{title}</Text>{count ? <Text style={s.label}>{count}</Text> : null}</View><View style={s.group}>{children}</View></Reveal>;
 }
-function MarketRow({ peril, title, subline, close, held = false, action, onPress, divider }: { peril: PerilId; title: string; subline: string; close?: string; held?: boolean; action?: string; onPress: () => void; divider: boolean }) {
+export function MarketRow({ peril, title, subline, close, held = false, action, onPress, divider }: { peril: PerilId; title: string; subline: string; close?: string; held?: boolean; action?: string; onPress: () => void; divider: boolean }) {
   return <LinePressable accessibilityRole="button" accessibilityLabel={`${title}, ${subline}, ${held ? copy.COVERED_WORD : close ? copy.closesOn(close) : action ?? ""}`} onPress={onPress} style={s.row}>
     {divider ? <View style={s.divider}/> : null}<PerilAvatar peril={peril}/><View style={s.rowMain}><Text numberOfLines={1} style={s.rowName}>{title}</Text><Text numberOfLines={1} style={s.label}>{subline}</Text></View>
     <View style={s.rowRight}>{held ? <View style={s.inline}><Text style={s.covered}>{copy.COVERED_WORD}</Text><Check size={14} weight="bold" color={C.glacier}/></View> : close ? <><Text style={s.label}>{copy.CLOSES_WORD}</Text><Text style={s.rowFigure}>{close}</Text></> : <View style={s.inline}><Text style={s.label}>{action}</Text><CaretRight size={16} weight="bold" color={C.dryText}/></View>}</View>
@@ -184,3 +184,5 @@ const s = StyleSheet.create({
   skeleton: { backgroundColor: C.surface1, overflow: "hidden" }, citySkeleton: { height: L.cityPill, width: 186, borderRadius: C.radius.pill }, heroSkeleton: { marginTop: 16, height: L.heroSkeleton, borderRadius: C.radius.hero }, rowSkeleton: { height: L.row, borderRadius: 0 }, titleSkeleton: { height: 24, width: 180, borderRadius: 8 },
   modal: { flex: 1, justifyContent: "flex-end" }, scrim: { position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: "rgba(11,18,32,0.72)" }, sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, backgroundColor: C.surface1, paddingHorizontal: 16, paddingTop: 12 }, handle: { width: 36, height: 4, backgroundColor: C.tick, alignSelf: "center", borderRadius: 2, marginBottom: 16 }, cityRow: { height: 72, flexDirection: "row", alignItems: "center", gap: 8 }, sheetClose: { minHeight: L.target, minWidth: L.target, justifyContent: "center", alignItems: "center" }, coldAvatar: { alignItems: "center", marginVertical: 16 },
 });
+
+export { s as marketStyles };

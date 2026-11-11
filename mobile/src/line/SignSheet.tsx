@@ -13,7 +13,7 @@ import { LinePressable } from "./pressable.tsx";
 import { purchaseState } from "../round3.ts";
 import { PurchaseReceipt } from "./PurchaseReceipt.tsx";
 
-export type SignReview = { target: LineSubmitTarget; context: SignContext; ticket: TicketModel; wallet: string | null };
+export type SignReview = { target: LineSubmitTarget; context: SignContext; ticket: TicketModel; wallet: string | null; pmAmm?: { side: string; shares: string; minimum: string; fee: string; token: "mUSDC" } };
 
 /** Frozen quote and wallet survive page refreshes throughout a single signing attempt. */
 export function SignSheet({ review, onApprove, onClose, onWallet, onMarkets, signature }: {
@@ -42,8 +42,9 @@ export function SignSheet({ review, onApprove, onClose, onWallet, onMarkets, sig
   const busy = useRef(false);
   const closing = useRef(false);
   const mounted = useRef(true);
-  const blocked = fundingReason(review.target.premiumBase, review.context.balanceBase, review.context.sol);
+  const blocked = review.pmAmm ? null : fundingReason(review.target.premiumBase, review.context.balanceBase, review.context.sol);
   const copy = signCopy(displayed, review.context);
+  if (review.pmAmm && displayed.status === "error" && outcome?.kind === "error" && outcome.message) copy.body = outcome.message;
   useEffect(() => { mounted.current = true; Vibration.vibrate(10); return () => { mounted.current = false; }; }, []);
   useEffect(() => {
     if (motionPreference == null || closing.current) return;

@@ -1,0 +1,2 @@
+# Public per-wallet send recovery metadata; never commit local run state.
+.pmamm-pending/

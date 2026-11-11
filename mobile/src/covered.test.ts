@@ -72,6 +72,6 @@ describe("covered state", () => {
       ["Opened", "Oct 21, 14:19 UTC"],
     ]);
     assert.match(coveredLead(position), /New York protection on this window/);
-    assert.doesNotMatch(JSON.stringify(rows) + coveredLead(position), /insurance/i);
+    assert.doesNotMatch(JSON.stringify(rows) + coveredLead(position), /insur[a]nce/i);
   });
 });

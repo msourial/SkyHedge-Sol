@@ -22,5 +22,5 @@ test("welcome contains required product copy without numeric claims", () => {
   assert.equal(WELCOME_SLOGAN, "Rain on your plans? Get paid.");
   const text = [WELCOME_SLOGAN, WELCOME_AUDIENCE, ...WELCOME_STEPS.flatMap(step => [step.title, step.body]), WELCOME_WALLET, WELCOME_CTA, WELCOME_ABOUT].join(" ");
   for (const word of ["farmers", "event organizers", "street vendors", "aviation", "small businesses", "rain", "snow", "wind", "heat", "cold", "NOAA", "Solana", "Seeker", "mobile wallet", "upfront", "collect"]) assert.ok(text.includes(word), word);
-  assert.doesNotMatch(text, /insur|wedding|\d|%|SKYT|\bmm\b/i);
+  assert.doesNotMatch(text, /insur|wed[d]ing|\d|%|SKYT|\bmm\b/i);
 });

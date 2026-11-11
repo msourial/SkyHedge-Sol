@@ -75,3 +75,5 @@ const s = StyleSheet.create({
   section: { marginTop: 28, marginBottom: 10, marginHorizontal: 4, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 }, columnHeader: { height: 36, paddingHorizontal: 14, flexDirection: "row", alignItems: "center" }, values: { width: 122, flexDirection: "row" }, columnLabel: { ...ui.label, flex: 1, textAlign: "right" }, amount: { ...ui.figure, flex: 1, fontSize: 15, lineHeight: 20, textAlign: "right" }, coverRow: { minHeight: 64, paddingVertical: 8 }, coverDivider: { position: "absolute", top: 0, left: 66, right: 0, height: 1, backgroundColor: C.divider },
   note: { ...ui.body, fontSize: 13, marginVertical: 12 }, link: { ...ui.figure, color: C.glacier, fontSize: 15 }, action: { minHeight: 48, minWidth: 48, justifyContent: "center", alignItems: "center" }, filters: { flexDirection: "row", marginTop: 12, flexWrap: "wrap", gap: 8 }, filter: { minHeight: 48, paddingHorizontal: 14, justifyContent: "center", borderRadius: 999, backgroundColor: C.surface1 },
 });
+
+export { s as walletStyles };

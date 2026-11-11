@@ -174,3 +174,12 @@ test("buy action is disabled with funding reason and a Wallet help action", () =
     assert.equal(reviewCount, 1);
   } finally { delete (globalThis as any).__walletNodes; delete (globalThis as any).__marketPresses; }
 });
+
+test("native pm-AMM receipt keeps Line confirmation layout and displays the reviewed side and trigger", () => {
+  for(const side of ["Yes","No"]){
+    const triggerLabel=side==="Yes"?"2 mm or more":"Less than 2 mm";
+    const pmReview={...review,context:{...review.context,triggerLabel},pmAmm:{side,shares:"1.8",minimum:"1.782",fee:"0.02",token:"mUSDC"}};
+    const html=render(PurchaseReceipt,{review:pmReview,state:"success",signature:"devnet-signature",onDone:noop,onWallet:noop,onRetry:noop,reducedMotion:true});
+    assert.match(html,/You&#x27;re covered/);assert.match(html,/mUSDC/);assert.match(html,new RegExp(`1.8 ${side}`));assert.ok(html.includes(triggerLabel));assert.doesNotMatch(html,/SKYT/);
+  }
+});
