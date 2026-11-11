@@ -5,6 +5,16 @@ import { units } from '../../../shared/pm-amm/client.ts';
 import { missingDataNote, sourceLabel, strikeSentence, trustParagraph } from '../../../shared/pm-amm/copy.ts';
 import type { MoneyFigure, PayoffModel, TicketModel } from '../../../shared/ui-view.ts';
 import type { SignReview } from '../line/SignSheet.tsx';
+import { dayFromIso } from '../../../shared/ui-ladder.ts';
+/** App-style window label, e.g. "Dec 14 – Dec 16" (same style as the purchase receipt). */
+export const pmWindowLabel = (spec: Pick<MarketSpec,'start'|'end'>) => {
+  const a = dayFromIso(spec.start) ?? spec.start, b = dayFromIso(spec.end) ?? spec.end;
+  if (a === b) return a;
+  const [am, ad] = a.split(' '), [bm, bd] = b.split(' ');
+  return am === bm && ad && bd ? `${am} ${ad}–${bd}` : `${a} – ${b}`;
+};
+/** Station names arrive upper-case from the source catalog; the app shows them in title case. */
+export const stationTitle = (name: string) => name.toLowerCase().replace(/\b([a-z])/g, c => c.toUpperCase());
 export const chance = (state: MarketAccount, direction: 'usdcToYes'|'usdcToNo' = 'usdcToYes', now?:number) => {const price=marketState(state,now).price;return `${((direction==='usdcToNo'?1-price:price)*100).toFixed(2)}%`;};
 export function pmTicket(input: {owner: string; market: string; spec: MarketSpec; state: MarketAccount; direction: 'usdcToYes'|'usdcToNo'; amountRaw: number; now?:number}): SignReview {
   const {spec, state, direction, amountRaw} = input, q = quote(state, direction, amountRaw,input.now);
@@ -21,7 +31,7 @@ export function pmTicket(input: {owner: string; market: string; spec: MarketSpec
     {label:'Minimum received',value:`${units(q.minimum)} shares`},
     {label:'Fee (included)',value:`${units(q.fee)} mUSDC`},
     {label:'Station',value:spec.stationName},
-    {label:'Window',value:`${spec.start} – ${spec.end}`},
+    {label:'Window',value:pmWindowLabel(spec)},
     {label:'Settlement source',value:sourceLabel(spec)},
   ]};
   return {wallet:input.owner, target:{market:input.market,amount:String(amountRaw),premiumBase:String(amountRaw),salesCloseAt:new Date(spec.endTs*1000).toISOString()},context:{premiumBase:String(amountRaw),balanceBase:null,cityName:spec.city,peril:'rain',triggerLabel:side === 'Yes' ? `${trigger} mm or more` : `Less than ${trigger} mm`,windowLabel:`${spec.start} – ${spec.end}`},ticket,pmAmm:{side,shares:units(q.out),minimum:units(q.minimum),fee:units(q.fee),token:'mUSDC'}};

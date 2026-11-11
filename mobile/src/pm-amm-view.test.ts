@@ -33,3 +33,11 @@ test('No share chance is the complement of the chain Yes price',t=>{
   const yes=Number(chance(state,'usdcToYes').replace('%','')),no=Number(chance(state,'usdcToNo').replace('%',''));
   assert.equal(yes+no,100);assert.notEqual(yes,no);
 });
+
+import { pmWindowLabel as windowLabelForTest, stationTitle as stationTitleForTest } from './pm-amm/view.ts';
+test('window labels use the app date style', () => {
+  assert.equal(windowLabelForTest({start:'2026-12-14',end:'2026-12-16'}), 'Dec 14–16');
+  assert.equal(windowLabelForTest({start:'2026-12-31',end:'2027-01-02'}), 'Dec 31 – Jan 2');
+  assert.equal(windowLabelForTest({start:'2026-10-01',end:'2026-10-01'}), 'Oct 1');
+  assert.equal(stationTitleForTest('TORONTO INTL A'), 'Toronto Intl A');
+});
