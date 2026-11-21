@@ -56,4 +56,19 @@ describe("Vercel health endpoint", () => {
     });
     expect(JSON.stringify(recorder.result().body)).not.to.contain("RPC transport detail");
   });
+
+  it("returns HTTP 429 RATE_LIMITED when the RPC is rate-limited, without leaking the provider error", async () => {
+    const recorder = responseRecorder();
+    await createHealthHandler({
+      programId: PublicKey.unique().toBase58(),
+      rpcUrl: "https://rpc.example",
+      getAccountInfo: async () => { throw new Error("429 Too Many Requests: apply an API key"); },
+    })({} as never, recorder.response as never);
+
+    expect(recorder.result().statusCode).to.equal(429);
+    expect((recorder.result().body as { error: string }).error).to.equal("RATE_LIMITED");
+    expect((recorder.result().body as { message: string }).message).to.equal("Devnet RPC is rate-limited. Try again shortly.");
+    expect(JSON.stringify(recorder.result().body)).not.to.contain("API key");
+    expect(JSON.stringify(recorder.result().body)).not.to.contain("429 Too Many Requests");
+  });
 });

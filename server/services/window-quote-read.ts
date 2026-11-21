@@ -4,6 +4,7 @@ import { loadAnalogueSeries } from "./demo-keeper-plan.js";
 import { buildWindowQuote, PerilNotAvailableError, PerilNotOpenError, salesCloseIso, type WindowQuoteMarket } from "./window-quote.js";
 import type { DevnetStatus } from "./devnet-status.js";
 import type { WindowQuote } from "../../shared/ui-quote-types.js";
+import { isRpcRateLimited, RpcRateLimitedError } from "./rpc-failover.js";
 
 export interface WindowQuoteQuery {
   peril: string;
@@ -59,9 +60,10 @@ export async function marketsForWindowQuote(
   let status: DevnetStatus;
   try {
     status = await readStatus();
-  } catch {
-    // A failed chain read must not look like "no market is open": surface it as DATA_UNAVAILABLE (503).
+  } catch (error) {
+    // A failed chain read must not look like "no market is open".
     // The raw RPC error is not echoed, since it can name the provider endpoint.
+    if (isRpcRateLimited(error)) throw new RpcRateLimitedError();
     throw new DataUnavailableError("Devnet market state could not be read. Try again shortly.");
   }
   return (status.cityWindows ?? []).flatMap((window) => {

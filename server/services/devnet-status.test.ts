@@ -47,6 +47,7 @@ describe("Public Devnet status", () => {
 
   it("propagates finalized-RPC failures instead of disguising them as missing accounts", async () => {
     const offlineConnection = {
+      getMultipleAccountsInfo: async () => { throw new Error("Devnet RPC offline"); },
       getAccountInfo: async () => { throw new Error("Devnet RPC offline"); },
     } as unknown as Connection;
     const reader = new DevnetStatusReader(offlineConnection);

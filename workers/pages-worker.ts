@@ -2,6 +2,39 @@ import { handleNodeApi, hydrateProcessEnv, htmlShell } from "../server/services/
 import type { ApiRequest, ApiResponse } from "../server/services/vercel-api.js";
 
 type Env = Record<string, unknown> & { ASSETS: { fetch: (request: Request) => Promise<Response> } };
+type ExecutionContextLike = { waitUntil?: (promise: Promise<unknown>) => void };
+
+const CHAIN_GET_CACHE_SECONDS = 45;
+const CHAIN_GET_CACHE_PATHS = new Set(["/api/health", "/api/devnet/status", "/api/quotes", "/api/mobile"]);
+
+function isCacheableChainGet(request: Request, url: URL): boolean {
+  if (request.method !== "GET") return false;
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  return CHAIN_GET_CACHE_PATHS.has(path);
+}
+
+async function cachedChainGet(request: Request, ctx?: ExecutionContextLike): Promise<Response> {
+  const url = new URL(request.url);
+  if (!isCacheableChainGet(request, url)) return handleApi(request);
+  const store = (globalThis as unknown as { caches?: { default?: { match(request: Request): Promise<Response | undefined>; put(request: Request, response: Response): Promise<void> } } }).caches?.default;
+  if (!store) return handleApi(request);
+  const cacheKey = new Request(url.toString(), { method: "GET", headers: { accept: "application/json" } });
+  const hit = await store.match(cacheKey);
+  if (hit) {
+    const headers = new Headers(hit.headers);
+    headers.set("cf-cache-status", "HIT");
+    return new Response(hit.body, { status: hit.status, headers });
+  }
+  const response = await handleApi(request);
+  if (response.status !== 200) return response;
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", `public, s-maxage=${CHAIN_GET_CACHE_SECONDS}`);
+  const cached = new Response(response.body, { status: 200, headers });
+  const put = store.put(cacheKey, cached.clone());
+  if (ctx?.waitUntil) ctx.waitUntil(put);
+  else await put;
+  return cached;
+}
 
 let apiReady: Promise<void> | undefined;
 const handlers: Record<string, (req: ApiRequest, res: ApiResponse) => unknown | Promise<unknown>> = {};
@@ -117,13 +150,13 @@ async function handleApi(request: Request): Promise<Response> {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx?: ExecutionContextLike): Promise<Response> {
     hydrateProcessEnv(env);
     const url = new URL(request.url);
     const pathname = url.pathname;
 
     if (pathname === "/api" || pathname.startsWith("/api/")) {
-      return handleApi(request);
+      return cachedChainGet(request, ctx);
     }
 
     if (pathname === "/app") {

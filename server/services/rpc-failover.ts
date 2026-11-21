@@ -25,9 +25,35 @@ export const RPC_ATTEMPT_TIMEOUT_MS = 3_000;
 /** The whole failover, retries included, may not outlive this (primary 8s + two 3s fallbacks + backoff). */
 export const RPC_FAILOVER_DEADLINE_MS = 15_000;
 
+export const RPC_RATE_LIMITED_CODE = "RATE_LIMITED";
+export const RPC_RATE_LIMITED_MESSAGE = "Devnet RPC is rate-limited. Try again shortly.";
+
+export class RpcRateLimitedError extends Error {
+  readonly code = RPC_RATE_LIMITED_CODE;
+  constructor(message = RPC_RATE_LIMITED_MESSAGE) {
+    super(message);
+    this.name = "RpcRateLimitedError";
+  }
+}
+
 export function isRpcRateLimited(error: unknown): boolean {
+  if (error instanceof RpcRateLimitedError) return true;
+  if (error && typeof error === "object" && "code" in error && (error as { code?: unknown }).code === RPC_RATE_LIMITED_CODE) return true;
   const message = error instanceof Error ? error.message : String(error);
-  return /\b429\b|too many requests|rate limit/i.test(message);
+  const status = error && typeof error === "object" && "status" in error ? Number((error as { status?: unknown }).status) : 0;
+  return status === 429 || /\b429\b|too many requests|rate limit|max usage reached/i.test(message);
+}
+
+export function isPublicDevnetRpcUrl(url: string): boolean {
+  return (PUBLIC_DEVNET_RPC_URLS as readonly string[]).includes(url.replace(/\/$/, ""));
+}
+
+export function hasPrivateRpcUrl(envUrl = process.env.SOLANA_RPC_URL): boolean {
+  return Boolean(envUrl) && !isPublicDevnetRpcUrl(envUrl);
+}
+
+export function rpcRateLimitedBody(): { error: string; message: string } {
+  return { error: RPC_RATE_LIMITED_CODE, message: RPC_RATE_LIMITED_MESSAGE };
 }
 
 function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
@@ -72,7 +98,10 @@ export async function callWithRpcFailover<T>(
 
   for (let index = 0; index < urls.length; index++) {
     const url = urls[index]!;
-    const tries = index === 0 ? backoffMs.length + 1 : 1;
+    // A private keyed URL that is already 429 should not be retried or failed over:
+    // retries re-run the whole multi-call read and burn remaining quota.
+    const privatePrimary = index === 0 && !isPublicDevnetRpcUrl(url);
+    const tries = index === 0 && !privatePrimary ? backoffMs.length + 1 : 1;
     for (let attempt = 0; attempt < tries; attempt++) {
       const remaining = deadlineAt - now();
       if (remaining <= 0) throw last instanceof Error ? last : new Error("Devnet RPC timed out");
@@ -81,6 +110,7 @@ export async function callWithRpcFailover<T>(
         return await withTimeout(call(url), Math.min(budget, remaining));
       } catch (error) {
         last = error;
+        if (privatePrimary && isRpcRateLimited(error)) throw error;
         const retryHere = index === 0 && attempt < tries - 1 && isRpcRateLimited(error);
         if (!retryHere) break;
         const wait = Math.min(backoffMs[attempt] ?? 0, Math.max(0, deadlineAt - now()));

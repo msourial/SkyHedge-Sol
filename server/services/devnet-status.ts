@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { BorshCoder, type Idl } from "@coral-xyz/anchor";
-import { getMint } from "@solana/spl-token";
+import { unpackMint } from "@solana/spl-token";
 import { Connection, PublicKey } from "@solana/web3.js";
 import committedIdl from "../../shared/idl/skyhedge_protection.json" with { type: "json" };
 import { NOAA_STATIONS } from "./noaa.js";
@@ -21,7 +21,7 @@ import { readStoredWindowEvidence } from "./window-evidence.js";
 const PROGRAM_ID = process.env.SKYHEDGE_PROGRAM_ID ?? "5hGLEG1ts46iER4pfWnP1fMb8sG5nxSinNY1pjYnNPWx";
 const RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 const SKYT_MINT = process.env.SKYT_MINT ?? "3Y1SaGnJiPez3hkcHom2gimtVEm7W7R8imeRMPTUaK9g";
-const STATUS_CACHE_MS = 20_000;
+const STATUS_CACHE_MS = 45_000;
 const NOAA_EVIDENCE_BUDGET_MS = 6_000;
 /** Public Devnet endpoints. web3.js 429 retry stays off; the first URL is retried with backoff, then the fallback, under a strict timeout. */
 function devnetRpcUrls(): string[] {
@@ -145,18 +145,22 @@ export class DevnetStatusReader {
   }
 
   private async readUncached(noaaEvidenceRead?: Promise<DevnetStatus["noaaEvidence"]>): Promise<DevnetStatus> {
-    const [programInfo, mintAccountInfo, noaaEvidence, windowEvidence] = await Promise.all([
-      this.connection.getAccountInfo(this.programId, "confirmed"),
-      this.connection.getAccountInfo(this.mint, "confirmed"),
+    const [protocolAddress] = PublicKey.findProgramAddressSync([Buffer.from("protocol")], this.programId);
+    const [feeVaultAddress] = PublicKey.findProgramAddressSync([Buffer.from("fee-vault"), protocolAddress.toBuffer()], this.programId);
+    const [coreAccounts, noaaEvidence, windowEvidence] = await Promise.all([
+      this.connection.getMultipleAccountsInfo([this.programId, this.mint, protocolAddress, feeVaultAddress], "confirmed"),
       noaaEvidenceRead ?? this.readNoaaEvidence(),
       readStoredWindowEvidence().catch(() => [] as WindowEvidencePackage[]),
     ]);
-    const mintInfo = mintAccountInfo ? await getMint(this.connection, this.mint, "confirmed") : null;
-    const [protocolAddress] = PublicKey.findProgramAddressSync([Buffer.from("protocol")], this.programId);
-    const [feeVaultAddress] = PublicKey.findProgramAddressSync([Buffer.from("fee-vault"), protocolAddress.toBuffer()], this.programId);
-    const protocolInfo = await this.connection.getAccountInfo(protocolAddress, "confirmed");
+    const [programInfo, mintAccountInfo, protocolInfo, feeVaultAccount] = coreAccounts;
+    let mintInfo = null;
+    if (mintAccountInfo) {
+      try { mintInfo = unpackMint(this.mint, mintAccountInfo, mintAccountInfo.owner); } catch { mintInfo = null; }
+    }
     const decodedProtocol = protocolInfo ? this.decodeAccount<Record<string, unknown>>("ProtocolConfig", protocolInfo.data) : null;
-    const feeVaultBalance = await this.tokenBalance(feeVaultAddress);
+    const feeVaultBalance = feeVaultAccount && feeVaultAccount.data.length >= 72
+      ? feeVaultAccount.data.readBigUInt64LE(64).toString()
+      : null;
     const markets = decodedProtocol ? await this.listDesMoinesMarkets(protocolAddress, decodedProtocol) : [];
     const market = latestMatchingMarket(markets, new Set([cityHash("des-moines"), cityHash("Des Moines")]));
     const ladderMarkets = markets.map((item) => ladderSnapshot(item));

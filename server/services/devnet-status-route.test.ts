@@ -34,7 +34,7 @@ describe("deployed Devnet status endpoint", () => {
       desMoinesMarket: { status: "pending" },
       noaaEvidence: { status: "ready", settlementSource: "NOAA" },
     });
-    expect(recorder.result().headers.get("Cache-Control")).to.equal("s-maxage=30, stale-while-revalidate=60");
+    expect(recorder.result().headers.get("Cache-Control")).to.equal("s-maxage=45, stale-while-revalidate=60");
   });
 
   it("reports live RPC failures as unavailable instead of returning stale readiness", async () => {
@@ -43,5 +43,14 @@ describe("deployed Devnet status endpoint", () => {
 
     expect(recorder.result().statusCode).to.equal(503);
     expect(recorder.result().body).to.deep.equal({ error: "DEVNET_STATUS_UNAVAILABLE", message: "Devnet RPC offline" });
+  });
+
+  it("returns HTTP 429 RATE_LIMITED for a rate-limited RPC, without leaking the provider error", async () => {
+    const recorder = responseRecorder();
+    await createDevnetStatusHandler(async () => { throw new Error("429 Too Many Requests: apply an API key"); })({} as never, recorder.response as never);
+
+    expect(recorder.result().statusCode).to.equal(429);
+    expect(recorder.result().body).to.deep.equal({ error: "RATE_LIMITED", message: "Devnet RPC is rate-limited. Try again shortly." });
+    expect(JSON.stringify(recorder.result().body)).not.to.contain("API key");
   });
 });

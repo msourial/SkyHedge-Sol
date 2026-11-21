@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { DevnetStatusReader, publicDevnetStatus, type DevnetStatus } from "../../server/services/devnet-status.js";
 import { applyCorsHeaders } from "../../server/services/cors.js";
 import { createWindowEvidenceHandler } from "../../server/services/window-evidence-http.js";
+import { isRpcRateLimited, rpcRateLimitedBody } from "../../server/services/rpc-failover.js";
 
 type JsonResponse = ServerResponse & {
   status: (code: number) => JsonResponse;
@@ -19,9 +20,10 @@ export function createDevnetStatusHandler(loadStatus: StatusLoader = () => reade
     if (url.searchParams.get("resource") === "window-evidence") return createWindowEvidenceHandler()(req, res);
     try {
       const status = publicDevnetStatus(await loadStatus());
-      res.setHeader("Cache-Control", status.noaaEvidence.status !== "ready" ? "no-store" : "s-maxage=30, stale-while-revalidate=60");
+      res.setHeader("Cache-Control", status.noaaEvidence.status !== "ready" ? "no-store" : "s-maxage=45, stale-while-revalidate=60");
       return res.status(200).json(status);
     } catch (error) {
+      if (isRpcRateLimited(error)) return res.status(429).json(rpcRateLimitedBody());
       const message = error instanceof Error ? error.message : "Devnet status unavailable";
       return res.status(503).json({ error: "DEVNET_STATUS_UNAVAILABLE", message });
     }

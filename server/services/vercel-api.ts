@@ -7,7 +7,7 @@ import { desMoinesQuoteUnavailableReason, matchingOpenWindow, testerProtectionUn
 import { PERILS, isPerilId, perilOpenForCity, type PerilId } from "../../shared/perils.js";
 import type { WindowQuote } from "../../shared/ui-quote-types.js";
 import { prepareFailure } from "../../shared/prepare-failure.js";
-import { isRpcRateLimited } from "./rpc-failover.js";
+import { isRpcRateLimited, rpcRateLimitedBody } from "./rpc-failover.js";
 import type { DevnetStatus } from "./devnet-status";
 import { ClaimUnavailableError, type ClaimReadiness, type TxAction, type UnsignedTransactionBuilder, type UnsignedTxResult } from "./unsigned-tx.js";
 import { applyCorsHeaders } from "./cors.js";
@@ -120,6 +120,7 @@ export function createQuoteHandler(dependencies: {
         explicitApprovalRequired: true,
       });
     } catch (error) {
+      if (isRpcRateLimited(error)) return sendJson(res, 429, rpcRateLimitedBody());
       if (error instanceof DataUnavailableError) return sendJson(res, 503, { error: error.code, message: error.message });
       return sendJson(res, 500, { error: "QUOTE_UNAVAILABLE", message: "The quote could not be prepared." });
     }
@@ -198,12 +199,13 @@ async function windowQuoteResponse(
     return sendJson(res, 400, { error: "INVALID_WINDOW_QUOTE", message: "city, peril, observationStart, and observationEnd are required." });
   }
   try {
-    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Cache-Control", "s-maxage=45, stale-while-revalidate=60");
     return sendJson(res, 200, await readWindowQuote({ peril, cityId, windowStart, windowEnd }));
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
     const message = error instanceof Error ? error.message : "The window quote could not be prepared.";
     if (code === "PERIL_NOT_OPEN" || code === "PERIL_NOT_AVAILABLE") return sendJson(res, 409, { error: code, message });
+    if (isRpcRateLimited(error) || code === "RATE_LIMITED") return sendJson(res, 429, rpcRateLimitedBody());
     if (code === "DATA_UNAVAILABLE") return sendJson(res, 503, { error: code, message });
     return sendJson(res, 400, { error: "INVALID_WINDOW_QUOTE", message });
   }

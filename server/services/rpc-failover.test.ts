@@ -164,4 +164,24 @@ describe("Devnet RPC failover", () => {
     expect(RPC_ATTEMPT_TIMEOUT_MS).to.equal(3_000);
     expect(RPC_FAILOVER_DEADLINE_MS).to.be.at.least(RPC_PRIMARY_ATTEMPT_TIMEOUT_MS + 2 * RPC_ATTEMPT_TIMEOUT_MS);
   });
+
+  it("does not retry a rate-limited private RPC or fall back to public endpoints", async () => {
+    const privateUrl = "https://example-private-rpc.test/abc";
+    const calls: string[] = [];
+    let message = "";
+    try {
+      await callWithRpcFailover(
+        [privateUrl, primary, fallback],
+        async (url) => {
+          calls.push(url);
+          throw new Error("429 Too Many Requests");
+        },
+        { backoffMs: [10, 20], timeoutMs: 1_000, sleep: async () => {} },
+      );
+    } catch (error) {
+      message = error instanceof Error ? error.message : "";
+    }
+    expect(message).to.include("429");
+    expect(calls).to.deep.equal([privateUrl]);
+  });
 });

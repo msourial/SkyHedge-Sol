@@ -12,6 +12,7 @@ import { DevnetStatusReader } from "./devnet-status.js";
 import { readCoverProgress } from "./cover-progress.js";
 import { readForecastEdge } from "./forecast-exceedance.js";
 import type { WindowQuote } from "../../shared/ui-quote-types.js";
+import { isRpcRateLimited, rpcRateLimitedBody } from "./rpc-failover.js";
 
 type ApiRequest = IncomingMessage & { query?: Record<string, unknown> };
 type ApiResponse = ServerResponse & {
@@ -120,7 +121,7 @@ export function createMobileApiHandler(dependencies: {
           return readFinalizedProtections(address);
         });
         const protections = await read(canonicalWallet);
-        res.setHeader("Cache-Control", "no-store");
+        res.setHeader("Cache-Control", "s-maxage=45, stale-while-revalidate=60");
         return res.status(200).json({
           wallet: canonicalWallet,
           source: "finalized-solana-rpc",
@@ -168,6 +169,7 @@ export function createMobileApiHandler(dependencies: {
           const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
           const message = error instanceof Error ? error.message : "The window quote could not be prepared.";
           if (code === "PERIL_NOT_OPEN" || code === "PERIL_NOT_AVAILABLE") return res.status(409).json({ error: code, message });
+          if (isRpcRateLimited(error) || code === "RATE_LIMITED") return res.status(429).json(rpcRateLimitedBody());
           return res.status(503).json({ error: "DATA_UNAVAILABLE", message });
         }
       }
@@ -182,8 +184,9 @@ export function createMobileApiHandler(dependencies: {
       }
 
       return res.status(404).json({ error: "UNKNOWN_MOBILE_RESOURCE", message: "That mobile read resource is not available." });
-    } catch {
+    } catch (error) {
       res.setHeader("Cache-Control", "no-store");
+      if (isRpcRateLimited(error)) return res.status(429).json(rpcRateLimitedBody());
       return res.status(503).json({ error: "MOBILE_READ_UNAVAILABLE", message: "The requested SkyHedge data is temporarily unavailable." });
     }
   };
