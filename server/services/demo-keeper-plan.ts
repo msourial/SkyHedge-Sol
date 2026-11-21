@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import analogueTotalsDoc from "../fixtures/ghcnd/analogue-totals.json";
+import observedDevnetMarketsDoc from "../fixtures/ghcnd/devnet-open-markets.json";
 import { DES_MOINES_SEED_LIQUIDITY_BASE } from "../../shared/des-moines-seed-plan.js";
 import { PERILS, type PerilId } from "../../shared/perils.js";
 import {
@@ -76,8 +77,7 @@ export interface DemoPlan {
 }
 
 export function loadAnalogueSeries(): AnalogueSeries[] {
-  const doc = JSON.parse(readFileSync(new URL("../fixtures/ghcnd/analogue-totals.json", import.meta.url), "utf8")) as { series: AnalogueSeries[] };
-  return doc.series;
+  return (analogueTotalsDoc as { series: AnalogueSeries[] }).series;
 }
 
 export function demoRequests(nowSeconds = DEMO_NOW_SECONDS): Array<{ city: LiveCitySlug; peril: PerilId; window: LadderWindow }> {
@@ -108,7 +108,7 @@ interface ObservedMarketFile {
 }
 
 export function loadObservedDevnetMarkets(): ObservedMarketFile {
-  return JSON.parse(readFileSync(new URL("../fixtures/ghcnd/devnet-open-markets.json", import.meta.url), "utf8")) as ObservedMarketFile;
+  return observedDevnetMarketsDoc as ObservedMarketFile;
 }
 
 /** Devnet markets read on 2026-10-24. The signer reads the chain again before it builds instructions. */

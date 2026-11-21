@@ -74,3 +74,8 @@ graphify-out/
 .vercel
 .local-secrets/
 .tmp-seed-signer/
+
+# Local Cloudflare/Vercel secret material (never commit)
+.secrets/
+.env.cf
+.dev.vars

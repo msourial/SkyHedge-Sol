@@ -34,7 +34,8 @@
     "test:web": "playwright test --config playwright.web.config.ts",
     "test:phantom": "node --import tsx --test scripts/phantom-browser.test.ts",
     "demo:replay": "tsx scripts/demo-replay-localnet.ts",
-    "test:replay": "node --import tsx --test scripts/demo-replay-helpers.test.ts"
+    "test:replay": "node --import tsx --test scripts/demo-replay-helpers.test.ts",
+    "build:cf": "node scripts/build-cf-pages.mjs"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",

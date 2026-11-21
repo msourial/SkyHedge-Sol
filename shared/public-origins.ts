@@ -9,6 +9,7 @@ export const ALLOWED_WEB_ORIGINS = [
   PUBLIC_SITE_ORIGIN,
   "https://www.skyhedge.app",
   "https://skyhedge.vercel.app",
+  "https://skyhedge.pages.dev",
 ] as const;
 
 export type AllowedWebOrigin = (typeof ALLOWED_WEB_ORIGINS)[number];
